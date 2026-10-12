@@ -75,6 +75,14 @@ describe('postNotification', () => {
     expect(onClick).toHaveBeenCalledOnce()
   })
 
+  it('should end its hold on the notification when it closes or fails', () => {
+    postNotification({ title: 'Briefing', body: 'Two things' })
+
+    expect(created[0].listeners.has('close')).toBe(true)
+    expect(() => created[0].listeners.get('close')?.({})).not.toThrow()
+    expect(() => created[0].listeners.get('failed')?.({}, 'denied')).not.toThrow()
+  })
+
   it('should listen for no click when none is given', () => {
     postNotification({ title: 'Briefing', body: 'Two things' })
 

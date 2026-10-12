@@ -6,6 +6,12 @@ export interface NotificationContent {
   body: string
 }
 
+// Electron drops a notification, and its events, once it is garbage collected, and
+// macOS reports `failed` and `click` asynchronously. Hold each one until it ends.
+// ponytail: 'close' is not guaranteed on macOS, so some stay held for the session
+// (small objects; cap the set if a watch folder ever floods it).
+const live = new Set<Notification>()
+
 /**
  * Since Electron 42 macOS delivers notifications through UNUserNotificationCenter,
  * which shows nothing for an app it does not trust or that the owner has not
@@ -16,7 +22,12 @@ export interface NotificationContent {
 export function postNotification(content: NotificationContent, onClick?: () => void): void {
   if (!Notification.isSupported()) return
   const notification = new Notification(content)
-  notification.on('failed', (_event, error) => log.warn(`[Notification] not delivered: ${error}`))
+  live.add(notification)
+  notification.on('close', () => live.delete(notification))
+  notification.on('failed', (_event, error) => {
+    live.delete(notification)
+    log.warn(`[Notification] not delivered: ${error}`)
+  })
   if (onClick) notification.on('click', onClick)
   notification.show()
 }

@@ -38,13 +38,17 @@ vi.mock('electron', () => {
       }))
     },
     ipcMain: { on: vi.fn(), handle: vi.fn() },
-    nativeTheme: { shouldUseDarkColors: false },
-    Notification: vi.fn().mockImplementation(() => ({ show: vi.fn() }))
+    nativeTheme: { shouldUseDarkColors: false }
   }
 })
 
+vi.mock('../../src/main/infrastructure/notices/postNotification', () => ({
+  postNotification: vi.fn()
+}))
+
 import { AssistantWindowManager } from '../../src/main/infrastructure/assistant/AssistantWindowManager'
 import { app, BrowserWindow, globalShortcut } from 'electron'
+import { postNotification } from '../../src/main/infrastructure/notices/postNotification'
 
 describe('AssistantWindowManager', () => {
   let manager: AssistantWindowManager
@@ -241,6 +245,18 @@ describe('AssistantWindowManager', () => {
       'CommandOrControl+Shift+Space',
       expect.any(Function)
     )
+  })
+
+  it('should tell the owner when another app holds the shortcut', () => {
+    vi.mocked(globalShortcut.register).mockReturnValueOnce(false)
+
+    const result = manager.registerShortcut()
+
+    expect(result).toBe(false)
+    expect(postNotification).toHaveBeenCalledWith({
+      title: 'Talyx',
+      body: 'Keyboard shortcut is in use by another app. Change it in Settings.'
+    })
   })
 
   it('should accept a custom shortcut', () => {
