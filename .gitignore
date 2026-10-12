@@ -43,6 +43,7 @@ models/
 
 # Brainstorming mockups
 .superpowers/
+docs/superpowers/plans/
 tests/eval/corpus/
 
 # Local CDP driver scripts for verifying a packaged build

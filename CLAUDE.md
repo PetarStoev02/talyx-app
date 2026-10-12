@@ -8,7 +8,7 @@
 **Talyx** — AI-powered desktop file organizer. macOS only as of 0.9.0 (see Builds below). Talyx is a personal harness: a hotkey overlay where the user's own Claude — an API key, or their signed-in Claude Code on a subscription — operates the computer through typed abilities with an approval gate; file sorting is one ability. Sorting uses `sorterSource` in Settings: **Smart Local** (extension + metadata, default, nothing leaves the machine) or **Your Claude** (the same account the assistant uses — the whole preview batch when Claude is reachable). Talyx does not host classification weights. Additionally exposes an MCP server so any AI assistant can operate Talyx remotely.
 
 - **Version:** 0.11.0
-- **Stack:** Electron 39 + React 19 + TypeScript 5.9 + TailwindCSS 4
+- **Stack:** Electron 44 + React 19 + TypeScript 5.9 + TailwindCSS 4
 - **State:** Zustand | **UI:** shadcn/ui (New York) | **DB:** better-sqlite3
 - **Build:** electron-vite + electron-builder | **Tests:** Vitest
 - **AI:** `@anthropic-ai/sdk` (assistant + Claude sorting, user's API key) | `@anthropic-ai/claude-agent-sdk` (assistant + Claude sorting, user's installed Claude Code) | local ONNX (voice: whisper / Kokoro only — not used for sorting)
@@ -44,6 +44,8 @@ code into it; grant permissions accordingly.
 Voice needs Apple Silicon. `onnxruntime-node` publishes no `darwin/x64` binary,
 so whisper and Kokoro cannot load on Intel Macs; sorting
 and the assistant are unaffected.
+
+Electron 44 needs macOS 13 or newer.
 
 During `npm run dev` the renderer is also usable in a plain browser at
 `http://localhost:5173` (dev bridge → real main process). Use the folder

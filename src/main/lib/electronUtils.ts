@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 
-// Lives in our own source so Electron 39's ESM loader can intercept the 'electron' import
+// Lives in our own source so Electron's ESM loader can intercept the 'electron' import
 // (it only intercepts bundled code, not node_modules).
 
 export const is = {

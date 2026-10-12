@@ -1,4 +1,4 @@
-import { Notification } from 'electron'
+import { postNotification } from './postNotification'
 import type { OverlayEvent } from '../../domain/agent/AgentSession'
 import type { Notice } from '../../domain/briefing/model/Notice'
 
@@ -23,11 +23,10 @@ export interface NoticeDeliveryDeps {
  * says to restart.
  */
 export function announceNotices(): void {
-  if (!Notification.isSupported()) return
-  new Notification({
+  postNotification({
     title: 'Notices are on',
     body: 'This is what one looks like. Talyx will only speak first when something needs you.'
-  }).show()
+  })
 }
 
 /**
@@ -40,11 +39,7 @@ export function noticeDelivery(deps: NoticeDeliveryDeps): (notice: Notice) => Pr
     // Notified first, on purpose. An unmarked notice is retried next tick, and
     // pushing the transcript entries before the step that can fail would leave
     // the owner reading the same briefing twice.
-    if (Notification.isSupported()) {
-      const notification = new Notification({ title: notice.title, body: notice.body })
-      notification.on('click', () => deps.show())
-      notification.show()
-    }
+    postNotification({ title: notice.title, body: notice.body }, () => deps.show())
 
     deps.push([
       ...notice.cards.map((card) => ({ type: 'card' as const, card })),

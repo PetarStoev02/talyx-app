@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, Notification } from 'electron'
+import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron'
 import log from 'electron-log'
 import { randomUUID } from 'crypto'
 import { join, dirname } from 'path'
@@ -38,6 +38,7 @@ import { SearchService } from './domain/search/services/SearchService'
 import { RecallService } from './domain/search/services/RecallService'
 import { DeepScanService } from './domain/search/services/DeepScanService'
 import { registerSearchIpc } from './infrastructure/ipc/search.ipc'
+import { postNotification } from './infrastructure/notices/postNotification'
 import { AssistantWindowManager } from './infrastructure/assistant/AssistantWindowManager'
 import { registerAgentIpc } from './infrastructure/ipc/agent.ipc'
 import { registerVoiceIpc } from './infrastructure/ipc/voice.ipc'
@@ -192,37 +193,33 @@ function initializeServices(): void {
     devBridge?.broadcast('watch:event', event)
 
     // Native OS notification
-    if (Notification.isSupported()) {
-      if (event.type === 'file-sorted') {
-        const fileName = event.filePath.split('/').pop() ?? event.filePath
-        new Notification({
-          title: 'File Sorted',
-          body: `${fileName} → ${event.category ?? 'Unknown'}`
-        }).show()
-      } else if (event.type === 'error') {
-        new Notification({
-          title: 'Watch Error',
-          body: event.error ?? 'Failed to sort file'
-        }).show()
-      }
+    if (event.type === 'file-sorted') {
+      const fileName = event.filePath.split('/').pop() ?? event.filePath
+      postNotification({
+        title: 'File Sorted',
+        body: `${fileName} → ${event.category ?? 'Unknown'}`
+      })
+    } else if (event.type === 'error') {
+      postNotification({
+        title: 'Watch Error',
+        body: event.error ?? 'Failed to sort file'
+      })
     }
   })
 
   // Scheduled sorts
   const scheduledSortRepo = new ScheduledSortRepo(db)
   schedulerService = new SchedulerService(scheduledSortRepo, pipeline, executor, (event) => {
-    if (Notification.isSupported()) {
-      if (event.type === 'sort-completed') {
-        new Notification({
-          title: 'Scheduled Sort Complete',
-          body: `"${event.scheduleName}" sorted ${event.fileCount ?? 0} files`
-        }).show()
-      } else if (event.type === 'sort-failed') {
-        new Notification({
-          title: 'Scheduled Sort Failed',
-          body: `"${event.scheduleName}": ${event.error ?? 'Unknown error'}`
-        }).show()
-      }
+    if (event.type === 'sort-completed') {
+      postNotification({
+        title: 'Scheduled Sort Complete',
+        body: `"${event.scheduleName}" sorted ${event.fileCount ?? 0} files`
+      })
+    } else if (event.type === 'sort-failed') {
+      postNotification({
+        title: 'Scheduled Sort Failed',
+        body: `"${event.scheduleName}": ${event.error ?? 'Unknown error'}`
+      })
     }
   })
 

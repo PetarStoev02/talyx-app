@@ -1,4 +1,4 @@
-import { Notification } from 'electron'
+import { postNotification } from './postNotification'
 import { nextLocalMidnight } from '../../../shared/notices/pause'
 import type { SettingsStore } from '../storage/SettingsStore'
 
@@ -15,8 +15,7 @@ const PAUSED_NOTIFICATION = {
 
 export function pauseNoticesForToday(settingsStore: SettingsStore, now = new Date()): void {
   settingsStore.set({ noticesPausedUntil: nextLocalMidnight(now).toISOString() })
-  if (!Notification.isSupported()) return
   const lang = settingsStore.store.appLanguage === 'bg' ? 'bg' : 'en'
   const copy = PAUSED_NOTIFICATION[lang]
-  new Notification({ title: copy.title, body: copy.body }).show()
+  postNotification({ title: copy.title, body: copy.body })
 }
