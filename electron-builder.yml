@@ -61,7 +61,9 @@ mac:
   notarize: false
 dmg:
   artifactName: ${productName}-${arch}.${ext}
-npmRebuild: true
+# Every native dependency ships N-API prebuilds (better-sqlite3 13, onnxruntime-node,
+# sharp, @napi-rs/canvas), so nothing is compiled against Electron's headers.
+npmRebuild: false
 # Any local process could otherwise run code as Talyx and inherit its macOS
 # permissions (Automation, Accessibility, Screen Recording, Microphone).
 electronFuses:

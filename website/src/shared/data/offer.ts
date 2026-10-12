@@ -15,4 +15,4 @@ export const CTA_SUBLINE = 'Free and open source · MIT · macOS'
 export const ABILITY_COUNT = 35
 export const EXTENSION_COUNT = 136
 export const DMG_SIZE_MB = 235
-export const MIN_MACOS = 'macOS 12'
+export const MIN_MACOS = 'macOS 13'

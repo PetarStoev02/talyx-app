@@ -36,13 +36,13 @@ Updates: Talyx checks GitHub for a newer release and opens the release page. It 
 
 Requirements:
 
-- macOS 12 or newer.
+- macOS 13 (Ventura) or newer.
 - Voice (dictation and spoken replies) needs Apple Silicon.
 - Your own Claude — an Anthropic API key or Claude Code — for the assistant and for Your Claude sorting. Smart Local sorting needs neither.
 
 ## Build from source
 
-Node 22.12 or newer.
+Node 22.12 or newer (Node 24 matches the Electron runtime).
 
 ```bash
 npm ci
@@ -51,7 +51,7 @@ npm test             # unit tests
 npm run build:mac    # ad-hoc signed DMGs in dist/, no Apple account needed
 ```
 
-`npm run dev` rebuilds native modules for Electron. Run `npm rebuild better-sqlite3` before `npm test` afterwards, and `npx electron-builder install-app-deps` before packaging.
+`npm run dev` downloads Electron the first time it runs. Native modules ship prebuilt binaries, so the same install serves the app, the tests and the MCP server with no rebuild step.
 
 ## Privacy
 
@@ -81,8 +81,6 @@ Run `npm run build`, then point your client at the built server with Node:
   }
 }
 ```
-
-The server runs under plain Node, so `better-sqlite3` must be built for Node: run `npm rebuild better-sqlite3` first. To switch back for the app, run `npx electron-builder install-app-deps` (`npm run dev` does it for you).
 
 ## Contributing
 

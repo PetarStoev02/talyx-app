@@ -20,9 +20,6 @@ rm -rf dist
 VERSION=$(node -p "require('./package.json').version")
 echo "Building Talyx v$VERSION..."
 
-# Rebuild better-sqlite3 for Electron; the tests leave it built for Node.
-npx electron-builder install-app-deps
-
 echo "→ Building macOS (ARM64 + x64)..."
 npm run build:mac
 
@@ -42,4 +39,3 @@ echo "   Every download is blocked on first open: users try to open it, dismiss 
 echo "   Open Anyway in System Settings > Privacy & Security, or: xattr -dr com.apple.quarantine /Applications/Talyx.app"
 echo "   After each update users re-grant Automation and Files & Folders, and must remove and re-add"
 echo "   Talyx under Accessibility and Screen Recording."
-echo "   Run 'npm rebuild better-sqlite3' to restore the build the tests use."
