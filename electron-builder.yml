@@ -16,8 +16,9 @@ files:
   - out/**
   - resources/**
   - '!node_modules/@anthropic-ai/claude-agent-sdk-*/**'
-  # onnxruntime-node ships every platform's binaries; this app is macOS only.
+  # onnxruntime-node and better-sqlite3 ship every platform's binaries; this app is macOS only.
   - '!node_modules/onnxruntime-node/bin/napi-v6/{win32,linux}/**'
+  - '!node_modules/better-sqlite3/prebuilds/{win32,linux,linuxmusl}-*'
 extraResources:
   - from: LICENSE
     to: LICENSE
