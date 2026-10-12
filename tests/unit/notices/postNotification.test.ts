@@ -75,7 +75,7 @@ describe('postNotification', () => {
     expect(onClick).toHaveBeenCalledOnce()
   })
 
-  it('should end its hold on the notification when it closes or fails', () => {
+  it('should listen for the notification closing as well as failing', () => {
     postNotification({ title: 'Briefing', body: 'Two things' })
 
     expect(created[0].listeners.has('close')).toBe(true)
