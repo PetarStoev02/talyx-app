@@ -19,7 +19,8 @@ const SITE = ROOTS.flatMap(files).filter((f) => /\.(tsx?|md|html|mjs|json|svg|tx
 
 /** Claims that stopped being true when Talyx became free, unsigned and macOS-only. */
 const RETIRED = [
-  /\$29/,
+  /\$\d/,
+  /\bpricing\b/i,
   /free trial|\b\d+[- ]day trial|trial (?:ends|expires|info)/i,
   /railway|talyxapp-production/i,
   /\bstripe\b/i,
@@ -44,7 +45,8 @@ const RETIRED = [
  */
 const REDIRECT_SOURCES: Record<string, string[]> = {
   [/refund/i.source]: ['website/vercel.json'],
-  [/taxonom/i.source]: ['website/vercel.json']
+  [/taxonom/i.source]: ['website/vercel.json'],
+  [/\bpricing\b/i.source]: ['website/vercel.json']
 }
 
 describe('website claims', () => {

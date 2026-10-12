@@ -1,6 +1,6 @@
 /**
- * The one offer, stated once. Every CTA, proof point and price line on the
- * landing page reads from here so they can never drift apart.
+ * The one offer, stated once. Every CTA and proof point on the landing page
+ * reads from here so they can never drift apart.
  *
  * Every number below is checkable: abilities and extensions are counted from
  * the app source, the download size from the published release asset.
@@ -8,7 +8,7 @@
 
 export const CTA_LABEL = 'Download free for Mac'
 
-/** Shown directly under every CTA — what it costs and under which licence. */
+/** Shown directly under every CTA: the licence and the platform. */
 export const CTA_SUBLINE = 'Free and open source · MIT · macOS'
 
 /** Counted from the app source after the harness ladder (Capture → Focus) landed. */
