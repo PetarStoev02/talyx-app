@@ -8,8 +8,8 @@ export function createTray(getWindow: () => BrowserWindow | null, onStopAgent: (
 
   let icon: Electron.NativeImage
   try {
-    // Template image auto-adapts to light/dark menu bar; macOS picks up @2x for Retina
-    const templatePath = join(__dirname, '../../resources/trayTemplate.png')
+    // setTemplateImage makes it adapt to light/dark menu bar; macOS picks up @2x for Retina
+    const templatePath = join(__dirname, '../../resources/talyx-logo.png')
     icon = nativeImage.createFromPath(templatePath)
     icon.setTemplateImage(true)
   } catch {

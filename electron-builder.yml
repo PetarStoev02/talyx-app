@@ -37,6 +37,8 @@ asarUnpack:
   - node_modules/@img/**
   - node_modules/@huggingface/transformers/**
 mac:
+  # Only build/icon.icns is found by convention; without this the app gets Electron's icon.
+  icon: build/talyx-icon.icns
   target:
     - target: dmg
       arch:

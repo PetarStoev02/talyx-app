@@ -7,7 +7,7 @@ import { pathToFileURL } from 'url'
 import { existsSync, statSync } from 'fs'
 import { optimizer, is } from './lib/electronUtils'
 import { installWebContentsGuard } from './infrastructure/security/webContentsGuard'
-import icon from '../../resources/icon.png?asset'
+import icon from '../../resources/talyx-icon.png?asset'
 
 import { getDatabase, closeDatabase } from './infrastructure/database'
 import { SortHistoryRepo } from './domain/sorting/repository/SortHistoryRepo'

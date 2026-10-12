@@ -1,6 +1,6 @@
 # Talyx
 
-Talyx is a hotkey overlay for macOS where your own Claude — an Anthropic API key, or your signed-in Claude Code — operates your Mac through typed abilities. Anything that changes something shows an approval card first; you decide. File sorting is one of the abilities: Smart Local (file extension and metadata, the default, nothing leaves your Mac) or Your Claude (the same account the assistant uses).
+Talyx is a hotkey overlay for macOS where your own Claude (an Anthropic API key, or your signed-in Claude Code) operates your Mac through typed abilities. Anything that changes something shows an approval card first; you decide. File sorting is one of the abilities: Smart Local (file extension and metadata, the default, nothing leaves your Mac) or Your Claude (the same account the assistant uses).
 
 ## Why Talyx is open source
 
@@ -13,7 +13,7 @@ distribution, and teams of hundreds. One person can't compete with that, and I'd
 Talyx be used than sit behind a paywall. So it's free and MIT-licensed. Use it, fork it,
 learn from it, build on it.
 
-— Petar
+Petar
 
 ## Install
 
@@ -38,7 +38,7 @@ Requirements:
 
 - macOS 13 (Ventura) or newer.
 - Voice (dictation and spoken replies) needs Apple Silicon.
-- Your own Claude — an Anthropic API key or Claude Code — for the assistant and for Your Claude sorting. Smart Local sorting needs neither.
+- Your own Claude (an Anthropic API key or Claude Code) for the assistant and for Your Claude sorting. Smart Local sorting needs neither.
 
 ## Build from source
 
@@ -84,13 +84,7 @@ Run `npm run build`, then point your client at the built server with Node:
 
 ## Contributing
 
-Issues and pull requests are welcome. Before opening a PR, run:
-
-```bash
-npm run lint && npm run typecheck && npm test
-```
-
-[CLAUDE.md](CLAUDE.md) holds the architecture and conventions. Report security issues privately at <https://github.com/PetarStoev02/talyx-app/security/advisories/new>, not as public issues.
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, checks and conventions, and [SECURITY.md](SECURITY.md) to report a security issue privately.
 
 ## Website
 

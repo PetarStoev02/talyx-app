@@ -2,7 +2,7 @@
 
 /**
  * Clears all Talyx app data for a fresh start.
- * Usage: node scripts/fresh.mjs
+ * Usage: npm run reset (or npm run dev:reset to reset and start the app)
  *
  * Deletes:
  * - SQLite database (talyx.db, talyx.db-wal, talyx.db-shm)
@@ -16,20 +16,10 @@
 
 import { join } from 'path'
 import { rmSync, existsSync } from 'fs'
-import { platform, homedir } from 'os'
+import { homedir } from 'os'
 
-function getAppDataPath() {
-  const home = homedir()
-  if (platform() === 'darwin') {
-    return join(home, 'Library', 'Application Support', 'talyx')
-  }
-  if (platform() === 'win32') {
-    return join(home, 'AppData', 'Roaming', 'talyx')
-  }
-  return join(home, '.config', 'talyx')
-}
-
-const appData = getAppDataPath()
+// Talyx is macOS only; Electron's userData lives here.
+const appData = join(homedir(), 'Library', 'Application Support', 'talyx')
 console.log(`\n🧹 Clearing Talyx app data from: ${appData}\n`)
 
 const targets = [
