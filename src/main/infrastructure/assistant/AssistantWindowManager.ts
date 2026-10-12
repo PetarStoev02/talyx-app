@@ -1,6 +1,7 @@
-import { app, BrowserWindow, globalShortcut, screen, Notification } from 'electron'
+import { app, BrowserWindow, globalShortcut, screen } from 'electron'
 import { join } from 'path'
 import { is } from '../../lib/electronUtils'
+import { postNotification } from '../notices/postNotification'
 
 const OVERLAY_WIDTH = 620
 const OVERLAY_MIN_HEIGHT = 120
@@ -70,10 +71,10 @@ export class AssistantWindowManager {
 
     console.log(`[Assistant] Shortcut registered: ${registered}`)
     if (!registered) {
-      new Notification({
+      postNotification({
         title: 'Talyx',
         body: 'Keyboard shortcut is in use by another app. Change it in Settings.'
-      }).show()
+      })
     }
 
     return registered

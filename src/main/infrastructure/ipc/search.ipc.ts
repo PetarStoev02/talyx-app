@@ -58,7 +58,7 @@ export function registerSearchIpc(
           shell.showItemInFolder(filePath)
           return { success: true }
         case 'copy':
-          clipboard.writeText(filePath)
+          await clipboard.writeText(filePath)
           return { success: true }
         case 'preview':
           return await getFilePreview(filePath)
