@@ -84,13 +84,7 @@ Run `npm run build`, then point your client at the built server with Node:
 
 ## Contributing
 
-Issues and pull requests are welcome. Before opening a PR, run:
-
-```bash
-npm run lint && npm run typecheck && npm test
-```
-
-[CLAUDE.md](CLAUDE.md) holds the architecture and conventions. Report security issues privately at <https://github.com/PetarStoev02/talyx-app/security/advisories/new>, not as public issues.
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, checks and conventions, and [SECURITY.md](SECURITY.md) to report a security issue privately.
 
 ## Website
 
