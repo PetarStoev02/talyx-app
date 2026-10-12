@@ -67,8 +67,7 @@ const rows: Row[] = [
     nothing: 'no',
     sparkle: 'yes',
     hazel: 'yes'
-  },
-  { feature: 'Cost', talyx: 'Free', nothing: '$0', sparkle: '$179', hazel: '$42' }
+  }
 ]
 
 function StatusIcon({ value }: { value: 'yes' | 'no' | 'partial' | string }) {

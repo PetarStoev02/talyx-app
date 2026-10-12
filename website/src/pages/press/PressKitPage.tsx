@@ -5,7 +5,7 @@ const facts = [
   { label: 'Founded', value: '2026' },
   { label: 'Category', value: 'Productivity / File Management' },
   { label: 'Platform', value: 'macOS' },
-  { label: 'Pricing', value: 'Free and open source (MIT)' },
+  { label: 'Licence', value: 'Free and open source (MIT)' },
   { label: 'AI', value: 'Sorts on-device by default; Your Claude optional' },
   { label: 'Tech', value: 'Electron, React, TypeScript, MCP' }
 ]
