@@ -1,0 +1,49 @@
+# Dependencies
+node_modules
+
+# Build output
+dist/
+out/
+*.tsbuildinfo
+
+# Local tool state
+.intent/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local env (Apple credentials, secrets)
+.env.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ESLint
+.eslintcache
+
+# Env files
+.env
+.env.*
+
+# License keys (private keys)
+scripts/.keys/
+
+# AI model files (downloaded separately, ~1.1GB)
+models/
+
+# Claude Code
+.claude/
+
+# Brainstorming mockups
+.superpowers/
+tests/eval/corpus/
+
+# Local CDP driver scripts for verifying a packaged build
+/drive*.mjs

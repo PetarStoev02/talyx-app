@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      // The renderer is embedded in the demo iframe; it spells its own root
+      // `@/` too, so both roots are tried in order.
+      // Renderer files would otherwise pick up the repo root's copy, and two
+      // @types/react make every `ref` mutually unassignable.
+      "react": ["./node_modules/@types/react"],
+      "react-dom": ["./node_modules/@types/react-dom"],
+      "@/*": ["./src/*", "../src/renderer/src/*"],
+      "@renderer/*": ["../src/renderer/src/*"],
+      "@app/*": ["../src/renderer/src/app/*"],
+      "@pages/*": ["../src/renderer/src/pages/*"],
+      "@widgets/*": ["../src/renderer/src/widgets/*"],
+      "@features/*": ["../src/renderer/src/features/*"],
+      "@entities/*": ["../src/renderer/src/entities/*"],
+      "@shared/*": ["../src/renderer/src/shared/*"]
+    }
+  },
+  "include": ["src/**/*", "../src/preload/index.d.ts", "../src/renderer/src/**/*"]
+}

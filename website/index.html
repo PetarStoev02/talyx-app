@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="index, follow" />
+    <meta name="google-site-verification" content="WuBlm_Xu_x4xsKaalfU5Tz0vJEQ-qccz0F81C1vMV3Q" />
+    <title>Talyx — Tell your Mac what to do | Free and open source</title>
+    <meta
+      name="description"
+      content="Press ⌘⇧Space and say it in your own words. Your own Claude plans it, shows you a card before it changes anything. Free and open source. macOS only."
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Talyx — Tell your Mac what to do" />
+    <meta
+      property="og:description"
+      content="One shortcut, your own Claude, approval before anything changes. Free and open source."
+    />
+    <meta property="og:url" content="https://talyx.app" />
+    <meta property="og:site_name" content="Talyx" />
+    <meta property="og:image" content="https://talyx.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Talyx — Tell your Mac what to do" />
+    <meta
+      name="twitter:description"
+      content="One shortcut, your own Claude, approval before anything changes. Free and open source."
+    />
+    <meta name="twitter:image" content="https://talyx.app/og-image.png" />
+
+    <link rel="icon" href="/talyx-logo.svg" type="image/svg+xml" />
+    <link rel="preload" href="/geist-latin-var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preconnect" href="https://github.com" />
+    <link rel="canonical" href="https://talyx.app" />
+    <!--seo:jsonld-->
+
+    <script>
+      // Blocking script: apply theme before paint to prevent flash
+      ;(function () {
+        var t = localStorage.getItem('talyx-theme')
+        var dark =
+          t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"><!--ssr-outlet--></div>
+    <script type="module" src="/src/entry-client.tsx"></script>
+  </body>
+</html>

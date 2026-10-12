@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Talyx Assistant</title>
+    <style>
+      html,
+      body,
+      #root {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+    </style>
+    <script>
+      // Same origin as the page embedding this, so the site's theme choice is
+      // readable straight from storage — and `storage` events land here when
+      // the visitor flips the switch out there. Inline, to theme before paint.
+      ;(function () {
+        var media = window.matchMedia('(prefers-color-scheme: dark)')
+        function apply() {
+          var stored = null
+          try {
+            stored = localStorage.getItem('talyx-theme')
+          } catch (e) {
+            /* storage blocked — fall back to the OS preference */
+          }
+          var dark = stored === 'dark' || (stored !== 'light' && media.matches)
+          document.documentElement.className = dark ? 'dark' : 'light'
+        }
+        apply()
+        window.addEventListener('storage', apply)
+        media.addEventListener('change', apply)
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/app-demo/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+
+/* Tailwind from website/node_modules; theme from the app without re-importing
+   tailwind from the renderer folder (Vercel only installs website deps). */
+@import '../../../src/renderer/src/assets/fonts.css';
+@import '../../../src/renderer/src/assets/theme.css';
+
+@source '../../../src/renderer/src';

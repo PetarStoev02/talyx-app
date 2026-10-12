@@ -1,0 +1,73 @@
+appId: com.talyx.app
+productName: Talyx
+protocols:
+  - name: Talyx
+    schemes:
+      - talyx
+# Talyx does not use electron-updater; without this electron-builder detects a GitHub
+# target from package.json and writes app-update.yml, latest-mac.yml and blockmaps.
+publish: null
+directories:
+  buildResources: build
+files:
+  # Allowlist: electron-vite output and runtime assets only. electron-builder adds
+  # package.json and production node_modules itself; for node_modules only the `!`
+  # patterns below apply.
+  - out/**
+  - resources/**
+  - '!node_modules/@anthropic-ai/claude-agent-sdk-*/**'
+  # onnxruntime-node ships every platform's binaries; this app is macOS only.
+  - '!node_modules/onnxruntime-node/bin/napi-v6/{win32,linux}/**'
+extraResources:
+  - from: LICENSE
+    to: LICENSE
+  - from: CREDITS.md
+    to: CREDITS.md
+asarUnpack:
+  - resources/**
+  - node_modules/better-sqlite3/**
+  # onnxruntime-node and sharp each dlopen a sibling dylib next to their .node
+  # binding. Electron extracts a .node from the asar, but not the dylib beside it,
+  # so both must live on real disk. @huggingface/transformers is the ESM module
+  # that imports them, and resolves from its own location.
+  - node_modules/onnxruntime-node/**
+  - node_modules/sharp/**
+  - node_modules/@img/**
+  - node_modules/@huggingface/transformers/**
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  # No Apple account: ad-hoc signature ('-'). Apple Silicon refuses an unsigned binary,
+  # and flipping the fuses below invalidates any earlier signature, so sign last.
+  identity: '-'
+  hardenedRuntime: false
+  # A YAML list here is silently ignored by electron-builder; extendInfo is a map.
+  extendInfo:
+    NSDocumentsFolderUsageDescription: Talyx reads the folders you point it at, to sort them.
+    NSDownloadsFolderUsageDescription: Talyx reads the folders you point it at, to sort them.
+    NSDesktopFolderUsageDescription: Talyx looks on your Desktop for the screenshot you last took.
+    NSMicrophoneUsageDescription: Talyx listens only while you hold the voice key, and transcribes on this Mac.
+    # Every ability that drives Calendar, Reminders, Notes, Mail, Messages, Contacts or
+    # Music sends an Apple Event. macOS kills an app that sends one with no reason given.
+    NSAppleEventsUsageDescription: Talyx asks the apps you already use — Calendar, Reminders, Notes, Mail, Messages — to do what you told it to.
+    NSCalendarsUsageDescription: Talyx reads your agenda and adds the events you ask for.
+    NSCalendarsFullAccessUsageDescription: Talyx reads your agenda and adds the events you ask for.
+    NSRemindersUsageDescription: Talyx adds the reminders and timers you ask for.
+    NSRemindersFullAccessUsageDescription: Talyx adds the reminders and timers you ask for.
+    NSContactsUsageDescription: Talyx looks up a contact only to work out who a message you asked for should go to.
+  notarize: false
+dmg:
+  artifactName: ${productName}-${arch}.${ext}
+npmRebuild: true
+# Any local process could otherwise run code as Talyx and inherit its macOS
+# permissions (Automation, Accessibility, Screen Recording, Microphone).
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true

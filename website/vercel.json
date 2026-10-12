@@ -1,0 +1,28 @@
+{
+  "redirects": [
+    { "source": "/pricing", "destination": "/", "permanent": true },
+    { "source": "/checkout", "destination": "/", "permanent": true },
+    { "source": "/checkout/:path*", "destination": "/", "permanent": true },
+    { "source": "/account", "destination": "/", "permanent": true },
+    { "source": "/admin", "destination": "/", "permanent": true },
+    {
+      "source": "/features/custom-taxonomies",
+      "destination": "/features/ai-classification",
+      "permanent": true
+    },
+    { "source": "/features/cross-platform", "destination": "/#download", "permanent": true },
+    { "source": "/legal/refund", "destination": "/legal/terms", "permanent": true },
+    { "source": "/blog/why-we-built-talyx", "destination": "/blog", "permanent": true },
+    { "source": "/blog/organize-downloads-folder", "destination": "/blog", "permanent": true },
+    { "source": "/blog/best-file-organizers-2026", "destination": "/blog", "permanent": true },
+    { "source": "/blog/freelancer-file-organization", "destination": "/blog", "permanent": true },
+    { "source": "/blog/ai-file-organization-explained", "destination": "/blog", "permanent": true },
+    { "source": "/blog/local-ai-image-recognition", "destination": "/blog", "permanent": true },
+    {
+      "source": "/blog/vision-credits-ai-image-recognition",
+      "destination": "/blog",
+      "permanent": true
+    }
+  ],
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
