@@ -1,4 +1,4 @@
-import { FeaturePageLayout } from '../../../shared/layouts/FeaturePageLayout'
+import { FeaturePageLayout } from '../FeaturePageLayout'
 import { PRIVACY_LEDGER } from '../../../shared/data/privacy'
 import { STEP } from '../../../shared/ui/page'
 

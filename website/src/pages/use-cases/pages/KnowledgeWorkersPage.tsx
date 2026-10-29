@@ -1,4 +1,4 @@
-import { UseCasePageLayout } from '../../../shared/layouts/UseCasePageLayout'
+import { UseCasePageLayout } from '../UseCasePageLayout'
 
 export function KnowledgeWorkersPage() {
   return (

@@ -1,10 +1,10 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
-import { features, useCases, type FeatureNav } from '../data/navigation'
-import { ABILITY_COUNT } from '../data/offer'
-import type { Plan } from '../data/plan'
-import { ApprovalFigure } from '../ui/ApprovalCard'
+import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle'
+import { features, useCaseBySlug, type FeatureNav } from '../../shared/data/navigation'
+import { ABILITY_COUNT } from '../../shared/data/offer'
+import type { Plan } from '../../shared/data/plan'
+import { ApprovalFigure } from '../../shared/ui/ApprovalCard'
 import {
   AppScreenshot,
   Body,
@@ -14,7 +14,7 @@ import {
   SectionHeading,
   STEP,
   stagger
-} from '../ui/page'
+} from '../../shared/ui/page'
 import { DownloadSection } from '../../widgets/download/DownloadSection'
 
 interface Statement {
@@ -47,13 +47,13 @@ export function UseCasePageLayout({
 }: UseCasePageLayoutProps) {
   useDocumentTitle(title)
 
-  const useCase = useCases.find((u) => u.slug === slug)
+  const { plan } = useCaseBySlug(slug)
   const relatedFeatures = features.filter((f) => relatedFeatureSlugs.includes(f.slug))
 
   return (
     <>
       <PageHero title={title} lead={lead}>
-        {useCase ? <SamplePlan plan={useCase.plan} /> : null}
+        <SamplePlan plan={plan} />
       </PageHero>
       <PainPoints items={painPoints} />
       <Solutions items={solutions} screenshot={screenshot} fallbackAlt={title} />

@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
-import { features, type FeatureNav } from '../data/navigation'
+import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle'
+import { featureBySlug, features, type FeatureNav } from '../../shared/data/navigation'
 import {
   AppScreenshot,
   Body,
@@ -10,7 +10,7 @@ import {
   SectionHeading,
   STEP,
   stagger
-} from '../ui/page'
+} from '../../shared/ui/page'
 import { DownloadSection } from '../../widgets/download/DownloadSection'
 
 export interface FeaturePoint {
@@ -46,7 +46,7 @@ export function FeaturePageLayout({
   useDocumentTitle(title)
 
   const related = features.filter((f) => f.slug !== slug).slice(0, RELATED_COUNT)
-  const preview = features.find((f) => f.slug === slug)?.preview ?? null
+  const { preview } = featureBySlug(slug)
 
   return (
     <>

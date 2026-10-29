@@ -180,3 +180,23 @@ export const NAV_GROUPS: NavGroup[] = [
     links: resources.map(({ to, title }) => ({ label: title, to }))
   }
 ]
+
+/** A page asked for navigation data under a slug that navigation.ts does not list. */
+export class UnknownSlugError extends Error {
+  constructor(kind: 'feature' | 'use case', slug: string) {
+    super(`No ${kind} with slug "${slug}" in navigation.ts`)
+    this.name = 'UnknownSlugError'
+  }
+}
+
+export function featureBySlug(slug: string): FeatureNav {
+  const feature = features.find((f) => f.slug === slug)
+  if (!feature) throw new UnknownSlugError('feature', slug)
+  return feature
+}
+
+export function useCaseBySlug(slug: string): UseCaseNav {
+  const useCase = useCases.find((u) => u.slug === slug)
+  if (!useCase) throw new UnknownSlugError('use case', slug)
+  return useCase
+}

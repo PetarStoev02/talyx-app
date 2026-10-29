@@ -1,4 +1,4 @@
-import { FeaturePageLayout } from '../../../shared/layouts/FeaturePageLayout'
+import { FeaturePageLayout } from '../FeaturePageLayout'
 
 export function DragAndDropPage() {
   return (
