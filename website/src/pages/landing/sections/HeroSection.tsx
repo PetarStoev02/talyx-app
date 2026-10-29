@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
 import { REPO_URL } from '../../../shared/data/release'
 import { CTA_LABEL, MIN_MACOS } from '../../../shared/data/offer'
+import { GUTTER, STEP, stagger, Wallpaper } from '../../../shared/ui/page'
 
 const CARDS = [
   { ask: 'Add “Dentist” to Calendar', detail: 'Tomorrow, 16:00' },
@@ -29,13 +30,7 @@ function CardStrip({ className }: { className: string }) {
       aria-hidden="true"
       className={`relative isolate items-center justify-center overflow-hidden rounded-[0.12em] ${className}`}
     >
-      <img
-        src="/hero-wallpaper.jpg"
-        alt=""
-        width={1600}
-        height={1000}
-        className="drift absolute inset-0 -z-10 size-full object-cover"
-      />
+      <Wallpaper className="drift" />
       <span
         key={index}
         data-ui
@@ -60,13 +55,15 @@ function CardStrip({ className }: { className: string }) {
 
 export function HeroSection() {
   return (
-    <section className="flex flex-col justify-center px-5 pt-16 pb-20 sm:px-8 md:pt-24 lg:min-h-[calc(100svh-4rem)]">
+    <section
+      className={`flex flex-col justify-center ${GUTTER} pt-16 pb-20 md:pt-24 lg:min-h-[calc(100svh-4rem)]`}
+    >
       <h1
         className="lines leading-[0.98] font-semibold tracking-[-0.045em] text-[var(--color-text-primary)]"
-        style={{ fontSize: 'var(--step-display)' }}
+        style={STEP.display}
       >
         <span className="line">
-          <span data-line style={{ '--i': 0 } as React.CSSProperties}>
+          <span data-line style={stagger(0)}>
             Tell your Mac
           </span>
         </span>
@@ -74,7 +71,7 @@ export function HeroSection() {
           <span
             data-line
             className="flex items-center gap-[0.22em]"
-            style={{ '--i': 1, display: 'flex' } as React.CSSProperties}
+            style={{ ...stagger(1), display: 'flex' }}
           >
             <CardStrip className="hidden h-[0.82em] flex-1 lg:flex" />
             what to do.
@@ -87,7 +84,7 @@ export function HeroSection() {
       <div className="mt-10 grid gap-8 md:mt-14 md:grid-cols-12">
         <p
           className="max-w-[44ch] leading-snug text-[var(--color-text-primary)] md:col-span-6"
-          style={{ fontSize: 'var(--step-lead)' }}
+          style={STEP.lead}
         >
           Talyx is a free Mac assistant. Press ⌘⇧Space, ask in your own words, and your own Claude
           does it once you approve the card.

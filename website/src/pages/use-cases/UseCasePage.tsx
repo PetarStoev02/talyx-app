@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
-import { PageHero } from '../../shared/ui/page'
+import { PageHero, STEP } from '../../shared/ui/page'
 
 const KnowledgeWorkersPage = lazy(() =>
   import('./pages/KnowledgeWorkersPage').then((m) => ({ default: m.KnowledgeWorkersPage }))
@@ -35,7 +35,7 @@ export function UseCasePage() {
         <Link
           to="/"
           className="inline-flex items-center gap-2 font-medium text-[var(--color-text-primary)] underline underline-offset-4 transition-opacity hover:opacity-70"
-          style={{ fontSize: 'var(--step-body)' }}
+          style={STEP.body}
         >
           Back to home
           <ArrowRight className="size-4" />

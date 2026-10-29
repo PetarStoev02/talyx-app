@@ -1,26 +1,27 @@
 import { ArrowRight } from 'lucide-react'
 import { APP_VERSION, DOWNLOADS } from '../../shared/data/release'
 import { DMG_SIZE_MB, MIN_MACOS } from '../../shared/data/offer'
+import { GUTTER, STEP, stagger } from '../../shared/ui/page'
 
 /** The close, in inverted colours: the hero's sentence answered. */
 export function DownloadSection() {
   return (
     <section
       id="download"
-      className="flex min-h-[90svh] flex-col justify-between gap-24 bg-[var(--color-text-primary)] px-5 py-24 text-[var(--color-bg)] sm:px-8 md:py-32"
+      className={`flex min-h-[90svh] flex-col justify-between gap-24 bg-[var(--color-text-primary)] ${GUTTER} py-24 text-[var(--color-bg)] md:py-32`}
     >
       <h2
         data-reveal
         className="leading-[0.92] font-semibold tracking-[-0.045em]"
-        style={{ fontSize: 'var(--step-display)' }}
+        style={STEP.display}
       >
         <span className="block">Your Mac,</span>
         <span className="block">your call.</span>
       </h2>
 
       <div className="grid items-end gap-10 md:grid-cols-12">
-        <div data-reveal className="md:col-span-6" style={{ fontSize: 'var(--step-body)' }}>
-          <p className="max-w-[40ch]" style={{ fontSize: 'var(--step-lead)' }}>
+        <div data-reveal className="md:col-span-6" style={STEP.body}>
+          <p className="max-w-[40ch]" style={STEP.lead}>
             Free and open source under MIT. No account, no trial, no card.
           </p>
           <p className="mt-4 max-w-[48ch] opacity-75">
@@ -30,7 +31,7 @@ export function DownloadSection() {
         </div>
         <div
           data-reveal
-          style={{ '--i': 1 } as React.CSSProperties}
+          style={stagger(1)}
           className="flex flex-col items-stretch gap-3 md:col-span-5 md:col-start-8 md:items-end"
         >
           <a

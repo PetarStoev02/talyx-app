@@ -1,34 +1,19 @@
 import { Link } from '@tanstack/react-router'
 import { DOWNLOADS, ISSUES_URL, REPO_URL, SECURITY_REPORT_URL } from '../../shared/data/release'
-import { features, resources, useCases } from '../../shared/data/navigation'
+import { NAV_GROUPS, type NavGroup } from '../../shared/data/navigation'
+import { NavAnchor } from '../../shared/ui/NavAnchor'
 import { ThemeSwitcher } from '../../features/theme/ThemeSwitcher'
 import { useTheme } from '../../features/theme/useTheme'
 
-type FooterLink =
-  | { label: string; to: string; params?: { slug: string } }
-  | { label: string; href: string }
+const [product, useCases, resources] = NAV_GROUPS
 
-const COLUMNS: { title: string; links: FooterLink[] }[] = [
+const COLUMNS: NavGroup[] = [
+  product,
+  useCases,
   {
-    title: 'Product',
-    links: features.map(({ slug, title }) => ({
-      label: title,
-      to: '/features/$slug',
-      params: { slug }
-    }))
-  },
-  {
-    title: 'Use cases',
-    links: useCases.map(({ slug, title }) => ({
-      label: title,
-      to: '/use-cases/$slug',
-      params: { slug }
-    }))
-  },
-  {
-    title: 'Resources',
+    ...resources,
     links: [
-      ...resources.map(({ to, title }) => ({ label: title, to })),
+      ...resources.links,
       { label: 'Issues on GitHub', href: ISSUES_URL },
       { label: 'Report a security issue', href: SECURITY_REPORT_URL }
     ]
@@ -46,20 +31,6 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
 const LINK_CLASS =
   'text-[15px] text-[var(--color-text-primary)] transition-opacity hover:opacity-60'
 
-function FooterAnchor({ link }: { link: FooterLink }) {
-  if ('href' in link)
-    return (
-      <a href={link.href} className={LINK_CLASS}>
-        {link.label}
-      </a>
-    )
-  return (
-    <Link to={link.to} params={link.params} className={LINK_CLASS}>
-      {link.label}
-    </Link>
-  )
-}
-
 /** The site map, then the name again at full width. */
 export function Footer() {
   const { theme, setTheme } = useTheme()
@@ -75,7 +46,7 @@ export function Footer() {
             <ul className="mt-4 space-y-3">
               {links.map((link) => (
                 <li key={link.label}>
-                  <FooterAnchor link={link} />
+                  <NavAnchor link={link} className={LINK_CLASS} />
                 </li>
               ))}
             </ul>

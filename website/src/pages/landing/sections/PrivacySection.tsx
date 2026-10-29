@@ -1,26 +1,6 @@
 import { REPO_URL } from '../../../shared/data/release'
-
-const LEDGER = [
-  {
-    figure: '0',
-    caption: 'bytes leave your Mac when Smart Local sorts. It is the default.'
-  },
-  {
-    figure: '0',
-    caption:
-      'Talyx servers, accounts or analytics. Settings and history stay in a local SQLite file.'
-  },
-  {
-    figure: '2,000',
-    caption:
-      'characters per file at most when you choose Your Claude, with amounts, dates and company names masked first.'
-  },
-  {
-    figure: '1',
-    caption:
-      'update check, to GitHub. Talyx opens the release page and never installs anything itself.'
-  }
-]
+import { PRIVACY_LEDGER } from '../../../shared/data/privacy'
+import { STEP, stagger } from '../../../shared/ui/page'
 
 /** Privacy as a ledger: the few numbers that say what leaves the machine. */
 export function PrivacySection() {
@@ -30,7 +10,7 @@ export function PrivacySection() {
         <h2
           data-reveal
           className="leading-none font-semibold tracking-[-0.035em]"
-          style={{ fontSize: 'var(--step-heading)' }}
+          style={STEP.heading}
         >
           <span className="block text-[var(--color-text-secondary)]">What leaves</span>
           <span className="block text-[var(--color-text-primary)]">your Mac.</span>
@@ -38,7 +18,7 @@ export function PrivacySection() {
         <p
           data-reveal
           className="mt-8 max-w-[40ch] leading-relaxed text-[var(--color-text-primary)]"
-          style={{ '--i': 1, fontSize: 'var(--step-body)' } as React.CSSProperties}
+          style={{ ...stagger(1), ...STEP.body }}
         >
           The assistant sends your conversation to your own Claude, through your API key or the
           Claude Code you are signed into. A screenshot goes only when you ask it to look.
@@ -47,32 +27,26 @@ export function PrivacySection() {
 
       <div className="md:col-span-7">
         <dl className="space-y-10 md:space-y-12">
-          {LEDGER.map(({ figure, caption }, i) => (
+          {PRIVACY_LEDGER.map(({ figure, caption }, i) => (
             <div
               key={caption}
               data-reveal
-              style={{ '--i': i } as React.CSSProperties}
+              style={stagger(i)}
               className="grid grid-cols-[minmax(0,3fr)_minmax(0,7fr)] md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] items-baseline gap-6"
             >
               <dt
                 className="text-right leading-none font-semibold tracking-[-0.04em] tabular-nums text-[var(--color-text-primary)]"
-                style={{ fontSize: 'var(--step-heading)' }}
+                style={STEP.heading}
               >
                 {figure}
               </dt>
-              <dd
-                className="text-[var(--color-text-primary)]"
-                style={{ fontSize: 'var(--step-body)' }}
-              >
+              <dd className="text-[var(--color-text-primary)]" style={STEP.body}>
                 {caption}
               </dd>
             </div>
           ))}
         </dl>
-        <p
-          className="mt-16 text-[var(--color-text-primary)]"
-          style={{ fontSize: 'var(--step-body)' }}
-        >
+        <p className="mt-16 text-[var(--color-text-primary)]" style={STEP.body}>
           Every one of these can be checked in the source.{' '}
           <a
             href={REPO_URL}

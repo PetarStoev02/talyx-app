@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { GUTTER } from '@/shared/ui/page'
+import { GUTTER, STEP, stagger } from '@/shared/ui/page'
 
 function ScatteredFilesAnimation() {
   return (
@@ -491,36 +491,33 @@ export function NotFoundPage() {
       <div className="md:col-span-7">
         <h1
           className="leading-[0.98] font-semibold tracking-[-0.045em] text-[var(--color-text-primary)]"
-          style={{ fontSize: 'var(--step-display)' }}
+          style={STEP.display}
         >
           <span data-reveal className="block">
             Page
           </span>
-          <span data-reveal className="block" style={{ '--i': 1 } as React.CSSProperties}>
+          <span data-reveal className="block" style={stagger(1)}>
             not found
           </span>
         </h1>
         <p
           data-reveal
           className="mt-10 max-w-[36ch] text-[var(--color-text-primary)]"
-          style={{ '--i': 2, fontSize: 'var(--step-lead)' } as React.CSSProperties}
+          style={{ ...stagger(2), ...STEP.lead }}
         >
           This page could not be found. The link may be old, or the address mistyped.
         </p>
         <Link
           to="/"
           data-reveal
-          style={{ '--i': 3 } as React.CSSProperties}
+          style={stagger(3)}
           className="mt-10 inline-flex min-h-12 items-center rounded-full bg-[var(--color-text-primary)] px-7 text-[17px] font-semibold text-[var(--color-bg)] transition-transform duration-200 hover:-translate-y-0.5"
         >
           Go home
         </Link>
-        <ul
-          className="mt-10 flex flex-wrap gap-x-8 gap-y-3"
-          style={{ fontSize: 'var(--step-body)' }}
-        >
+        <ul className="mt-10 flex flex-wrap gap-x-8 gap-y-3" style={STEP.body}>
           {ELSEWHERE.map(({ to, label }, i) => (
-            <li key={to} data-reveal style={{ '--i': i + 4 } as React.CSSProperties}>
+            <li key={to} data-reveal style={stagger(i + 4)}>
               <Link
                 to={to}
                 className="font-medium text-[var(--color-text-primary)] underline underline-offset-4 transition-opacity hover:opacity-70"
@@ -531,7 +528,7 @@ export function NotFoundPage() {
           ))}
         </ul>
       </div>
-      <div data-reveal style={{ '--i': 2 } as React.CSSProperties} className="md:col-span-5">
+      <div data-reveal style={stagger(2)} className="md:col-span-5">
         <ScatteredFilesAnimation />
       </div>
     </section>

@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { posts, categoryMeta, type BlogCategory, type BlogPost } from '@/shared/data/posts'
-import { AppScreenshot, GUTTER, PageHero, SectionHeading } from '@/shared/ui/page'
+import { AppScreenshot, GUTTER, PageHero, SectionHeading, STEP, stagger } from '@/shared/ui/page'
 import { DownloadSection } from '@/widgets/download/DownloadSection'
 
 function formatDate(dateStr: string): string {
@@ -25,7 +25,7 @@ function postMeta(post: BlogPost): string {
 }
 
 export function BlogPage() {
-  const [active, setActive] = useState<BlogCategory | 'all'>('all')
+  const [activeCategory, setActiveCategory] = useState<BlogCategory | 'all'>('all')
 
   const showDrafts =
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('drafts')
@@ -36,7 +36,8 @@ export function BlogPage() {
       visible.some((p) => p.category === cat)
     )
   ]
-  const filtered = active === 'all' ? visible : visible.filter((p) => p.category === active)
+  const filtered =
+    activeCategory === 'all' ? visible : visible.filter((p) => p.category === activeCategory)
   const featured = filtered.find((p) => p.featured) ?? filtered[0]
   const rest = filtered.filter((p) => p !== featured)
 
@@ -51,12 +52,12 @@ export function BlogPage() {
             <button
               key={cat}
               type="button"
-              onClick={() => setActive(cat)}
-              aria-pressed={active === cat}
+              onClick={() => setActiveCategory(cat)}
+              aria-pressed={activeCategory === cat}
               className={`min-h-11 font-medium text-[var(--color-text-primary)] underline-offset-8 transition-opacity hover:opacity-70 ${
-                active === cat ? 'underline decoration-2' : ''
+                activeCategory === cat ? 'underline decoration-2' : ''
               }`}
-              style={{ fontSize: 'var(--step-lead)' }}
+              style={STEP.lead}
             >
               {cat === 'all' ? 'All posts' : categoryMeta[cat].label}
             </button>
@@ -71,26 +72,23 @@ export function BlogPage() {
             to="/blog/$slug"
             params={{ slug: featured.slug }}
             data-reveal
-            style={{ '--i': 1 } as React.CSSProperties}
+            style={stagger(1)}
             className="group mt-12 grid gap-6 md:mt-16 md:grid-cols-12"
           >
             <div className="md:col-span-6">
               <h3
                 className="leading-[1.02] font-semibold tracking-[-0.04em] text-[var(--color-text-primary)] underline-offset-[0.12em] group-hover:underline"
-                style={{ fontSize: 'var(--step-heading)' }}
+                style={STEP.heading}
               >
                 {featured.title}
               </h3>
               <p
                 className="mt-6 max-w-[48ch] leading-snug text-[var(--color-text-primary)]"
-                style={{ fontSize: 'var(--step-lead)' }}
+                style={STEP.lead}
               >
                 {featured.excerpt}
               </p>
-              <p
-                className="mt-4 text-[var(--color-text-secondary)]"
-                style={{ fontSize: 'var(--step-small)' }}
-              >
+              <p className="mt-4 text-[var(--color-text-secondary)]" style={STEP.small}>
                 {postMeta(featured)}
               </p>
             </div>
@@ -102,10 +100,7 @@ export function BlogPage() {
       ) : (
         <section className={`${GUTTER} py-16 md:py-24`}>
           <SectionHeading>Nothing here yet</SectionHeading>
-          <p
-            className="mt-8 text-[var(--color-text-primary)]"
-            style={{ fontSize: 'var(--step-body)' }}
-          >
+          <p className="mt-8 text-[var(--color-text-primary)]" style={STEP.body}>
             No posts in this category yet. Check back soon.
           </p>
         </section>
@@ -117,7 +112,7 @@ export function BlogPage() {
           <div className="mt-12 md:mt-16">
             <ul className="space-y-16">
               {rest.map((post, i) => (
-                <li key={post.slug} data-reveal style={{ '--i': i } as React.CSSProperties}>
+                <li key={post.slug} data-reveal style={stagger(i)}>
                   <Link
                     to="/blog/$slug"
                     params={{ slug: post.slug }}
@@ -129,20 +124,17 @@ export function BlogPage() {
                     <div className="md:col-span-7 md:col-start-6">
                       <h3
                         className="leading-tight font-semibold text-[var(--color-text-primary)] underline-offset-4 group-hover:underline"
-                        style={{ fontSize: 'var(--step-lead)' }}
+                        style={STEP.lead}
                       >
                         {post.title}
                       </h3>
                       <p
                         className="mt-3 max-w-[60ch] leading-relaxed text-[var(--color-text-primary)]"
-                        style={{ fontSize: 'var(--step-body)' }}
+                        style={STEP.body}
                       >
                         {post.excerpt}
                       </p>
-                      <p
-                        className="mt-3 text-[var(--color-text-secondary)]"
-                        style={{ fontSize: 'var(--step-small)' }}
-                      >
+                      <p className="mt-3 text-[var(--color-text-secondary)]" style={STEP.small}>
                         {postMeta(post)}
                       </p>
                     </div>

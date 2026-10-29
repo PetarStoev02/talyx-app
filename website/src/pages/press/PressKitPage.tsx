@@ -5,7 +5,9 @@ import {
   GUTTER,
   ItemTitle,
   PageHero,
-  SectionHeading
+  SectionHeading,
+  STEP,
+  stagger
 } from '../../shared/ui/page'
 import { DownloadSection } from '../../widgets/download/DownloadSection'
 
@@ -103,7 +105,7 @@ export function PressKitPage() {
         </div>
         <ul className="mt-16 grid gap-x-10 gap-y-10 sm:grid-cols-2">
           {HIGHLIGHTS.map(({ title, text }, i) => (
-            <li key={title} data-reveal style={{ '--i': i } as React.CSSProperties}>
+            <li key={title} data-reveal style={stagger(i)}>
               <ItemTitle>{title}</ItemTitle>
               <Body className="mt-3">{text}</Body>
             </li>
@@ -121,18 +123,15 @@ export function PressKitPage() {
             <div
               key={label}
               data-reveal
-              style={{ '--i': i } as React.CSSProperties}
+              style={stagger(i)}
               className="grid grid-cols-[minmax(0,2fr)_minmax(0,5fr)] items-baseline gap-6"
             >
-              <dt
-                className="text-[var(--color-text-secondary)]"
-                style={{ fontSize: 'var(--step-body)' }}
-              >
+              <dt className="text-[var(--color-text-secondary)]" style={STEP.body}>
                 {label}
               </dt>
               <dd
                 className="leading-snug font-semibold text-[var(--color-text-primary)]"
-                style={{ fontSize: 'var(--step-lead)' }}
+                style={STEP.lead}
               >
                 {value}
               </dd>
@@ -144,9 +143,9 @@ export function PressKitPage() {
       <PressSection title="Screenshots">
         <ul className="grid gap-10 sm:grid-cols-2">
           {SCREENSHOTS.map(({ src, caption }, i) => (
-            <li key={src} data-reveal style={{ '--i': i } as React.CSSProperties}>
+            <li key={src} data-reveal style={stagger(i)}>
               <AppScreenshot src={src} alt={`Talyx: ${caption}`} />
-              <p className="mt-4" style={{ fontSize: 'var(--step-body)' }}>
+              <p className="mt-4" style={STEP.body}>
                 <a href={src} download className={linkClass}>
                   {caption}
                 </a>
@@ -159,7 +158,7 @@ export function PressKitPage() {
       <PressSection title="Boilerplate">
         <div className="space-y-12">
           {BOILERPLATE.map(({ title, text }, i) => (
-            <div key={title} data-reveal style={{ '--i': i } as React.CSSProperties}>
+            <div key={title} data-reveal style={stagger(i)}>
               <ItemTitle>{title}</ItemTitle>
               <Body className="mt-3">{text}</Body>
             </div>
@@ -170,13 +169,8 @@ export function PressKitPage() {
       <PressSection title="Brand assets">
         <ul className="space-y-8">
           {ASSETS.map(({ label, description, href }, i) => (
-            <li key={href} data-reveal style={{ '--i': i } as React.CSSProperties}>
-              <a
-                href={href}
-                download
-                className={linkClass}
-                style={{ fontSize: 'var(--step-lead)' }}
-              >
+            <li key={href} data-reveal style={stagger(i)}>
+              <a href={href} download className={linkClass} style={STEP.lead}>
                 {label}
               </a>
               <Body className="mt-2">{description}</Body>
@@ -190,13 +184,13 @@ export function PressKitPage() {
       </PressSection>
 
       <PressSection title="Contact">
-        <ul className="space-y-6" style={{ fontSize: 'var(--step-lead)' }}>
+        <ul className="space-y-6" style={STEP.lead}>
           <li data-reveal>
             <a href={ISSUES_URL} className={linkClass}>
               Issues on GitHub
             </a>
           </li>
-          <li data-reveal style={{ '--i': 1 } as React.CSSProperties}>
+          <li data-reveal style={stagger(1)}>
             <a href={REPO_URL} className={linkClass}>
               Source on GitHub
             </a>

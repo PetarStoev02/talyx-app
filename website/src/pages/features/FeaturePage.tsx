@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
-import { PageHero } from '../../shared/ui/page'
+import { PageHero, STEP } from '../../shared/ui/page'
 
 const AiClassificationPage = lazy(() =>
   import('./pages/AiClassificationPage').then((m) => ({ default: m.AiClassificationPage }))
@@ -47,7 +47,7 @@ export function FeaturePage() {
         <Link
           to="/"
           className="inline-flex items-center gap-2 font-medium text-[var(--color-text-primary)] underline underline-offset-4 transition-opacity hover:opacity-70"
-          style={{ fontSize: 'var(--step-lead)' }}
+          style={STEP.lead}
         >
           Go to the home page
           <ArrowRight className="size-4" />

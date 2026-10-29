@@ -8,9 +8,6 @@
 
 export const CTA_LABEL = 'Download free for Mac'
 
-/** Shown directly under every CTA: the licence and the platform. */
-export const CTA_SUBLINE = 'Free and open source · MIT · macOS'
-
 /** Counted from the app source after the harness ladder (Capture → Focus) landed. */
 export const ABILITY_COUNT = 35
 export const EXTENSION_COUNT = 136

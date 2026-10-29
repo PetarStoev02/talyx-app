@@ -1,16 +1,11 @@
 import { faqEntries } from '../../../shared/data/seo'
+import { SectionHeading, STEP, stagger } from '../../../shared/ui/page'
 
 /** A wide heading, the questions indented under it. */
 export function FAQSection() {
   return (
     <section id="faq" className="px-5 py-32 sm:px-8 md:py-48">
-      <h2
-        data-reveal
-        className="leading-none font-semibold tracking-[-0.035em] text-[var(--color-text-primary)]"
-        style={{ fontSize: 'var(--step-heading)' }}
-      >
-        Before you download.
-      </h2>
+      <SectionHeading>Before you download.</SectionHeading>
 
       <div className="mt-20 grid md:grid-cols-12">
         <div className="space-y-3 md:col-span-8 md:col-start-5">
@@ -18,12 +13,12 @@ export function FAQSection() {
             <details
               key={q}
               data-reveal
-              style={{ '--i': i } as React.CSSProperties}
+              style={stagger(i)}
               className="group -mx-5 rounded-none px-5 py-4 open:bg-[var(--color-bg-secondary)] md:-mx-6 md:rounded-xl md:px-6"
             >
               <summary
                 className="flex cursor-pointer list-none items-center justify-between gap-6 leading-snug font-medium text-[var(--color-text-primary)] transition-opacity hover:opacity-70 [&::-webkit-details-marker]:hidden"
-                style={{ fontSize: 'var(--step-lead)' }}
+                style={STEP.lead}
               >
                 {q}
                 <span
@@ -33,7 +28,7 @@ export function FAQSection() {
               </summary>
               <p
                 className="mt-4 max-w-[52ch] leading-relaxed text-[var(--color-text-primary)]"
-                style={{ fontSize: 'var(--step-body)' }}
+                style={STEP.body}
               >
                 {a}
               </p>

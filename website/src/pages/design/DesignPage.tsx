@@ -2,13 +2,17 @@ import { ArrowRight } from 'lucide-react'
 import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle'
 import { useNoIndex } from '../../shared/hooks/useNoIndex'
 import { ApprovalCard } from '../../shared/ui/ApprovalCard'
+import { APP_VERSION } from '../../shared/data/release'
+import { CTA_LABEL, DMG_SIZE_MB, MIN_MACOS } from '../../shared/data/offer'
+import { planFor } from '../../shared/data/plans'
 import {
   AppScreenshot,
   Body,
   GUTTER,
   ItemTitle,
   PageHero,
-  SectionHeading
+  SectionHeading,
+  STEP
 } from '../../shared/ui/page'
 
 const TYPE_STEPS = [
@@ -31,7 +35,7 @@ const TYPE_STEPS = [
   {
     token: '--step-small',
     use: 'Meta lines and notes only',
-    sample: 'v0.11.0 · macOS 13 or newer · 249 MB'
+    sample: `v${APP_VERSION} · ${MIN_MACOS} or newer · ${DMG_SIZE_MB} MB`
   }
 ]
 
@@ -52,11 +56,7 @@ const RULES = [
   'Pictures are the real app, or the Mac wallpaper it runs on.'
 ]
 
-const SAMPLE_PLAN = {
-  summary: 'Sort 47 files in Downloads into 6 folders',
-  steps: ['12 invoices → Documents/Invoices', '21 screenshots → Images/Screenshots'],
-  needsApproval: true
-}
+const SAMPLE_PLAN = planFor('sort my Downloads')
 
 /** The site's design system on one unlisted page. Not linked anywhere and not indexed. */
 export function DesignPage() {
@@ -69,10 +69,7 @@ export function DesignPage() {
         title="Design"
         lead="The parts the Talyx site is built from: five type steps, one ground, one ink, one action, and the real app as the picture."
       >
-        <ul
-          className="space-y-3 text-[var(--color-text-primary)]"
-          style={{ fontSize: 'var(--step-body)' }}
-        >
+        <ul className="space-y-3 text-[var(--color-text-primary)]" style={STEP.body}>
           {RULES.map((rule) => (
             <li key={rule}>{rule}</li>
           ))}
@@ -88,7 +85,7 @@ export function DesignPage() {
               data-reveal
               className="flex flex-col-reverse gap-4 md:grid md:grid-cols-12"
             >
-              <dt className="md:col-span-3" style={{ fontSize: 'var(--step-small)' }}>
+              <dt className="md:col-span-3" style={STEP.small}>
                 <code className="text-[var(--color-text-primary)]">{token}</code>
                 <span className="mt-1 block text-[var(--color-text-secondary)]">{use}</span>
               </dt>
@@ -135,7 +132,7 @@ export function DesignPage() {
             href="#"
             className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--color-btn-primary-bg)] px-7 text-[17px] font-semibold text-[var(--color-btn-primary-text)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0"
           >
-            Download free for Mac
+            {CTA_LABEL}
             <ArrowRight className="size-4" />
           </a>
           <a

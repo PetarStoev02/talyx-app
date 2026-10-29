@@ -1,38 +1,23 @@
 import { FeaturePageLayout } from '../../../shared/layouts/FeaturePageLayout'
-
-const LEDGER = [
-  { figure: '0', caption: 'bytes leave your Mac when Smart Local sorts. It is the default.' },
-  {
-    figure: '0',
-    caption: 'Talyx servers, accounts or analytics. Settings and history stay on your Mac.'
-  },
-  {
-    figure: '2,000',
-    caption:
-      'characters per file at most when you choose Your Claude, with amounts, dates and company names masked first.'
-  },
-  {
-    figure: '1',
-    caption: 'update check, to GitHub. Talyx opens the release page and installs nothing itself.'
-  }
-]
+import { PRIVACY_LEDGER } from '../../../shared/data/privacy'
+import { STEP } from '../../../shared/ui/page'
 
 /** The few numbers that say what leaves the machine. */
 function Ledger() {
   return (
     <dl className="space-y-8">
-      {LEDGER.map(({ figure, caption }) => (
+      {PRIVACY_LEDGER.map(({ figure, caption }) => (
         <div
           key={caption}
           className="grid grid-cols-[minmax(0,2fr)_minmax(0,5fr)] items-baseline gap-6"
         >
           <dt
             className="text-right leading-none font-semibold tracking-[-0.04em] text-[var(--color-text-primary)] tabular-nums"
-            style={{ fontSize: 'var(--step-heading)' }}
+            style={STEP.heading}
           >
             {figure}
           </dt>
-          <dd className="text-[var(--color-text-primary)]" style={{ fontSize: 'var(--step-body)' }}>
+          <dd className="text-[var(--color-text-primary)]" style={STEP.body}>
             {caption}
           </dd>
         </div>

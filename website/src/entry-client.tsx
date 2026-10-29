@@ -4,6 +4,13 @@ import { RouterProvider } from '@tanstack/react-router'
 import { router } from './app/router'
 import './app/styles.css'
 
+declare global {
+  interface Window {
+    /** Read by index.html's fallback: if it is never set, entrance motion is dropped. */
+    __talyxBooted?: boolean
+  }
+}
+
 console.log(
   '%c\n' +
     '  ████████╗ █████╗ ██╗  ██╗   ██╗██╗  ██╗\n' +
@@ -24,6 +31,7 @@ console.log(
 )
 
 const root = document.getElementById('root')!
+window.__talyxBooted = true
 
 if (root.firstElementChild) {
   hydrateRoot(

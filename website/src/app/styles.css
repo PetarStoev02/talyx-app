@@ -29,23 +29,9 @@
   --color-border: #eaeaea;
   --color-border-hover: #ccc;
   --color-surface: #fafafa;
-  --color-surface-hover: #f5f5f5;
-  --color-badge-bg: #fafafa;
-  --color-badge-border: #eaeaea;
-  --color-badge-text: #666;
-  --color-icon-bg: rgba(0, 0, 0, 0.05);
   --color-selection: rgba(0, 0, 0, 0.1);
-  --color-header-bg: rgba(255, 255, 255, 0.8);
-  --color-hero-glow: rgba(0, 0, 0, 0.03);
-  --color-grid-line: rgba(0, 0, 0, 0.06);
   --color-btn-primary-bg: #000;
   --color-btn-primary-text: #fff;
-  --color-btn-primary-hover-shadow: rgba(0, 0, 0, 0.12);
-  --color-btn-secondary-bg: #fff;
-  --color-btn-secondary-text: #171717;
-  --color-btn-secondary-border: #eaeaea;
-  --color-btn-secondary-hover-border: #ccc;
-  --color-btn-secondary-hover-shadow: rgba(0, 0, 0, 0.06);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -91,23 +77,9 @@
   --color-border: #262626;
   --color-border-hover: #444;
   --color-surface: #111;
-  --color-surface-hover: #1a1a1a;
-  --color-badge-bg: #111;
-  --color-badge-border: #333;
-  --color-badge-text: #a3a3a3;
-  --color-icon-bg: rgba(255, 255, 255, 0.06);
   --color-selection: rgba(255, 255, 255, 0.15);
-  --color-header-bg: rgba(0, 0, 0, 0.8);
-  --color-hero-glow: rgba(255, 255, 255, 0.06);
-  --color-grid-line: rgba(255, 255, 255, 0.07);
   --color-btn-primary-bg: #fff;
   --color-btn-primary-text: #000;
-  --color-btn-primary-hover-shadow: rgba(255, 255, 255, 0.15);
-  --color-btn-secondary-bg: #1a1a1a;
-  --color-btn-secondary-text: #ededed;
-  --color-btn-secondary-border: #333;
-  --color-btn-secondary-hover-border: #444;
-  --color-btn-secondary-hover-shadow: rgba(0, 0, 0, 0.4);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -152,7 +124,6 @@
   --color-border: var(--color-border);
   --color-border-hover: var(--color-border-hover);
   --color-surface: var(--color-surface);
-  --color-surface-hover: var(--color-surface-hover);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -193,13 +164,7 @@
 }
 
 html {
-  scroll-padding-top: 3.5rem;
-}
-
-@media (min-width: 640px) {
-  html {
-    scroll-padding-top: 4rem;
-  }
+  scroll-padding-top: 4rem;
 }
 
 body {

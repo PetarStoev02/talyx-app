@@ -5,7 +5,9 @@ import {
   GUTTER,
   ItemTitle,
   PageHero,
-  SectionHeading
+  SectionHeading,
+  STEP,
+  stagger
 } from '../../shared/ui/page'
 import { DownloadSection } from '../../widgets/download/DownloadSection'
 
@@ -190,7 +192,7 @@ function StatusSection({
       </div>
       <ul className="grid gap-x-10 gap-y-12 sm:grid-cols-2 md:col-span-8">
         {items.map((item, i) => (
-          <li key={item.title} data-reveal style={{ '--i': i % 4 } as React.CSSProperties}>
+          <li key={item.title} data-reveal style={stagger(i % 4)}>
             <ItemTitle>{item.title}</ItemTitle>
             <Body className="mt-3">{item.description}</Body>
           </li>
@@ -220,7 +222,7 @@ export function RoadmapPage() {
       >
         <ul className="mt-12 grid gap-10 md:grid-cols-3">
           {SHIPPED_SCREENS.map(({ src, alt }, i) => (
-            <li key={src} data-reveal style={{ '--i': i } as React.CSSProperties}>
+            <li key={src} data-reveal style={stagger(i)}>
               <AppScreenshot src={src} alt={alt} />
             </li>
           ))}
@@ -234,7 +236,7 @@ export function RoadmapPage() {
         <p
           data-reveal
           className="max-w-[40ch] leading-snug text-[var(--color-text-primary)] md:col-span-8"
-          style={{ fontSize: 'var(--step-lead)' }}
+          style={STEP.lead}
         >
           Have a feature request?{' '}
           <a

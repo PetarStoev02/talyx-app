@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ApprovalCard } from '../../../shared/ui/ApprovalCard'
-import { EXAMPLE_ASKS, planFor } from './plans'
+import { GUTTER, SectionHeading, STEP, stagger } from '../../../shared/ui/page'
+import { EXAMPLE_ASKS, planFor } from '../../../shared/data/plans'
 
 /** The page's one live thing: type a request, see the card Talyx would show. */
 export function TryItSection() {
@@ -8,20 +9,10 @@ export function TryItSection() {
   const plan = planFor(ask)
 
   return (
-    <section id="try" className="bg-[var(--color-bg-secondary)] px-5 py-32 sm:px-8 md:py-40">
-      <h2
-        data-reveal
-        className="leading-none font-semibold tracking-[-0.035em] text-[var(--color-text-primary)]"
-        style={{ fontSize: 'var(--step-heading)' }}
-      >
-        Ask it something.
-      </h2>
+    <section id="try" className={`bg-[var(--color-bg-secondary)] ${GUTTER} py-32 md:py-40`}>
+      <SectionHeading>Ask it something.</SectionHeading>
 
-      <label
-        data-reveal
-        className="mt-12 flex items-baseline"
-        style={{ '--i': 1 } as React.CSSProperties}
-      >
+      <label data-reveal className="mt-12 flex items-baseline" style={stagger(1)}>
         <span className="sr-only">Your request</span>
         <input
           data-ui
@@ -30,7 +21,7 @@ export function TryItSection() {
           spellCheck={false}
           autoComplete="off"
           className="w-full min-w-0 bg-transparent leading-none font-semibold tracking-[-0.045em] text-[var(--color-text-primary)] caret-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-tertiary)] focus-visible:underline focus-visible:decoration-2 focus-visible:underline-offset-[0.15em]"
-          style={{ fontSize: 'var(--step-display)' }}
+          style={STEP.display}
           placeholder="type a request"
         />
       </label>
@@ -40,7 +31,7 @@ export function TryItSection() {
           <ApprovalCard key={plan.summary} plan={plan} />
         </div>
         <div className="md:col-span-5">
-          <p className="text-[var(--color-text-primary)]" style={{ fontSize: 'var(--step-body)' }}>
+          <p className="text-[var(--color-text-primary)]" style={STEP.body}>
             Changes wait for Approve. Reads, like finding a file, run straight away. These are
             sample plans; the real ones come from your Claude.
           </p>

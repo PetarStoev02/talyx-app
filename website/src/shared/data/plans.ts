@@ -3,11 +3,25 @@
  * plans in the shape of the real approval card: a change waits for Approve,
  * a read runs straight away. Nothing here calls a model.
  */
-import type { Plan } from '../../../shared/ui/ApprovalCard'
+import { ABILITY_COUNT } from './offer'
+import type { Plan } from './plan'
 
+const FOUND: Plan = {
+  summary: 'Found 3 files. Reads run without asking.',
+  steps: [
+    'Invoice-Hetzner-2026-09.pdf · Documents/Invoices',
+    'Invoice-Hetzner-2026-08.pdf · Documents/Invoices',
+    'hetzner-receipt.eml · Mail, 2 Sep'
+  ],
+  needsApproval: false
+}
+
+// First match wins. Words match from their start, so "sorting" still sorts but "unsorted" does not.
 const RULES: { match: RegExp; plan: Plan }[] = [
+  // A request that opens by asking for something is a read, whatever folder it names.
+  { match: /^\s*(find|where|search|look for|recall)\b/i, plan: FOUND },
   {
-    match: /sort|download|tidy|clean|organi[sz]e|desktop/i,
+    match: /\b(sort|download|tidy|clean|organi[sz]e|desktop)/i,
     plan: {
       summary: 'Sort 47 files in Downloads into 6 folders',
       steps: [
@@ -19,7 +33,7 @@ const RULES: { match: RegExp; plan: Plan }[] = [
     }
   },
   {
-    match: /calendar|dentist|meeting at|book|schedule|remind/i,
+    match: /\b(calendar|dentist|meeting at|book\b|schedule|remind)/i,
     plan: {
       summary: 'Add “Dentist” to your Calendar',
       steps: ['Tomorrow, 16:00 to 17:00', 'Calendar: Personal', 'Alert 30 minutes before'],
@@ -27,27 +41,16 @@ const RULES: { match: RegExp; plan: Plan }[] = [
     }
   },
   {
-    match: /reply|send|mail|email|inbox/i,
+    match: /\b(reply|send|mail|email|inbox)/i,
     plan: {
       summary: 'Reply to Maya in Mail',
       steps: ['To: Maya Petrova', 'Subject: Re: Thursday review', '“Thursday at 10 works for me.”'],
       needsApproval: true
     }
   },
+  { match: /\b(find|where|invoice|search|recall)/i, plan: FOUND },
   {
-    match: /find|where|invoice|search|recall/i,
-    plan: {
-      summary: 'Found 3 files. Reads run without asking.',
-      steps: [
-        'Invoice-Hetzner-2026-09.pdf · Documents/Invoices',
-        'Invoice-Hetzner-2026-08.pdf · Documents/Invoices',
-        'hetzner-receipt.eml · Mail, 2 Sep'
-      ],
-      needsApproval: false
-    }
-  },
-  {
-    match: /quiet|focus|silence|do not disturb|mute/i,
+    match: /\b(quiet|focus|silence|do not disturb|mute)/i,
     plan: {
       summary: 'Quiet your Mac until 15:45',
       steps: [
@@ -59,7 +62,7 @@ const RULES: { match: RegExp; plan: Plan }[] = [
     }
   },
   {
-    match: /click|screen|button|open|type/i,
+    match: /\b(click|screen|button|open|type)\b/i,
     plan: {
       summary: 'Use the screen: no ability fits',
       steps: ['Look at the front window', 'Click “Export as PDF”', 'Each click gets its own card'],
@@ -69,7 +72,7 @@ const RULES: { match: RegExp; plan: Plan }[] = [
 ]
 
 const FALLBACK: Plan = {
-  summary: 'Pick one of 35 abilities for this',
+  summary: `Pick one of ${ABILITY_COUNT} abilities for this`,
   steps: [
     'Plan it with your own Claude',
     'Show the exact change on a card',

@@ -1,3 +1,5 @@
+import { STEP } from '../../../shared/ui/page'
+
 const STAGES = [
   {
     line: 'First, press ⌘⇧Space.',
@@ -33,14 +35,11 @@ export function HowItWorksSection() {
             >
               <Line
                 className="leading-none font-semibold tracking-[-0.035em] text-[var(--color-text-primary)]"
-                style={{ fontSize: 'var(--step-heading)' }}
+                style={STEP.heading}
               >
                 {line}
               </Line>
-              <p
-                className="mt-4 max-w-[38ch] text-[var(--color-text-primary)]"
-                style={{ fontSize: 'var(--step-body)' }}
-              >
+              <p className="mt-4 max-w-[38ch] text-[var(--color-text-primary)]" style={STEP.body}>
                 {note}
               </p>
             </li>

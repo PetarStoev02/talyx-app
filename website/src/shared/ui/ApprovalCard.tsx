@@ -1,9 +1,5 @@
-/** What Talyx shows before it acts: a change waits for Approve, a read runs at once. */
-export interface Plan {
-  summary: string
-  steps: string[]
-  needsApproval: boolean
-}
+import type { Plan } from '../data/plan'
+import { Wallpaper } from './page'
 
 // The real card's divider; this is a data-ui fragment of the app.
 const ACTIONS_ROW =
@@ -23,7 +19,6 @@ export function ApprovalCard({ plan }: { plan: Plan }) {
         ))}
       </ul>
       <div className={ACTIONS_ROW}>
-        {' '}
         {plan.needsApproval ? (
           <>
             <span className="rounded-md px-3 py-1.5 text-[var(--color-text-secondary)]">
@@ -40,5 +35,29 @@ export function ApprovalCard({ plan }: { plan: Plan }) {
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * The approval card on the Mac wallpaper. `className` sets the box's padding and
+ * shape; `caption` is a `<figcaption>`, styled by the caller, shown on the wallpaper.
+ */
+export function ApprovalFigure({
+  plan,
+  className,
+  caption
+}: {
+  plan: Plan
+  className: string
+  caption?: React.ReactNode
+}) {
+  return (
+    <figure
+      className={`relative isolate flex items-center justify-center overflow-hidden rounded-2xl ${className}`}
+    >
+      <Wallpaper className="object-right" />
+      <ApprovalCard key={plan.summary} plan={plan} />
+      {caption}
+    </figure>
   )
 }

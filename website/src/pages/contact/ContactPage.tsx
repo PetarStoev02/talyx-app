@@ -1,5 +1,5 @@
 import { ISSUES_URL, SECURITY_REPORT_URL } from '../../shared/data/release'
-import { GUTTER, PageHero } from '../../shared/ui/page'
+import { GUTTER, PageHero, STEP, stagger } from '../../shared/ui/page'
 
 const CHANNELS = [
   {
@@ -27,14 +27,14 @@ export function ContactPage() {
             <h2
               data-reveal
               className="max-w-[12ch] leading-none font-semibold tracking-[-0.035em] text-[var(--color-text-primary)]"
-              style={{ '--i': i, fontSize: 'var(--step-heading)' } as React.CSSProperties}
+              style={{ ...stagger(i), ...STEP.heading }}
             >
               {title}
             </h2>
             <p
               data-reveal
               className="mt-8 max-w-[36ch] text-[var(--color-text-primary)]"
-              style={{ '--i': i + 1, fontSize: 'var(--step-lead)' } as React.CSSProperties}
+              style={{ ...stagger(i + 1), ...STEP.lead }}
             >
               {description}
             </p>
@@ -44,7 +44,7 @@ export function ContactPage() {
               rel="noopener noreferrer"
               data-reveal
               className="mt-6 inline-flex min-h-11 items-center font-semibold text-[var(--color-text-primary)] underline underline-offset-4 transition-opacity hover:opacity-70"
-              style={{ '--i': i + 2, fontSize: 'var(--step-lead)' } as React.CSSProperties}
+              style={{ ...stagger(i + 2), ...STEP.lead }}
             >
               {cta}
             </a>

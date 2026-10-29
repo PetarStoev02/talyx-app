@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { GUTTER } from '@/shared/ui/page'
+import { GUTTER, STEP } from '@/shared/ui/page'
 
 import privacyMd from './content/privacy.md?raw'
 import termsMd from './content/terms.md?raw'
@@ -78,7 +78,7 @@ export function LegalPage() {
       <section className={`${GUTTER} pt-20 pb-32 md:pt-32 md:pb-48`}>
         <h1
           className="leading-none font-semibold tracking-[-0.035em] text-[var(--color-text-primary)]"
-          style={{ fontSize: 'var(--step-heading)' }}
+          style={STEP.heading}
         >
           Page not found
         </h1>
@@ -101,7 +101,7 @@ export function LegalPage() {
         <nav
           aria-label="Contents"
           className="hidden lg:sticky lg:top-28 lg:col-span-3 lg:block lg:max-h-[calc(100svh-8rem)] lg:self-start lg:overflow-y-auto"
-          style={{ fontSize: 'var(--step-small)' }}
+          style={STEP.small}
         >
           {headings.map((h) => (
             <a
@@ -124,7 +124,7 @@ export function LegalPage() {
 
       <div
         className="max-w-[65ch] min-w-0 leading-[1.7] text-[var(--color-text-primary)] lg:col-span-9 lg:col-start-4"
-        style={{ fontSize: 'var(--step-body)' }}
+        style={STEP.body}
       >
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
@@ -134,15 +134,11 @@ export function LegalPage() {
                 <h1
                   data-reveal
                   className="leading-none font-semibold tracking-[-0.035em]"
-                  style={{ fontSize: 'var(--step-heading)' }}
+                  style={STEP.heading}
                 >
                   {children}
                 </h1>
-                <p
-                  data-reveal
-                  className="mt-6 mb-10 leading-snug"
-                  style={{ fontSize: 'var(--step-lead)' }}
-                >
+                <p data-reveal className="mt-6 mb-10 leading-snug" style={STEP.lead}>
                   {page.lead}
                 </p>
               </>
@@ -152,7 +148,7 @@ export function LegalPage() {
                 id={slugify(String(children))}
                 data-reveal
                 className="mt-20 mb-6 scroll-mt-28 leading-tight font-semibold"
-                style={{ fontSize: 'var(--step-lead)' }}
+                style={STEP.lead}
               >
                 {children}
               </h2>
@@ -177,7 +173,7 @@ export function LegalPage() {
             hr: () => null,
             table: ({ children }) => (
               <div className="my-8 overflow-x-auto">
-                <table className="w-full" style={{ fontSize: 'var(--step-small)' }}>
+                <table className="w-full" style={STEP.small}>
                   {children}
                 </table>
               </div>

@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 import { getPostBySlug, posts, categoryMeta } from '@/shared/data/posts'
-import { AppScreenshot, GUTTER, SectionHeading } from '@/shared/ui/page'
+import { AppScreenshot, GUTTER, SectionHeading, STEP, stagger } from '@/shared/ui/page'
 import { DownloadSection } from '@/widgets/download/DownloadSection'
 
 const TalyxIsNowFreeAndOpenSource = lazy(() =>
@@ -43,7 +43,7 @@ function BackToBlog() {
     <Link
       to="/blog"
       className="font-medium text-[var(--color-text-primary)] underline underline-offset-4 transition-opacity hover:opacity-70"
-      style={{ fontSize: 'var(--step-body)' }}
+      style={STEP.body}
     >
       Back to the blog
     </Link>
@@ -64,14 +64,11 @@ export function BlogPostPage() {
         <h1
           data-reveal
           className="leading-none font-semibold tracking-[-0.035em] text-[var(--color-text-primary)]"
-          style={{ fontSize: 'var(--step-heading)' }}
+          style={STEP.heading}
         >
           Post not found
         </h1>
-        <p
-          className="mt-8 max-w-[48ch] text-[var(--color-text-primary)]"
-          style={{ fontSize: 'var(--step-lead)' }}
-        >
+        <p className="mt-8 max-w-[48ch] text-[var(--color-text-primary)]" style={STEP.lead}>
           This post hasn&apos;t been published yet or doesn&apos;t exist.
         </p>
         <p className="mt-8">
@@ -111,12 +108,9 @@ export function BlogPostPage() {
             {post.title}
           </h1>
           <aside className="lg:sticky lg:top-28 lg:col-span-3 lg:self-start">
-            <dl
-              className="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-1"
-              style={{ fontSize: 'var(--step-small)' }}
-            >
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-1" style={STEP.small}>
               {meta.map(({ label, value }, i) => (
-                <div key={label} data-reveal style={{ '--i': i } as React.CSSProperties}>
+                <div key={label} data-reveal style={stagger(i)}>
                   <dt className="text-[var(--color-text-secondary)]">{label}</dt>
                   <dd className="mt-1 font-medium text-[var(--color-text-primary)]">{value}</dd>
                 </div>
@@ -133,7 +127,7 @@ export function BlogPostPage() {
 
           <div
             data-reveal
-            style={{ '--i': 2, fontSize: 'var(--step-body)' } as React.CSSProperties}
+            style={{ ...stagger(2), ...STEP.body }}
             className={`lg:col-span-7 lg:col-start-4 ${PROSE}`}
           >
             <Suspense fallback={null}>
@@ -149,7 +143,7 @@ export function BlogPostPage() {
           <div className="mt-12 md:mt-16">
             <ul className="space-y-12">
               {related.map((r, i) => (
-                <li key={r.slug} data-reveal style={{ '--i': i } as React.CSSProperties}>
+                <li key={r.slug} data-reveal style={stagger(i)}>
                   <Link
                     to="/blog/$slug"
                     params={{ slug: r.slug }}
@@ -161,14 +155,11 @@ export function BlogPostPage() {
                     <div className="md:col-span-7 md:col-start-6">
                       <h3
                         className="leading-tight font-semibold text-[var(--color-text-primary)] underline-offset-4 group-hover:underline"
-                        style={{ fontSize: 'var(--step-lead)' }}
+                        style={STEP.lead}
                       >
                         {r.title}
                       </h3>
-                      <p
-                        className="mt-3 text-[var(--color-text-secondary)]"
-                        style={{ fontSize: 'var(--step-small)' }}
-                      >
+                      <p className="mt-3 text-[var(--color-text-secondary)]" style={STEP.small}>
                         {formatDate(r.date)} · {r.readTime}
                       </p>
                     </div>

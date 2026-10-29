@@ -6,12 +6,19 @@
 /** Outer margins used by every section. */
 export const GUTTER = 'px-5 sm:px-8'
 
-const STEP = {
+/** The type steps as inline styles; spread one when the style needs more keys. */
+export const STEP = {
   display: { fontSize: 'var(--step-display)' },
   heading: { fontSize: 'var(--step-heading)' },
   lead: { fontSize: 'var(--step-lead)' },
-  body: { fontSize: 'var(--step-body)' }
+  body: { fontSize: 'var(--step-body)' },
+  small: { fontSize: 'var(--step-small)' }
 } as const
+
+/** Delays a `[data-reveal]` element's entrance by `i` beats, so siblings arrive in order. */
+export function stagger(i: number): React.CSSProperties {
+  return { '--i': i } as React.CSSProperties
+}
 
 /** The page's title and one sentence saying what it is. Titles must fit two lines. */
 export function PageHero({
@@ -36,12 +43,12 @@ export function PageHero({
         <p
           data-reveal
           className="max-w-[44ch] leading-snug text-[var(--color-text-primary)] md:col-span-6"
-          style={{ ...STEP.lead, '--i': 1 } as React.CSSProperties}
+          style={{ ...STEP.lead, ...stagger(1) }}
         >
           {lead}
         </p>
         {children ? (
-          <div data-reveal className="md:col-span-6" style={{ '--i': 2 } as React.CSSProperties}>
+          <div data-reveal className="md:col-span-6" style={stagger(2)}>
             {children}
           </div>
         ) : null}
@@ -50,13 +57,21 @@ export function PageHero({
   )
 }
 
-/** A section heading at the page's second size. */
-export function SectionHeading({ children, id }: { children: React.ReactNode; id?: string }) {
+/** A section heading at the page's second size. `className` is for layout only. */
+export function SectionHeading({
+  children,
+  id,
+  className = ''
+}: {
+  children: React.ReactNode
+  id?: string
+  className?: string
+}) {
   return (
     <h2
       id={id}
       data-reveal
-      className="leading-none font-semibold tracking-[-0.035em] text-[var(--color-text-primary)]"
+      className={`leading-none font-semibold tracking-[-0.035em] text-[var(--color-text-primary)] ${className}`}
       style={STEP.heading}
     >
       {children}
@@ -91,18 +106,37 @@ export function ItemTitle({ children }: { children: React.ReactNode }) {
   )
 }
 
+/**
+ * The Mac wallpaper, filling its `relative isolate` parent behind everything
+ * else in it. `objectPosition` picks which part of the picture shows.
+ */
+export function Wallpaper({
+  className = '',
+  objectPosition,
+  loading
+}: {
+  className?: string
+  objectPosition?: string
+  loading?: 'lazy' | 'eager'
+}) {
+  return (
+    <img
+      src="/hero-wallpaper.jpg"
+      alt=""
+      width={2200}
+      height={1238}
+      loading={loading}
+      className={`absolute inset-0 -z-10 size-full object-cover ${className}`}
+      style={objectPosition ? { objectPosition } : undefined}
+    />
+  )
+}
+
 /** A screenshot of the real app on the Mac wallpaper, the way the landing page shows it. */
 export function AppScreenshot({ src, alt }: { src: string; alt: string }) {
   return (
     <figure className="relative isolate overflow-hidden rounded-2xl p-4 md:p-8">
-      <img
-        src="/hero-wallpaper.jpg"
-        alt=""
-        width={2200}
-        height={1238}
-        loading="lazy"
-        className="absolute inset-0 -z-10 size-full object-cover"
-      />
+      <Wallpaper loading="lazy" />
       <img
         src={src}
         alt={alt}

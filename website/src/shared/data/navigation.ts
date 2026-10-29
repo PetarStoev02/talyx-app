@@ -1,4 +1,4 @@
-import type { Plan } from '../ui/ApprovalCard'
+import type { Plan } from './plan'
 
 /**
  * Every page the header's menus and the footer link to. Each entry carries
@@ -145,3 +145,38 @@ export const resources = [
   { to: '/press', title: 'Press kit', shortDescription: 'Logos, screenshots and the facts.' },
   { to: '/contact', title: 'Contact', shortDescription: 'Questions, bugs and ideas.' }
 ] as const
+
+/** A link in a menu or the footer: a route in this site, or a plain URL. */
+export type NavLink =
+  | { label: string; to: '/features/$slug' | '/use-cases/$slug'; params: { slug: string } }
+  | { label: string; to: (typeof resources)[number]['to'] }
+  | { label: string; href: string }
+
+export interface NavGroup {
+  title: string
+  links: NavLink[]
+}
+
+/** Every page, grouped the way the phone menu and the footer list them. */
+export const NAV_GROUPS: NavGroup[] = [
+  {
+    title: 'Product',
+    links: features.map(({ slug, title }) => ({
+      label: title,
+      to: '/features/$slug',
+      params: { slug }
+    }))
+  },
+  {
+    title: 'Use cases',
+    links: useCases.map(({ slug, title }) => ({
+      label: title,
+      to: '/use-cases/$slug',
+      params: { slug }
+    }))
+  },
+  {
+    title: 'Resources',
+    links: resources.map(({ to, title }) => ({ label: title, to }))
+  }
+]

@@ -2,8 +2,16 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { features, resources, useCases } from '../../shared/data/navigation'
 import { posts } from '../../shared/data/posts'
-import { ApprovalCard } from '../../shared/ui/ApprovalCard'
+import { PRIVACY_LEDGER } from '../../shared/data/privacy'
+import { ApprovalFigure } from '../../shared/ui/ApprovalCard'
+import { Wallpaper } from '../../shared/ui/page'
 import { REPO_URL } from '../../shared/data/release'
+
+/** The panel has room for three one-clause facts: the first sentence of each, without the 2,000-character limit. */
+const MENU_LEDGER = [0, 1, 3].map((i) => {
+  const { figure, caption } = PRIVACY_LEDGER[i]
+  return { figure, caption: caption.split('.')[0] }
+})
 
 const ITEM =
   'block rounded-xl px-4 py-3 transition-colors duration-150 data-[active=true]:bg-[var(--color-bg-secondary)] focus-visible:bg-[var(--color-bg-secondary)] focus-visible:outline-none'
@@ -52,13 +60,7 @@ export function ProductPanel() {
       ))}
       preview={
         <figure className="relative isolate overflow-hidden rounded-2xl p-6">
-          <img
-            src="/hero-wallpaper.jpg"
-            alt=""
-            width={2200}
-            height={1238}
-            className="absolute inset-0 -z-10 size-full object-cover"
-          />
+          <Wallpaper />
           {active.preview ? (
             <img
               key={active.preview}
@@ -73,11 +75,7 @@ export function ProductPanel() {
               key={active.slug}
               className="card-swap grid aspect-[1100/720] content-center gap-6 rounded-xl bg-[var(--color-bg)] p-10 text-[var(--color-text-primary)]"
             >
-              {[
-                ['0', 'bytes leave your Mac when Smart Local sorts'],
-                ['0', 'Talyx servers, accounts or analytics'],
-                ['1', 'update check, to GitHub']
-              ].map(([figure, caption]) => (
+              {MENU_LEDGER.map(({ figure, caption }) => (
                 <div key={caption} className="grid grid-cols-[4rem_1fr] items-baseline gap-4">
                   <dt className="text-right text-[44px] leading-none font-semibold tabular-nums">
                     {figure}
@@ -114,19 +112,15 @@ export function UseCasesPanel() {
         </li>
       ))}
       preview={
-        <figure className="relative isolate flex aspect-[16/10] flex-col items-center justify-center overflow-hidden rounded-2xl p-8">
-          <img
-            src="/hero-wallpaper.jpg"
-            alt=""
-            width={2200}
-            height={1238}
-            className="absolute inset-0 -z-10 size-full object-cover object-right"
-          />
-          <ApprovalCard key={active.slug} plan={active.plan} />
-          <figcaption className="mt-5 text-[15px] text-white">
-            A card Talyx might show {active.title.toLowerCase()}. Nothing moves until you approve.
-          </figcaption>
-        </figure>
+        <ApprovalFigure
+          plan={active.plan}
+          className="aspect-[16/10] flex-col p-8"
+          caption={
+            <figcaption className="mt-5 text-[15px] text-white">
+              A card Talyx might show {active.title.toLowerCase()}. Nothing moves until you approve.
+            </figcaption>
+          }
+        />
       }
     />
   )
