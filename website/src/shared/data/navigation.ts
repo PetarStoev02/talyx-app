@@ -1,62 +1,147 @@
-import { Brain, Eye, FileEdit, History, GripVertical, Sparkles, ShieldCheck } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import type { Plan } from '../ui/ApprovalCard'
 
-export interface NavItem {
+/**
+ * Every page the header's menus and the footer link to. Each entry carries
+ * what its preview shows: a screenshot of the real app, or the card Talyx
+ * would put in front of that kind of user.
+ */
+export interface FeatureNav {
   slug: string
   title: string
   shortDescription: string
-  icon: LucideIcon
-  column: string
+  /** A screenshot of the app view that does this, from /previews; null when no single screen shows it. */
+  preview: string | null
 }
 
-export const features: NavItem[] = [
+export interface UseCaseNav {
+  slug: string
+  title: string
+  shortDescription: string
+  /** A sample of the approval card this user would see. */
+  plan: Plan
+}
+
+export const features: FeatureNav[] = [
+  {
+    slug: 'assistant',
+    title: 'The assistant',
+    shortDescription: 'Press ⌘⇧Space and ask. Your own Claude plans it and asks first.',
+    preview: '/previews/suggestions.jpg'
+  },
   {
     slug: 'ai-classification',
-    title: 'AI Classification',
-    shortDescription: 'Smart sorting free, AI sorting optional',
-    icon: Brain,
-    column: 'core'
+    title: 'AI classification',
+    shortDescription: 'Smart Local sorts on your Mac. Your Claude reads the contents too.',
+    preview: '/previews/sort.jpg'
   },
   {
     slug: 'watch-folders',
-    title: 'Watch Folders',
-    shortDescription: 'Automatically sort new files as they appear',
-    icon: Eye,
-    column: 'core'
+    title: 'Watch folders',
+    shortDescription: 'New files are sorted as they land.',
+    preview: '/previews/watch.jpg'
   },
   {
     slug: 'smart-rename',
-    title: 'Smart Rename',
-    shortDescription: 'Content-based names from Your Claude; Smart Local tidies generic names',
-    icon: FileEdit,
-    column: 'core'
-  },
-  {
-    slug: 'assistant',
-    title: 'The Assistant',
-    shortDescription: 'Your own Claude runs your Mac — one shortcut, approval before any change',
-    icon: Sparkles,
-    column: 'core'
+    title: 'Smart rename',
+    shortDescription: 'scan_003.pdf becomes invoice_march.pdf.',
+    preview: '/previews/sort.jpg'
   },
   {
     slug: 'sort-history',
-    title: 'Sort History',
-    shortDescription: 'Full operation log with undo support',
-    icon: History,
-    column: 'capabilities'
+    title: 'Sort history',
+    shortDescription: 'Every sort recorded. Undo one file or a whole batch.',
+    preview: '/previews/history.jpg'
   },
   {
     slug: 'drag-and-drop',
-    title: 'Drag & Drop Sorting',
-    shortDescription: 'Drop a folder and sort in seconds',
-    icon: GripVertical,
-    column: 'capabilities'
+    title: 'Drag and drop',
+    shortDescription: 'Drop a folder on Talyx and see the plan.',
+    preview: '/previews/sort.jpg'
   },
   {
     slug: 'privacy-offline',
-    title: 'Your Data, Your Rules',
-    shortDescription: 'Sorts on your device by default; AI sorting is opt-in',
-    icon: ShieldCheck,
-    column: 'platform'
+    title: 'Privacy and offline',
+    shortDescription: 'Sorting stays on your Mac unless you choose Your Claude.',
+    preview: null
   }
 ]
+
+export const useCases: UseCaseNav[] = [
+  {
+    slug: 'knowledge-workers',
+    title: 'Knowledge workers',
+    shortDescription: 'Downloads, meetings and mail, kept in order.',
+    plan: {
+      summary: 'Sort 62 files in Downloads into 8 folders',
+      steps: [
+        '18 PDFs → Documents/Reports',
+        '9 decks → Documents/Presentations',
+        '35 screenshots → Images/Screenshots'
+      ],
+      needsApproval: true
+    }
+  },
+  {
+    slug: 'freelancers',
+    title: 'Freelancers and creatives',
+    shortDescription: 'Client files apart, invoices easy to find.',
+    plan: {
+      summary: 'File 14 invoices by client',
+      steps: [
+        'Northwind: 6 → Clients/Northwind/Invoices',
+        'Acme Studio: 5 → Clients/Acme/Invoices',
+        'Personal: 3 → Documents/Invoices'
+      ],
+      needsApproval: true
+    }
+  },
+  {
+    slug: 'students',
+    title: 'Students and researchers',
+    shortDescription: 'Papers, notes and datasets by course.',
+    plan: {
+      summary: 'Sort 23 lecture PDFs by course',
+      steps: [
+        'Biology 201: 9 → Semester 2/Biology',
+        'Statistics: 8 → Semester 2/Statistics',
+        'Ethics: 6 → Semester 2/Ethics'
+      ],
+      needsApproval: true
+    }
+  },
+  {
+    slug: 'legal',
+    title: 'Legal and compliance',
+    shortDescription: 'Confidential documents sorted on your Mac.',
+    plan: {
+      summary: 'Sort 31 documents with Smart Local',
+      steps: [
+        'Nothing leaves this Mac',
+        '12 contracts → Matters/Contracts',
+        '19 filings → Matters/Filings'
+      ],
+      needsApproval: true
+    }
+  },
+  {
+    slug: 'medical',
+    title: 'Medical and healthcare',
+    shortDescription: 'Records and research, sorted on-device by default.',
+    plan: {
+      summary: 'Sort 40 research files with Smart Local',
+      steps: [
+        'Nothing leaves this Mac',
+        '22 papers → Research/Papers',
+        '18 datasets → Research/Data'
+      ],
+      needsApproval: true
+    }
+  }
+]
+
+export const resources = [
+  { to: '/blog', title: 'Blog', shortDescription: 'Releases and how Talyx is built.' },
+  { to: '/roadmap', title: 'Roadmap', shortDescription: 'What is shipped and what is next.' },
+  { to: '/press', title: 'Press kit', shortDescription: 'Logos, screenshots and the facts.' },
+  { to: '/contact', title: 'Contact', shortDescription: 'Questions, bugs and ideas.' }
+] as const

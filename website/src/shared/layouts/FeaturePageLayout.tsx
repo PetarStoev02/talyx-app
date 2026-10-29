@@ -1,116 +1,122 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
-import { features, type NavItem } from '../data/navigation'
-import { REPO_URL } from '../data/release'
+import { features } from '../data/navigation'
+import { AppScreenshot, Body, GUTTER, ItemTitle, PageHero, SectionHeading } from '../ui/page'
+import { DownloadSection } from '../../widgets/download/DownloadSection'
+
+export interface FeaturePoint {
+  title: string
+  description: string
+}
+
 interface FeaturePageLayoutProps {
   slug: string
   title: string
-  subtitle: string
-  icon: NavItem['icon']
-  heroIllustration: React.ReactNode
-  children: React.ReactNode
+  lead: string
+  steps: FeaturePoint[]
+  benefits: FeaturePoint[]
+  stepsHeading?: string
+  benefitsHeading?: string
+  /** Shown beside the lead instead of the feature's screenshot. */
+  figure?: React.ReactNode
 }
 
+const RELATED_COUNT = 3
+
+function stagger(i: number): React.CSSProperties {
+  return { '--i': i } as React.CSSProperties
+}
+
+/** Every feature page: the hero and its screenshot, the steps, the benefits, related features, the download close. */
 export function FeaturePageLayout({
   slug,
   title,
-  subtitle,
-  icon: Icon,
-  heroIllustration,
-  children
+  lead,
+  steps,
+  benefits,
+  stepsHeading = 'How it works',
+  benefitsHeading = 'Why it helps',
+  figure
 }: FeaturePageLayoutProps) {
   useDocumentTitle(title)
 
-  const related = features.filter((f) => f.slug !== slug).slice(0, 3)
+  const feature = features.find((f) => f.slug === slug)
+  const related = features.filter((f) => f.slug !== slug).slice(0, RELATED_COUNT)
+  const preview = feature?.preview
 
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden px-4 pt-16 pb-12 sm:px-6 sm:pt-24 sm:pb-16">
-        <div className="page-grid pointer-events-none absolute inset-0" />
-        <div className="relative mx-auto max-w-[800px]">
-          <Link
-            to="/"
-            hash="features"
-            className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-tertiary)] transition-colors hover:text-[var(--color-text-primary)]"
-          >
-            <ArrowLeft className="size-3.5" />
-            All features
-          </Link>
-          <div className="mt-8 flex size-14 items-center justify-center rounded-2xl bg-[var(--color-icon-bg)] text-[var(--color-text-primary)]">
-            <Icon className="size-7" />
-          </div>
-          <h1 className="mt-6 text-[32px] font-bold leading-tight tracking-[-0.02em] text-[var(--color-text-primary)] sm:text-[48px]">
-            {title}
-          </h1>
-          <p className="mt-4 max-w-[600px] text-[17px] leading-relaxed text-[var(--color-text-secondary)]">
-            {subtitle}
-          </p>
-          <div className="mt-10">{heroIllustration}</div>
+      <PageHero title={title} lead={lead}>
+        {figure ?? (preview ? <AppScreenshot src={preview} alt={`Talyx: ${title}`} /> : null)}
+      </PageHero>
+
+      <section className={`${GUTTER} grid gap-12 py-32 md:grid-cols-12 md:py-48`}>
+        <div className="md:sticky md:top-32 md:col-span-4 md:self-start">
+          <SectionHeading>{stepsHeading}</SectionHeading>
         </div>
+        <ol className="space-y-20 md:col-span-7 md:col-start-6 md:space-y-28">
+          {steps.map((step, i) => (
+            <li key={step.title} data-reveal style={stagger(i)}>
+              <h3
+                className="leading-none font-semibold tracking-[-0.035em] text-[var(--color-text-primary)]"
+                style={{ fontSize: 'var(--step-heading)' }}
+              >
+                {step.title}
+              </h3>
+              <Body className="mt-6">{step.description}</Body>
+            </li>
+          ))}
+        </ol>
       </section>
 
-      {/* Page content */}
-      <section className="px-4 pb-16 sm:px-6 sm:pb-24">
-        <div className="mx-auto max-w-[800px]">{children}</div>
+      <section className={`${GUTTER} py-32 md:py-48`}>
+        <SectionHeading>{benefitsHeading}</SectionHeading>
+        <ul className="mt-16 grid gap-x-16 gap-y-14 md:mt-24 md:grid-cols-2 md:gap-y-20">
+          {benefits.map((benefit, i) => (
+            <li key={benefit.title} data-reveal style={stagger(i % 2)}>
+              <ItemTitle>{benefit.title}</ItemTitle>
+              <Body className="mt-3">{benefit.description}</Body>
+            </li>
+          ))}
+        </ul>
       </section>
 
-      {/* Related features */}
-      <section className="border-t border-[var(--color-border)] px-4 py-16 sm:px-6 sm:py-24">
-        <div className="mx-auto max-w-[1100px]">
-          <h2 className="mb-8 text-center text-[20px] font-bold tracking-[-0.02em] text-[var(--color-text-primary)] sm:text-[24px]">
-            Related Features
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {related.map((f) => (
+      <section className={`${GUTTER} py-32 md:py-48`}>
+        <SectionHeading>More of Talyx</SectionHeading>
+        <ul className="mt-16 space-y-20 md:mt-24 md:space-y-32">
+          {related.map((f) => (
+            <li key={f.slug} data-reveal>
               <Link
-                key={f.slug}
                 to="/features/$slug"
                 params={{ slug: f.slug }}
-                className="group rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 transition-colors hover:bg-[var(--color-surface-hover)]"
+                className="group grid items-center gap-8 md:grid-cols-12"
               >
-                <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-[var(--color-icon-bg)] text-[var(--color-text-primary)]">
-                  <f.icon className="size-5" />
+                <div className="md:col-span-5">
+                  <span
+                    className="block leading-none font-semibold tracking-[-0.035em] text-[var(--color-text-primary)] underline-offset-8 group-hover:underline"
+                    style={{ fontSize: 'var(--step-heading)' }}
+                  >
+                    {f.title}
+                  </span>
+                  <span
+                    className="mt-5 block max-w-[40ch] text-[var(--color-text-primary)]"
+                    style={{ fontSize: 'var(--step-body)' }}
+                  >
+                    {f.shortDescription}
+                  </span>
                 </div>
-                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-                  {f.title}
-                </h3>
-                <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-tertiary)]">
-                  {f.shortDescription}
-                </p>
+                {f.preview ? (
+                  <div className="md:col-span-6 md:col-start-7">
+                    <AppScreenshot src={f.preview} alt="" />
+                  </div>
+                ) : null}
               </Link>
-            ))}
-          </div>
-        </div>
+            </li>
+          ))}
+        </ul>
       </section>
 
-      {/* Bottom CTA */}
-      <section className="border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-16 sm:px-6 sm:py-24">
-        <div className="mx-auto max-w-[800px] text-center">
-          <h2 className="text-[24px] font-bold tracking-[-0.02em] text-[var(--color-text-primary)] sm:text-[32px]">
-            Ready to tell your Mac what to do?
-          </h2>
-          <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
-            Free and open source. MIT licensed.
-          </p>
-          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <a
-              href="/#download"
-              className="inline-flex items-center gap-2 rounded-full bg-[var(--color-btn-primary-bg)] px-7 py-3 text-[15px] font-semibold text-[var(--color-btn-primary-text)] transition-all hover:-translate-y-px hover:shadow-[0_4px_20px_var(--color-btn-primary-hover-shadow)]"
-            >
-              Download for macOS
-              <ArrowRight className="size-4" />
-            </a>
-            <a
-              href={REPO_URL}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-btn-secondary-border)] bg-[var(--color-btn-secondary-bg)] px-7 py-3 text-[15px] font-semibold text-[var(--color-btn-secondary-text)] transition-all hover:border-[var(--color-btn-secondary-hover-border)] hover:shadow-[0_4px_20px_var(--color-btn-secondary-hover-shadow)]"
-            >
-              View on GitHub
-            </a>
-          </div>
-        </div>
-      </section>
+      <DownloadSection />
     </>
   )
 }

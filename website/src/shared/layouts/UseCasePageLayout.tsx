@@ -1,220 +1,159 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowRight, type LucideIcon } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
-import { features, type NavItem } from '../data/navigation'
+import { features, useCases } from '../data/navigation'
 import { ABILITY_COUNT } from '../data/offer'
-import { REPO_URL } from '../data/release'
+import { ApprovalCard } from '../ui/ApprovalCard'
+import { AppScreenshot, Body, GUTTER, ItemTitle, PageHero, SectionHeading } from '../ui/page'
+import { DownloadSection } from '../../widgets/download/DownloadSection'
 
-interface PainPoint {
-  icon: LucideIcon
-  title: string
-  description: string
-}
-
-interface Solution {
+interface Statement {
   title: string
   description: string
 }
 
 interface UseCasePageLayoutProps {
+  /** Matches an entry in navigation.ts `useCases`, whose sample plan the hero shows. */
+  slug: string
   title: string
-  subtitle: string
-  persona: string
-  icon: NavItem['icon']
+  lead: string
+  /** A screenshot from /previews shown beside the solutions. */
+  screenshot: string
   relatedFeatureSlugs: string[]
-  painPoints: PainPoint[]
-  solutions: Solution[]
-  heroIllustration: React.ReactNode
+  painPoints: Statement[]
+  solutions: Statement[]
+}
+
+const SECTION = `${GUTTER} py-32 md:py-48`
+
+function stagger(i: number): React.CSSProperties {
+  return { '--i': i } as React.CSSProperties
 }
 
 export function UseCasePageLayout({
+  slug,
   title,
-  subtitle,
-  persona,
-  icon: Icon,
+  lead,
+  screenshot,
   relatedFeatureSlugs,
   painPoints,
-  solutions,
-  heroIllustration
+  solutions
 }: UseCasePageLayoutProps) {
   useDocumentTitle(title)
 
+  const useCase = useCases.find((u) => u.slug === slug)
   const relatedFeatures = features.filter((f) => relatedFeatureSlugs.includes(f.slug))
 
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden px-4 pt-20 pb-16 sm:px-6 sm:pt-32 sm:pb-24">
-        <div className="page-grid pointer-events-none absolute inset-0" />
-        <div className="relative mx-auto max-w-[800px] text-center">
-          <span className="inline-block rounded-full border border-[var(--color-badge-border)] bg-[var(--color-badge-bg)] px-3.5 py-1 text-[13px] font-medium text-[var(--color-badge-text)]">
-            {persona}
-          </span>
-          <div className="mt-6 flex justify-center">
-            <div className="flex size-16 items-center justify-center rounded-2xl bg-[var(--color-icon-bg)] text-[var(--color-text-primary)]">
-              <Icon className="size-8" />
+      <PageHero title={title} lead={lead}>
+        {useCase ? (
+          <figure>
+            <div className="relative isolate flex items-center justify-center overflow-hidden rounded-2xl p-6 md:aspect-[16/11] md:p-10">
+              <img
+                src="/hero-wallpaper.jpg"
+                alt=""
+                width={2200}
+                height={1238}
+                className="absolute inset-0 -z-10 size-full object-cover object-right"
+              />
+              <ApprovalCard plan={useCase.plan} />
             </div>
-          </div>
-          <h1 className="mt-8 text-[36px] font-bold leading-[1.1] tracking-[-0.03em] text-[var(--color-text-primary)] sm:text-[56px]">
-            {title}
-          </h1>
-          <p className="mx-auto mt-5 max-w-[640px] text-[18px] leading-relaxed text-[var(--color-text-secondary)]">
-            {subtitle}
-          </p>
-          <div className="mt-10">{heroIllustration}</div>
-          <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <a
-              href="/#download"
-              className="inline-flex items-center gap-2 rounded-full bg-[var(--color-btn-primary-bg)] px-7 py-3 text-[15px] font-semibold text-[var(--color-btn-primary-text)] transition-all hover:-translate-y-px hover:shadow-[0_4px_20px_var(--color-btn-primary-hover-shadow)]"
+            <figcaption
+              className="mt-4 text-[var(--color-text-primary)]"
+              style={{ fontSize: 'var(--step-body)' }}
             >
-              Download for macOS
-              <ArrowRight className="size-4" />
-            </a>
-            <a
-              href={REPO_URL}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-btn-secondary-border)] bg-[var(--color-btn-secondary-bg)] px-7 py-3 text-[15px] font-semibold text-[var(--color-btn-secondary-text)] transition-all hover:border-[var(--color-btn-secondary-hover-border)] hover:shadow-[0_4px_20px_var(--color-btn-secondary-hover-shadow)]"
-            >
-              View on GitHub
-            </a>
-          </div>
-        </div>
-      </section>
+              A card Talyx might show you. Nothing moves until you approve.
+            </figcaption>
+          </figure>
+        ) : null}
+      </PageHero>
 
-      {/* The Challenge */}
-      <section className="border-t border-[var(--color-border)] px-4 py-16 sm:px-6 sm:py-24">
-        <div className="mx-auto max-w-[1100px]">
-          <h2 className="mb-12 text-center text-[24px] font-bold tracking-[-0.02em] text-[var(--color-text-primary)] sm:text-[32px]">
-            The Challenge
-          </h2>
-          <div className="grid gap-5 sm:grid-cols-3">
-            {painPoints.map((item) => (
-              <div
-                key={item.title}
-                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-8"
+      <section className={`${SECTION} bg-[var(--color-bg-secondary)]`}>
+        <SectionHeading>The problem.</SectionHeading>
+        <div className="mt-16 grid gap-x-16 gap-y-14 md:grid-cols-2">
+          {painPoints.map((item, i) => (
+            <div key={item.title} data-reveal style={stagger(i)}>
+              <ItemTitle>{item.title}</ItemTitle>
+              <p
+                className="mt-3 max-w-[48ch] leading-snug text-[var(--color-text-primary)]"
+                style={{ fontSize: 'var(--step-lead)' }}
               >
-                <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-[var(--color-icon-bg)] text-[var(--color-text-primary)]">
-                  <item.icon className="size-6" />
-                </div>
-                <h3 className="text-base font-semibold text-[var(--color-text-primary)]">
-                  {item.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-tertiary)]">
-                  {item.description}
-                </p>
-              </div>
-            ))}
-          </div>
+                {item.description}
+              </p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* How Talyx Solves This */}
-      <section className="border-t border-[var(--color-border)] px-4 py-16 sm:px-6 sm:py-24">
-        <div className="mx-auto max-w-[800px]">
-          <h2 className="mb-12 text-center text-[24px] font-bold tracking-[-0.02em] text-[var(--color-text-primary)] sm:text-[32px]">
-            How Talyx Solves This
-          </h2>
-          <div className="space-y-5">
+      <section className={SECTION}>
+        <SectionHeading>How Talyx helps.</SectionHeading>
+        <div className="mt-16 grid items-start gap-12 md:grid-cols-12 md:gap-8">
+          <div data-reveal className="md:sticky md:top-32 md:col-span-7">
+            <AppScreenshot src={screenshot} alt={`Talyx: ${solutions[0]?.title ?? title}`} />
+          </div>
+          <div className="space-y-12 md:col-span-4 md:col-start-9">
             {solutions.map((item, i) => (
-              <div
-                key={item.title}
-                className="group rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-8 transition-all hover:border-l-[var(--color-btn-primary-bg)] hover:bg-[var(--color-surface-hover)]"
-              >
-                <div className="flex items-start gap-5">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] text-[13px] font-semibold text-[var(--color-text-tertiary)] transition-colors group-hover:border-[var(--color-btn-primary-bg)] group-hover:text-[var(--color-text-primary)]">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <div>
-                    <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
-                      {item.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-tertiary)]">
-                      {item.description}
-                    </p>
-                  </div>
-                </div>
+              <div key={item.title} data-reveal style={stagger(i + 1)}>
+                <ItemTitle>{item.title}</ItemTitle>
+                <Body className="mt-3">{item.description}</Body>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Related Features */}
-      <section className="border-t border-[var(--color-border)] px-4 py-16 sm:px-6 sm:py-24">
-        <div className="mx-auto max-w-[1100px]">
-          <h2 className="mb-8 text-center text-[20px] font-bold tracking-[-0.02em] text-[var(--color-text-primary)] sm:text-[24px]">
-            Related Features
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {relatedFeatures.map((f) => (
+      <section className={`${SECTION} grid items-center gap-12 md:grid-cols-12 md:gap-8`}>
+        <div className="md:col-span-5">
+          <SectionHeading>One of {ABILITY_COUNT} abilities.</SectionHeading>
+          <div data-reveal style={stagger(1)} className="mt-8">
+            <Body>
+              Sorting is one ability. Press ⌘⇧Space to check today&apos;s calendar, add a reminder,
+              read unread mail or run a command, with your own Claude, after you approve.
+            </Body>
+            <Link
+              to="/features/$slug"
+              params={{ slug: 'assistant' }}
+              className="mt-6 inline-flex items-center gap-2 font-medium text-[var(--color-text-primary)] underline underline-offset-4 transition-opacity hover:opacity-70"
+              style={{ fontSize: 'var(--step-body)' }}
+            >
+              Meet the assistant
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        </div>
+        <div data-reveal style={stagger(2)} className="md:col-span-7 md:col-start-6">
+          <AppScreenshot src="/previews/suggestions.jpg" alt="Talyx: the assistant" />
+        </div>
+      </section>
+
+      <section className={SECTION}>
+        <SectionHeading>Related features.</SectionHeading>
+        <ul className="mt-16 space-y-10 md:space-y-12">
+          {relatedFeatures.map((f, i) => (
+            <li key={f.slug} data-reveal style={stagger(i)}>
               <Link
-                key={f.slug}
                 to="/features/$slug"
                 params={{ slug: f.slug }}
-                className="group rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 transition-colors hover:bg-[var(--color-surface-hover)]"
+                className="group grid items-baseline gap-3 text-[var(--color-text-primary)] md:grid-cols-12 md:gap-8"
               >
-                <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-[var(--color-icon-bg)] text-[var(--color-text-primary)]">
-                  <f.icon className="size-5" />
-                </div>
-                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                <span
+                  className="flex items-baseline gap-3 leading-none font-semibold tracking-[-0.035em] underline-offset-[0.12em] group-hover:underline md:col-span-7"
+                  style={{ fontSize: 'var(--step-heading)' }}
+                >
                   {f.title}
-                </h3>
-                <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-tertiary)]">
+                  <ArrowRight className="size-[0.6em] shrink-0 self-center transition-transform group-hover:translate-x-1" />
+                </span>
+                <span className="md:col-span-5" style={{ fontSize: 'var(--step-body)' }}>
                   {f.shortDescription}
-                </p>
+                </span>
               </Link>
-            ))}
-          </div>
-        </div>
+            </li>
+          ))}
+        </ul>
       </section>
 
-      {/* The assistant, one line */}
-      <section className="border-t border-[var(--color-border)] px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mx-auto flex max-w-[800px] flex-col items-start gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-              Sorting is one ability. The assistant has {ABILITY_COUNT}.
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-              Cmd+Shift+Space: check today&apos;s calendar, add a reminder, read unread mail, run a
-              command — with your own Claude, after you approve.
-            </p>
-          </div>
-          <Link
-            to="/features/$slug"
-            params={{ slug: 'assistant' }}
-            className="shrink-0 text-sm font-medium text-[var(--color-text-primary)] underline underline-offset-4"
-          >
-            Meet the assistant
-          </Link>
-        </div>
-      </section>
-
-      {/* Bottom CTA */}
-      <section className="border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-16 sm:px-6 sm:py-24">
-        <div className="mx-auto max-w-[800px] text-center">
-          <h2 className="text-[24px] font-bold tracking-[-0.02em] text-[var(--color-text-primary)] sm:text-[32px]">
-            Ready to organize your files?
-          </h2>
-          <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
-            Free and open source. MIT licensed.
-          </p>
-          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <a
-              href="/#download"
-              className="inline-flex items-center gap-2 rounded-full bg-[var(--color-btn-primary-bg)] px-7 py-3 text-[15px] font-semibold text-[var(--color-btn-primary-text)] transition-all hover:-translate-y-px hover:shadow-[0_4px_20px_var(--color-btn-primary-hover-shadow)]"
-            >
-              Download for macOS
-              <ArrowRight className="size-4" />
-            </a>
-            <a
-              href={REPO_URL}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-btn-secondary-border)] bg-[var(--color-btn-secondary-bg)] px-7 py-3 text-[15px] font-semibold text-[var(--color-btn-secondary-text)] transition-all hover:border-[var(--color-btn-secondary-hover-border)] hover:shadow-[0_4px_20px_var(--color-btn-secondary-hover-shadow)]"
-            >
-              View on GitHub
-            </a>
-          </div>
-        </div>
-      </section>
+      <DownloadSection />
     </>
   )
 }

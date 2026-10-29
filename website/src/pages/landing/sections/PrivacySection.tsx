@@ -1,65 +1,86 @@
-import { ShieldCheck, Brain, KeyRound, Lock } from 'lucide-react'
 import { REPO_URL } from '../../../shared/data/release'
 
-const points = [
+const LEDGER = [
   {
-    icon: Brain,
-    title: 'Smart Local by default',
-    desc: 'Out of the box, files are classified by name, extension and embedded metadata such as EXIF — never the document text — and nothing is sent anywhere. Turn on Your Claude in Settings and only the files that need reading are sent to your own Claude account, truncated, with currency amounts, dates and company names ending in a legal suffix masked first, best-effort.'
+    figure: '0',
+    caption: 'bytes leave your Mac when Smart Local sorts. It is the default.'
   },
   {
-    icon: KeyRound,
-    title: 'Your Claude, your account',
-    desc: 'Connect the Claude you already pay for — an API key, or the Claude Code already signed in on your Mac. Talyx hosts no model and resells nothing. What leaves is only what the ability needs: the conversation for the assistant, a truncated, partly masked excerpt for sorting, a screenshot only when you ask it to look.'
+    figure: '0',
+    caption:
+      'Talyx servers, accounts or analytics. Settings and history stay in a local SQLite file.'
   },
   {
-    icon: Lock,
-    title: 'Zero telemetry',
-    desc: 'No usage tracking, no analytics, no crash reports. All settings, history, and file data stay in a local SQLite database on your machine. Your workflow is your business.'
+    figure: '2,000',
+    caption:
+      'characters per file at most when you choose Your Claude, with amounts, dates and company names masked first.'
+  },
+  {
+    figure: '1',
+    caption:
+      'update check, to GitHub. Talyx opens the release page and never installs anything itself.'
   }
 ]
 
+/** Privacy as a ledger: the few numbers that say what leaves the machine. */
 export function PrivacySection() {
   return (
-    <section className="px-4 py-16 sm:px-6 sm:py-20">
-      <div className="mx-auto max-w-[1100px]">
-        <div className="flex flex-col items-center text-center">
-          <div className="mb-6 flex size-14 items-center justify-center rounded-2xl bg-[var(--color-icon-bg)] text-[var(--color-text-primary)]">
-            <ShieldCheck className="size-7" />
-          </div>
-          <h2 className="text-[24px] font-bold tracking-[-0.02em] text-[var(--color-text-primary)] sm:text-[36px]">
-            Privacy by design.
-          </h2>
-          <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-[var(--color-text-secondary)]">
-            Sorting defaults to Smart Local: no model, no download, nothing leaves your Mac. Your
-            Claude is opt-in, from Settings. Apart from Your Claude and the assistant, the only
-            network use is the update check to GitHub and the one-time voice model download from
-            Hugging Face. There is no Talyx server.
-          </p>
-          <a
-            href={REPO_URL}
-            className="mt-4 text-sm font-medium text-[var(--color-text-primary)] underline underline-offset-4"
-          >
-            Don&apos;t trust us — read the code
-          </a>
-        </div>
+    <section id="privacy" className="grid gap-16 px-5 py-32 sm:px-8 md:grid-cols-12 md:py-48">
+      <div className="md:sticky md:top-32 md:col-span-5 md:self-start">
+        <h2
+          data-reveal
+          className="leading-none font-semibold tracking-[-0.035em]"
+          style={{ fontSize: 'var(--step-heading)' }}
+        >
+          <span className="block text-[var(--color-text-secondary)]">What leaves</span>
+          <span className="block text-[var(--color-text-primary)]">your Mac.</span>
+        </h2>
+        <p
+          data-reveal
+          className="mt-8 max-w-[40ch] leading-relaxed text-[var(--color-text-primary)]"
+          style={{ '--i': 1, fontSize: 'var(--step-body)' } as React.CSSProperties}
+        >
+          The assistant sends your conversation to your own Claude, through your API key or the
+          Claude Code you are signed into. A screenshot goes only when you ask it to look.
+        </p>
+      </div>
 
-        <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-          {points.map(({ icon: Icon, title, desc }) => (
+      <div className="md:col-span-7">
+        <dl className="space-y-10 md:space-y-12">
+          {LEDGER.map(({ figure, caption }, i) => (
             <div
-              key={title}
-              className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 text-center sm:p-8"
+              key={caption}
+              data-reveal
+              style={{ '--i': i } as React.CSSProperties}
+              className="grid grid-cols-[minmax(0,3fr)_minmax(0,7fr)] md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] items-baseline gap-6"
             >
-              <div className="mx-auto mb-4 flex size-10 items-center justify-center rounded-xl bg-[var(--color-icon-bg)] text-[var(--color-text-primary)]">
-                <Icon className="size-5" />
-              </div>
-              <h3 className="mb-2 text-base font-semibold text-[var(--color-text-primary)]">
-                {title}
-              </h3>
-              <p className="text-sm leading-relaxed text-[var(--color-text-tertiary)]">{desc}</p>
+              <dt
+                className="text-right leading-none font-semibold tracking-[-0.04em] tabular-nums text-[var(--color-text-primary)]"
+                style={{ fontSize: 'var(--step-heading)' }}
+              >
+                {figure}
+              </dt>
+              <dd
+                className="text-[var(--color-text-primary)]"
+                style={{ fontSize: 'var(--step-body)' }}
+              >
+                {caption}
+              </dd>
             </div>
           ))}
-        </div>
+        </dl>
+        <p
+          className="mt-16 text-[var(--color-text-primary)]"
+          style={{ fontSize: 'var(--step-body)' }}
+        >
+          Every one of these can be checked in the source.{' '}
+          <a
+            href={REPO_URL}
+            className="font-medium underline underline-offset-4 transition-opacity hover:opacity-70"
+          >
+            Read the code on GitHub
+          </a>
+        </p>
       </div>
     </section>
   )

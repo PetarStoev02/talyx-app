@@ -1,30 +1,25 @@
-import { Briefcase, FolderSearch, Clock, AlertTriangle } from 'lucide-react'
 import { UseCasePageLayout } from '../../../shared/layouts/UseCasePageLayout'
-import { KnowledgeWorkersAnim } from '../../../shared/ui/HeroAnimations'
 
 export function KnowledgeWorkersPage() {
   return (
     <UseCasePageLayout
-      title="Talyx for Knowledge Workers"
-      subtitle="Drop your Downloads folder: Smart Local sorts by type on your Mac, and Your Claude sorts by what’s inside. Reclaim the hours you spend manually sorting files every week."
-      persona="For Knowledge Workers"
-      icon={Briefcase}
+      slug="knowledge-workers"
+      title="For knowledge workers"
+      lead="Drop your Downloads folder: Smart Local sorts by type on your Mac, and Your Claude sorts by what’s inside. Reclaim the hours you spend manually sorting files every week."
+      screenshot="/previews/sort.jpg"
       relatedFeatureSlugs={['ai-classification', 'watch-folders', 'sort-history']}
       painPoints={[
         {
-          icon: FolderSearch,
           title: 'Downloads folder chaos',
           description:
             'Hundreds of PDFs, spreadsheets, and presentations piling up with no structure. Finding the right file means scrolling through an endless list.'
         },
         {
-          icon: Clock,
           title: 'Hours wasted organizing',
           description:
             'Manual file sorting eats into productive time. Creating folders, dragging files, renaming — it adds up to hours every week.'
         },
         {
-          icon: AlertTriangle,
           title: 'Lost documents',
           description:
             'Important reports, contracts, and reference materials buried in nested folders you created months ago and forgot about.'
@@ -47,7 +42,6 @@ export function KnowledgeWorkersPage() {
             'Every sort operation is logged. If a file ends up in the wrong place, undo the operation and it returns to its original location. No files are ever lost.'
         }
       ]}
-      heroIllustration={<KnowledgeWorkersAnim />}
     />
   )
 }

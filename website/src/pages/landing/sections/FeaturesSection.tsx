@@ -1,103 +1,100 @@
-import type { LucideIcon } from 'lucide-react'
-import { Brain, Eye, History, ShieldCheck, Sparkles } from 'lucide-react'
+import type { DemoView } from '../../../app-demo/DemoApp'
+import { AppEmbed } from '../../../features/app-demo/AppEmbed'
 import { ABILITY_COUNT, EXTENSION_COUNT } from '../../../shared/data/offer'
-import {
-  AiClassificationAnim,
-  SortHistoryAnim,
-  WatchFoldersAnim
-} from '../../../shared/ui/HeroAnimations'
-import { AbilitiesAnim, ApprovalAnim, Zoom } from './FeatureAnims'
 
-function FeatureCard({
-  icon: Icon,
-  title,
-  description,
-  wide = false,
-  children
-}: {
-  icon: LucideIcon
+interface Feature {
+  view: DemoView
+  /** Which part of the desktop shows behind the window. */
+  wallpaper: string
   title: string
-  description: string
-  wide?: boolean
-  children?: React.ReactNode
-}) {
-  return (
-    <div
-      className={`flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 sm:p-8 ${
-        wide ? 'md:col-span-2' : 'md:col-span-1'
-      }`}
-    >
-      <div className="mb-4 flex size-10 items-center justify-center rounded-xl bg-[var(--color-icon-bg)] text-[var(--color-text-primary)]">
-        <Icon className="size-5" />
-      </div>
-      <h3 className="mb-2 text-lg font-semibold text-[var(--color-text-primary)]">{title}</h3>
-      <p className="text-sm leading-relaxed text-[var(--color-text-tertiary)]">{description}</p>
-      {children ? <div className="mt-5 flex-1">{children}</div> : null}
-    </div>
-  )
+  body: string[]
 }
 
-/**
- * Symmetric 2+1 / 1+1+1 grid. Line illustrations rather than app screenshots:
- * they read at card size, stay crisp, and never go stale when the UI moves.
- */
+const FEATURES: Feature[] = [
+  {
+    view: 'assistant',
+    wallpaper: '20% 30%',
+    title: `${ABILITY_COUNT} abilities, each with a fixed shape`,
+    body: [
+      'Calendar, mail, reminders, music, files and code. Claude can only ask for what an ability describes, so there is no free-run shell.',
+      'When none fits, Talyx looks at the screen and clicks or types for you, with a card for every step.'
+    ]
+  },
+  {
+    view: 'sort',
+    wallpaper: '80% 20%',
+    title: 'Sorts by what the file is',
+    body: [
+      `Smart Local knows ${EXTENSION_COUNT} file types from their names and metadata, on first launch, and sends nothing anywhere.`,
+      'Choose Your Claude in Settings and it reads the contents too. You see the whole plan before a file moves.'
+    ]
+  },
+  {
+    view: 'history',
+    wallpaper: '40% 90%',
+    title: 'Undo a whole batch',
+    body: [
+      'Every sort is recorded.',
+      'Put one file or a whole batch back exactly where it came from, in one click.'
+    ]
+  },
+  {
+    view: 'watch',
+    wallpaper: '90% 60%',
+    title: 'Downloads sorts itself',
+    body: [
+      'Point Talyx at a folder and new files are sorted as they land.',
+      'Notices are ranked and rare, and ⌘⇧Esc quiets them for the day.'
+    ]
+  }
+]
+
+/** Each capability shown by the real app screen that does it, text hanging beside it. */
 export function FeaturesSection() {
   return (
-    <section id="features" className="px-4 py-16 sm:px-6 sm:py-20">
-      <div className="mx-auto max-w-[1100px]">
-        <h2 className="mb-8 text-center text-[24px] font-bold tracking-[-0.02em] text-[var(--color-text-primary)] sm:mb-12 sm:text-[32px]">
-          What you get
-        </h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <FeatureCard
-            wide
-            icon={Sparkles}
-            title={`${ABILITY_COUNT} things it can do`}
-            description="Capture a thought, recall a file or a past chat, ask what needs you now, quiet Talyx for a meeting. Each one is a typed ability with a fixed shape — no free-run shell."
-          >
-            <AbilitiesAnim />
-          </FeatureCard>
+    <section id="features" className="px-5 py-32 sm:px-8 md:py-48">
+      <h2
+        data-reveal
+        className="leading-none font-semibold tracking-[-0.035em] text-[var(--color-text-primary)]"
+        style={{ fontSize: 'var(--step-heading)' }}
+      >
+        What it does today.
+      </h2>
 
-          <FeatureCard
-            icon={ShieldCheck}
-            title="0 assistant changes unapproved"
-            description="Anything the assistant changes — files, your system or the screen — shows a card first, naming the exact change. Reads run without asking. When no ability fits, Talyx looks at the screen and clicks — every click and keystroke carded, ⌘⇧Esc stops it."
-          >
-            <Zoom scale={1.7}>
-              <ApprovalAnim />
-            </Zoom>
-          </FeatureCard>
-
-          <FeatureCard
-            icon={Brain}
-            title={`${EXTENSION_COUNT} file types, 0 setup`}
-            description="Smart Local sorting works on first launch from name and metadata alone. Turn on Your Claude in Settings when you want content read too."
-          >
-            <Zoom scale={1.2}>
-              <AiClassificationAnim />
-            </Zoom>
-          </FeatureCard>
-
-          <FeatureCard
-            icon={History}
-            title="1 click to undo any batch"
-            description="Every sort is recorded. Restore a single file or a whole batch to exactly where it came from."
-          >
-            <Zoom scale={1.4}>
-              <SortHistoryAnim />
-            </Zoom>
-          </FeatureCard>
-
-          <FeatureCard
-            icon={Eye}
-            title="Watch folders, rare notices"
-            description="Point Talyx at Downloads. New files are sorted on their own as they land, and every batch can be undone. Notices are ranked and rare, and one ⌘⇧Esc quiets them for the day."
-          >
-            <Zoom scale={2.2}>
-              <WatchFoldersAnim />
-            </Zoom>
-          </FeatureCard>
-        </div>
+      <div className="mt-16 space-y-24 md:space-y-32">
+        {FEATURES.map(({ view, wallpaper, title, body }) => (
+          <article key={view} className="grid items-start gap-6 md:grid-cols-12 md:gap-8">
+            <div
+              data-reveal
+              className="relative isolate overflow-hidden rounded-2xl p-4 md:col-span-7 md:p-8"
+            >
+              <img
+                src="/hero-wallpaper.jpg"
+                alt=""
+                width={2200}
+                height={1238}
+                loading="lazy"
+                className="absolute inset-0 -z-10 size-full object-cover"
+                style={{ objectPosition: wallpaper }}
+              />
+              <AppEmbed view={view} width={980} height={640} title={`Talyx: ${title}`} />
+            </div>
+            <div
+              data-reveal
+              style={{ '--i': 1, fontSize: 'var(--step-body)' } as React.CSSProperties}
+              className="max-w-[40ch] text-[var(--color-text-primary)] md:col-span-4 md:col-start-9"
+            >
+              <h3 className="leading-tight font-semibold" style={{ fontSize: 'var(--step-lead)' }}>
+                {title}
+              </h3>
+              {body.map((paragraph) => (
+                <p key={paragraph} className="mt-3 leading-relaxed">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          </article>
+        ))}
       </div>
     </section>
   )

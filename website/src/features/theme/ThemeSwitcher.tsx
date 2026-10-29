@@ -9,12 +9,12 @@ export function ThemeSwitcher({ theme, setTheme }: { theme: Theme; setTheme: (t:
   ]
 
   return (
-    <div className="inline-flex items-center rounded-lg border border-[var(--color-border)] overflow-hidden">
+    <div className="inline-flex items-center overflow-hidden rounded-full bg-[var(--color-bg-secondary)] p-1">
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => setTheme(opt.value)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`flex min-h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors ${
             theme === opt.value
               ? 'bg-[var(--color-fg)] text-[var(--color-bg)]'
               : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
