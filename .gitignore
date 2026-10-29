@@ -48,3 +48,6 @@ tests/eval/corpus/
 
 # Local CDP driver scripts for verifying a packaged build
 /drive*.mjs
+
+# design-taste-frontend skill screenshots and reports
+.taste-skill/

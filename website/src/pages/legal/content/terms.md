@@ -1,4 +1,4 @@
-# Terms of Service
+# Terms of service
 
 **Effective Date:** March 2026
 **Last Updated:** October 2026

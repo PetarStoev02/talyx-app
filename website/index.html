@@ -47,6 +47,12 @@
         var dark =
           t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
         document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+        // Entrance motion is opt-in: if the app never boots, drop it so nothing stays hidden.
+        var REVEAL_FALLBACK_MS = 4000
+        document.documentElement.classList.add('js')
+        setTimeout(function () {
+          if (!window.__talyxBooted) document.documentElement.classList.remove('js')
+        }, REVEAL_FALLBACK_MS)
       })()
     </script>
   </head>

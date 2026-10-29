@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft } from 'lucide-react'
+import { GUTTER, STEP, stagger } from '@/shared/ui/page'
 
 function ScatteredFilesAnimation() {
   return (
@@ -7,7 +7,7 @@ function ScatteredFilesAnimation() {
       viewBox="0 0 400 300"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="mx-auto w-full max-w-[400px]"
+      className="w-full max-w-[480px]"
       aria-hidden="true"
     >
       <defs>
@@ -477,32 +477,60 @@ function ScatteredFilesAnimation() {
   )
 }
 
+const ELSEWHERE = [
+  { to: '/blog', label: 'Read the blog' },
+  { to: '/roadmap', label: 'See the roadmap' },
+  { to: '/contact', label: 'Get in touch' }
+] as const
+
 export function NotFoundPage() {
   return (
-    <div className="relative flex flex-1 items-center justify-center px-4 py-24 sm:px-6">
-      {/* Grid background */}
-      <div className="page-grid pointer-events-none absolute inset-0" />
-
-      <div className="relative text-center">
-        <ScatteredFilesAnimation />
-
-        <h1 className="mt-6 text-[80px] font-bold leading-none tracking-[-0.04em] text-[var(--color-text-primary)] sm:text-[120px]">
-          404
+    <section
+      className={`${GUTTER} grid flex-1 items-center gap-16 pt-20 pb-32 md:grid-cols-12 md:pt-32 md:pb-48`}
+    >
+      <div className="md:col-span-7">
+        <h1
+          className="leading-[0.98] font-semibold tracking-[-0.045em] text-[var(--color-text-primary)]"
+          style={STEP.display}
+        >
+          <span data-reveal className="block">
+            Page
+          </span>
+          <span data-reveal className="block" style={stagger(1)}>
+            not found
+          </span>
         </h1>
-        <p className="mt-3 text-lg text-[var(--color-text-secondary)] sm:text-xl">
-          This page could not be found.
+        <p
+          data-reveal
+          className="mt-10 max-w-[36ch] text-[var(--color-text-primary)]"
+          style={{ ...stagger(2), ...STEP.lead }}
+        >
+          This page could not be found. The link may be old, or the address mistyped.
         </p>
-
-        <div className="mt-8">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 rounded-full bg-[var(--color-btn-primary-bg)] px-6 py-2.5 text-sm font-semibold text-[var(--color-btn-primary-text)] transition-all hover:-translate-y-px hover:shadow-[0_4px_20px_var(--color-btn-primary-hover-shadow)]"
-          >
-            <ArrowLeft className="size-4" />
-            Go Home
-          </Link>
-        </div>
+        <Link
+          to="/"
+          data-reveal
+          style={stagger(3)}
+          className="mt-10 inline-flex min-h-12 items-center rounded-full bg-[var(--color-text-primary)] px-7 text-[17px] font-semibold text-[var(--color-bg)] transition-transform duration-200 hover:-translate-y-0.5"
+        >
+          Go home
+        </Link>
+        <ul className="mt-10 flex flex-wrap gap-x-8 gap-y-3" style={STEP.body}>
+          {ELSEWHERE.map(({ to, label }, i) => (
+            <li key={to} data-reveal style={stagger(i + 4)}>
+              <Link
+                to={to}
+                className="font-medium text-[var(--color-text-primary)] underline underline-offset-4 transition-opacity hover:opacity-70"
+              >
+                {label}
+              </Link>
+            </li>
+          ))}
+        </ul>
       </div>
-    </div>
+      <div data-reveal style={stagger(2)} className="md:col-span-5">
+        <ScatteredFilesAnimation />
+      </div>
+    </section>
   )
 }

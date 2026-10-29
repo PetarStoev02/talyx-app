@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react'
-import { useParams } from '@tanstack/react-router'
-import { Link } from '@tanstack/react-router'
-import { ArrowLeft } from 'lucide-react'
+import { Link, useParams } from '@tanstack/react-router'
+import { ArrowRight } from 'lucide-react'
+import { PageHero, STEP } from '../../shared/ui/page'
+
 const AiClassificationPage = lazy(() =>
   import('./pages/AiClassificationPage').then((m) => ({ default: m.AiClassificationPage }))
 )
@@ -42,22 +43,16 @@ export function FeaturePage() {
 
   if (!Page) {
     return (
-      <section className="px-4 pt-20 pb-20 sm:px-6 sm:pt-28 sm:pb-28">
-        <div className="mx-auto max-w-[700px] text-center">
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Feature not found</h1>
-          <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-            The feature you&apos;re looking for doesn&apos;t exist.
-          </p>
-          <Link
-            to="/"
-            hash="features"
-            className="mt-4 inline-flex items-center gap-1.5 text-sm text-[var(--color-text-tertiary)] transition-colors hover:text-[var(--color-text-primary)]"
-          >
-            <ArrowLeft className="size-3.5" />
-            Back to features
-          </Link>
-        </div>
-      </section>
+      <PageHero title="Feature not found" lead="There is no Talyx feature at this address.">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 font-medium text-[var(--color-text-primary)] underline underline-offset-4 transition-opacity hover:opacity-70"
+          style={STEP.lead}
+        >
+          Go to the home page
+          <ArrowRight className="size-4" />
+        </Link>
+      </PageHero>
     )
   }
 

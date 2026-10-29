@@ -29,23 +29,9 @@
   --color-border: #eaeaea;
   --color-border-hover: #ccc;
   --color-surface: #fafafa;
-  --color-surface-hover: #f5f5f5;
-  --color-badge-bg: #fafafa;
-  --color-badge-border: #eaeaea;
-  --color-badge-text: #666;
-  --color-icon-bg: rgba(0, 0, 0, 0.05);
   --color-selection: rgba(0, 0, 0, 0.1);
-  --color-header-bg: rgba(255, 255, 255, 0.8);
-  --color-hero-glow: rgba(0, 0, 0, 0.03);
-  --color-grid-line: rgba(0, 0, 0, 0.06);
   --color-btn-primary-bg: #000;
   --color-btn-primary-text: #fff;
-  --color-btn-primary-hover-shadow: rgba(0, 0, 0, 0.12);
-  --color-btn-secondary-bg: #fff;
-  --color-btn-secondary-text: #171717;
-  --color-btn-secondary-border: #eaeaea;
-  --color-btn-secondary-hover-border: #ccc;
-  --color-btn-secondary-hover-shadow: rgba(0, 0, 0, 0.06);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -91,23 +77,9 @@
   --color-border: #262626;
   --color-border-hover: #444;
   --color-surface: #111;
-  --color-surface-hover: #1a1a1a;
-  --color-badge-bg: #111;
-  --color-badge-border: #333;
-  --color-badge-text: #a3a3a3;
-  --color-icon-bg: rgba(255, 255, 255, 0.06);
   --color-selection: rgba(255, 255, 255, 0.15);
-  --color-header-bg: rgba(0, 0, 0, 0.8);
-  --color-hero-glow: rgba(255, 255, 255, 0.06);
-  --color-grid-line: rgba(255, 255, 255, 0.07);
   --color-btn-primary-bg: #fff;
   --color-btn-primary-text: #000;
-  --color-btn-primary-hover-shadow: rgba(255, 255, 255, 0.15);
-  --color-btn-secondary-bg: #1a1a1a;
-  --color-btn-secondary-text: #ededed;
-  --color-btn-secondary-border: #333;
-  --color-btn-secondary-hover-border: #444;
-  --color-btn-secondary-hover-shadow: rgba(0, 0, 0, 0.4);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -152,7 +124,6 @@
   --color-border: var(--color-border);
   --color-border-hover: var(--color-border-hover);
   --color-surface: var(--color-surface);
-  --color-surface-hover: var(--color-surface-hover);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -193,13 +164,7 @@
 }
 
 html {
-  scroll-padding-top: 3.5rem;
-}
-
-@media (min-width: 640px) {
-  html {
-    scroll-padding-top: 4rem;
-  }
+  scroll-padding-top: 4rem;
 }
 
 body {
@@ -209,13 +174,13 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
+  min-height: 100svh;
 }
 
 #root {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 100svh;
   overflow-x: clip;
 }
 
@@ -223,279 +188,89 @@ body {
   background-color: var(--color-selection);
 }
 
-/* ── Hero sorting animation ── */
-@keyframes float-file-1 {
-  0% {
-    transform: translate(0, 0) rotate(0deg);
+/* ── Landing page ──
+   Five type steps; every landing size maps to one of them. */
+:root {
+  --step-display: clamp(52px, 9vw, 150px);
+  --step-heading: clamp(36px, 5vw, 76px);
+  --step-lead: clamp(19px, 1.6vw, 22px);
+  --step-body: 17px;
+  --step-small: 14px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lines .line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+.lines [data-line] {
+  display: block;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .js .lines [data-line] {
+    transform: translateY(105%);
+    animation: line-up 900ms var(--ease-out) forwards;
+    animation-delay: calc(var(--i) * 110ms + 150ms);
+  }
+  .js [data-reveal] {
     opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 700ms var(--ease-out),
+      transform 900ms var(--ease-out);
+    transition-delay: calc(var(--i, 0) * 80ms);
   }
-  10% {
+  .js [data-reveal].is-in {
     opacity: 1;
+    transform: none;
   }
-  40% {
-    transform: translate(60px, 30px) rotate(-5deg);
-    opacity: 1;
+  .drift {
+    animation: drift 24s ease-in-out infinite alternate;
   }
-  60% {
-    transform: translate(60px, 30px) rotate(-5deg);
-    opacity: 1;
+  .card-swap {
+    animation: card-swap 600ms var(--ease-out);
   }
-  80% {
-    transform: translate(120px, 60px) rotate(0deg);
-    opacity: 0.6;
-  }
-  100% {
-    transform: translate(120px, 60px) rotate(0deg);
-    opacity: 0;
+  .menu-drop {
+    animation: menu-drop 260ms var(--ease-out);
   }
 }
 
-@keyframes float-file-2 {
-  0% {
-    transform: translate(0, 0) rotate(0deg);
+@keyframes menu-drop {
+  from {
     opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  40% {
-    transform: translate(-40px, 40px) rotate(5deg);
-    opacity: 1;
-  }
-  60% {
-    transform: translate(-40px, 40px) rotate(5deg);
-    opacity: 1;
-  }
-  80% {
-    transform: translate(-80px, 70px) rotate(0deg);
-    opacity: 0.6;
-  }
-  100% {
-    transform: translate(-80px, 70px) rotate(0deg);
-    opacity: 0;
-  }
-}
-
-@keyframes float-file-3 {
-  0% {
-    transform: translate(0, 0) rotate(0deg);
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  40% {
-    transform: translate(20px, 50px) rotate(-3deg);
-    opacity: 1;
-  }
-  60% {
-    transform: translate(20px, 50px) rotate(-3deg);
-    opacity: 1;
-  }
-  80% {
-    transform: translate(0px, 80px) rotate(0deg);
-    opacity: 0.6;
-  }
-  100% {
-    transform: translate(0px, 80px) rotate(0deg);
-    opacity: 0;
-  }
-}
-
-@keyframes pulse-folder {
-  0%,
-  100% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@keyframes scan-line {
-  0% {
     transform: translateY(-8px);
-    opacity: 0;
   }
-  20% {
-    opacity: 0.6;
-  }
-  80% {
-    opacity: 0.6;
-  }
-  100% {
-    transform: translateY(8px);
-    opacity: 0;
-  }
-}
-
-.anim-file-1 {
-  animation: float-file-1 4s ease-in-out infinite;
-}
-.anim-file-2 {
-  animation: float-file-2 4s ease-in-out 1.2s infinite;
-}
-.anim-file-3 {
-  animation: float-file-3 4s ease-in-out 2.4s infinite;
-}
-.anim-folder {
-  animation: pulse-folder 3s ease-in-out infinite;
-}
-.anim-scan {
-  animation: scan-line 2s ease-in-out infinite;
-}
-
-/* ── Feature card animations ── */
-@keyframes feat-appear {
-  0%,
-  100% {
-    opacity: 0.35;
-  }
-  20%,
-  60% {
-    opacity: 1;
-  }
-}
-.feat-appear {
-  animation: feat-appear 3s ease-in-out infinite;
-}
-@keyframes feat-draw {
-  0%,
-  35% {
-    stroke-dashoffset: 40;
-  }
-  60%,
-  85% {
-    stroke-dashoffset: 0;
-  }
-  100% {
-    stroke-dashoffset: 40;
-  }
-}
-.feat-draw {
-  stroke-dasharray: 40;
-  animation: feat-draw 3s ease-in-out infinite;
-}
-
-/* ── Hero SVG animations ── */
-@keyframes sort-flow {
   to {
-    stroke-dashoffset: -16;
-  }
-}
-
-@keyframes sort-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.5);
-    opacity: 0.35;
-  }
-}
-
-@keyframes sort-bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
-}
-
-@keyframes sort-sparkle {
-  0%,
-  100% {
-    opacity: 0.6;
-  }
-  50% {
     opacity: 1;
+    transform: none;
   }
 }
 
-@keyframes hero-blink {
-  0%,
-  49% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes hero-move {
-  0%,
-  10% {
-    transform: translate(0, 0);
-  }
-  20% {
-    transform: translate(0, -8px);
-  }
-  50%,
-  60% {
-    transform: translate(205px, -8px);
-  }
-  70% {
-    transform: translate(205px, 0);
-  }
-  85%,
-  100% {
-    transform: translate(0, 0);
-  }
-}
-
-@keyframes hero-trace {
+@keyframes line-up {
   to {
-    stroke-dashoffset: -420;
+    transform: none;
   }
 }
-
-.sort-flow {
-  animation: sort-flow 1.5s linear infinite;
+@keyframes drift {
+  from {
+    transform: scale(1.08) translateX(-2%);
+  }
+  to {
+    transform: scale(1.08) translateX(2%);
+  }
 }
-.sort-pulse {
-  transform-origin: center;
-  transform-box: fill-box;
-  animation: sort-pulse 3s ease-in-out infinite;
-}
-.sort-bob {
-  animation: sort-bob 4s ease-in-out infinite;
-}
-.sort-sparkle {
-  animation: sort-sparkle 3s ease-in-out infinite;
-}
-.hero-blink {
-  animation: hero-blink 1s step-end infinite;
-}
-.hero-move {
-  animation: hero-move 5s ease-in-out infinite;
-}
-.hero-trace {
-  animation: hero-trace 3s linear infinite;
-}
-
-/* ── Hero grid background ── */
-.hero-grid {
-  background-image:
-    linear-gradient(var(--color-grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--color-grid-line) 1px, transparent 1px);
-  background-size: 64px 64px;
-  mask-image: radial-gradient(ellipse 60% 60% at 50% 40%, black 0%, transparent 70%);
-  -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 40%, black 0%, transparent 70%);
-}
-
-/* ── Full-page grid background ── */
-.page-grid {
-  background-image:
-    linear-gradient(var(--color-grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--color-grid-line) 1px, transparent 1px);
-  background-size: 64px 64px;
-  mask-image: linear-gradient(to bottom, black 0%, transparent 60%);
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 60%);
+@keyframes card-swap {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @layer base {

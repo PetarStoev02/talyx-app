@@ -1,7 +1,9 @@
 import { lazy, Suspense } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { getPostBySlug, posts, categoryMeta } from '@/shared/data/posts'
+import { AppScreenshot, GUTTER, SectionHeading, STEP, stagger } from '@/shared/ui/page'
+import { DownloadSection } from '@/widgets/download/DownloadSection'
+
 const TalyxIsNowFreeAndOpenSource = lazy(() =>
   import('./posts/talyx-is-now-free-and-open-source').then((m) => ({
     default: m.TalyxIsNowFreeAndOpenSource
@@ -16,12 +18,36 @@ const postComponents: Record<string, React.LazyExoticComponent<() => React.JSX.E
   'meet-the-assistant': MeetTheAssistant
 }
 
+/** Post markup is plain HTML; these set it in the site's steps, full ink, a readable measure. */
+const PROSE = [
+  'max-w-[65ch] space-y-6 leading-[1.7] text-[var(--color-text-primary)]',
+  '[&_h2]:pt-10 [&_h2]:text-[length:var(--step-lead)] [&_h2]:leading-tight [&_h2]:font-semibold',
+  '[&_h3]:pt-6 [&_h3]:font-semibold',
+  '[&_a]:underline [&_a]:underline-offset-4 [&_a:hover]:opacity-70',
+  '[&_ul]:list-disc [&_ul]:space-y-3 [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:space-y-3 [&_ol]:pl-6',
+  '[&_strong]:font-semibold',
+  '[&_code]:rounded [&_code]:bg-[var(--color-bg-secondary)] [&_code]:px-1.5 [&_code]:py-0.5',
+  '[&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-[var(--color-bg-secondary)] [&_pre]:p-4'
+].join(' ')
+
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   })
+}
+
+function BackToBlog() {
+  return (
+    <Link
+      to="/blog"
+      className="font-medium text-[var(--color-text-primary)] underline underline-offset-4 transition-opacity hover:opacity-70"
+      style={STEP.body}
+    >
+      Back to the blog
+    </Link>
+  )
 }
 
 export function BlogPostPage() {
@@ -34,76 +60,76 @@ export function BlogPostPage() {
 
   if (!post || !Component || isDraftHidden) {
     return (
-      <section className="px-4 pt-20 pb-20 sm:px-6 sm:pt-28 sm:pb-28">
-        <div className="mx-auto max-w-[700px] text-center">
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Post not found</h1>
-          <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-            This post hasn&apos;t been published yet or doesn&apos;t exist.
-          </p>
-          <Link
-            to="/blog"
-            className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
-          >
-            <ArrowLeft className="size-3.5" />
-            Back to blog
-          </Link>
-        </div>
+      <section className={`${GUTTER} pt-20 pb-32 md:pt-32 md:pb-48`}>
+        <h1
+          data-reveal
+          className="leading-none font-semibold tracking-[-0.035em] text-[var(--color-text-primary)]"
+          style={STEP.heading}
+        >
+          Post not found
+        </h1>
+        <p className="mt-8 max-w-[48ch] text-[var(--color-text-primary)]" style={STEP.lead}>
+          This post hasn&apos;t been published yet or doesn&apos;t exist.
+        </p>
+        <p className="mt-8">
+          <BackToBlog />
+        </p>
       </section>
     )
   }
 
-  // Get related posts (same category, different slug, max 3)
   const related = posts
     .filter((p) => p.category === post.category && p.slug !== post.slug && postComponents[p.slug])
+    .filter((p) => showDrafts || !p.draft)
     .slice(0, 3)
+
+  const meta = [
+    { label: 'Published', value: <time dateTime={post.date}>{formatDate(post.date)}</time> },
+    post.updatedAt
+      ? {
+          label: 'Updated',
+          value: <time dateTime={post.updatedAt}>{formatDate(post.updatedAt)}</time>
+        }
+      : null,
+    { label: 'Reading time', value: post.readTime },
+    { label: 'Category', value: categoryMeta[post.category].label },
+    post.draft ? { label: 'Status', value: 'Draft' } : null
+  ].filter((m) => m !== null)
 
   return (
     <>
-      <article className="px-4 pt-20 pb-16 sm:px-6 sm:pt-28 sm:pb-20">
-        <div className="mx-auto max-w-[700px]">
-          {/* Back link */}
-          <Link
-            to="/blog"
-            className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-tertiary)] transition-colors hover:text-[var(--color-text-primary)]"
+      <article className={`${GUTTER} pt-20 pb-16 md:pt-32 md:pb-24`}>
+        <div className="grid gap-12 lg:grid-cols-12">
+          <h1
+            data-reveal
+            className="max-w-[22ch] leading-[1.02] font-semibold tracking-[-0.04em] text-[var(--color-text-primary)] lg:col-span-8 lg:col-start-4 lg:mb-8"
+            style={{ fontSize: 'min(var(--step-heading), 6.5vw)' }}
           >
-            <ArrowLeft className="size-3.5" />
-            Back to blog
-          </Link>
-
-          {/* Meta */}
-          <div className="mt-8 flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[var(--color-btn-primary-bg)]/10 px-3 py-1 text-xs font-medium text-[var(--color-btn-primary-bg)]">
-              {categoryMeta[post.category].label}
-            </span>
-            {post.draft && (
-              <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                Draft
-              </span>
-            )}
-          </div>
-
-          <div className="mt-4 flex items-center gap-3 text-xs text-[var(--color-text-tertiary)]">
-            <time dateTime={post.date}>{formatDate(post.date)}</time>
-            {post.updatedAt && (
-              <>
-                <span>&middot;</span>
-                <span>Updated {formatDate(post.updatedAt)}</span>
-              </>
-            )}
-            <span>&middot;</span>
-            <span>{post.readTime}</span>
-          </div>
-
-          {/* Title */}
-          <h1 className="mt-4 text-3xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]">
             {post.title}
           </h1>
+          <aside className="lg:sticky lg:top-28 lg:col-span-3 lg:self-start">
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-1" style={STEP.small}>
+              {meta.map(({ label, value }, i) => (
+                <div key={label} data-reveal style={stagger(i)}>
+                  <dt className="text-[var(--color-text-secondary)]">{label}</dt>
+                  <dd className="mt-1 font-medium text-[var(--color-text-primary)]">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <p data-reveal className="mt-8">
+              <BackToBlog />
+            </p>
+          </aside>
 
-          {/* Divider */}
-          <div className="mt-8 border-t border-[var(--color-border)]" />
+          <div className="lg:col-span-9 lg:col-start-4" data-reveal>
+            <AppScreenshot src={post.cover} alt="" />
+          </div>
 
-          {/* Content */}
-          <div className="prose mt-8 space-y-5 text-[15px] leading-[1.75] text-[var(--color-text-secondary)] sm:text-base [&_h2]:mt-10 [&_h2]:mb-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-[var(--color-text-primary)] sm:[&_h2]:text-2xl [&_h3]:mt-8 [&_h3]:mb-3 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-[var(--color-text-primary)] [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_li]:pl-1 [&_code]:rounded [&_code]:bg-[var(--color-surface)] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[13px] [&_code]:text-[var(--color-text-primary)] [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-[var(--color-surface)] [&_pre]:p-4 [&_pre]:text-sm [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:font-semibold [&_strong]:text-[var(--color-text-primary)] [&_table]:w-full [&_table]:text-sm [&_th]:border [&_th]:border-[var(--color-border)] [&_th]:bg-[var(--color-surface)] [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:text-[var(--color-text-primary)] [&_td]:border [&_td]:border-[var(--color-border)] [&_td]:px-3 [&_td]:py-2">
+          <div
+            data-reveal
+            style={{ ...stagger(2), ...STEP.body }}
+            className={`lg:col-span-7 lg:col-start-4 ${PROSE}`}
+          >
             <Suspense fallback={null}>
               <Component />
             </Suspense>
@@ -111,36 +137,41 @@ export function BlogPostPage() {
         </div>
       </article>
 
-      {/* Related Posts */}
       {related.length > 0 && (
-        <section className="border-t border-[var(--color-border)] px-4 py-16 sm:px-6 sm:py-20">
-          <div className="mx-auto max-w-[700px]">
-            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-              Related articles
-            </h2>
-            <div className="mt-6 space-y-4">
-              {related.map((r) => (
-                <Link
-                  key={r.slug}
-                  to="/blog/$slug"
-                  params={{ slug: r.slug }}
-                  className="group flex items-center justify-between gap-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:border-[var(--color-text-tertiary)]"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                      {r.title}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-                      {formatDate(r.date)} &middot; {r.readTime}
-                    </p>
-                  </div>
-                  <ArrowRight className="size-4 shrink-0 text-[var(--color-text-tertiary)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--color-btn-primary-bg)]" />
-                </Link>
+        <section className={`${GUTTER} py-16 md:py-24`}>
+          <SectionHeading>Read next</SectionHeading>
+          <div className="mt-12 md:mt-16">
+            <ul className="space-y-12">
+              {related.map((r, i) => (
+                <li key={r.slug} data-reveal style={stagger(i)}>
+                  <Link
+                    to="/blog/$slug"
+                    params={{ slug: r.slug }}
+                    className="group grid items-center gap-6 md:grid-cols-12 md:gap-8"
+                  >
+                    <div className="md:col-span-4">
+                      <AppScreenshot src={r.cover} alt="" />
+                    </div>
+                    <div className="md:col-span-7 md:col-start-6">
+                      <h3
+                        className="leading-tight font-semibold text-[var(--color-text-primary)] underline-offset-4 group-hover:underline"
+                        style={STEP.lead}
+                      >
+                        {r.title}
+                      </h3>
+                      <p className="mt-3 text-[var(--color-text-secondary)]" style={STEP.small}>
+                        {formatDate(r.date)} · {r.readTime}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </section>
       )}
+
+      <DownloadSection />
     </>
   )
 }

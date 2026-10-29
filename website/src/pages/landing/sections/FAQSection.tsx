@@ -1,57 +1,38 @@
-import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
 import { faqEntries } from '../../../shared/data/seo'
+import { SectionHeading, STEP, stagger } from '../../../shared/ui/page'
 
-interface FAQ {
-  q: string
-  a: string
-}
-
-const faqs: FAQ[] = faqEntries
-
-function FAQItem({ q, a, index }: FAQ & { index: number }) {
-  const [open, setOpen] = useState(false)
-  const answerId = `faq-answer-${index}`
-
-  return (
-    <div className="border-b border-[var(--color-border)]">
-      <button
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-        aria-controls={answerId}
-        className="flex w-full items-center justify-between py-5 text-left text-[15px] font-medium text-[var(--color-text-primary)] transition-colors hover:text-[var(--color-text-secondary)]"
-      >
-        {q}
-        <ChevronDown
-          className={`size-4 shrink-0 text-[var(--color-text-tertiary)] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
-      {open && (
-        <p
-          id={answerId}
-          className="pb-5 text-sm leading-relaxed text-[var(--color-text-secondary)]"
-        >
-          {a}
-        </p>
-      )}
-    </div>
-  )
-}
-
+/** A wide heading, the questions indented under it. */
 export function FAQSection() {
   return (
-    <section className="px-4 py-16 sm:px-6 sm:py-20">
-      <div className="mx-auto max-w-[700px]">
-        <h2 className="mb-2 text-center text-[24px] font-bold tracking-[-0.02em] text-[var(--color-text-primary)] sm:text-[32px]">
-          The six things people ask before downloading
-        </h2>
-        <p className="mb-10 text-center text-sm text-[var(--color-text-secondary)]">
-          Straight answers. No sales copy.
-        </p>
+    <section id="faq" className="px-5 py-32 sm:px-8 md:py-48">
+      <SectionHeading>Before you download.</SectionHeading>
 
-        <div>
-          {faqs.map((faq, i) => (
-            <FAQItem key={faq.q} {...faq} index={i} />
+      <div className="mt-20 grid md:grid-cols-12">
+        <div className="space-y-3 md:col-span-8 md:col-start-5">
+          {faqEntries.map(({ q, a }, i) => (
+            <details
+              key={q}
+              data-reveal
+              style={stagger(i)}
+              className="group -mx-5 rounded-none px-5 py-4 open:bg-[var(--color-bg-secondary)] md:-mx-6 md:rounded-xl md:px-6"
+            >
+              <summary
+                className="flex cursor-pointer list-none items-center justify-between gap-6 leading-snug font-medium text-[var(--color-text-primary)] transition-opacity hover:opacity-70 [&::-webkit-details-marker]:hidden"
+                style={STEP.lead}
+              >
+                {q}
+                <span
+                  aria-hidden="true"
+                  className="size-3 shrink-0 rotate-45 border-r-2 border-b-2 border-current transition-transform duration-200 group-open:-rotate-135"
+                />
+              </summary>
+              <p
+                className="mt-4 max-w-[52ch] leading-relaxed text-[var(--color-text-primary)]"
+                style={STEP.body}
+              >
+                {a}
+              </p>
+            </details>
           ))}
         </div>
       </div>

@@ -2,9 +2,11 @@ import { Outlet, useLocation } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { Header } from '../widgets/header/Header'
 import { Footer } from '../widgets/footer/Footer'
+import { useReveal } from '../shared/hooks/useReveal'
 
 export function RootLayout() {
   const { pathname } = useLocation()
+  useReveal()
 
   useEffect(() => {
     window.scrollTo(0, 0)

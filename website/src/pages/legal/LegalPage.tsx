@@ -1,14 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { GUTTER, STEP } from '@/shared/ui/page'
 
 import privacyMd from './content/privacy.md?raw'
 import termsMd from './content/terms.md?raw'
 
-const pages: Record<string, { title: string; content: string }> = {
-  privacy: { title: 'Privacy Policy', content: privacyMd },
-  terms: { title: 'Terms of Service', content: termsMd }
+const pages: Record<string, { content: string; lead: string }> = {
+  privacy: {
+    content: privacyMd,
+    lead: 'What Talyx keeps on your Mac, and exactly what leaves it.'
+  },
+  terms: {
+    content: termsMd,
+    lead: 'The terms for using Talyx, free and open source under the MIT licence.'
+  }
 }
 
 /** Generate a slug ID from heading text. */
@@ -38,7 +45,6 @@ export function LegalPage() {
   const { slug } = useParams({ strict: false }) as { slug?: string }
   const page = pages[slug ?? '']
   const [activeId, setActiveId] = useState<string | null>(null)
-  const tocRef = useRef<HTMLDivElement>(null)
 
   const headings = page ? extractHeadings(page.content) : []
 
@@ -69,9 +75,14 @@ export function LegalPage() {
 
   if (!page) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-[var(--color-text-secondary)]">Page not found.</p>
-      </div>
+      <section className={`${GUTTER} pt-20 pb-32 md:pt-32 md:pb-48`}>
+        <h1
+          className="leading-none font-semibold tracking-[-0.035em] text-[var(--color-text-primary)]"
+          style={STEP.heading}
+        >
+          Page not found
+        </h1>
+      </section>
     )
   }
 
@@ -85,127 +96,99 @@ export function LegalPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-[1100px] gap-8 px-4 py-16 sm:px-6 sm:py-24">
-      {/* Table of Contents — desktop sidebar */}
+    <div className={`${GUTTER} grid gap-12 pt-20 pb-32 md:pt-32 md:pb-48 lg:grid-cols-12`}>
       {headings.length > 0 && (
-        <div className="hidden lg:block w-56 shrink-0">
-          <div className="sticky top-24" ref={tocRef}>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
-              Contents
-            </p>
-            <nav className="space-y-1">
-              {headings.map((h) => (
-                <a
-                  key={h.id}
-                  href={`#${h.id}`}
-                  onClick={(e) => handleTocClick(e, h.id)}
-                  className={`block text-[13px] leading-relaxed transition-colors ${
-                    h.level === 3 ? 'pl-3' : h.level === 4 ? 'pl-6' : ''
-                  } ${
-                    activeId === h.id
-                      ? 'text-[var(--color-text-primary)] font-medium'
-                      : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]'
-                  }`}
-                >
-                  {h.text}
-                </a>
-              ))}
-            </nav>
-          </div>
-        </div>
+        <nav
+          aria-label="Contents"
+          className="hidden lg:sticky lg:top-28 lg:col-span-3 lg:block lg:max-h-[calc(100svh-8rem)] lg:self-start lg:overflow-y-auto"
+          style={STEP.small}
+        >
+          {headings.map((h) => (
+            <a
+              key={h.id}
+              href={`#${h.id}`}
+              onClick={(e) => handleTocClick(e, h.id)}
+              className={`block py-1 leading-snug transition-colors ${
+                h.level === 3 ? 'pl-4' : h.level === 4 ? 'pl-8' : ''
+              } ${
+                activeId === h.id
+                  ? 'font-medium text-[var(--color-text-primary)]'
+                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+              }`}
+            >
+              {h.text}
+            </a>
+          ))}
+        </nav>
       )}
 
-      {/* Content */}
-      <div className="min-w-0 flex-1">
+      <div
+        className="max-w-[65ch] min-w-0 leading-[1.7] text-[var(--color-text-primary)] lg:col-span-9 lg:col-start-4"
+        style={STEP.body}
+      >
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
             h1: ({ children }) => (
-              <h1 className="text-[32px] font-bold tracking-[-0.02em] text-[var(--color-text-primary)] sm:text-[40px] mb-6">
-                {children}
-              </h1>
-            ),
-            h2: ({ children }) => {
-              const text = String(children)
-              const id = slugify(text)
-              return (
-                <h2
-                  id={id}
-                  className={`text-xl font-semibold mt-10 mb-4 transition-colors ${
-                    activeId === id
-                      ? 'text-[var(--color-text-primary)]'
-                      : 'text-[var(--color-text-primary)]'
-                  }`}
+              <>
+                <h1
+                  data-reveal
+                  className="leading-none font-semibold tracking-[-0.035em]"
+                  style={STEP.heading}
                 >
                   {children}
-                </h2>
-              )
-            },
-            h3: ({ children }) => {
-              const text = String(children)
-              const id = slugify(text)
-              return (
-                <h3
-                  id={id}
-                  className="text-base font-semibold mt-6 mb-3 text-[var(--color-text-primary)]"
-                >
-                  {children}
-                </h3>
-              )
-            },
-            p: ({ children }) => (
-              <p className="text-sm leading-relaxed text-[var(--color-text-secondary)] mb-4">
+                </h1>
+                <p data-reveal className="mt-6 mb-10 leading-snug" style={STEP.lead}>
+                  {page.lead}
+                </p>
+              </>
+            ),
+            h2: ({ children }) => (
+              <h2
+                id={slugify(String(children))}
+                data-reveal
+                className="mt-20 mb-6 scroll-mt-28 leading-tight font-semibold"
+                style={STEP.lead}
+              >
                 {children}
-              </p>
+              </h2>
             ),
-            strong: ({ children }) => (
-              <strong className="font-semibold text-[var(--color-text-primary)]">{children}</strong>
+            h3: ({ children }) => (
+              <h3 id={slugify(String(children))} className="mt-10 mb-4 scroll-mt-28 font-semibold">
+                {children}
+              </h3>
             ),
+            p: ({ children }) => <p className="mb-5">{children}</p>,
+            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
             a: ({ href, children }) => (
               <a
                 href={href}
-                className="text-[var(--color-text-primary)] underline underline-offset-4 hover:text-[var(--color-text-secondary)]"
+                className="underline underline-offset-4 transition-opacity hover:opacity-70"
               >
                 {children}
               </a>
             ),
-            ul: ({ children }) => (
-              <ul className="list-disc list-inside mb-4 space-y-1 text-sm text-[var(--color-text-secondary)]">
-                {children}
-              </ul>
-            ),
-            ol: ({ children }) => (
-              <ol className="list-decimal list-inside mb-4 space-y-1 text-sm text-[var(--color-text-secondary)]">
-                {children}
-              </ol>
-            ),
-            li: ({ children }) => (
-              <li className="text-sm text-[var(--color-text-secondary)] ml-2">{children}</li>
-            ),
-            hr: () => <hr className="my-8 border-t border-[var(--color-border)]" />,
+            ul: ({ children }) => <ul className="mb-5 list-disc space-y-2 pl-6">{children}</ul>,
+            ol: ({ children }) => <ol className="mb-5 list-decimal space-y-2 pl-6">{children}</ol>,
+            hr: () => null,
             table: ({ children }) => (
-              <div className="overflow-x-auto my-4 rounded-lg border border-[var(--color-border)]">
-                <table className="w-full text-sm">{children}</table>
+              <div className="my-8 overflow-x-auto">
+                <table className="w-full" style={STEP.small}>
+                  {children}
+                </table>
               </div>
             ),
-            thead: ({ children }) => (
-              <thead className="bg-[var(--color-surface)] border-b border-[var(--color-border)]">
-                {children}
-              </thead>
-            ),
             th: ({ children }) => (
-              <th className="px-4 py-2 text-left font-medium text-[var(--color-text-primary)]">
+              <th className="border-b-2 border-[var(--color-text-primary)] py-2 pr-4 text-left font-semibold">
                 {children}
               </th>
             ),
             td: ({ children }) => (
-              <td className="px-4 py-2 text-[var(--color-text-secondary)]">{children}</td>
-            ),
-            blockquote: ({ children }) => (
-              <blockquote className="border-l-4 border-[var(--color-border)] pl-4 my-4 italic text-[var(--color-text-tertiary)]">
+              <td className="border-b border-[var(--color-border)] py-2 pr-4 align-top">
                 {children}
-              </blockquote>
-            )
+              </td>
+            ),
+            blockquote: ({ children }) => <blockquote className="my-6 pl-8">{children}</blockquote>
           }}
         >
           {page.content}
