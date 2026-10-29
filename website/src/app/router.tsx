@@ -27,6 +27,7 @@ const UseCasePage = lazyRouteComponent(
 const ContactPage = lazyRouteComponent(() => import('../pages/contact/ContactPage'), 'ContactPage')
 const RoadmapPage = lazyRouteComponent(() => import('../pages/roadmap/RoadmapPage'), 'RoadmapPage')
 const LegalPage = lazyRouteComponent(() => import('../pages/legal/LegalPage'), 'LegalPage')
+const DesignPage = lazyRouteComponent(() => import('../pages/design/DesignPage'), 'DesignPage')
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -87,6 +88,14 @@ const legalRoute = createRoute({
   component: LegalPage
 })
 
+// Unlisted: linked from nowhere, kept out of the prerender list and the sitemap,
+// and served with noindex (see useNoIndex and vercel.json).
+const designRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/design',
+  component: DesignPage
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   blogRoute,
@@ -96,7 +105,8 @@ const routeTree = rootRoute.addChildren([
   pressRoute,
   contactRoute,
   roadmapRoute,
-  legalRoute
+  legalRoute,
+  designRoute
 ])
 
 export function createAppRouter(history?: RouterHistory) {
