@@ -7,6 +7,7 @@ import {
   UnknownBotError
 } from '../../../src/main/domain/office/errors'
 import {
+  InsecureWebhookUrlError,
   WebhookClient,
   WebhookRejectedError,
   WebhookTimeoutError
@@ -149,6 +150,21 @@ describe('GiveTask', () => {
       at
     })
   })
+
+  it('refuses a non-https webhook url and records a failed task', async () => {
+    const f = vi.fn()
+    const client = new WebhookClient(f as unknown as typeof fetch)
+    const { uc, record } = setup(bot({ webhookUrl: 'http://hook.example/x' }), {
+      trigger: vi.fn((u: string, k: string, b: object) => client.trigger(u, k, b))
+    })
+    await expect(uc.execute({ botId: 'b1', task: 'x', target: wh })).rejects.toBeInstanceOf(
+      InsecureWebhookUrlError
+    )
+    expect(f).not.toHaveBeenCalled()
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'task-failed', reason: 'insecure_url' })
+    )
+  })
 })
 
 describe('WebhookClient', () => {
@@ -174,6 +190,12 @@ describe('WebhookClient', () => {
     expect(err).toBeInstanceOf(WebhookRejectedError)
     expect((err as WebhookRejectedError).status).toBe(503)
     expect((err as Error).message).not.toContain('K')
+  })
+
+  it('does not follow redirects', async () => {
+    const f = vi.fn().mockResolvedValue({ ok: true, status: 200 })
+    await new WebhookClient(f as unknown as typeof fetch).trigger('https://u', 'K', {})
+    expect(f.mock.calls[0][1].redirect).toBe('error')
   })
 
   it('should throw WebhookTimeoutError on timeout', async () => {

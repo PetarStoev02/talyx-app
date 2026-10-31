@@ -4,6 +4,7 @@ import type { RecordSignal } from './RecordSignal'
 import type { SecretStore } from '../../../infrastructure/office/SecretStore'
 import type { T3Cli } from '../../../infrastructure/office/T3Cli'
 import {
+  InsecureWebhookUrlError,
   WebhookRejectedError,
   WebhookTimeoutError,
   type WebhookClient
@@ -33,6 +34,7 @@ export interface GiveTaskInput {
 
 function failureReason(e: unknown): string {
   if (e instanceof WebhookRejectedError) return `http_${e.status}`
+  if (e instanceof InsecureWebhookUrlError) return 'insecure_url'
   if (e instanceof WebhookTimeoutError) return 'timeout'
   return 'network'
 }
