@@ -13,9 +13,14 @@ const bot: Bot = {
   grokLink: null
 }
 const groups: Group[] = [
-  { id: 'agro-ops-team', projectId: 'agro-ops', name: 'Agro Ops team' },
-  { id: 'agro-ops-clients', projectId: 'agro-ops', name: 'Agro Ops client panel' },
-  { id: 'other', projectId: 'agro-ops', name: 'Other' }
+  { id: 'agro-ops-team', projectId: 'agro-ops', name: 'Agro Ops team', relayBotId: 'agro-ops-cto' },
+  {
+    id: 'agro-ops-clients',
+    projectId: 'agro-ops',
+    name: 'Agro Ops client panel',
+    relayBotId: null
+  },
+  { id: 'other', projectId: 'agro-ops', name: 'Other', relayBotId: null }
 ]
 const EVENTS_URL = 'https://mac.tail1234.ts.net/events'
 
@@ -27,8 +32,12 @@ describe('botInstructions', () => {
     expect(text).toContain(EVENTS_URL)
   })
 
-  it('never contains a real token', () => {
-    expect(text).toContain('Authorization: Bearer <TALYX_TOKEN>')
+  it('should tell the bot to read the URL and token from its secrets', () => {
+    expect(text).toContain('TALYX_URL')
+    expect(text).toContain('TALYX_TOKEN')
+    expect(text).toContain('jq')
+    expect(text).toContain(`TALYX_URL = ${EVENTS_URL}`)
+    expect(text).not.toMatch(/Bearer [^$\s]/)
   })
 
   it('lists every group id of the bot', () => {
@@ -37,24 +46,45 @@ describe('botInstructions', () => {
     expect(text).not.toContain('"other"')
   })
 
-  it('gives one curl example per kind', () => {
-    for (const kind of ['chat', 'task', 'idle', 'result', 'message']) {
-      expect(text).toContain(`"kind":"${kind}"`)
+  it('should describe every event kind the bot can send', () => {
+    for (const kind of ['chat', 'dm', 'task', 'idle', 'result', 'message']) {
+      expect(text).toContain(`"kind": "${kind}"`)
     }
-    expect(text.match(/curl /g)).toHaveLength(5)
     expect(text).toContain('t3ThreadId')
     expect(text).toContain('runId')
+    expect(text).toContain('"to"')
   })
 
-  it('explains the direct message to another bot', () => {
-    expect(text).toContain('kind "message"')
-    expect(text).toContain('"to":"<other bot id>"')
+  it("should ask the relay bot to report the owner's group messages", () => {
+    expect(text).toContain('"author": "owner"')
+    const member = botInstructions({
+      bot: { ...bot, id: 'other-bot' },
+      groups,
+      eventsUrl: EVENTS_URL
+    })
+    expect(member).not.toContain('"author": "owner", "group"')
+  })
+
+  it('should describe direct messages both ways', () => {
+    expect(text).toContain('"kind": "dm"')
+    expect(text).toContain('"author": "bot"')
+  })
+
+  it('should ask the bot to echo the message id', () => {
+    expect(text).toContain('messageId')
+  })
+
+  it('should keep webhook text from triggering risky actions', () => {
+    expect(text).toContain('no payments')
+  })
+
+  it('should reply in the language of the message', () => {
+    expect(text).toContain('language of the message')
   })
 
   it('says chat needs a group and gives no chat example when the bot is in none', () => {
     const lonely = botInstructions({ bot: { ...bot, groupIds: [] }, groups, eventsUrl: EVENTS_URL })
     expect(lonely).toContain('not in any group')
-    expect(lonely).not.toContain('"kind":"chat"')
-    expect(lonely.match(/curl /g)).toHaveLength(4)
+    expect(lonely).not.toContain('"kind": "chat"')
   })
 })
