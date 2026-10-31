@@ -307,7 +307,15 @@ function InstructionsSection({ snapshot }: { snapshot: OfficeSnapshot }): React.
   const botId = snapshot.bots.some((b) => b.id === chosenId)
     ? chosenId
     : (snapshot.bots[0]?.id ?? '')
-  const funnelUrl = snapshot.funnel.url
+  // Everything the block is built from: re-fetch when any of it changes.
+  const bot = snapshot.bots.find((b) => b.id === botId)
+  const sourceKey = JSON.stringify([
+    botId,
+    bot?.name,
+    bot?.groupIds,
+    snapshot.groups,
+    snapshot.funnel.url
+  ])
 
   useEffect(() => {
     if (!botId) return
@@ -315,7 +323,7 @@ function InstructionsSection({ snapshot }: { snapshot: OfficeSnapshot }): React.
       async () => setText(await window.api.rosterBotInstructions(botId)),
       'Could not build the instructions'
     )
-  }, [botId, funnelUrl])
+  }, [botId, sourceKey])
 
   return (
     <Section title="Bot instructions">

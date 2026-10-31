@@ -21,6 +21,7 @@ import { SaveGroup } from '../../domain/office/useCases/SaveGroup'
 import { DeleteBot } from '../../domain/office/useCases/DeleteBot'
 import { SetWebhookKey } from '../../domain/office/useCases/SetWebhookKey'
 import { GetBotInstructions } from '../../domain/office/useCases/GetBotInstructions'
+import { SetFunnel } from '../../domain/office/useCases/SetFunnel'
 import { T3Watcher } from '../../domain/office/services/T3Watcher'
 import { SecretStore } from './SecretStore'
 import { InboundServer } from './InboundServer'
@@ -127,14 +128,13 @@ export async function startOffice({
     schedulePush()
   }
 
-  async function setFunnel(on: boolean): Promise<void> {
-    settings.update({ funnelEnabled: on })
-    try {
-      await (on ? funnelControl.enable(INBOUND_PORT) : funnelControl.disable())
-    } finally {
-      await refreshFunnel()
-    }
-  }
+  const funnel = new SetFunnel({
+    enable: () => funnelControl.enable(INBOUND_PORT),
+    disable: () => funnelControl.disable(),
+    saveEnabled: (on) => void settings.update({ funnelEnabled: on }),
+    refresh: refreshFunnel
+  })
+  const setFunnel = (on: boolean): Promise<void> => funnel.execute(on)
 
   const inbound = new InboundServer({
     port: INBOUND_PORT,
