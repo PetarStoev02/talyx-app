@@ -16,7 +16,7 @@ export function buildApi(transport: ApiTransport) {
     getSettings: () => transport.invoke('settings:get'),
     updateSettings: (patch: Record<string, unknown>) => transport.invoke('settings:set', patch),
 
-    officeSnapshot: (projectId: string) =>
+    officeSnapshot: (projectId: string | null) =>
       transport.invoke('office:snapshot', projectId) as Promise<OfficeSnapshot>,
     onOfficeChanged: (cb: (snapshot: OfficeSnapshot) => void) =>
       transport.on('office:changed', (snapshot) => cb(snapshot as OfficeSnapshot)),

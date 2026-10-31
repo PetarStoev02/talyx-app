@@ -18,7 +18,7 @@ export interface OfficeIpcDeps {
 
 export function registerOfficeIpc(deps: OfficeIpcDeps): void {
   ipcMain.handle('office:snapshot', (_e, projectId: unknown) =>
-    deps.snapshot.execute(validateInput(ProjectIdSchema, projectId))
+    deps.snapshot.execute(validateInput(ProjectIdSchema.nullable(), projectId))
   )
   ipcMain.handle('office:give-task', (_e, input: unknown) =>
     deps.giveTask.execute(validateInput(GiveTaskSchema, input))

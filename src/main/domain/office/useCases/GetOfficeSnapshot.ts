@@ -6,6 +6,7 @@ import type { SecretStore } from '../../../infrastructure/office/SecretStore'
 import type { FunnelStatus } from '../../../infrastructure/office/FunnelControl'
 import { layoutRooms } from '../layoutRooms'
 import { placeBot } from '../placeBot'
+import { ProjectNotFoundError } from '../errors'
 
 const FEED_LINES = 20
 // ponytail: placement reads one week of signals; a bot quiet for longer shows in chill
@@ -19,6 +20,8 @@ export interface GetOfficeSnapshotDeps {
   >
   signals: Pick<SignalRepo, 'recent' | 'latestFeed'>
   secrets: Pick<SecretStore, 'get'>
+  /** The project the user last chose; may point at a project that no longer exists. */
+  currentProjectId: () => string | null
   staleMinutes: () => number
   t3Connected: () => boolean
   funnel: () => FunnelStatus
@@ -28,8 +31,10 @@ export interface GetOfficeSnapshotDeps {
 export class GetOfficeSnapshot {
   constructor(private readonly deps: GetOfficeSnapshotDeps) {}
 
-  execute(projectId: string): OfficeSnapshot {
+  /** `null` means the current project: the saved choice if it still exists, else the first. */
+  execute(requestedProjectId: string | null): OfficeSnapshot {
     const { roster, signals } = this.deps
+    const projectId = requestedProjectId ?? this.currentProjectId()
     const project = roster.getProject(projectId)
     const rooms = roster.listRooms(projectId)
     const bots = roster.listBots(projectId)
@@ -62,6 +67,14 @@ export class GetOfficeSnapshot {
       t3Connected: this.deps.t3Connected(),
       funnel: this.deps.funnel()
     }
+  }
+
+  private currentProjectId(): string {
+    const projects = this.deps.roster.listProjects()
+    const saved = this.deps.currentProjectId()
+    const project = projects.find((p) => p.id === saved) ?? projects[0]
+    if (!project) throw new ProjectNotFoundError(saved ?? 'current')
+    return project.id
   }
 
   private webhookReady(bot: Bot): boolean {

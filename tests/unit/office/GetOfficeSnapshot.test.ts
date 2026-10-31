@@ -11,7 +11,10 @@ const NOW = new Date('2026-01-01T10:05:00.000Z')
 const CTO = 'agro-ops-cto'
 const SALES = 'agro-ops-sales'
 
-function setup(keys: Record<string, string> = {}): {
+function setup(
+  keys: Record<string, string> = {},
+  savedProjectId: string | null = null
+): {
   uc: GetOfficeSnapshot
   roster: RosterRepo
   signals: SignalRepo
@@ -25,6 +28,7 @@ function setup(keys: Record<string, string> = {}): {
     roster,
     signals,
     secrets: { get: (name) => keys[name] ?? null },
+    currentProjectId: () => savedProjectId,
     staleMinutes: () => 15,
     t3Connected: () => true,
     funnel: () => ({ on: true, url: 'https://mac.ts.net' }),
@@ -111,5 +115,18 @@ describe('GetOfficeSnapshot', () => {
       .map((b) => b.id)
 
     expect(ready).toEqual([CTO])
+  })
+
+  it('resolves the current project when none is given', () => {
+    const { uc, roster } = setup({}, 'farm-co')
+    roster.saveProject({ id: 'farm-co', name: 'Farm Co', logoPath: null, windowView: 'none' })
+
+    expect(uc.execute(null).project.id).toBe('farm-co')
+  })
+
+  it('falls back to the first project when the saved one is gone', () => {
+    const { uc } = setup({}, 'deleted-project')
+
+    expect(uc.execute(null).project.id).toBe('agro-ops')
   })
 })

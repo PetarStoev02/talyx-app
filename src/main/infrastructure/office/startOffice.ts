@@ -90,6 +90,7 @@ export async function startOffice({
     roster,
     signals,
     secrets,
+    currentProjectId: () => settings.get().currentProjectId,
     staleMinutes: () => settings.get().staleMinutes,
     t3Connected: () => watcher.connected(),
     funnel: () => funnelState,
@@ -97,10 +98,8 @@ export async function startOffice({
   })
 
   function pushCurrentProject(): void {
-    const projectId = settings.get().currentProjectId ?? roster.listProjects()[0]?.id
-    if (!projectId) return
     try {
-      broadcast('office:changed', snapshot.execute(projectId))
+      broadcast('office:changed', snapshot.execute(null))
     } catch (err) {
       log.warn('[Office] snapshot push failed:', err instanceof Error ? err.name : 'unknown')
     }
