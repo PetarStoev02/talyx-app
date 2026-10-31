@@ -15,7 +15,7 @@ export class InvalidEventError extends Error {
 }
 
 export class UnknownBotError extends Error {
-  constructor(botId: string) {
+  constructor(readonly botId: string) {
     super(`unknown bot ${botId}`)
     this.name = 'UnknownBotError'
   }

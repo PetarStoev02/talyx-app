@@ -21,8 +21,12 @@ export class InboundServer {
 
   start(): Promise<void> {
     const server = createServer((req, res) => {
-      void this.handle(req, res)
+      this.handle(req, res).catch((err) => respondToError(res, err))
     })
+    // Funnel exposes this to the internet: bound slow and parallel clients.
+    server.requestTimeout = 10_000
+    server.headersTimeout = 5_000
+    server.maxConnections = 32
     this.server = server
     return new Promise((resolve, reject) => {
       server.once('error', reject)
@@ -52,17 +56,19 @@ export class InboundServer {
     if (!handler) return fail(res, 404, 'not_found')
     if (req.method !== 'POST') return fail(res, 405, 'method_not_allowed')
     if (!this.authorised(req)) return fail(res, 401, 'unauthorized')
-    try {
-      handler(parseJson(await readBody(req)))
-      send(res, 202, '{"ok":true}', 'application/json')
-    } catch (err) {
-      respondToError(res, err)
+    if (Number(req.headers['content-length']) > MAX_BODY_BYTES) {
+      res.once('finish', () => req.destroy())
+      return fail(res, 413, 'too_large', true)
     }
+    handler(parseJson(await readBody(req)))
+    send(res, 202, '{"ok":true}', 'application/json')
   }
 
   private authorised(req: IncomingMessage): boolean {
     const given = Buffer.from(req.headers.authorization ?? '')
-    const expected = Buffer.from(`Bearer ${this.deps.token()}`)
+    const token = this.deps.token()
+    if (token === '') return false
+    const expected = Buffer.from(`Bearer ${token}`)
     return given.length === expected.length && timingSafeEqual(given, expected)
   }
 }
@@ -74,9 +80,8 @@ function readBody(req: IncomingMessage): Promise<string> {
     req.on('data', (c: Buffer) => {
       size += c.length
       if (size > MAX_BODY_BYTES) {
-        reject(new TooLargeError())
         req.removeAllListeners('data')
-        req.resume()
+        reject(new TooLargeError())
         return
       }
       chunks.push(c)
@@ -95,9 +100,15 @@ function parseJson(text: string): unknown {
 }
 
 function respondToError(res: ServerResponse, err: unknown): void {
-  if (err instanceof TooLargeError) return fail(res, 413, 'too_large', true)
+  if (err instanceof TooLargeError) {
+    res.once('finish', () => res.req.destroy())
+    return fail(res, 413, 'too_large', true)
+  }
   if (err instanceof InvalidEventError) return fail(res, 400, 'invalid_event')
-  if (err instanceof UnknownBotError) return fail(res, 404, 'unknown_bot')
+  if (err instanceof UnknownBotError) {
+    console.warn('inbound event for unknown bot', err.botId)
+    return fail(res, 404, 'unknown_bot')
+  }
   console.error('inbound handler failed:', err instanceof Error ? err.name : 'unknown')
   fail(res, 500, 'internal')
 }

@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
+import { request } from 'node:http'
 import { InboundServer } from '../../../src/main/infrastructure/office/InboundServer'
 import { InvalidEventError, UnknownBotError } from '../../../src/main/domain/office/errors'
 
@@ -6,11 +7,15 @@ const TOKEN = 'secret-token'
 let server: InboundServer
 
 async function start(
-  over: { onBotEvent?: (b: unknown) => void; onT3Event?: (b: unknown) => void } = {}
+  over: {
+    token?: () => string
+    onBotEvent?: (b: unknown) => void
+    onT3Event?: (b: unknown) => void
+  } = {}
 ): Promise<{ post: (path: string, body: string, auth?: string | null) => Promise<Response> }> {
   server = new InboundServer({
     port: 0,
-    token: () => TOKEN,
+    token: over.token ?? (() => TOKEN),
     onBotEvent: over.onBotEvent ?? (() => {}),
     onT3Event: over.onT3Event ?? (() => {})
   })
@@ -46,6 +51,48 @@ describe('InboundServer', () => {
     expect((await post('/events', '{}', null)).status).toBe(401)
     expect((await post('/events', '{}', 'Bearer wrong-token')).status).toBe(401)
     expect((await post('/events', '{}', 'Bearer x')).status).toBe(401)
+    expect(onBotEvent).not.toHaveBeenCalled()
+  })
+
+  it('should reject every request when no token is configured', async () => {
+    const onBotEvent = vi.fn()
+    const { post } = await start({ token: () => '', onBotEvent })
+    expect((await post('/events', '{}', 'Bearer ')).status).toBe(401)
+    expect((await post('/events', '{}', 'Bearer')).status).toBe(401)
+    expect(onBotEvent).not.toHaveBeenCalled()
+  })
+
+  it('should answer 500 when the token cannot be read', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { post } = await start({
+      token: () => {
+        throw new Error('decrypt failed')
+      }
+    })
+    expect((await post('/events', '{}')).status).toBe(500)
+  })
+
+  it('should reject a declared oversize body with 413 before reading it', async () => {
+    const onBotEvent = vi.fn()
+    await start({ onBotEvent })
+    const status = await new Promise<number>((resolve, reject) => {
+      const req = request(
+        {
+          host: '127.0.0.1',
+          port: server.port(),
+          method: 'POST',
+          path: '/events',
+          headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Length': '1000000' }
+        },
+        (res) => {
+          resolve(res.statusCode ?? 0)
+          res.resume()
+        }
+      )
+      req.on('error', reject)
+      req.write('{')
+    })
+    expect(status).toBe(413)
     expect(onBotEvent).not.toHaveBeenCalled()
   })
 
