@@ -20,3 +20,10 @@ export class UnknownBotError extends Error {
     this.name = 'UnknownBotError'
   }
 }
+
+export class ProjectNotFoundError extends Error {
+  constructor(projectId: string) {
+    super(`project ${projectId} not found`)
+    this.name = 'ProjectNotFoundError'
+  }
+}
