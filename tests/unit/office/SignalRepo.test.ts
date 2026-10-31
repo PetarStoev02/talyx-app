@@ -70,4 +70,28 @@ describe('SignalRepo', () => {
     expect(repo.threadOwner('th')).toBe('b')
     expect(repo.threadOwner('zzz')).toBeNull()
   })
+
+  it('lists distinct owned thread ids from task and t3 signals', () => {
+    const task = (t3ThreadId: string | null): BotSignal => ({
+      kind: 'task',
+      botId: 'a',
+      task: 'x',
+      t3ThreadId,
+      runId: null,
+      at: '2026-01-01T00:00:01Z'
+    })
+    repo.append(task('t1'))
+    repo.append(task('t1'))
+    repo.append(task(null))
+    repo.append({
+      kind: 't3',
+      botId: 'b',
+      t3ThreadId: 't2',
+      title: 'x',
+      status: 'done',
+      link: null,
+      at: '2026-01-01T00:00:02Z'
+    })
+    expect(repo.ownedThreadIds().sort()).toEqual(['t1', 't2'])
+  })
 })

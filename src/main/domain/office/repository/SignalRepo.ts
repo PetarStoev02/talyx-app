@@ -50,4 +50,14 @@ export class SignalRepo {
         .get(kind, threadId) as string | undefined
     return find('task') ?? find('t3') ?? null
   }
+
+  ownedThreadIds(): string[] {
+    return this.db
+      .prepare(
+        `SELECT DISTINCT json_extract(payload_json, '$.t3ThreadId') FROM signals
+         WHERE kind IN ('task', 't3') AND json_extract(payload_json, '$.t3ThreadId') IS NOT NULL`
+      )
+      .pluck()
+      .all() as string[]
+  }
 }
