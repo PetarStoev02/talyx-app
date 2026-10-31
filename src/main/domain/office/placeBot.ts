@@ -1,3 +1,4 @@
+import { MissingRoomError } from './errors'
 import type { Bot, BotSignal, Placement, Room } from './model'
 
 type T3Signal = Extract<BotSignal, { kind: 't3' }>
@@ -14,8 +15,7 @@ const MS_PER_MINUTE = 60_000
 const LOCATING_KINDS: BotSignal['kind'][] = ['chat', 'task', 'idle', 'result', 'task-failed']
 
 export function placeBot({ bot, rooms, signals, now, staleMinutes }: PlaceBotInput): Placement {
-  const work = roomOfKind(rooms, 'work')
-  const chill = roomOfKind(rooms, 'chill')
+  const roomId = (kind: Room['kind']): string => roomOfKind(rooms, kind, bot.projectId)
   const latestChatOrResult = latest(signals, ['chat', 'result'])
   const base = {
     botId: bot.id,
@@ -33,7 +33,7 @@ export function placeBot({ bot, rooms, signals, now, staleMinutes }: PlaceBotInp
     const shown = active.at(-1)!
     return {
       ...base,
-      roomId: work,
+      roomId: roomId('work'),
       task: shown.title,
       t3ThreadId: shown.t3ThreadId,
       t3Link: shown.link,
@@ -43,21 +43,21 @@ export function placeBot({ bot, rooms, signals, now, staleMinutes }: PlaceBotInp
 
   const located = latest(signals, LOCATING_KINDS)
   if (located && now.getTime() - Date.parse(located.at) > staleMinutes * MS_PER_MINUTE) {
-    return { ...base, roomId: chill, stale: true }
+    return { ...base, roomId: roomId('chill'), stale: true }
   }
   if (located?.kind === 'chat') {
     const conference = rooms.find((r) => r.kind === 'conference' && r.groupId === located.groupId)
-    return { ...base, roomId: conference?.id ?? chill }
+    return { ...base, roomId: conference?.id ?? roomId('chill') }
   }
   if (located?.kind === 'task') {
-    return { ...base, roomId: work, task: located.task, t3ThreadId: located.t3ThreadId }
+    return { ...base, roomId: roomId('work'), task: located.task, t3ThreadId: located.t3ThreadId }
   }
-  return { ...base, roomId: chill }
+  return { ...base, roomId: roomId('chill') }
 }
 
-function roomOfKind(rooms: Room[], kind: Room['kind']): string {
+function roomOfKind(rooms: Room[], kind: Room['kind'], projectId: string): string {
   const room = rooms.find((r) => r.kind === kind)
-  if (!room) throw new Error(`office has no ${kind} room`)
+  if (!room) throw new MissingRoomError(kind, projectId)
   return room.id
 }
 

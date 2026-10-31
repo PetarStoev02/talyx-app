@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { placeBot } from '../../../src/main/domain/office/placeBot'
+import { MissingRoomError } from '../../../src/main/domain/office/errors'
 import type { Bot, BotSignal, Placement, Room } from '../../../src/main/domain/office/model'
 
 const NOW = new Date('2026-10-31T10:05:00Z')
@@ -52,8 +53,8 @@ const t3 = (status: 'running' | 'waiting' | 'done', at: string, id = 't1'): BotS
   at
 })
 
-function place(signals: BotSignal[], now = NOW): Placement {
-  return placeBot({ bot: bot(), rooms: rooms(), signals, now, staleMinutes: 15 })
+function place(signals: BotSignal[], now = NOW, roomList: Room[] = rooms()): Placement {
+  return placeBot({ bot: bot(), rooms: roomList, signals, now, staleMinutes: 15 })
 }
 
 describe('placeBot', () => {
@@ -118,5 +119,32 @@ describe('placeBot', () => {
       { kind: 'task-failed', botId: 'b1', runId: null, reason: 'boom', at: '2026-10-31T10:03:00Z' }
     ])
     expect(p.roomId).toBe('chill')
+  })
+
+  it('falls back to chill when a thread is done', () => {
+    const p = place([t3('running', '2026-10-31T10:01:00Z'), t3('done', '2026-10-31T10:02:00Z')])
+    expect(p.roomId).toBe('chill')
+  })
+
+  it('puts a bot in chill when its chat group has no conference room', () => {
+    expect(place([chat('other', '2026-10-31T10:04:00Z')]).roomId).toBe('chill')
+  })
+
+  it('is not stale at exactly staleMinutes', () => {
+    const p = place([task('2026-10-31T10:00:00Z')], new Date('2026-10-31T10:15:00Z'))
+    expect(p.roomId).toBe('work')
+    expect(p.stale).toBe(false)
+  })
+
+  it('marks a stale chat as stale in chill', () => {
+    const p = place([chat('team', '2026-10-31T10:00:00Z')], new Date('2026-10-31T10:16:00Z'))
+    expect(p.roomId).toBe('chill')
+    expect(p.stale).toBe(true)
+  })
+
+  it('throws MissingRoomError only when the needed room is missing', () => {
+    const noWork = rooms().filter((r) => r.kind !== 'work')
+    expect(place([chat('team', '2026-10-31T10:04:00Z')], NOW, noWork).roomId).toBe('team-room')
+    expect(() => place([task('2026-10-31T10:04:00Z')], NOW, noWork)).toThrow(MissingRoomError)
   })
 })
