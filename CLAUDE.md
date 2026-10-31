@@ -15,7 +15,8 @@ are gone.
 - **Stack:** Electron 44 + React 19 + TypeScript 5.9 + TailwindCSS 4 + three.js
 - **State:** Zustand | **DB:** better-sqlite3 (`office.db`) | **Build:** electron-vite + electron-builder | **Tests:** Vitest
 - **Inbound:** HTTP server on `127.0.0.1:47321` (`POST /events` Grok bots, `POST /t3/events` T3, `GET /health`),
-  Bearer token, published to the internet with Tailscale Funnel (the tailnet admin must enable Funnel first).
+  Bearer token, published to the internet with Tailscale Funnel on HTTPS port 8443
+  (`https://<host>.ts.net:8443`, leaving `:443` to `tailscale serve`; the tailnet admin must enable Funnel first).
 - **T3 Code:** read via `~/.t3/bin/t3 thread list|show --json`; project names read-only from
   `~/.t3/userdata/statev2.sqlite`; started/sent via `t3 thread start|send`.
 - **Tasks out:** Grok routine webhooks (https only), keys in Electron `safeStorage` (`userData/secrets`).

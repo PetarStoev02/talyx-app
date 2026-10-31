@@ -23,7 +23,7 @@ Closing the window keeps Talyx running in the menu bar. `npm run reset` clears t
 
 ## First setup
 
-1. Open Settings and turn on **Funnel**. Talyx listens on `127.0.0.1:47321` and Tailscale Funnel publishes it. Endpoints: `POST /events` (bots), `POST /t3/events` (T3), `GET /health`, all with a Bearer token.
+1. Open Settings and turn on **Funnel**. Talyx listens on `127.0.0.1:47321` and Tailscale Funnel publishes it on its own HTTPS port, `https://<machine>.<tailnet>.ts.net:8443`, so it never takes over `:443` from your own `tailscale serve`. Endpoints: `POST /events` (bots), `POST /t3/events` (T3), `GET /health`, all with a Bearer token.
 2. For each bot, copy its generated instructions from Settings into the bot. They tell the bot to report to your Funnel URL with the token.
 3. For each bot, paste its routine webhook URL (https only) and key. This is how tasks go out from the office.
 
