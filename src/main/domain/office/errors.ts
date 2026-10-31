@@ -34,3 +34,10 @@ export class BotNotReachableError extends Error {
     this.name = 'BotNotReachableError'
   }
 }
+
+export class InvalidLogoError extends Error {
+  constructor(problem: string) {
+    super(`logo ${problem}`)
+    this.name = 'InvalidLogoError'
+  }
+}

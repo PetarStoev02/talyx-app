@@ -16,12 +16,19 @@ import { RecordSignal } from '../../domain/office/useCases/RecordSignal'
 import { GetOfficeSnapshot } from '../../domain/office/useCases/GetOfficeSnapshot'
 import { GiveTask } from '../../domain/office/useCases/GiveTask'
 import { SendToThread } from '../../domain/office/useCases/SendToThread'
+import { CreateProject } from '../../domain/office/useCases/CreateProject'
+import { SaveGroup } from '../../domain/office/useCases/SaveGroup'
+import { DeleteBot } from '../../domain/office/useCases/DeleteBot'
+import { SetWebhookKey } from '../../domain/office/useCases/SetWebhookKey'
+import { GetBotInstructions } from '../../domain/office/useCases/GetBotInstructions'
 import { T3Watcher } from '../../domain/office/services/T3Watcher'
 import { SecretStore } from './SecretStore'
 import { InboundServer } from './InboundServer'
 import { FunnelControl, type FunnelStatus } from './FunnelControl'
 import { T3Cli } from './T3Cli'
 import { WebhookClient } from './WebhookClient'
+import { T3Projects } from './T3Projects'
+import { LogoStore } from './LogoStore'
 import { INBOUND_TOKEN, ensureInboundToken } from './inboundToken'
 import { registerOfficeIpc } from '../ipc/office.ipc'
 import { registerRosterIpc } from '../ipc/roster.ipc'
@@ -32,6 +39,7 @@ const STALENESS_PUSH_MS = 60_000
 const PUSH_DEBOUNCE_MS = 150
 const FUNNEL_OFF_BUDGET_MS = 2000
 const T3_BIN = join(homedir(), '.t3/bin/t3')
+const T3_STATE_DB = join(homedir(), '.t3/userdata/statev2.sqlite')
 const T3_TIMEOUT_MS = 30_000
 const TAILSCALE_TIMEOUT_MS = 10_000
 const MAX_OUTPUT_BYTES = 8 * 1024 * 1024
@@ -85,6 +93,8 @@ export async function startOffice({
     run(TAILSCALE_BIN, args, undefined, TAILSCALE_TIMEOUT_MS)
   )
   let funnelState: FunnelStatus = { on: false, url: null }
+  const t3Projects = new T3Projects(T3_STATE_DB)
+  const logos = new LogoStore(userDataDir)
 
   const snapshot = new GetOfficeSnapshot({
     roster,
@@ -93,7 +103,9 @@ export async function startOffice({
     currentProjectId: () => settings.get().currentProjectId,
     staleMinutes: () => settings.get().staleMinutes,
     t3Connected: () => watcher.connected(),
+    t3Projects: () => t3Projects.list(),
     funnel: () => funnelState,
+    logoDataUrl: (path) => logos.dataUrl(path),
     now
   })
 
@@ -156,6 +168,12 @@ export async function startOffice({
   })
   registerRosterIpc({
     roster,
+    createProject: new CreateProject({ roster, logos }),
+    saveGroup: new SaveGroup({ roster }),
+    deleteBot: new DeleteBot({ roster, secrets }),
+    setWebhookKey: new SetWebhookKey({ roster, secrets }),
+    botInstructions: new GetBotInstructions({ roster, funnelUrl: () => funnelState.url }),
+    t3Projects,
     secrets,
     funnel: { status: () => funnelState, set: setFunnel },
     changed: schedulePush

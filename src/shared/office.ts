@@ -49,14 +49,24 @@ export interface Placement {
   lastLine: string | null
 }
 
+/** A project as the office shows it: the logo inlined, since the CSP only allows data: images. */
+export interface ProjectView extends Project {
+  logoDataUrl: string | null
+}
+export interface T3Project {
+  id: string
+  name: string
+}
+
 export interface OfficeSnapshot {
-  project: Project
-  projects: Project[]
+  project: ProjectView
+  projects: ProjectView[]
   rooms: (Room & RoomBox)[]
   bots: (Bot & { placement: Placement; webhookReady: boolean })[]
   groups: Group[]
   feed: { botId: string; text: string; at: string }[]
   t3Connected: boolean
+  t3Projects: T3Project[]
   funnel: { on: boolean; url: string | null }
 }
 

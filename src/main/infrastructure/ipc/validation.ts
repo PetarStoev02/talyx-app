@@ -4,19 +4,29 @@ export const UserSettingsPartialSchema = z
   .object({
     theme: z.literal('dark'),
     currentProjectId: z.string().min(1).nullable(),
-    staleMinutes: z.number().int().min(1).max(1440),
+    staleMinutes: z.number().int().min(1).max(240),
     launchAtLogin: z.boolean(),
     funnelEnabled: z.boolean()
   })
   .partial()
 
+export class InvalidInputError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'InvalidInputError'
+  }
+}
+
+/** Parses IPC input; the error message is readable, since the renderer shows it in a toast. */
 export function validateInput<T>(schema: z.ZodType<T>, data: unknown): T {
-  return schema.parse(data)
+  const result = schema.safeParse(data)
+  if (!result.success) throw new InvalidInputError(z.prettifyError(result.error))
+  return result.data
 }
 
 const id = z.string().trim().min(1).max(200)
 const name = z.string().trim().min(1).max(100)
-const httpsUrl = z.url({ protocol: /^https$/ }).max(2000)
+const httpsUrl = z.url({ protocol: /^https$/, error: 'must be an https URL' }).max(2000)
 
 export const ProjectIdSchema = id
 export const BotIdSchema = id
@@ -64,10 +74,16 @@ export const GiveTaskSchema = z.object({
 
 export const SendToThreadSchema = z.object({ threadId: id, message: z.string().min(1).max(10_000) })
 
+const T3_ORIGIN = 'http://127.0.0.1:3773'
+
 export const ExternalUrlSchema = z
   .string()
   .max(2000)
-  .refine(
-    (url) => url.startsWith('http://127.0.0.1:3773/') || URL.parse(url)?.protocol === 'https:',
-    'only T3 and https links open'
-  )
+  .refine((raw) => {
+    const url = URL.parse(raw)
+    if (!url) return false
+    const plainHttps = url.protocol === 'https:' && !url.username && !url.password
+    return plainHttps || url.origin === T3_ORIGIN
+  }, 'only T3 and https links open')
+
+export const BotInstructionsSchema = z.object({ botId: id })

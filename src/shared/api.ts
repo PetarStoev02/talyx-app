@@ -1,7 +1,15 @@
 // Single source of truth for the window.api surface. The preload builds it
 // over ipcRenderer; the browser dev bridge builds it over HTTP+SSE. Must not
 // import 'electron' — it compiles in both the node and web tsconfigs.
-import type { Bot, Group, OfficeGiveTaskInput, OfficeSnapshot, Project, Room } from './office'
+import type {
+  Bot,
+  Group,
+  OfficeGiveTaskInput,
+  OfficeSnapshot,
+  Project,
+  Room,
+  T3Project
+} from './office'
 
 export interface ApiTransport {
   invoke: (channel: string, ...args: unknown[]) => Promise<unknown>
@@ -37,6 +45,10 @@ export function buildApi(transport: ApiTransport) {
       transport.invoke('roster:delete-bot', botId) as Promise<void>,
     rosterSetWebhookKey: (input: { botId: string; key: string }) =>
       transport.invoke('roster:set-webhook-key', input) as Promise<void>,
+    rosterT3Projects: () => transport.invoke('roster:t3-projects') as Promise<T3Project[]>,
+    rosterBotInstructions: (botId: string) =>
+      transport.invoke('roster:bot-instructions', { botId }) as Promise<string>,
+    rosterPickLogo: () => transport.invoke('roster:pick-logo') as Promise<string | null>,
     rosterEndpoint: () =>
       transport.invoke('roster:endpoint') as Promise<{ url: string | null; tokenHint: string }>,
     rosterRevealToken: () => transport.invoke('roster:reveal-token') as Promise<string | null>,

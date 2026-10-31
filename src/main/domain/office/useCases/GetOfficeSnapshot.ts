@@ -1,9 +1,7 @@
-import type { OfficeSnapshot } from '../../../../shared/office'
-import type { Bot, BotSignal } from '../model'
+import type { OfficeSnapshot, T3Project } from '../../../../shared/office'
+import { webhookKeyName, type Bot, type BotSignal, type Project } from '../model'
 import type { RosterRepo } from '../repository/RosterRepo'
 import type { SignalRepo } from '../repository/SignalRepo'
-import type { SecretStore } from '../../../infrastructure/office/SecretStore'
-import type { FunnelStatus } from '../../../infrastructure/office/FunnelControl'
 import { layoutRooms } from '../layoutRooms'
 import { placeBot } from '../placeBot'
 import { ProjectNotFoundError } from '../errors'
@@ -19,12 +17,15 @@ export interface GetOfficeSnapshotDeps {
     'getProject' | 'listProjects' | 'listGroups' | 'listBots' | 'listRooms' | 'allBots'
   >
   signals: Pick<SignalRepo, 'recent' | 'latestFeed'>
-  secrets: Pick<SecretStore, 'get'>
+  secrets: { get(name: string): string | null }
   /** The project the user last chose; may point at a project that no longer exists. */
   currentProjectId: () => string | null
   staleMinutes: () => number
   t3Connected: () => boolean
-  funnel: () => FunnelStatus
+  t3Projects: () => T3Project[]
+  funnel: () => OfficeSnapshot['funnel']
+  /** The stored logo as a data: URL, or null when it cannot be read. */
+  logoDataUrl: (logoPath: string) => string | null
   now: () => Date
 }
 
@@ -45,8 +46,8 @@ export class GetOfficeSnapshot {
     const boxes = new Map(layoutRooms(rooms).map((b) => [b.roomId, b]))
 
     return {
-      project,
-      projects: roster.listProjects(),
+      project: this.view(project),
+      projects: roster.listProjects().map((p) => this.view(p)),
       rooms: rooms.flatMap((r) => {
         const box = boxes.get(r.id)
         return box ? [{ ...r, ...box }] : []
@@ -65,6 +66,7 @@ export class GetOfficeSnapshot {
       groups: roster.listGroups(projectId),
       feed: this.feed(botIds),
       t3Connected: this.deps.t3Connected(),
+      t3Projects: this.deps.t3Projects(),
       funnel: this.deps.funnel()
     }
   }
@@ -77,8 +79,15 @@ export class GetOfficeSnapshot {
     return project.id
   }
 
+  private view(project: Project): OfficeSnapshot['project'] {
+    return {
+      ...project,
+      logoDataUrl: project.logoPath ? this.deps.logoDataUrl(project.logoPath) : null
+    }
+  }
+
   private webhookReady(bot: Bot): boolean {
-    return bot.webhookUrl !== null && this.deps.secrets.get(`webhook-key:${bot.id}`) !== null
+    return bot.webhookUrl !== null && this.deps.secrets.get(webhookKeyName(bot.id)) !== null
   }
 
   private feed(botIds: string[]): OfficeSnapshot['feed'] {

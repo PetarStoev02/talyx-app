@@ -31,7 +31,9 @@ function setup(
     currentProjectId: () => savedProjectId,
     staleMinutes: () => 15,
     t3Connected: () => true,
+    t3Projects: () => [{ id: 't1', name: 'Platform' }],
     funnel: () => ({ on: true, url: 'https://mac.ts.net' }),
+    logoDataUrl: (path) => `data:image/png;base64,${path}`,
     now: () => NOW
   })
   return { uc, roster, signals }
@@ -51,6 +53,8 @@ describe('GetOfficeSnapshot', () => {
     expect(s.groups).toHaveLength(2)
     expect(s.t3Connected).toBe(true)
     expect(s.funnel).toEqual({ on: true, url: 'https://mac.ts.net' })
+    expect(s.t3Projects).toEqual([{ id: 't1', name: 'Platform' }])
+    expect(s.project.logoDataUrl).toBeNull()
     const team = s.rooms.find((r) => r.id === 'agro-ops-team-room')
     expect(team).toMatchObject({ name: 'Team conference', roomId: team?.id, z: 0, w: 6, d: 5 })
     expect(s.rooms).toHaveLength(4)
@@ -115,6 +119,14 @@ describe('GetOfficeSnapshot', () => {
       .map((b) => b.id)
 
     expect(ready).toEqual([CTO])
+  })
+
+  it('inlines a stored logo as a data url', () => {
+    const { uc, roster } = setup()
+    roster.saveProject({ ...roster.getProject('agro-ops'), logoPath: '/logos/a.png' })
+    const s = uc.execute('agro-ops')
+    expect(s.project.logoDataUrl).toBe('data:image/png;base64,/logos/a.png')
+    expect(s.projects[0].logoDataUrl).toBe('data:image/png;base64,/logos/a.png')
   })
 
   it('resolves the current project when none is given', () => {

@@ -70,3 +70,6 @@ export interface RoomBox {
   w: number
   d: number
 }
+
+/** The secret name a bot's Grok webhook key is stored under. */
+export const webhookKeyName = (botId: string): string => `webhook-key:${botId}`

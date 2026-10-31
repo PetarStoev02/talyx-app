@@ -1,4 +1,4 @@
-import type { Bot } from '../model'
+import { webhookKeyName, type Bot } from '../model'
 import type { RosterRepo } from '../repository/RosterRepo'
 import type { RecordSignal } from './RecordSignal'
 import type { SecretStore } from '../../../infrastructure/office/SecretStore'
@@ -52,7 +52,7 @@ export class GiveTask {
   }
 
   private async viaWebhook(bot: Bot, task: string): Promise<void> {
-    const key = this.deps.secrets.get(`webhook-key:${bot.id}`)
+    const key = this.deps.secrets.get(webhookKeyName(bot.id))
     if (!bot.webhookUrl || !key) throw new BotNotReachableError(bot.id)
     const runId = this.deps.newRunId()
     const base = this.deps.eventsUrl()
