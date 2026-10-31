@@ -42,4 +42,10 @@ describe('SettingsStore', () => {
     expect(settings).toEqual({ ...DEFAULTS, staleMinutes: 20 })
     expect(settings).not.toHaveProperty('defaultSortMode')
   })
+
+  it('replaces an invalid stored value with the default', () => {
+    const file = settingsFile()
+    writeFileSync(file, JSON.stringify({ theme: 'system', staleMinutes: 'x' }))
+    expect(new SettingsStore(file).get()).toEqual(DEFAULTS)
+  })
 })

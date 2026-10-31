@@ -18,9 +18,17 @@ const DEFAULTS: UserSettings = {
   funnelEnabled: false
 }
 
+const isValid: { [K in keyof UserSettings]: (value: unknown) => value is UserSettings[K] } = {
+  theme: (v): v is 'dark' => v === 'dark',
+  currentProjectId: (v): v is string | null => v === null || typeof v === 'string',
+  staleMinutes: (v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0,
+  launchAtLogin: (v): v is boolean => typeof v === 'boolean',
+  funnelEnabled: (v): v is boolean => typeof v === 'boolean'
+}
+
 const SETTING_KEYS = Object.keys(DEFAULTS) as Array<keyof UserSettings>
 
-/** JSON-file settings. Keys a past version wrote are dropped on read, so old files load cleanly. */
+/** JSON-file settings. Unknown keys and invalid values from a past version are dropped on read, so old files load cleanly. */
 export class SettingsStore {
   constructor(private readonly filePath: string) {}
 
@@ -43,6 +51,8 @@ export class SettingsStore {
       // Missing or unreadable file: start from the defaults.
       return {}
     }
-    return Object.fromEntries(SETTING_KEYS.filter((key) => key in raw).map((k) => [k, raw[k]]))
+    return Object.fromEntries(
+      SETTING_KEYS.filter((key) => isValid[key](raw[key])).map((k) => [k, raw[k]])
+    )
   }
 }
