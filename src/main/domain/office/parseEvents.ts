@@ -2,6 +2,8 @@ import { InvalidEventError, UnknownBotError } from './errors'
 import type { Bot, BotSignal, Group, T3Status } from './model'
 
 const MAX_TEXT = 500
+const MAX_ID = 200
+const MAX_TITLE = 200
 
 const T3_STATUS_BY_EVENT: Record<string, T3Status> = {
   'request.opened': 'waiting',
@@ -20,13 +22,13 @@ function asRecord(body: unknown): JsonObject {
   return body as JsonObject
 }
 
-function str(value: unknown, max = Infinity): string | null {
+function str(value: unknown, max = MAX_ID): string | null {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
   return trimmed ? trimmed.slice(0, max) : null
 }
 
-function required(value: unknown, field: string, max = Infinity): string {
+function required(value: unknown, field: string, max = MAX_ID): string {
   const s = str(value, max)
   if (s === null) throw new InvalidEventError(field, 'is required')
   return s
@@ -53,7 +55,7 @@ export function parseBotEvent(
     case 'chat': {
       const groupId = required(e.group, 'group')
       if (!ctx.groups.some((g) => g.id === groupId && g.projectId === bot.projectId)) {
-        throw new InvalidEventError('group', `${groupId} is not in the bot's project`)
+        throw new InvalidEventError('group', "is not in the bot's project")
       }
       return { kind: 'chat', botId, groupId, text: str(e.text, MAX_TEXT), at }
     }
@@ -100,7 +102,8 @@ export function parseT3ListenEvent(
 ): BotSignal | null {
   const e = asRecord(body)
   const name = eventName(e)
-  const status = name ? T3_STATUS_BY_EVENT[name] : undefined
+  const status =
+    name && Object.hasOwn(T3_STATUS_BY_EVENT, name) ? T3_STATUS_BY_EVENT[name] : undefined
   if (!status) return null
   const threadId = required(e.threadId, 'threadId')
   const botId = ctx.threadOwner(threadId)
@@ -109,7 +112,7 @@ export function parseT3ListenEvent(
     kind: 't3',
     botId,
     t3ThreadId: threadId,
-    title: str(e.title) ?? '',
+    title: str(e.title, MAX_TITLE) ?? '',
     status,
     link: null,
     at: parseAt(e.completedAt ?? e.createdAt, ctx.now)

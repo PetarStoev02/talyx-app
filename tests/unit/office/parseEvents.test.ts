@@ -74,6 +74,33 @@ describe('parseBotEvent', () => {
       UnknownBotError
     )
   })
+  it('caps ids and titles at 200 characters', () => {
+    const long = 'x'.repeat(10_000)
+    const big = { ...ctx, bots: [bot('a'), bot('b'.repeat(200))] }
+    const s = parseBotEvent(
+      { bot: 'a', kind: 'task', task: 't', t3ThreadId: long, runId: long },
+      big
+    )
+    expect(s).toMatchObject({ t3ThreadId: 'x'.repeat(200), runId: 'x'.repeat(200) })
+    const m = parseBotEvent({ bot: 'a', kind: 'message', to: 'b'.repeat(10_000), text: 'y' }, big)
+    expect(m).toMatchObject({ toBotId: 'b'.repeat(200) })
+    const t = parseT3ListenEvent(
+      { event: 'request.opened', threadId: long, title: long },
+      { threadOwner: () => 'a', now }
+    )
+    expect(t).toMatchObject({ t3ThreadId: 'x'.repeat(200), title: 'x'.repeat(200) })
+  })
+  it('does not echo a long group value in the error', () => {
+    const run = (): unknown =>
+      parseBotEvent({ bot: 'a', kind: 'chat', group: 'g'.repeat(10_000) }, ctx)
+    expect(run).toThrow(InvalidEventError)
+    try {
+      run()
+    } catch (err) {
+      expect((err as Error).message.length).toBeLessThan(100)
+      expect((err as Error).message).not.toContain('ggg')
+    }
+  })
   it('caps text at 500 characters', () => {
     const s = parseBotEvent({ bot: 'a', kind: 'result', text: 'x'.repeat(900) }, ctx)
     expect(s.kind === 'result' && s.text).toHaveLength(500)
@@ -120,6 +147,10 @@ describe('parseT3ListenEvent', () => {
   it('ignores the t3listen test event and unknown names', () => {
     expect(parseT3ListenEvent({ event: 'test' }, { threadOwner: owner, now })).toBeNull()
     expect(parseT3ListenEvent({ ...ev, event: 'other' }, { threadOwner: owner, now })).toBeNull()
+  })
+  it('ignores a t3listen event named like an object prototype key', () => {
+    for (const name of ['constructor', 'toString', '__proto__'])
+      expect(parseT3ListenEvent({ ...ev, event: name }, { threadOwner: owner, now })).toBeNull()
   })
   it('rejects a missing threadId', () => {
     expect(() =>
