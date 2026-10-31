@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import { runMigrations } from '../../../src/main/infrastructure/database/migrations'
 import { RosterRepo } from '../../../src/main/domain/office/repository/RosterRepo'
+import { SignalRepo } from '../../../src/main/domain/office/repository/SignalRepo'
 import type { Bot } from '../../../src/main/domain/office/model'
 
 export function emptyRoster(): RosterRepo {
@@ -9,10 +10,16 @@ export function emptyRoster(): RosterRepo {
   return new RosterRepo(db)
 }
 
+export function emptySignals(): SignalRepo {
+  const db = new Database(':memory:')
+  runMigrations(db)
+  return new SignalRepo(db)
+}
+
 export function rosterWithBot(): RosterRepo {
   const roster = emptyRoster()
   roster.saveProject({ id: 'p', name: 'P', logoPath: null, windowView: 'none' })
-  roster.saveGroup({ id: 'g', projectId: 'p', name: 'Team' })
+  roster.saveGroup({ id: 'g', projectId: 'p', name: 'Team', relayBotId: null })
   roster.saveBot(aBot())
   return roster
 }

@@ -35,4 +35,8 @@ CREATE INDEX IF NOT EXISTS idx_signals_bot_at ON signals(bot_id, at);
 /** Runs all database migrations (idempotent). */
 export function runMigrations(db: Database.Database): void {
   db.exec(OFFICE_SCHEMA)
+  const groupColumns = db.prepare('PRAGMA table_info(groups)').all() as { name: string }[]
+  if (!groupColumns.some((c) => c.name === 'relay_bot_id')) {
+    db.exec('ALTER TABLE groups ADD COLUMN relay_bot_id TEXT')
+  }
 }

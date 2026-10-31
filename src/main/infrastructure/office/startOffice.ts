@@ -170,7 +170,7 @@ export async function startOffice({
     roster,
     createProject: new CreateProject({ roster, logos }),
     saveGroup: new SaveGroup({ roster }),
-    deleteBot: new DeleteBot({ roster, secrets }),
+    deleteBot: new DeleteBot({ roster, secrets, signals }),
     setWebhookKey: new SetWebhookKey({ roster, secrets }),
     botInstructions: new GetBotInstructions({ roster, funnelUrl: () => funnelState.url }),
     t3Projects,

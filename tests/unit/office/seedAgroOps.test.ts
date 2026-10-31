@@ -35,4 +35,35 @@ describe('seedAgroOps', () => {
     expect(repo.listGroups('agro-ops')).toEqual([])
     expect(repo.allBots()).toEqual([])
   })
+
+  describe('relay bots', () => {
+    const seeded = (): RosterRepo => {
+      const db = new Database(':memory:')
+      runMigrations(db)
+      const repo = new RosterRepo(db)
+      seedAgroOps(repo)
+      return repo
+    }
+    const relays = (repo: RosterRepo): (string | null)[] =>
+      repo.listGroups('agro-ops').map((g) => g.relayBotId)
+
+    it('should give each AgroOps group its relay bot', () => {
+      expect(relays(seeded())).toEqual(['agro-ops-cto', 'agro-ops-grok-bot'])
+    })
+
+    it('should fill missing relays on an already seeded office', () => {
+      const repo = seeded()
+      for (const g of repo.listGroups('agro-ops')) repo.saveGroup({ ...g, relayBotId: null })
+      seedAgroOps(repo)
+      expect(relays(repo)).toEqual(['agro-ops-cto', 'agro-ops-grok-bot'])
+    })
+
+    it('should keep a relay the owner changed', () => {
+      const repo = seeded()
+      const [team] = repo.listGroups('agro-ops')
+      repo.saveGroup({ ...team, relayBotId: 'agro-ops-sales' })
+      seedAgroOps(repo)
+      expect(relays(repo)[0]).toBe('agro-ops-sales')
+    })
+  })
 })

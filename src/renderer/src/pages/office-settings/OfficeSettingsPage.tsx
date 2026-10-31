@@ -149,7 +149,7 @@ function GroupsSection({ snapshot }: { snapshot: OfficeSnapshot }): React.JSX.El
   const [roomKind, setRoomKind] = useState<Room['kind']>('work')
 
   async function handleAddGroup(): Promise<void> {
-    const group = { id: crypto.randomUUID(), projectId, name: newGroup.trim() }
+    const group = { id: crypto.randomUUID(), projectId, name: newGroup.trim(), relayBotId: null }
     if (await attempt(() => window.api.rosterSaveGroup(group), 'Could not add the group')) {
       setNewGroup('')
     }
@@ -158,9 +158,9 @@ function GroupsSection({ snapshot }: { snapshot: OfficeSnapshot }): React.JSX.El
   async function handleRename(id: string, name: string): Promise<void> {
     const trimmed = name.trim()
     const current = snapshot.groups.find((g) => g.id === id)
-    if (!trimmed || trimmed === current?.name) return
+    if (!current || !trimmed || trimmed === current.name) return
     await attempt(
-      () => window.api.rosterSaveGroup({ id, projectId, name: trimmed }),
+      () => window.api.rosterSaveGroup({ ...current, name: trimmed }),
       'Could not rename the group'
     )
   }

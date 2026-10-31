@@ -38,7 +38,7 @@ export const ProjectSchema = z.object({
   windowView: z.enum(['none', 'city', 'fields'])
 })
 
-export const GroupSchema = z.object({ id, projectId: id, name })
+export const GroupSchema = z.object({ id, projectId: id, name, relayBotId: id.nullable() })
 
 export const RoomSchema = z.object({
   id,

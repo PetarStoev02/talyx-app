@@ -58,7 +58,8 @@ export class RosterRepo {
   listGroups(projectId: string): Group[] {
     return this.db
       .prepare(
-        'SELECT id, project_id AS projectId, name FROM groups WHERE project_id = ? ORDER BY rowid'
+        `SELECT id, project_id AS projectId, name, relay_bot_id AS relayBotId
+         FROM groups WHERE project_id = ? ORDER BY rowid`
       )
       .all(projectId) as Group[]
   }
@@ -66,10 +67,11 @@ export class RosterRepo {
   saveGroup(g: Group): void {
     this.db
       .prepare(
-        `INSERT INTO groups (id, project_id, name) VALUES (?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET project_id = excluded.project_id, name = excluded.name`
+        `INSERT INTO groups (id, project_id, name, relay_bot_id) VALUES (?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET project_id = excluded.project_id, name = excluded.name,
+         relay_bot_id = excluded.relay_bot_id`
       )
-      .run(g.id, g.projectId, g.name)
+      .run(g.id, g.projectId, g.name, g.relayBotId)
   }
 
   listBots(projectId: string): Bot[] {

@@ -13,8 +13,8 @@ describe('RosterRepo', () => {
     runMigrations(db)
     repo = new RosterRepo(db)
     repo.saveProject({ id: 'p', name: 'P', logoPath: null, windowView: 'none' })
-    repo.saveGroup({ id: 'g1', projectId: 'p', name: 'One' })
-    repo.saveGroup({ id: 'g2', projectId: 'p', name: 'Two' })
+    repo.saveGroup({ id: 'g1', projectId: 'p', name: 'One', relayBotId: null })
+    repo.saveGroup({ id: 'g2', projectId: 'p', name: 'Two', relayBotId: 'b' })
   })
 
   it('round-trips a bot with two groups and mapped T3 projects', () => {

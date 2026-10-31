@@ -12,6 +12,7 @@ export interface Group {
   id: string
   projectId: string
   name: string
+  relayBotId: string | null
 }
 export interface Bot {
   id: string
