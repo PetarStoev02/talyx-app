@@ -158,18 +158,17 @@ export const useStore = create<StoreState>((set) => ({
 
 ```typescript
 export function registerOfficeIpc(getSnapshot: GetOfficeSnapshot, ...deps): void {
-  ipcMain.handle('office:snapshot', async () => {
-    return getSnapshot.execute()
+  ipcMain.handle('office:snapshot', async (_event, projectId: string | null) => {
+    return getSnapshot.execute(projectId)
   })
 }
 ```
 
-**Renderer API wrapper:**
+**Renderer API:** the whole `window.api` surface is defined once in `src/shared/api.ts`
+(`buildApi(transport)`); the preload and the browser dev bridge both use it. Components call it directly:
 
 ```typescript
-export const officeApi = {
-  snapshot: (): Promise<OfficeSnapshot> => window.api.getOfficeSnapshot()
-}
+set({ snapshot: await window.api.officeSnapshot(projectId) })
 ```
 
 ### Domain Services
@@ -236,7 +235,7 @@ describe('parseBotEvent', () => {
 
 ```typescript
 try {
-  const snapshot = await officeApi.snapshot()
+  const snapshot = await window.api.officeSnapshot(projectId)
 } catch (err) {
   toast.error(err instanceof Error ? err.message : 'Operation failed')
 }
