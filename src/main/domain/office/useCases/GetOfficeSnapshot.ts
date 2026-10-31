@@ -5,6 +5,7 @@ import type { SignalRepo } from '../repository/SignalRepo'
 import { layoutRooms } from '../layoutRooms'
 import { placeBot } from '../placeBot'
 import { ProjectNotFoundError } from '../errors'
+import { describeSignal } from '../describeSignal'
 
 const FEED_LINES = 20
 // ponytail: placement reads one week of signals; a bot quiet for longer shows in chill
@@ -106,19 +107,7 @@ function feedText(s: BotSignal, nameOf: (botId: string) => string): string | nul
       return s.author === 'owner' ? `You: ${s.text}` : s.text
     case 'dm':
       return s.author === 'owner' ? `You → ${nameOf(s.botId)}: ${s.text}` : s.text
-    case 'task':
-      return `Started: ${s.task}`
-    case 'result':
-      return `Done: ${s.text}`
-    case 'task-failed':
-      return `Task failed: ${s.reason}`
-    case 'message':
-      return `→ ${nameOf(s.toBotId)}: ${s.text}`
-    case 't3':
-      if (s.status === 'running') return `T3: ${s.title}`
-      if (s.status === 'waiting') return `Waiting for you in T3: ${s.title}`
-      return `Finished in T3: ${s.title}`
-    case 'idle':
-      return null
+    default:
+      return describeSignal(s, nameOf)
   }
 }

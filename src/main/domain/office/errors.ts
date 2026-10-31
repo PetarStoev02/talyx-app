@@ -51,3 +51,17 @@ export class ThreadNotOwnedError extends Error {
     this.name = 'ThreadNotOwnedError'
   }
 }
+
+export class NoRelayBotError extends Error {
+  constructor(readonly groupId: string) {
+    super(`group ${groupId} has no relay bot`)
+    this.name = 'NoRelayBotError'
+  }
+}
+
+export class UnknownGroupError extends Error {
+  constructor(readonly groupId: string) {
+    super(`unknown group ${groupId}`)
+    this.name = 'UnknownGroupError'
+  }
+}

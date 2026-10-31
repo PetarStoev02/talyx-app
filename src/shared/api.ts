@@ -3,6 +3,8 @@
 // import 'electron' — it compiles in both the node and web tsconfigs.
 import type {
   Bot,
+  ChatMessage,
+  ConversationTarget,
   Group,
   OfficeGiveTaskInput,
   OfficeSnapshot,
@@ -34,6 +36,13 @@ export function buildApi(transport: ApiTransport) {
       transport.invoke('office:send-to-thread', input) as Promise<void>,
     officeOpenExternal: (url: string) =>
       transport.invoke('office:open-external', url) as Promise<void>,
+
+    chatConversation: (target: ConversationTarget) =>
+      transport.invoke('chat:conversation', target) as Promise<ChatMessage[]>,
+    chatSendGroup: (input: { groupId: string; text: string }) =>
+      transport.invoke('chat:send-group', input) as Promise<void>,
+    chatSendDm: (input: { botId: string; text: string }) =>
+      transport.invoke('chat:send-dm', input) as Promise<void>,
 
     rosterSaveProject: (project: Project) =>
       transport.invoke('roster:save-project', project) as Promise<void>,

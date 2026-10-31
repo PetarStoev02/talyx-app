@@ -76,3 +76,17 @@ export interface OfficeGiveTaskInput {
   task: string
   target: { kind: 'webhook' } | { kind: 't3'; t3ProjectId: string }
 }
+
+export type ConversationTarget = { kind: 'group'; groupId: string } | { kind: 'bot'; botId: string }
+
+export interface ChatMessage {
+  /** Stable React key: the message id, else `${at}:${index}`. */
+  key: string
+  /** 'owner' or a bot id. */
+  author: 'owner' | string
+  kind: 'text' | 'task' | 'result' | 'failed' | 't3'
+  text: string
+  at: string
+  /** Owner text only. */
+  status: 'sent' | 'failed' | 'no-reply' | null
+}

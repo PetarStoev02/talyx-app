@@ -87,3 +87,12 @@ export const ExternalUrlSchema = z
   }, 'only T3 and https links open')
 
 export const BotInstructionsSchema = z.object({ botId: id })
+
+const chatText = z.string().max(4000)
+
+export const ConversationTargetSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('group'), groupId: id }),
+  z.object({ kind: z.literal('bot'), botId: id })
+])
+export const SendGroupSchema = z.object({ groupId: id, text: chatText })
+export const SendDmSchema = z.object({ botId: id, text: chatText })

@@ -32,6 +32,10 @@ import { T3Projects } from './T3Projects'
 import { LogoStore } from './LogoStore'
 import { INBOUND_TOKEN, ensureInboundToken } from './inboundToken'
 import { registerOfficeIpc } from '../ipc/office.ipc'
+import { registerChatIpc } from '../ipc/chat.ipc'
+import { GetConversation } from '../../domain/office/useCases/GetConversation'
+import { SendDirectMessage } from '../../domain/office/useCases/SendDirectMessage'
+import { SendGroupMessage } from '../../domain/office/useCases/SendGroupMessage'
 import { registerRosterIpc } from '../ipc/roster.ipc'
 
 const INBOUND_PORT = 47321
@@ -165,6 +169,21 @@ export async function startOffice({
       now
     }),
     sendToThread: new SendToThread({ t3, signals })
+  })
+  const webhook = new WebhookClient(fetch)
+  const ownerMessageDeps = {
+    roster,
+    secrets,
+    webhook,
+    record,
+    signals,
+    newMessageId: randomUUID,
+    now
+  }
+  registerChatIpc({
+    conversation: new GetConversation({ roster, signals, now }),
+    sendGroup: new SendGroupMessage(ownerMessageDeps),
+    sendDm: new SendDirectMessage(ownerMessageDeps)
   })
   registerRosterIpc({
     roster,

@@ -32,7 +32,7 @@ export interface GiveTaskInput {
   target: TaskTarget
 }
 
-function failureReason(e: unknown): string {
+export function failureReason(e: unknown): string {
   if (e instanceof WebhookRejectedError) return `http_${e.status}`
   if (e instanceof InsecureWebhookUrlError) return 'insecure_url'
   if (e instanceof WebhookTimeoutError) return 'timeout'
