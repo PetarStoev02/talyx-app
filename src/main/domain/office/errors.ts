@@ -8,7 +8,10 @@ export class MissingRoomError extends Error {
 }
 
 export class InvalidEventError extends Error {
-  constructor(field: string, problem: string) {
+  constructor(
+    readonly field: string,
+    readonly problem: string
+  ) {
     super(`invalid event: ${field} ${problem}`)
     this.name = 'InvalidEventError'
   }

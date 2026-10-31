@@ -33,6 +33,8 @@ const chat = (groupId: string, at: string, text: string | null = 'hi'): BotSigna
   botId: 'b1',
   groupId,
   text,
+  author: 'bot',
+  messageId: null,
   at
 })
 const task = (at: string, text = 'do it'): BotSignal => ({
@@ -67,6 +69,13 @@ describe('placeBot', () => {
 
   it("puts a chatting bot in its group's conference room", () => {
     expect(place([chat('client', '2026-10-31T10:04:00Z')]).roomId).toBe('client-room')
+  })
+
+  it('should not move the relay bot for an owner message', () => {
+    const ownerChat: BotSignal = { ...chat('team', '2026-10-31T10:04:00Z'), author: 'owner' }
+    const p = place([ownerChat])
+    expect(p.roomId).toBe('chill')
+    expect(p.lastLine).toBeNull()
   })
 
   it('moves the bot to the room of the latest chat group', () => {

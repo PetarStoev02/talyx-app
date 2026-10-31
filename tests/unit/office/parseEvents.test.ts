@@ -28,6 +28,8 @@ describe('parseBotEvent', () => {
       botId: 'a',
       groupId: 'g1',
       text: 'hi',
+      author: 'bot',
+      messageId: null,
       at: now.toISOString()
     })
   })
@@ -106,9 +108,46 @@ describe('parseBotEvent', () => {
       expect((err as Error).message).not.toContain('ggg')
     }
   })
-  it('caps text at 500 characters', () => {
-    const s = parseBotEvent({ bot: 'a', kind: 'result', text: 'x'.repeat(900) }, ctx)
-    expect(s.kind === 'result' && s.text).toHaveLength(500)
+  it('caps result text at 4000 characters', () => {
+    const s = parseBotEvent({ bot: 'a', kind: 'result', text: 'x'.repeat(5000) }, ctx)
+    expect(s.kind === 'result' && s.text).toHaveLength(4000)
+  })
+  it('caps a task at 500 characters', () => {
+    const s = parseBotEvent({ bot: 'a', kind: 'task', task: 'x'.repeat(900) }, ctx)
+    expect(s.kind === 'task' && s.task).toHaveLength(500)
+  })
+  it('should read a group message from the owner', () => {
+    const body = {
+      bot: 'b',
+      kind: 'chat',
+      group: 'g1',
+      text: 'hi',
+      author: 'owner',
+      messageId: 'm1'
+    }
+    expect(parseBotEvent(body, ctx)).toMatchObject({ author: 'owner', messageId: 'm1' })
+  })
+  it('should default a group message author to bot', () => {
+    const body = { bot: 'b', kind: 'chat', group: 'g1', text: 'hi' }
+    expect(parseBotEvent(body, ctx)).toMatchObject({ author: 'bot', messageId: null })
+  })
+  it('should reject an unknown author', () => {
+    const body = { bot: 'b', kind: 'chat', group: 'g1', text: 'hi', author: 'admin' }
+    expect(() => parseBotEvent(body, ctx)).toThrow(expect.objectContaining({ field: 'author' }))
+  })
+  it.each(['bot', 'owner'])('should read a direct message from the %s', (author) => {
+    const s = parseBotEvent({ bot: 'b', kind: 'dm', text: 'x', author }, ctx)
+    expect(s).toMatchObject({ kind: 'dm', botId: 'b', author, text: 'x', messageId: null })
+  })
+  it('should require text on a direct message', () => {
+    expect(() => parseBotEvent({ bot: 'b', kind: 'dm' }, ctx)).toThrow(
+      expect.objectContaining({ field: 'text' })
+    )
+  })
+  it('should keep 4000 characters of a reply', () => {
+    const text = 'a"b\n'.repeat(1000)
+    const s = parseBotEvent({ bot: 'b', kind: 'dm', text: text + 'tail' }, ctx)
+    expect(s.kind === 'dm' && s.text).toBe(text)
   })
 })
 

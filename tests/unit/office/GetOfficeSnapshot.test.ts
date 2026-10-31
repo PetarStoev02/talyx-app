@@ -44,7 +44,15 @@ const at = (minute: number): string => `2026-01-01T10:0${minute}:00.000Z`
 describe('GetOfficeSnapshot', () => {
   it('builds rooms with layout boxes and bots with placements', () => {
     const { uc, signals } = setup()
-    signals.append({ kind: 'chat', botId: CTO, groupId: 'agro-ops-team', text: 'hi', at: at(1) })
+    signals.append({
+      kind: 'chat',
+      botId: CTO,
+      groupId: 'agro-ops-team',
+      text: 'hi',
+      author: 'bot',
+      messageId: null,
+      at: at(1)
+    })
 
     const s = uc.execute('agro-ops')
 
@@ -64,10 +72,33 @@ describe('GetOfficeSnapshot', () => {
     expect(s.bots.find((b) => b.id === SALES)?.placement.roomId).toBe('agro-ops-chill')
   })
 
+  it('should show owner messages in the feed as from you', () => {
+    const { uc, signals } = setup()
+    signals.append({
+      kind: 'chat',
+      botId: CTO,
+      groupId: 'agro-ops-team',
+      text: 'hi',
+      author: 'owner',
+      messageId: null,
+      at: at(1)
+    })
+
+    expect(uc.execute('agro-ops').feed[0].text).toBe('You: hi')
+  })
+
   it('writes readable feed lines newest first', () => {
     const { uc, signals } = setup()
     const feed: BotSignal[] = [
-      { kind: 'chat', botId: CTO, groupId: 'agro-ops-team', text: 'hello', at: at(0) },
+      {
+        kind: 'chat',
+        botId: CTO,
+        groupId: 'agro-ops-team',
+        text: 'hello',
+        author: 'bot',
+        messageId: null,
+        at: at(0)
+      },
       { kind: 'task', botId: CTO, task: 'ship it', t3ThreadId: null, runId: 'r', at: at(1) },
       { kind: 'idle', botId: CTO, at: at(1) },
       { kind: 'result', botId: CTO, runId: 'r', text: 'shipped', at: at(2) },

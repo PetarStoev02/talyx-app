@@ -104,7 +104,9 @@ function respondToError(res: ServerResponse, err: unknown): void {
     res.once('finish', () => res.req.destroy())
     return fail(res, 413, 'too_large', true)
   }
-  if (err instanceof InvalidEventError) return fail(res, 400, 'invalid_event')
+  if (err instanceof InvalidEventError) {
+    return fail(res, 400, 'invalid_event', false, { field: err.field, reason: err.problem })
+  }
   if (err instanceof UnknownBotError) {
     console.warn('inbound event for unknown bot', err.botId)
     return fail(res, 404, 'unknown_bot')
@@ -118,7 +120,13 @@ function send(res: ServerResponse, status: number, body: string, type = 'text/pl
   res.end(body)
 }
 
-function fail(res: ServerResponse, status: number, code: string, close = false): void {
+function fail(
+  res: ServerResponse,
+  status: number,
+  code: string,
+  close = false,
+  extra: Record<string, string> = {}
+): void {
   if (close) res.setHeader('Connection', 'close')
-  send(res, status, JSON.stringify({ error: code }), 'application/json')
+  send(res, status, JSON.stringify({ error: code, ...extra }), 'application/json')
 }

@@ -1,7 +1,8 @@
 import { InvalidEventError, UnknownBotError } from './errors'
-import type { Bot, BotSignal, Group, T3Status } from './model'
+import type { Author, Bot, BotSignal, Group, T3Status } from './model'
 
-const MAX_TEXT = 500
+const MAX_TEXT = 4000
+const MAX_TASK = 500
 const MAX_ID = 200
 const MAX_TITLE = 200
 
@@ -34,6 +35,12 @@ function required(value: unknown, field: string, max = MAX_ID): string {
   return s
 }
 
+function author(value: unknown): Author {
+  if (value === undefined) return 'bot'
+  if (value === 'bot' || value === 'owner') return value
+  throw new InvalidEventError('author', 'must be bot or owner')
+}
+
 // A sender's clock is not trusted for ordering or staleness (a future time would never go
 // stale), so signals carry the time Talyx received them. The field is still validated so a
 // malformed body keeps failing loudly.
@@ -61,13 +68,21 @@ export function parseBotEvent(
       if (!ctx.groups.some((g) => g.id === groupId && g.projectId === bot.projectId)) {
         throw new InvalidEventError('group', "is not in the bot's project")
       }
-      return { kind: 'chat', botId, groupId, text: str(e.text, MAX_TEXT), at }
+      return {
+        kind: 'chat',
+        botId,
+        groupId,
+        text: str(e.text, MAX_TEXT),
+        author: author(e.author),
+        messageId: str(e.messageId),
+        at
+      }
     }
     case 'task':
       return {
         kind: 'task',
         botId,
-        task: required(e.task, 'task', MAX_TEXT),
+        task: required(e.task, 'task', MAX_TASK),
         t3ThreadId: str(e.t3ThreadId),
         runId: str(e.runId),
         at
@@ -87,8 +102,17 @@ export function parseBotEvent(
       if (!ctx.bots.some((b) => b.id === toBotId)) throw new UnknownBotError(toBotId)
       return { kind: 'message', botId, toBotId, text: required(e.text, 'text', MAX_TEXT), at }
     }
+    case 'dm':
+      return {
+        kind: 'dm',
+        botId,
+        author: author(e.author),
+        text: required(e.text, 'text', MAX_TEXT),
+        messageId: str(e.messageId),
+        at
+      }
     default:
-      throw new InvalidEventError('kind', 'must be chat, task, idle, result or message')
+      throw new InvalidEventError('kind', 'must be chat, dm, task, idle, result or message')
   }
 }
 

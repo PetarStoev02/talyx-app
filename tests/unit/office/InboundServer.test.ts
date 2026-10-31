@@ -118,6 +118,17 @@ describe('InboundServer', () => {
     expect((await post('/events', '{}')).status).toBe(400)
   })
 
+  it('should name the field a rejected event got wrong', async () => {
+    const { post } = await start({
+      onBotEvent: () => {
+        throw new InvalidEventError('to', 'is required')
+      }
+    })
+    const res = await post('/events', '{}')
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('{"error":"invalid_event","field":"to","reason":"is required"}')
+  })
+
   it('should map UnknownBotError to 404', async () => {
     const { post } = await start({
       onBotEvent: () => {

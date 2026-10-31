@@ -14,9 +14,12 @@ interface PlaceBotInput {
 const MS_PER_MINUTE = 60_000
 const LOCATING_KINDS: BotSignal['kind'][] = ['chat', 'task', 'idle', 'result', 'task-failed']
 
+// An owner message is the owner talking through a bot, not the bot moving or speaking.
+const botOwned = (s: BotSignal): boolean => !(s.kind === 'chat' && s.author === 'owner')
+
 export function placeBot({ bot, rooms, signals, now, staleMinutes }: PlaceBotInput): Placement {
   const roomId = (kind: Room['kind']): string => roomOfKind(rooms, kind, bot.projectId)
-  const latestChatOrResult = latest(signals, ['chat', 'result'])
+  const latestChatOrResult = latest(signals, ['chat', 'result'], botOwned)
   const base = {
     botId: bot.id,
     task: null,
@@ -41,7 +44,7 @@ export function placeBot({ bot, rooms, signals, now, staleMinutes }: PlaceBotInp
     }
   }
 
-  const located = latest(signals, LOCATING_KINDS)
+  const located = latest(signals, LOCATING_KINDS, botOwned)
   if (located && now.getTime() - Date.parse(located.at) > staleMinutes * MS_PER_MINUTE) {
     return { ...base, roomId: roomId('chill'), stale: true }
   }
@@ -61,8 +64,12 @@ function roomOfKind(rooms: Room[], kind: Room['kind'], projectId: string): strin
   return room.id
 }
 
-function latest(signals: BotSignal[], kinds: BotSignal['kind'][]): BotSignal | undefined {
-  return signals.findLast((s) => kinds.includes(s.kind))
+function latest(
+  signals: BotSignal[],
+  kinds: BotSignal['kind'][],
+  accept: (s: BotSignal) => boolean = () => true
+): BotSignal | undefined {
+  return signals.findLast((s) => kinds.includes(s.kind) && accept(s))
 }
 
 function latestPerThread(signals: BotSignal[]): T3Signal[] {

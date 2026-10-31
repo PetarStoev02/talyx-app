@@ -29,8 +29,25 @@ export interface Room {
   groupId: string | null
 }
 export type T3Status = 'running' | 'waiting' | 'done'
+export type Author = 'bot' | 'owner'
 export type BotSignal =
-  | { kind: 'chat'; botId: string; groupId: string; text: string | null; at: string }
+  | {
+      kind: 'chat'
+      botId: string
+      groupId: string
+      text: string | null
+      author: Author
+      messageId: string | null
+      at: string
+    }
+  | {
+      kind: 'dm'
+      botId: string
+      author: Author
+      text: string
+      messageId: string | null
+      at: string
+    }
   | {
       kind: 'task'
       botId: string
