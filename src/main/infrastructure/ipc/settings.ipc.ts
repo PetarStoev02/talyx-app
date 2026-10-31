@@ -1,19 +1,11 @@
 import { ipcMain } from 'electron'
-import { settingsStore } from '../storage/SettingsStore'
-import type { ClassificationPipeline } from '../../domain/classification/services/ClassificationPipeline'
+import type { SettingsStore } from '../storage/SettingsStore'
 import { validateInput, UserSettingsPartialSchema } from './validation'
 
-export function registerSettingsIpc(pipeline: ClassificationPipeline): void {
-  ipcMain.handle('settings:get', () => {
-    return settingsStore.store
-  })
+export function registerSettingsIpc(settingsStore: SettingsStore): void {
+  ipcMain.handle('settings:get', () => settingsStore.get())
 
-  ipcMain.handle('settings:set', (_event, rawPartial: unknown) => {
-    const partial = validateInput(UserSettingsPartialSchema, rawPartial)
-    settingsStore.set(partial)
-    // Refresh custom rules whenever settings change
-    const updated = settingsStore.store
-    pipeline.setCustomRules(updated.classificationRules ?? [])
-    return updated
-  })
+  ipcMain.handle('settings:set', (_event, rawPatch: unknown) =>
+    settingsStore.update(validateInput(UserSettingsPartialSchema, rawPatch))
+  )
 }

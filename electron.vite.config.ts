@@ -12,10 +12,7 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve('src/main/index.ts'),
-          'stt.worker': resolve('src/main/infrastructure/workers/stt.worker.ts'),
-          'tts.worker': resolve('src/main/infrastructure/workers/tts.worker.ts'),
-          'mcp/server': resolve('src/main/mcp/server.ts')
+          index: resolve('src/main/index.ts')
         }
       }
     }
@@ -24,8 +21,7 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve('src/preload/index.ts'),
-          splash: resolve('src/splash/preload.ts')
+          index: resolve('src/preload/index.ts')
         }
       }
     }
@@ -34,9 +30,7 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve('src/renderer/index.html'),
-          splash: resolve('src/renderer/splash.html'),
-          assistant: resolve('src/renderer/assistant.html')
+          index: resolve('src/renderer/index.html')
         }
       }
     },

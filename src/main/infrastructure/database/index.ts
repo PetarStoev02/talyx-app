@@ -10,7 +10,7 @@ let db: Database.Database | null = null
  */
 function getDatabasePath(): string {
   const userDataPath = app.getPath('userData')
-  return join(userDataPath, 'talyx.db')
+  return join(userDataPath, 'office.db')
 }
 
 /**

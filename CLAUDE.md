@@ -1,5 +1,9 @@
 # CLAUDE.md — Talyx Project Guidelines
 
+> **Being rebuilt as Talyx Office** (a 3D office showing the owner's AI bots). The old file
+> organizer and assistant were removed; the sections below describe the previous app and are
+> rewritten at the end of the rebuild. See `docs/` for the spec and plan.
+
 > This file is automatically loaded by AI assistants working on this codebase.
 > Keep it accurate and up to date.
 

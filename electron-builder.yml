@@ -15,9 +15,7 @@ files:
   # patterns below apply.
   - out/**
   - resources/**
-  - '!node_modules/@anthropic-ai/claude-agent-sdk-*/**'
-  # onnxruntime-node and better-sqlite3 ship every platform's binaries; this app is macOS only.
-  - '!node_modules/onnxruntime-node/bin/napi-v6/{win32,linux}/**'
+  # better-sqlite3 ships every platform's binaries; this app is macOS only.
   - '!node_modules/better-sqlite3/prebuilds/{win32,linux,linuxmusl}-*'
   - '!node_modules/better-sqlite3/{deps,src}/**'
 extraResources:
@@ -28,14 +26,6 @@ extraResources:
 asarUnpack:
   - resources/**
   - node_modules/better-sqlite3/**
-  # onnxruntime-node and sharp each dlopen a sibling dylib next to their .node
-  # binding. Electron extracts a .node from the asar, but not the dylib beside it,
-  # so both must live on real disk. @huggingface/transformers is the ESM module
-  # that imports them, and resolves from its own location.
-  - node_modules/onnxruntime-node/**
-  - node_modules/sharp/**
-  - node_modules/@img/**
-  - node_modules/@huggingface/transformers/**
 mac:
   # Only build/icon.icns is found by convention; without this the app gets Electron's icon.
   icon: build/talyx-icon.icns

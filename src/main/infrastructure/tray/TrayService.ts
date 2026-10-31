@@ -3,7 +3,7 @@ import { join } from 'path'
 
 let tray: Tray | null = null
 
-export function createTray(getWindow: () => BrowserWindow | null, onStopAgent: () => void): Tray {
+export function createTray(getWindow: () => BrowserWindow | null): Tray {
   if (tray) return tray
 
   let icon: Electron.NativeImage
@@ -29,10 +29,6 @@ export function createTray(getWindow: () => BrowserWindow | null, onStopAgent: (
           win.focus()
         }
       }
-    },
-    {
-      label: 'Stop agent',
-      click: () => onStopAgent()
     },
     { type: 'separator' },
     {

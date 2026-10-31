@@ -3,7 +3,6 @@ import { buildApi, type ApiTransport } from '../shared/api'
 
 const windowControls = {
   platform: process.platform,
-  // For the feedback issue: Chromium's user agent reports a frozen macOS version.
   systemVersion: process.getSystemVersion()
 }
 
