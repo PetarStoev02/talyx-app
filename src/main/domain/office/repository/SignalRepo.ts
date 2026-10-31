@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3'
-import type { BotSignal } from '../model'
+import type { BotSignal, T3Status } from '../model'
 
 const placeholders = (n: number): string => Array(n).fill('?').join(',')
 const parse = (rows: { payload_json: string }[]): BotSignal[] =>
@@ -51,13 +51,29 @@ export class SignalRepo {
     return find('task') ?? find('t3') ?? null
   }
 
+  latestT3Statuses(): Map<string, T3Status> {
+    const rows = this.db
+      .prepare(
+        `SELECT json_extract(payload_json, '$.t3ThreadId') AS id,
+                json_extract(payload_json, '$.status') AS status
+         FROM signals WHERE kind = 't3' ORDER BY at, id`
+      )
+      .all() as { id: string; status: T3Status }[]
+    return new Map(rows.map((r) => [r.id, r.status]))
+  }
+
+  /** Threads reported by bots (task) or watched (t3) that have not been recorded as done. */
   ownedThreadIds(): string[] {
-    return this.db
+    const done = new Set(
+      [...this.latestT3Statuses()].filter(([, s]) => s === 'done').map(([id]) => id)
+    )
+    const ids = this.db
       .prepare(
         `SELECT DISTINCT json_extract(payload_json, '$.t3ThreadId') FROM signals
          WHERE kind IN ('task', 't3') AND json_extract(payload_json, '$.t3ThreadId') IS NOT NULL`
       )
       .pluck()
       .all() as string[]
+    return ids.filter((id) => !done.has(id))
   }
 }

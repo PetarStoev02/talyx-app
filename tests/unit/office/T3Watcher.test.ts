@@ -20,6 +20,7 @@ describe('T3Watcher', () => {
   let failList: boolean
   let owners: Record<string, string>
   let owned: string[]
+  let statuses: Map<string, 'running' | 'waiting' | 'done'>
   let recorded: BotSignal[]
   let watcher: T3Watcher
 
@@ -30,6 +31,7 @@ describe('T3Watcher', () => {
     failList = false
     owners = {}
     owned = []
+    statuses = new Map()
     recorded = []
     const cli = {
       listThreads: async () => {
@@ -47,7 +49,8 @@ describe('T3Watcher', () => {
       roster: { allBots: () => [{ id: 'bot', t3ProjectIds: ['p1'] }] } as never,
       signals: {
         threadOwner: (id: string) => owners[id] ?? null,
-        ownedThreadIds: () => owned
+        ownedThreadIds: () => owned,
+        latestT3Statuses: () => statuses
       } as never,
       record: { execute: (s: BotSignal) => recorded.push(s) } as never,
       now: () => new Date('2026-01-01T00:00:00Z')
@@ -143,5 +146,56 @@ describe('T3Watcher', () => {
     await watcher.tick()
     expect(watcher.connected()).toBe(true)
     expect(recorded).toEqual([])
+  })
+
+  it('resumes from the last recorded status after a restart', async () => {
+    statuses.set('t1', 'running')
+    threads = [thread({ status: 'completed' })]
+    await watcher.tick()
+    expect(recorded.map((s) => s.kind === 't3' && s.status)).toEqual(['done'])
+  })
+
+  it('does not re-record a running thread that was already recorded running', async () => {
+    statuses.set('t1', 'running')
+    threads = [thread()]
+    await watcher.tick()
+    expect(recorded).toEqual([])
+  })
+
+  it('records done once for a reported thread first seen already done', async () => {
+    owners.t1 = 'bot'
+    owned = ['t1']
+    threads = [thread({ status: 'completed' })]
+    await watcher.tick()
+    await watcher.tick()
+    expect(recorded.map((s) => s.kind === 't3' && s.status)).toEqual(['done'])
+  })
+
+  it('stops fetching a reported thread once it is done', async () => {
+    owners.x = 'bot'
+    owned = ['x']
+    let shows = 0
+    const cli = (watcher as unknown as { deps: { cli: { showThread: unknown } } }).deps.cli
+    cli.showThread = async () => {
+      shows++
+      return thread({ threadId: 'x', projectId: 'elsewhere', status: 'completed' })
+    }
+    await watcher.tick()
+    await watcher.tick()
+    expect(shows).toBe(1)
+  })
+
+  it('warns once per outage', async () => {
+    const warn = vi.spyOn(console, 'warn')
+    warn.mockClear()
+    failList = true
+    await watcher.tick()
+    await watcher.tick()
+    expect(warn).toHaveBeenCalledTimes(1)
+    failList = false
+    await watcher.tick()
+    failList = true
+    await watcher.tick()
+    expect(warn).toHaveBeenCalledTimes(2)
   })
 })

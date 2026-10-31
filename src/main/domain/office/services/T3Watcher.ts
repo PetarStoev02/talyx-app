@@ -13,7 +13,8 @@ export interface T3WatcherDeps {
 }
 
 export class T3Watcher {
-  private readonly last = new Map<string, T3Status>()
+  private last: Map<string, T3Status> | null = null
+  private readonly warned = new Set<string>()
   private readonly finished = new Set<string>()
   private timer: NodeJS.Timeout | null = null
   private busy = false
@@ -30,7 +31,9 @@ export class T3Watcher {
     this.timer = setInterval(() => {
       if (this.busy) return
       this.busy = true
-      void this.tick().finally(() => (this.busy = false))
+      this.tick()
+        .catch((err) => this.warnOnce('tick', err))
+        .finally(() => (this.busy = false))
     }, intervalMs)
   }
 
@@ -40,6 +43,8 @@ export class T3Watcher {
   }
 
   async tick(): Promise<void> {
+    // Restart-safe: resume from what was last recorded, not from nothing.
+    this.last ??= this.deps.signals.latestT3Statuses()
     const bots = this.deps.roster.allBots()
     const projectIds = [...new Set(bots.flatMap((b) => b.t3ProjectIds))]
     const threads = new Map<string, T3Thread>()
@@ -52,7 +57,9 @@ export class T3Watcher {
       return
     }
     this.ok = true
-    for (const id of this.deps.signals.ownedThreadIds()) {
+    this.warned.delete('list')
+    const reported = new Set(this.deps.signals.ownedThreadIds())
+    for (const id of reported) {
       if (threads.has(id) || this.finished.has(id)) continue
       const t = await this.show(id)
       if (t) threads.set(id, t)
@@ -61,11 +68,11 @@ export class T3Watcher {
       const owner =
         this.deps.signals.threadOwner(t.threadId) ??
         bots.find((b) => b.t3ProjectIds.includes(t.projectId))?.id
-      if (owner) await this.observe(t, owner)
+      if (owner) await this.observe(t, owner, reported.has(t.threadId))
     }
   }
 
-  private async observe(listed: T3Thread, owner: string): Promise<void> {
+  private async observe(listed: T3Thread, owner: string, reported: boolean): Promise<void> {
     let thread = listed
     if (listed.status === 'running') {
       const detail = await this.show(listed.threadId)
@@ -73,8 +80,11 @@ export class T3Watcher {
       thread = detail
     }
     const status = toStatus(thread)
-    // Unseen threads start from 'done' so the first tick only reports live work.
-    if (status === (this.last.get(thread.threadId) ?? 'done')) return
+    if (status === 'done') this.finished.add(thread.threadId)
+    // Unseen project threads start from 'done' so old history is not replayed; a thread
+    // a bot reported is expected, so even a fast one that is already done records once.
+    const seen = this.last?.get(thread.threadId) ?? (reported ? null : 'done')
+    if (status === seen) return
     try {
       this.deps.record.execute({
         kind: 't3',
@@ -86,24 +96,32 @@ export class T3Watcher {
         at: this.deps.now().toISOString()
       })
     } catch (err) {
-      console.warn(`T3Watcher: ${errorLine(err)}`)
+      this.warnOnce(`record:${thread.threadId}`, err)
       return
     }
-    this.last.set(thread.threadId, status)
-    if (status === 'done') this.finished.add(thread.threadId)
+    this.warned.delete(`record:${thread.threadId}`)
+    this.last?.set(thread.threadId, status)
   }
 
   private async show(threadId: string): Promise<T3Thread | null> {
     try {
-      return await this.deps.cli.showThread(threadId)
+      const t = await this.deps.cli.showThread(threadId)
+      this.warned.delete(`show:${threadId}`)
+      return t
     } catch (err) {
-      console.warn(`T3Watcher: ${errorLine(err)}`)
+      this.warnOnce(`show:${threadId}`, err)
       return null
     }
   }
 
   private fail(err: unknown): void {
     this.ok = false
+    this.warnOnce('list', err)
+  }
+
+  private warnOnce(key: string, err: unknown): void {
+    if (this.warned.has(key)) return
+    this.warned.add(key)
     console.warn(`T3Watcher: ${errorLine(err)}`)
   }
 }
