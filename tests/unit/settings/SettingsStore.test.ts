@@ -28,6 +28,14 @@ describe('SettingsStore', () => {
     expect(new SettingsStore(settingsFile()).get()).toEqual(DEFAULTS)
   })
 
+  it('falls back to defaults when the settings file is not an object', () => {
+    for (const content of ['null', '5', '[1,2]', '"text"']) {
+      const file = settingsFile()
+      writeFileSync(file, content)
+      expect(new SettingsStore(file).get()).toEqual(DEFAULTS)
+    }
+  })
+
   it('merges a patch and persists it', () => {
     const file = settingsFile()
     const updated = new SettingsStore(file).update({ staleMinutes: 30 })

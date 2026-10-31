@@ -44,13 +44,16 @@ export class SettingsStore {
   }
 
   private readKnownKeys(): Partial<UserSettings> {
-    let raw: Record<string, unknown>
+    let parsed: unknown
     try {
-      raw = JSON.parse(readFileSync(this.filePath, 'utf-8')) as Record<string, unknown>
+      parsed = JSON.parse(readFileSync(this.filePath, 'utf-8'))
     } catch {
       // Missing or unreadable file: start from the defaults.
       return {}
     }
+    // A hand-edited `null`, number or array must not crash startup.
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {}
+    const raw = parsed as Record<string, unknown>
     return Object.fromEntries(
       SETTING_KEYS.filter((key) => isValid[key](raw[key])).map((k) => [k, raw[k]])
     )

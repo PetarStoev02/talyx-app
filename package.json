@@ -1,7 +1,7 @@
 {
   "name": "talyx",
   "version": "0.11.0",
-  "description": "AI personal assistant and file organizer for macOS",
+  "description": "Talyx Office: a live 3D office for your Grok bots and T3 Code threads on macOS",
   "license": "MIT",
   "engines": {
     "node": ">=22.12.0"

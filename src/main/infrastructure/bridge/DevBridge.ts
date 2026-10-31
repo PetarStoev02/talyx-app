@@ -11,6 +11,8 @@ type IpcHandler = (event: unknown, ...args: unknown[]) => unknown
 type BroadcastListener = (channel: string, ...args: unknown[]) => void
 
 const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
+// Secrets never travel over the dev bridge, even to a trusted loopback caller.
+const SECRET_CHANNELS = new Set(['roster:reveal-token', 'roster:set-webhook-key'])
 
 export interface BridgePorts {
   bridgePort: number
@@ -84,8 +86,8 @@ export class DevBridge {
     channel: string,
     args: unknown[]
   ): Promise<{ ok: boolean; result?: unknown; error?: string }> {
-    if (channel === 'agent:set-api-key') {
-      return { ok: false, error: 'agent:set-api-key is not available over the dev bridge' }
+    if (SECRET_CHANNELS.has(channel)) {
+      return { ok: false, error: `${channel} is not available over the dev bridge` }
     }
     const handler = this.handlers.get(channel)
     if (!handler) return { ok: false, error: `No ipcMain handler registered for "${channel}"` }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { useNavigation } from '@app/providers/useNavigation'
 import { useOffice } from '@app/providers/useOffice'
 import { BotCard } from '@features/bot-card/BotCard'
 import { EventFeed } from '@widgets/event-feed/EventFeed'
@@ -9,6 +10,7 @@ import { RosterPanel } from '@widgets/roster-panel/RosterPanel'
 
 export function OfficePage(): React.JSX.Element {
   const { snapshot, selectedBotId, load, select, subscribe } = useOffice()
+  const navigate = useNavigation((s) => s.navigate)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -36,7 +38,11 @@ export function OfficePage(): React.JSX.Element {
       {snapshot ? (
         <>
           <OfficeScene snapshot={snapshot} selectedBotId={selectedBotId} onSelect={select} />
-          <TopBar snapshot={snapshot} onSwitchProject={handleSwitchProject} />
+          <TopBar
+            snapshot={snapshot}
+            onSwitchProject={handleSwitchProject}
+            onOpenSettings={() => navigate('settings')}
+          />
           <RosterPanel snapshot={snapshot} selectedBotId={selectedBotId} onSelect={select} />
           <EventFeed snapshot={snapshot} />
           {selected && (
