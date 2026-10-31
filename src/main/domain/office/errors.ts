@@ -27,3 +27,10 @@ export class ProjectNotFoundError extends Error {
     this.name = 'ProjectNotFoundError'
   }
 }
+
+export class BotNotReachableError extends Error {
+  constructor(readonly botId: string) {
+    super(`bot ${botId} has no webhook to reach`)
+    this.name = 'BotNotReachableError'
+  }
+}

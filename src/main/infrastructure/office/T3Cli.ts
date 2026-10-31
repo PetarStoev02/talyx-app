@@ -65,7 +65,7 @@ export class T3Cli {
   // The message goes through stdin ('-') so text starting with '-' is never read as a flag.
   async startThread(projectId: string, message: string, title: string): Promise<string> {
     const out = (
-      await this.run(['thread', 'start', projectId, '-', '--title', title, '--json'], message)
+      await this.run(['thread', 'start', projectId, '-', `--title=${title}`, '--json'], message)
     ).trim()
     try {
       const json: unknown = JSON.parse(out)

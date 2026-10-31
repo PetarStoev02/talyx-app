@@ -55,7 +55,7 @@ describe('T3Cli', () => {
     await cli.startThread('p', '--evil', 'T')
     await cli.send('t1', '--evil')
     expect(calls[0]).toEqual({
-      args: ['thread', 'start', 'p', '-', '--title', 'T', '--json'],
+      args: ['thread', 'start', 'p', '-', '--title=T', '--json'],
       input: '--evil'
     })
     expect(calls[1]).toEqual({ args: ['thread', 'send', 't1', '-'], input: '--evil' })
