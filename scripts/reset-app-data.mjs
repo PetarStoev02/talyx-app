@@ -1,17 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * Clears all Talyx app data for a fresh start.
+ * Clears all Talyx Office app data for a fresh start (the AgroOps roster is seeded again).
  * Usage: npm run reset (or npm run dev:reset to reset and start the app)
  *
- * Deletes:
- * - SQLite database (talyx.db, talyx.db-wal, talyx.db-shm)
- * - Settings (settings.json)
- * - Transformers.js model cache
- * - Search index and sort history (both live in the SQLite database)
- *
- * Does NOT delete:
- * - Downloaded voice models (the `models` folder) — too large to re-download
+ * Deletes: office.db (+ -wal, -shm), settings.json, secrets/ (webhook keys, inbound token),
+ * logos/.
  */
 
 import { join } from 'path'
@@ -23,11 +17,12 @@ const appData = join(homedir(), 'Library', 'Application Support', 'talyx')
 console.log(`\n🧹 Clearing Talyx app data from: ${appData}\n`)
 
 const targets = [
-  { path: join(appData, 'talyx.db'), label: 'Database' },
-  { path: join(appData, 'talyx.db-wal'), label: 'Database WAL' },
-  { path: join(appData, 'talyx.db-shm'), label: 'Database SHM' },
+  { path: join(appData, 'office.db'), label: 'Database' },
+  { path: join(appData, 'office.db-wal'), label: 'Database WAL' },
+  { path: join(appData, 'office.db-shm'), label: 'Database SHM' },
   { path: join(appData, 'settings.json'), label: 'Settings' },
-  { path: join(appData, 'transformers-models'), label: 'Transformers.js models' }
+  { path: join(appData, 'secrets'), label: 'Secrets' },
+  { path: join(appData, 'logos'), label: 'Logos' }
 ]
 
 let cleared = 0

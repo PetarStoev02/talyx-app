@@ -1,9 +1,5 @@
 appId: com.talyx.app
 productName: Talyx
-protocols:
-  - name: Talyx
-    schemes:
-      - talyx
 # Talyx does not use electron-updater; without this electron-builder detects a GitHub
 # target from package.json and writes app-update.yml, latest-mac.yml and blockmaps.
 publish: null
