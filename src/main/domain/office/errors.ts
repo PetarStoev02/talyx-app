@@ -6,3 +6,17 @@ export class MissingRoomError extends Error {
     this.name = 'MissingRoomError'
   }
 }
+
+export class InvalidEventError extends Error {
+  constructor(field: string, problem: string) {
+    super(`invalid event: ${field} ${problem}`)
+    this.name = 'InvalidEventError'
+  }
+}
+
+export class UnknownBotError extends Error {
+  constructor(botId: string) {
+    super(`unknown bot ${botId}`)
+    this.name = 'UnknownBotError'
+  }
+}
