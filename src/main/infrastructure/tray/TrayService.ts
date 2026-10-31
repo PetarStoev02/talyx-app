@@ -21,7 +21,7 @@ export function createTray(getWindow: () => BrowserWindow | null): Tray {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Show Talyx',
+      label: 'Open Talyx',
       click: () => {
         const win = getWindow()
         if (win) {

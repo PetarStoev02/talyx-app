@@ -8,7 +8,9 @@ import icon from '../../resources/talyx-icon.png?asset'
 
 import { getDatabase, closeDatabase } from './infrastructure/database'
 import { registerSettingsIpc } from './infrastructure/ipc/settings.ipc'
-import { SettingsStore } from './infrastructure/storage/SettingsStore'
+import { SettingsStore, type UserSettings } from './infrastructure/storage/SettingsStore'
+import { startOffice, type RunningOffice } from './infrastructure/office/startOffice'
+import type { OfficeSnapshot } from '../shared/office'
 import { createTray, destroyTray } from './infrastructure/tray/TrayService'
 import { DevBridge } from './infrastructure/bridge/DevBridge'
 
@@ -17,18 +19,37 @@ const DEFAULT_BRIDGE_PORT = 5175
 const rendererUrl = is.dev ? process.env['ELECTRON_RENDERER_URL'] : undefined
 
 let mainWindow: BrowserWindow | null = null
+let office: Promise<RunningOffice> | null = null
+let quitting = false
 
 // Browser dev bridge — lets a plain browser tab at localhost:5173 drive the app in dev
 const devBridge = rendererUrl ? new DevBridge(Number(new URL(rendererUrl).port)) : null
 
 function initializeServices(): void {
-  getDatabase()
   const settingsStore = new SettingsStore(join(app.getPath('userData'), 'settings.json'))
 
   // The bridge tap goes first — it must see every registration
   devBridge?.installTap(ipcMain)
-  registerSettingsIpc(settingsStore)
+  registerSettingsIpc(settingsStore, applyLoginItem)
+  applyLoginItem(settingsStore.get())
+  office = startOffice({
+    db: getDatabase(),
+    settings: settingsStore,
+    userDataDir: app.getPath('userData'),
+    broadcast
+  })
+  office.catch((err) => log.error('[Main] office did not start:', err))
   void devBridge?.start(Number(process.env['TALYX_BRIDGE_PORT'] ?? DEFAULT_BRIDGE_PORT))
+}
+
+function broadcast(channel: string, snapshot: OfficeSnapshot): void {
+  for (const window of BrowserWindow.getAllWindows()) window.webContents.send(channel, snapshot)
+  devBridge?.broadcast(channel, snapshot)
+}
+
+// Dev runs the bare Electron binary: registering it as a login item would be wrong.
+function applyLoginItem(settings: UserSettings): void {
+  if (!is.dev) app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin })
 }
 
 function createWindow(): BrowserWindow {
@@ -59,6 +80,12 @@ function createWindow(): BrowserWindow {
   }
 
   window.once('ready-to-show', () => window.show())
+  // Closing hides: the office keeps listening in the tray until Quit.
+  window.on('close', (event) => {
+    if (quitting) return
+    event.preventDefault()
+    window.hide()
+  })
   return window
 }
 
@@ -90,10 +117,25 @@ app.whenReady().then(() => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow()
+    else mainWindow?.show()
   })
 
   // The app stays alive in the tray when the window closes.
   app.on('window-all-closed', () => {})
+
+  app.on('before-quit', (event) => {
+    if (quitting) return
+    quitting = true
+    if (!office) return
+    event.preventDefault()
+    void office
+      .then((o) => o.stop())
+      .catch((err) => log.warn('[Main] office stop failed:', err))
+      .finally(() => app.quit())
+  })
+
+  // Electron's own SIGTERM quit stalls once before-quit defers it; route it through app.quit.
+  process.on('SIGTERM', () => app.quit())
 
   app.on('will-quit', () => {
     destroyTray()
