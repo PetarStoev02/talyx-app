@@ -7,8 +7,9 @@ import type { Bot } from '../../../src/main/domain/office/model'
 
 describe('RosterRepo', () => {
   let repo: RosterRepo
+  let db: Database.Database
   beforeEach(() => {
-    const db = new Database(':memory:')
+    db = new Database(':memory:')
     runMigrations(db)
     repo = new RosterRepo(db)
     repo.saveProject({ id: 'p', name: 'P', logoPath: null, windowView: 'none' })
@@ -45,5 +46,34 @@ describe('RosterRepo', () => {
 
   it('throws ProjectNotFoundError for an unknown project', () => {
     expect(() => repo.getProject('nope')).toThrow(ProjectNotFoundError)
+  })
+
+  const bot: Bot = {
+    id: 'b',
+    projectId: 'p',
+    name: 'B',
+    color: '#fff',
+    groupIds: ['g1'],
+    webhookUrl: null,
+    t3ProjectIds: ['t1'],
+    grokLink: null
+  }
+  const linkCount = (): number =>
+    db
+      .prepare('SELECT (SELECT COUNT(*) FROM bot_groups) + (SELECT COUNT(*) FROM bot_t3_projects)')
+      .pluck()
+      .get() as number
+
+  it("removes a deleted bot's group and T3 links", () => {
+    repo.saveBot(bot)
+    expect(linkCount()).toBe(2)
+    repo.deleteBot('b')
+    expect(linkCount()).toBe(0)
+  })
+
+  it('rejects a bot with an unknown group and saves nothing', () => {
+    expect(() => repo.saveBot({ ...bot, groupIds: ['missing'] })).toThrow()
+    expect(repo.allBots()).toEqual([])
+    expect(linkCount()).toBe(0)
   })
 })

@@ -28,6 +28,11 @@ const BOTS: Seed[] = [
 /** Re-runnable: does nothing when the AgroOps project already exists. */
 export function seedAgroOps(repo: RosterRepo): void {
   if (repo.listProjects().some((p) => p.id === PROJECT_ID)) return
+  // One transaction: the guard above is the project row, so a partial seed must never persist.
+  repo.transaction(() => insertAgroOps(repo))
+}
+
+function insertAgroOps(repo: RosterRepo): void {
   repo.saveProject({ id: PROJECT_ID, name: 'AgroOps', logoPath: null, windowView: 'none' })
   repo.saveGroup({ id: TEAM, projectId: PROJECT_ID, name: 'Agro Ops team' })
   repo.saveGroup({ id: CLIENTS, projectId: PROJECT_ID, name: 'Agro Ops client panel' })

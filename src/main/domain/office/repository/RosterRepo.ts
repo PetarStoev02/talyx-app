@@ -27,6 +27,10 @@ const toProject = (r: ProjectRow): Project => ({
 export class RosterRepo {
   constructor(private readonly db: Database.Database) {}
 
+  transaction<T>(fn: () => T): T {
+    return this.db.transaction(fn)()
+  }
+
   listProjects(): Project[] {
     return (this.db.prepare('SELECT * FROM projects ORDER BY rowid').all() as ProjectRow[]).map(
       toProject
