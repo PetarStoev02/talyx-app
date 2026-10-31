@@ -102,6 +102,7 @@ export class GetOfficeSnapshot {
 function feedText(s: BotSignal, nameOf: (botId: string) => string): string | null {
   switch (s.kind) {
     case 'chat':
+      if (s.text === null) return null
       return s.author === 'owner' ? `You: ${s.text}` : s.text
     case 'dm':
       return s.author === 'owner' ? `You → ${nameOf(s.botId)}: ${s.text}` : s.text

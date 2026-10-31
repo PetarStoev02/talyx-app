@@ -78,6 +78,19 @@ describe('placeBot', () => {
     expect(p.lastLine).toBeNull()
   })
 
+  it('should keep the bot where it was and its last words when the owner speaks after it', () => {
+    const ownerChat: BotSignal = {
+      ...chat('client', '2026-10-31T10:09:00Z', 'yo'),
+      author: 'owner'
+    }
+    const p = place([chat('team', '2026-10-31T10:04:00Z', 'hello'), ownerChat])
+    expect(p).toMatchObject({
+      roomId: 'team-room',
+      lastLine: 'hello',
+      lastSeenAt: '2026-10-31T10:04:00Z'
+    })
+  })
+
   it('moves the bot to the room of the latest chat group', () => {
     const p = place([chat('team', '2026-10-31T10:01:00Z'), chat('client', '2026-10-31T10:03:00Z')])
     expect(p.roomId).toBe('client-room')

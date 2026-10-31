@@ -58,7 +58,7 @@ export class InboundServer {
     if (!this.authorised(req)) return fail(res, 401, 'unauthorized')
     if (Number(req.headers['content-length']) > MAX_BODY_BYTES) {
       res.once('finish', () => req.destroy())
-      return fail(res, 413, 'too_large', true)
+      return fail(res, 413, 'too_large', { close: true })
     }
     handler(parseJson(await readBody(req)))
     send(res, 202, '{"ok":true}', 'application/json')
@@ -102,10 +102,12 @@ function parseJson(text: string): unknown {
 function respondToError(res: ServerResponse, err: unknown): void {
   if (err instanceof TooLargeError) {
     res.once('finish', () => res.req.destroy())
-    return fail(res, 413, 'too_large', true)
+    return fail(res, 413, 'too_large', { close: true })
   }
   if (err instanceof InvalidEventError) {
-    return fail(res, 400, 'invalid_event', false, { field: err.field, reason: err.problem })
+    return fail(res, 400, 'invalid_event', {
+      extra: { field: err.field, reason: err.problem }
+    })
   }
   if (err instanceof UnknownBotError) {
     console.warn('inbound event for unknown bot', err.botId)
@@ -124,8 +126,7 @@ function fail(
   res: ServerResponse,
   status: number,
   code: string,
-  close = false,
-  extra: Record<string, string> = {}
+  { close = false, extra = {} }: { close?: boolean; extra?: Record<string, string> } = {}
 ): void {
   if (close) res.setHeader('Connection', 'close')
   send(res, status, JSON.stringify({ error: code, ...extra }), 'application/json')

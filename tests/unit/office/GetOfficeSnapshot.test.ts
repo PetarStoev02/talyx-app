@@ -87,6 +87,21 @@ describe('GetOfficeSnapshot', () => {
     expect(uc.execute('agro-ops').feed[0].text).toBe('You: hi')
   })
 
+  it('should leave an owner message without text out of the feed', () => {
+    const { uc, signals } = setup()
+    signals.append({
+      kind: 'chat',
+      botId: CTO,
+      groupId: 'agro-ops-team',
+      text: null,
+      author: 'owner',
+      messageId: null,
+      at: at(1)
+    })
+
+    expect(uc.execute('agro-ops').feed).toEqual([])
+  })
+
   it('writes readable feed lines newest first', () => {
     const { uc, signals } = setup()
     const feed: BotSignal[] = [
