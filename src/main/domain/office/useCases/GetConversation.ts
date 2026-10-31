@@ -10,7 +10,7 @@ const BOT_TIMELINE_KINDS: BotSignal['kind'][] = ['dm', 'task', 'result', 'task-f
 
 export interface GetConversationDeps {
   roster: Pick<RosterRepo, 'allBots'>
-  signals: Pick<SignalRepo, 'groupChat' | 'botTimeline' | 'failedRunIds'>
+  signals: Pick<SignalRepo, 'groupChat' | 'botTimeline' | 'failedRunIds' | 'hasMessageId'>
   now: () => Date
 }
 
@@ -29,13 +29,13 @@ export class GetConversation {
         : []
     )
     const failed = signals.failedRunIds(ownerIds)
-    const ownerIdSet = new Set(ownerIds)
     const names = new Map(this.deps.roster.allBots().map((b) => [b.id, b.name]))
     const nameOf = (id: string): string => names.get(id) ?? id
 
     const messages: ChatMessage[] = []
     for (const s of found) {
-      if (s.kind === 'task-failed' && s.runId && ownerIdSet.has(s.runId)) continue
+      // A failed send is shown as the status of its owner message, wherever that message lives.
+      if (s.kind === 'task-failed' && s.runId && signals.hasMessageId(s.runId)) continue
       const message = this.toMessage(s, nameOf, failed, messages.length)
       if (message) messages.push(message)
     }

@@ -27,7 +27,7 @@ describe('SendDirectMessage', () => {
     expect(body.history[0]).toEqual({ author: 'B', text: 'old5' })
   })
 
-  it('should keep the message as failed when the bot cannot be reached', async () => {
+  it('should refuse a bot without a webhook and store nothing', async () => {
     const w = chatWorld()
     await expect(new SendDirectMessage(w.deps).execute({ botId: 'b', text: 'hi' })).rejects.toThrow(
       BotNotReachableError

@@ -156,12 +156,13 @@ export async function startOffice({
     }
   })
 
+  const webhook = new WebhookClient(fetch)
   registerOfficeIpc({
     snapshot,
     giveTask: new GiveTask({
       roster,
       secrets,
-      webhook: new WebhookClient(fetch),
+      webhook,
       t3,
       record,
       eventsUrl: () => funnelState.url,
@@ -170,7 +171,6 @@ export async function startOffice({
     }),
     sendToThread: new SendToThread({ t3, signals })
   })
-  const webhook = new WebhookClient(fetch)
   const ownerMessageDeps = {
     roster,
     secrets,

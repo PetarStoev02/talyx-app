@@ -38,6 +38,15 @@ describe('SendGroupMessage', () => {
     expect(messages[0]).toMatchObject({ author: 'owner', text: 'hi', status: 'failed' })
   })
 
+  it('should not show a failed group send in the relay bot’s direct chat', async () => {
+    const w = chatWorld({ relay: true, hook: true })
+    w.trigger.mockRejectedValue(new WebhookRejectedError(500))
+    await expect(
+      new SendGroupMessage(w.deps).execute({ groupId: 'g', text: 'hi' })
+    ).rejects.toThrow()
+    expect(w.conversation.execute({ kind: 'bot', botId: 'b' })).toEqual([])
+  })
+
   it('should refuse a group without a relay bot', async () => {
     const w = chatWorld({ hook: true })
     await expect(
