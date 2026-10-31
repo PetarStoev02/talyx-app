@@ -1,0 +1,630 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Talyx — Office (wireframe)</title>
+    <!-- ponytail: throwaway 3D spike. three.js from esm.sh, fake sim, agents walk through walls. -->
+    <style>
+      @font-face {
+        font-family: 'Geist';
+        src: url('/src/assets/fonts/GeistVF.woff2') format('woff2');
+        font-weight: 100 900;
+      }
+      :root {
+        --ground: #000;
+        --surface: #111;
+        --raised: #1c1c1c;
+        --border: #2e2e2e;
+        --control: #444;
+        --text: #fff;
+        --muted: #b4b4b4;
+        --faint: #949494;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--ground);
+        overflow: hidden;
+        font: 14px/20px 'Geist', -apple-system, sans-serif;
+        color: var(--text);
+      }
+      .num {
+        font-variant-numeric: tabular-nums;
+      }
+      #hud {
+        position: fixed;
+        top: 16px;
+        left: 20px;
+        display: flex;
+        align-items: center;
+        z-index: 3;
+      }
+      #hud .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        font-size: 16px;
+        padding-right: 20px;
+      }
+      #hud .mark {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        background: var(--text);
+        position: relative;
+      }
+      #hud .mark::before,
+      #hud .mark::after {
+        content: '';
+        position: absolute;
+        background: var(--ground);
+        border-radius: 1px;
+      }
+      #hud .mark::before {
+        left: 5px;
+        right: 5px;
+        top: 6px;
+        height: 3px;
+      }
+      #hud .mark::after {
+        left: 9.5px;
+        width: 3px;
+        top: 6px;
+        bottom: 5px;
+      }
+      #hud .scope {
+        color: var(--muted);
+        font-weight: 500;
+      }
+      #hud .stat {
+        padding: 0 20px;
+        border-left: 1px solid var(--border);
+      }
+      #hud .n {
+        display: block;
+        font-size: 20px;
+        line-height: 24px;
+        font-weight: 600;
+      }
+      #hud .l {
+        font-size: 12px;
+        color: var(--faint);
+      }
+      #crew {
+        position: fixed;
+        top: 84px;
+        right: 16px;
+        width: 248px;
+        z-index: 3;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+        max-height: calc(100vh - 100px);
+        overflow: auto;
+        box-sizing: border-box;
+      }
+      #crew h4 {
+        margin: 8px 8px 4px;
+        font-size: 12px;
+        color: var(--faint);
+        font-weight: 500;
+      }
+      .member {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .member:hover,
+      .member.on {
+        background: var(--raised);
+      }
+      .member .av {
+        width: 20px;
+        height: 16px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .member .t {
+        flex: 1;
+        min-width: 0;
+        font-size: 13px;
+      }
+      .member .s {
+        display: block;
+        font-size: 12px;
+        line-height: 16px;
+        color: var(--faint);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .member .where {
+        font-size: 11px;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      #feed {
+        position: fixed;
+        left: 20px;
+        bottom: 16px;
+        width: 340px;
+        z-index: 3;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 4px 12px;
+      }
+      #feed div {
+        font-size: 12px;
+        padding: 6px 0;
+        color: var(--muted);
+        border-top: 1px solid #1a1a1a;
+      }
+      #feed div:first-child {
+        border-top: 0;
+      }
+      #feed b {
+        color: var(--text);
+        font-weight: 500;
+      }
+      #card {
+        position: fixed;
+        right: 280px;
+        bottom: 16px;
+        width: 290px;
+        z-index: 3;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        display: none;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+      }
+      #card .meta {
+        color: var(--faint);
+        font-size: 12px;
+        margin-top: 2px;
+      }
+      #card button {
+        font: inherit;
+        font-size: 13px;
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--control);
+        border-radius: 6px;
+        height: 30px;
+        padding: 0 12px;
+        margin: 12px 6px 0 0;
+        cursor: pointer;
+      }
+      #card button.primary {
+        background: var(--text);
+        color: var(--ground);
+        border-color: var(--text);
+      }
+      #card button:hover {
+        border-color: var(--muted);
+      }
+      #card button:focus-visible,
+      .member:focus-visible {
+        outline: 2px solid var(--text);
+        outline-offset: 2px;
+      }
+      .label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: auto;
+        cursor: pointer;
+      }
+      .name {
+        font-size: 11px;
+        line-height: 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 1px 8px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .bubble {
+        font-size: 12px;
+        line-height: 16px;
+        background: var(--text);
+        color: var(--ground);
+        padding: 6px 10px;
+        border-radius: 8px;
+        max-width: 190px;
+        margin-bottom: 6px;
+        display: none;
+      }
+      .room {
+        font-size: 12px;
+        color: var(--faint);
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="hud"></div>
+    <div id="crew"></div>
+    <div id="feed"></div>
+    <div id="card"></div>
+    <script type="module">
+      import * as THREE from 'https://esm.sh/three@0.170.0'
+      import { OrbitControls } from 'https://esm.sh/three@0.170.0/examples/jsm/controls/OrbitControls.js'
+      import {
+        CSS2DRenderer,
+        CSS2DObject
+      } from 'https://esm.sh/three@0.170.0/examples/jsm/renderers/CSS2DRenderer.js'
+
+      // Floor plan from the user's sketch: 16 x 10 units.
+      const ROOMS = [
+        { id: 'client', name: 'Client conference', x: 0, z: 0, w: 6, d: 5, color: 0x1a1a1a },
+        { id: 'work', name: 'Work room', x: 6, z: 0, w: 4.5, d: 5, color: 0x202020 },
+        { id: 'team', name: 'Team conference', x: 10.5, z: 0, w: 5.5, d: 5, color: 0x1a1a1a },
+        { id: 'chill', name: 'Chill room', x: 0, z: 5, w: 16, d: 4, color: 0x141414 }
+      ]
+      const roomById = Object.fromEntries(ROOMS.map((r) => [r.id, r]))
+      const hex = (c) => '#' + c.toString(16).padStart(6, '0')
+
+      const AGENTS = [
+        { name: 'Agro Ops CTO', group: 'team', color: 0x9a9a9a, lines: ['Grok Bot помоли за още една итерация', 'API-то е готово'] },
+        { name: 'Agro Ops Sales', group: 'team', color: 0xe84a9a, lines: ['Нямам какво да добавя.', 'Кой поема демото?'] },
+        { name: 'Agro Ops Product Lead', group: 'team', color: 0x8b5cf6, lines: ['Всичките петима демо клиенти потвърдиха', 'Приоритет: отчетите'] },
+        { name: 'Agro Ops CFO', group: 'team', color: 0xe5484d, lines: ['Sent 1 PDF', 'Бюджетът стига до Q2'] },
+        { name: 'Co-op Manager', group: 'client', color: 0xe5484d, lines: ['Добре, вече съм в ролята', 'Колко струва за 40 члена?'] },
+        { name: 'Small Farm', group: 'client', color: 0x4fb8a5, lines: ['Готово, вече съм в ролята.', 'Работи ли без интернет?'] },
+        { name: 'Mid-size Farm', group: 'client', color: 0xe5484d, lines: ['Чудесно, вече съм в ролята.', 'Искам отчет по полета'] },
+        { name: 'Agronomist', group: 'client', color: 0xe8963a, lines: ['Разбрано, ще съм скептичен', 'Откъде идват данните?'] },
+        { name: 'Dealer Agronomist', group: 'client', color: 0xec5fa0, lines: ['Здравей, Петър!', 'Интеграция с дилърите?'] }
+      ]
+
+      // --- scene ---
+      const scene = new THREE.Scene()
+      const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 200)
+            const renderer = new THREE.WebGLRenderer({ antialias: true })
+      renderer.setPixelRatio(devicePixelRatio)
+      renderer.setSize(innerWidth, innerHeight)
+      renderer.shadowMap.enabled = true
+      document.body.appendChild(renderer.domElement)
+      const labels = new CSS2DRenderer()
+      labels.setSize(innerWidth, innerHeight)
+      Object.assign(labels.domElement.style, { position: 'fixed', top: 0, pointerEvents: 'none' })
+      document.body.appendChild(labels.domElement)
+      const controls = new OrbitControls(camera, renderer.domElement)
+      controls.target.set(8, 0, 4.5)
+      controls.maxPolarAngle = 1.3
+      // Frontal view, distance fitted so the whole floor fits left of the crew panel.
+      const PANEL = 280
+      function frameCamera() {
+        const aspect = Math.max(innerWidth - PANEL, 320) / innerHeight
+        const halfH = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * aspect)
+        const d = Math.max(8.4 / Math.tan(halfH), 14)
+        camera.position.copy(controls.target).add(new THREE.Vector3(0, 0.8, 0.6).multiplyScalar(d))
+        camera.aspect = innerWidth / innerHeight
+        camera.setViewOffset(innerWidth, innerHeight, PANEL / 2, 0, innerWidth, innerHeight)
+        camera.updateProjectionMatrix()
+      }
+      frameCamera()
+      controls.update()
+
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x111111, 1.1))
+      const sun = new THREE.DirectionalLight(0xffffff, 1.6)
+      sun.position.set(14, 20, 12)
+      sun.castShadow = true
+      sun.shadow.mapSize.set(2048, 2048)
+      Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14 })
+      sun.target.position.set(8, 0, 5)
+      scene.add(sun, sun.target)
+
+      const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...extra })
+      function box(w, h, d, color, x, y, z, extra) {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, extra))
+        m.position.set(x, y, z)
+        m.castShadow = m.receiveShadow = true
+        scene.add(m)
+        return m
+      }
+
+      // base slab
+      box(16.6, 0.3, 9.6, 0x0a0a0a, 8, -0.16, 4.5)
+
+      for (const r of ROOMS) {
+        const c = new THREE.Color(r.color)
+        const floor = new THREE.Mesh(
+          new THREE.PlaneGeometry(r.w - 0.08, r.d - 0.08),
+          mat(c)
+        )
+        floor.rotation.x = -Math.PI / 2
+        floor.position.set(r.x + r.w / 2, 0.001, r.z + r.d / 2)
+        floor.receiveShadow = true
+        scene.add(floor)
+        const wall = {}
+        box(r.w, 0.5, 0.06, 0x3a3a3a, r.x + r.w / 2, 0.25, r.z, wall)
+        box(0.06, 0.5, r.d, 0x3a3a3a, r.x, 0.25, r.z + r.d / 2, wall)
+        const el = document.createElement('div')
+        el.className = 'room' + (r.add ? ' add' : '')
+        el.textContent = r.name
+        if (r.add) el.onclick = () => addRoom(r, el)
+        const tag = new CSS2DObject(el)
+        tag.position.set(r.x + r.w / 2, 0.05, r.z + (r.add ? r.d / 2 : 0.45))
+        scene.add(tag)
+      }
+
+      function addRoom(r, el) {
+        const name = prompt('Name the new room (e.g. Marketing, Investors)')
+        if (!name) return
+        r.name = name.toUpperCase()
+        el.textContent = r.name
+        el.classList.remove('add')
+        el.onclick = null
+        r.add = false
+        log('You', `created room ${name}`)
+        renderHud()
+      }
+
+      // furniture
+      const tables = {}
+      for (const [id, x, z] of [
+        ['client', 3, 2.6],
+        ['team', 13.25, 2.6]
+      ]) {
+        const t = new THREE.Mesh(
+          new THREE.CylinderGeometry(1, 1, 0.08, 40),
+          mat(0xd4d4d4, { emissive: 0xffffff, emissiveIntensity: 0 })
+        )
+        t.scale.set(1.25, 1, 0.8)
+        t.position.set(x, 0.55, z)
+        t.castShadow = t.receiveShadow = true
+        scene.add(t)
+        box(0.15, 0.5, 0.15, 0x333338, x, 0.27, z)
+        tables[id] = { mesh: t, x, z }
+      }
+      const screens = []
+      const desks = [
+        [7.2, 1.7],
+        [9.3, 1.7],
+        [7.2, 3.6],
+        [9.3, 3.6]
+      ]
+      for (const [x, z] of desks) {
+        box(1.3, 0.06, 0.7, 0xd4d4d4, x, 0.5, z)
+        screens.push(box(0.6, 0.38, 0.04, 0x0a0a0a, x, 0.75, z - 0.25, { emissive: 0xffffff, emissiveIntensity: 0 }))
+      }
+      // chill room: sofas + plants
+      box(2.4, 0.35, 0.7, 0x2a2a2a, 3, 0.18, 8.4)
+      box(2.4, 0.35, 0.7, 0x2a2a2a, 13, 0.18, 8.4)
+      box(1.2, 0.3, 0.8, 0x333333, 8, 0.15, 8.3)
+      for (const [x, z] of [
+        [0.5, 5.5],
+        [15.5, 5.5],
+        [15.5, 8.5]
+      ]) {
+        box(0.35, 0.4, 0.35, 0x8a8a8a, x, 0.2, z)
+        const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 12), mat(0x5a5a5a))
+        leaf.position.set(x, 0.7, z)
+        leaf.castShadow = true
+        scene.add(leaf)
+      }
+
+      // --- agents ---
+      const tmp = new THREE.Vector3()
+      for (const a of AGENTS) {
+        const g = new THREE.Group()
+        const body = new THREE.Mesh(
+          new THREE.SphereGeometry(0.3, 24, 16),
+          mat(a.color, { roughness: 0.45 })
+        )
+        body.scale.set(1.15, 0.85, 1)
+        body.position.y = 0.3
+        body.castShadow = true
+        g.add(body)
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.48, 40), new THREE.MeshBasicMaterial({ color: 0xffffff }))
+        ring.rotation.x = -Math.PI / 2
+        ring.position.y = 0.01
+        ring.visible = false
+        g.add(ring)
+        for (const s of [-1, 1]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), mat(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.3 }))
+          eye.scale.set(0.8, 1.5, 0.6)
+          eye.position.set(s * 0.09, 0.36, 0.27)
+          g.add(eye)
+        }
+        const el = document.createElement('div')
+        el.className = 'label'
+        el.innerHTML = `<div class="bubble"></div><div class="name">${a.name.replace('Agro Ops ', '')}</div>`
+        el.onclick = () => select(a)
+        const tag = new CSS2DObject(el)
+        tag.position.y = 0.85
+        g.add(tag)
+        g.position.set(5 + Math.random() * 6, 0, 6 + Math.random() * 3)
+        scene.add(g)
+        Object.assign(a, { g, body, ring, bubble: el.querySelector('.bubble'), room: 'chill', target: g.position.clone(), face: null, task: 'Idle' })
+      }
+
+      function seat(room, i, n) {
+        const t = tables[room]
+        const ang = (i / n) * Math.PI * 2 + 0.4
+        return { pos: new THREE.Vector3(t.x + Math.cos(ang) * 1.75, 0, t.z + Math.sin(ang) * 1.2), face: new THREE.Vector3(t.x, 0, t.z) }
+      }
+      function chillSpot(i) {
+        return { pos: new THREE.Vector3(2 + (i % 7) * 2, 0, 6.3 + Math.floor(i / 7) * 1.2 + (i % 2) * 0.4), face: new THREE.Vector3(8, 0, 20) }
+      }
+
+      function send(a, room, task, spot) {
+        a.room = room
+        a.task = task
+        a.target.copy(spot.pos)
+        a.face = spot.face
+        a.bubble.style.display = 'none'
+      }
+
+      // Scenarios cycle to show behaviour. Real version: driven by Grok chats + T3 threads.
+      const team = AGENTS.filter((a) => a.group === 'team')
+      const clients = AGENTS.filter((a) => a.group === 'client')
+      const SCENARIOS = [
+        { title: 'Agro Ops team is meeting', meet: ['team'], dev: [] },
+        { title: 'Client panel is reviewing the demo', meet: ['client'], dev: [0], ask: true },
+        { title: 'Board + client panel both in session', meet: ['team', 'client'], dev: [] },
+        { title: 'You gave CTO + CFO direct tasks', meet: [], dev: [0, 3], ask: true }
+      ]
+      const DEV_TASKS = ['Building field report export (T3)', 'Writing Q2 budget sheet', 'Seeding demo farms (T3)']
+      let scenarioIndex = -1
+      function nextScenario() {
+        scenarioIndex = (scenarioIndex + 1) % SCENARIOS.length
+        const s = SCENARIOS[scenarioIndex]
+        let chill = 0
+        const devAgents = s.dev.map((i) => team[i])
+        devAgents.forEach((a, i) => {
+          const [x, z] = desks[i]
+          send(a, 'work', DEV_TASKS[i % DEV_TASKS.length], { pos: new THREE.Vector3(x, 0, z + 0.65), face: new THREE.Vector3(x, 0, z - 1) })
+          log('You → ' + a.name.replace('Agro Ops ', ''), a.task)
+        })
+        for (const [group, members] of [
+          ['team', team.filter((a) => !devAgents.includes(a))],
+          ['client', clients]
+        ]) {
+          const meeting = s.meet.includes(group)
+          members.forEach((a, i) => {
+            if (meeting) send(a, group, group === 'team' ? 'In Agro Ops team chat' : 'In client panel chat', seat(group, i, members.length))
+            else send(a, 'chill', 'Idle', chillSpot(chill++))
+          })
+        }
+        for (const id of ['team', 'client']) tables[id].mesh.material.emissiveIntensity = s.meet.includes(id) ? 0.12 : 0
+        updateScreens()
+        log('Talyx', s.title)
+        renderHud()
+        renderCrew()
+      }
+
+      function updateScreens() {
+        screens.forEach((m, i) => {
+          const [x, z] = desks[i]
+          const used = AGENTS.some((a) => a.room === 'work' && Math.abs(a.target.x - x) < 0.1 && Math.abs(a.target.z - z - 0.65) < 0.1)
+          m.material.emissiveIntensity = used ? 0.55 : 0
+        })
+      }
+
+      // one speaker per active table at a time
+      function talk() {
+        for (const id of ['team', 'client']) {
+          const seated = AGENTS.filter((a) => a.room === id)
+          seated.forEach((a) => (a.bubble.style.display = 'none'))
+          if (!seated.length) continue
+          const a = seated[Math.floor(Math.random() * seated.length)]
+          a.bubble.textContent = a.lines[Math.floor(Math.random() * a.lines.length)]
+          a.bubble.style.display = 'block'
+        }
+      }
+
+      // --- UI ---
+      const hud = document.getElementById('hud')
+      function renderHud() {
+        const parts = ROOMS.filter((r) => !r.add).map((r) => {
+          const n = AGENTS.filter((a) => a.room === r.id).length
+          return `<span class="stat"><span class="n num">${n}</span><span class="l">${r.name}</span></span>`
+        })
+        hud.innerHTML = `<span class="brand"><span class="mark"></span>Talyx <span class="scope">AgroOps</span></span>` + parts.join('')
+      }
+      const crew = document.getElementById('crew')
+      function renderCrew() {
+        const section = (title, list) =>
+          `<h4>${title}</h4>` +
+          list
+            .map(
+              (a) => `<div class="member${a === selected ? ' on' : ''}" tabindex="0" data-name="${a.name}">
+                <span class="av" style="background:${hex(a.color)}"></span>
+                <span class="t">${a.name}<span class="s">${a.task}</span></span>
+                <span class="where">${roomById[a.room].name.split(' ')[0]}</span></div>`
+            )
+            .join('')
+        crew.innerHTML = section('Team', team) + section('Clients', clients)
+        crew.querySelectorAll('.member').forEach((el) => (el.onclick = () => select(AGENTS.find((a) => a.name === el.dataset.name))))
+      }
+      const feed = document.getElementById('feed')
+      function log(who, text) {
+        const el = document.createElement('div')
+        el.innerHTML = `<b>${who}</b> ${text}`
+        feed.prepend(el)
+        while (feed.children.length > 3) feed.lastChild.remove()
+      }
+      const card = document.getElementById('card')
+      let selected = null
+      function select(a) {
+        if (selected) selected.ring.visible = false
+        selected = a
+        a.ring.visible = true
+        card.style.display = 'block'
+        card.innerHTML = `<div style="display:flex;justify-content:space-between"><b style="font-weight:600">${a.name}</b>
+          <button id="x" aria-label="Close" style="margin:0;height:22px;border:0;padding:0 4px;color:var(--faint)">✕</button></div>
+          <div class="meta">${roomById[a.room].name} · ${a.task}</div>
+          <button id="dev" class="primary">Give task</button><button id="chat">Open chat</button><button id="chill">Send to chill</button>`
+        renderCrew()
+        card.querySelector('#x').onclick = () => {
+          card.style.display = 'none'
+          a.ring.visible = false
+          selected = null
+          renderCrew()
+        }
+        card.querySelector('#chat').onclick = () => log('You', `opened chat with ${a.name}`)
+        card.querySelector('#dev').onclick = () => {
+          const task = prompt(`Task for ${a.name}`)
+          if (!task) return
+          send(a, 'work', task, { pos: new THREE.Vector3(desks[3][0], 0, desks[3][1] + 0.65), face: new THREE.Vector3(desks[3][0], 0, 0) })
+          log('You → ' + a.name.replace('Agro Ops ', ''), task)
+          updateScreens()
+          renderHud()
+          select(a)
+        }
+        card.querySelector('#chill').onclick = () => {
+          send(a, 'chill', 'Idle', chillSpot(9))
+          log('You', `sent ${a.name} to the chill room`)
+          updateScreens()
+          renderHud()
+          select(a)
+        }
+      }
+
+      // --- loop ---
+      const clock = new THREE.Clock()
+      function frame() {
+        const dt = Math.min(clock.getDelta(), 0.05)
+        const t = clock.elapsedTime
+        for (const a of AGENTS) {
+          const p = a.g.position
+          tmp.subVectors(a.target, p)
+          const dist = tmp.length()
+          const walking = dist > 0.05
+          if (walking) {
+            p.addScaledVector(tmp.normalize(), Math.min(dist, dt * 2.2))
+            a.g.rotation.y = Math.atan2(tmp.x, tmp.z)
+          } else if (a.face) {
+            a.g.rotation.y = Math.atan2(a.face.x - p.x, a.face.z - p.z)
+          }
+          a.body.position.y = 0.3 + (walking ? Math.abs(Math.sin(t * 12)) * 0.08 : Math.sin(t * 2 + p.x) * 0.02)
+        }
+        controls.update()
+        renderer.render(scene, camera)
+        labels.render(scene, camera)
+        requestAnimationFrame(frame)
+      }
+
+      addEventListener('resize', () => {
+        frameCamera()
+        renderer.setSize(innerWidth, innerHeight)
+        labels.setSize(innerWidth, innerHeight)
+      })
+
+      nextScenario()
+      setInterval(nextScenario, 8000)
+      setInterval(talk, 1800)
+      frame()
+    </script>
+  </body>
+</html>
