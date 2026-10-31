@@ -4,6 +4,9 @@ import type { SignalRepo } from '../repository/SignalRepo'
 import type { RecordSignal } from '../useCases/RecordSignal'
 import type { T3Status } from '../model'
 
+// A running thread missing from T3 this many good ticks in a row is treated as gone.
+const VANISHED_TICKS = 3
+
 export interface T3WatcherDeps {
   cli: T3Cli
   roster: RosterRepo
@@ -16,6 +19,7 @@ export class T3Watcher {
   private last: Map<string, T3Status> | null = null
   private readonly warned = new Set<string>()
   private readonly finished = new Set<string>()
+  private readonly misses = new Map<string, number>()
   private timer: NodeJS.Timeout | null = null
   private busy = false
   private ok = true
@@ -70,6 +74,24 @@ export class T3Watcher {
         bots.find((b) => b.t3ProjectIds.includes(t.projectId))?.id
       if (owner) await this.observe(t, owner, reported.has(t.threadId))
     }
+    this.retireVanished(threads)
+  }
+
+  /** A running thread T3 no longer knows would otherwise hold its bot at a computer for days. */
+  private retireVanished(found: Map<string, T3Thread>): void {
+    for (const [threadId, status] of this.last ?? []) {
+      if (status === 'done' || found.has(threadId)) {
+        this.misses.delete(threadId)
+        continue
+      }
+      const misses = (this.misses.get(threadId) ?? 0) + 1
+      this.misses.set(threadId, misses)
+      if (misses < VANISHED_TICKS) continue
+      const owner = this.deps.signals.threadOwner(threadId)
+      if (!owner) continue
+      this.finished.add(threadId)
+      this.recordStatus({ threadId, title: '', link: null }, owner, 'done')
+    }
   }
 
   private async observe(listed: T3Thread, owner: string, reported: boolean): Promise<void> {
@@ -85,6 +107,14 @@ export class T3Watcher {
     // a bot reported is expected, so even a fast one that is already done records once.
     const seen = this.last?.get(thread.threadId) ?? (reported ? null : 'done')
     if (status === seen) return
+    this.recordStatus(thread, owner, status)
+  }
+
+  private recordStatus(
+    thread: Pick<T3Thread, 'threadId' | 'title' | 'link'>,
+    owner: string,
+    status: T3Status
+  ): void {
     try {
       this.deps.record.execute({
         kind: 't3',

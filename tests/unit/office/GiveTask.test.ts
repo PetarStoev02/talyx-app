@@ -4,6 +4,7 @@ import { SendToThread } from '../../../src/main/domain/office/useCases/SendToThr
 import {
   BotNotReachableError,
   InvalidEventError,
+  ThreadNotOwnedError,
   UnknownBotError
 } from '../../../src/main/domain/office/errors'
 import {
@@ -207,11 +208,23 @@ describe('WebhookClient', () => {
 })
 
 describe('SendToThread', () => {
+  const owners: Record<string, string> = { t: 'b1' }
+  const signals = { threadOwner: (id: string): string | null => owners[id] ?? null }
+
   it('should send the message to the thread and refuse an empty one', async () => {
     const send = vi.fn().mockResolvedValue(undefined)
-    const uc = new SendToThread({ t3: { send } })
+    const uc = new SendToThread({ t3: { send }, signals })
     await uc.execute({ threadId: 't', message: 'hi' })
     expect(send).toHaveBeenCalledWith('t', 'hi')
     await expect(uc.execute({ threadId: 't', message: ' ' })).rejects.toThrow(/message/)
+  })
+
+  it('should refuse a thread no bot owns', async () => {
+    const send = vi.fn().mockResolvedValue(undefined)
+    const uc = new SendToThread({ t3: { send }, signals })
+    await expect(uc.execute({ threadId: 'stranger', message: 'hi' })).rejects.toThrow(
+      ThreadNotOwnedError
+    )
+    expect(send).not.toHaveBeenCalled()
   })
 })

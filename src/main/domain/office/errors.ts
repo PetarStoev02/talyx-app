@@ -41,3 +41,10 @@ export class InvalidLogoError extends Error {
     this.name = 'InvalidLogoError'
   }
 }
+
+export class ThreadNotOwnedError extends Error {
+  constructor(readonly threadId: string) {
+    super(`thread ${threadId} does not belong to any bot`)
+    this.name = 'ThreadNotOwnedError'
+  }
+}

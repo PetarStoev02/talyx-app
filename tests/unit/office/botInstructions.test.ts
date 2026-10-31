@@ -38,16 +38,23 @@ describe('botInstructions', () => {
   })
 
   it('gives one curl example per kind', () => {
-    for (const kind of ['chat', 'task', 'idle', 'result']) {
+    for (const kind of ['chat', 'task', 'idle', 'result', 'message']) {
       expect(text).toContain(`"kind":"${kind}"`)
     }
-    expect(text.match(/curl /g)).toHaveLength(4)
+    expect(text.match(/curl /g)).toHaveLength(5)
     expect(text).toContain('t3ThreadId')
     expect(text).toContain('runId')
   })
 
-  it('says chat needs a group when the bot is in none', () => {
+  it('explains the direct message to another bot', () => {
+    expect(text).toContain('kind "message"')
+    expect(text).toContain('"to":"<other bot id>"')
+  })
+
+  it('says chat needs a group and gives no chat example when the bot is in none', () => {
     const lonely = botInstructions({ bot: { ...bot, groupIds: [] }, groups, eventsUrl: EVENTS_URL })
     expect(lonely).toContain('not in any group')
+    expect(lonely).not.toContain('"kind":"chat"')
+    expect(lonely.match(/curl /g)).toHaveLength(4)
   })
 })

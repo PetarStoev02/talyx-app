@@ -185,6 +185,32 @@ describe('T3Watcher', () => {
     expect(shows).toBe(1)
   })
 
+  it('records done for a running thread that disappears', async () => {
+    owners.t1 = 'bot'
+    owned = ['t1']
+    threads = [thread()]
+    await watcher.tick()
+    threads = []
+    await watcher.tick()
+    await watcher.tick()
+    expect(recorded.map((s) => s.kind === 't3' && s.status)).toEqual(['running'])
+    await watcher.tick()
+    expect(recorded.map((s) => s.kind === 't3' && s.status)).toEqual(['running', 'done'])
+    expect(recorded[1]).toMatchObject({ botId: 'bot', t3ThreadId: 't1' })
+    await watcher.tick()
+    expect(recorded).toHaveLength(2)
+  })
+
+  it('does not count a failed list as a disappearance', async () => {
+    owners.t1 = 'bot'
+    owned = ['t1']
+    threads = [thread()]
+    await watcher.tick()
+    failList = true
+    for (let i = 0; i < 5; i++) await watcher.tick()
+    expect(recorded).toHaveLength(1)
+  })
+
   it('warns once per outage', async () => {
     const warn = vi.spyOn(console, 'warn')
     warn.mockClear()

@@ -32,14 +32,18 @@ export function botInstructions(input: { bot: Bot; groups: Group[]; eventsUrl: s
     '- You start a task: kind "task" with the "task"; add "t3ThreadId" when it is T3 work.',
     '- You finish: kind "idle".',
     '- A routine run that carried a "runId" finishes: kind "result" with that "runId" and the "text".',
+    '- You message another bot directly: kind "message" with "to" set to its bot id and the "text".',
     '',
     'Examples:',
-    curl({ kind: 'chat', group: groups[0]?.id ?? '<group id>', text: 'Morning, team' }),
-    '',
+    ...(groups.length > 0
+      ? [curl({ kind: 'chat', group: groups[0].id, text: 'Morning, team' }), '']
+      : []),
     curl({ kind: 'task', task: 'Draft the pricing page', t3ThreadId: '<t3 thread id or omit>' }),
     '',
     curl({ kind: 'idle' }),
     '',
-    curl({ kind: 'result', runId: '<runId you were given>', text: 'Pricing page drafted' })
+    curl({ kind: 'result', runId: '<runId you were given>', text: 'Pricing page drafted' }),
+    '',
+    curl({ kind: 'message', to: '<other bot id>', text: 'Can you review the pricing page?' })
   ].join('\n')
 }

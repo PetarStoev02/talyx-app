@@ -164,7 +164,7 @@ export async function startOffice({
       newRunId: randomUUID,
       now
     }),
-    sendToThread: new SendToThread({ t3 })
+    sendToThread: new SendToThread({ t3, signals })
   })
   registerRosterIpc({
     roster,

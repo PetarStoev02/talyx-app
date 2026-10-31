@@ -34,10 +34,15 @@ describe('parseBotEvent', () => {
   it('defaults at to now', () => {
     expect(parseBotEvent({ bot: 'a', kind: 'idle' }, ctx).at).toBe(now.toISOString())
   })
-  it('normalizes and validates at', () => {
-    expect(parseBotEvent({ bot: 'a', kind: 'idle', at: '2026-01-01T12:00:00+02:00' }, ctx).at).toBe(
-      '2026-01-01T10:00:00.000Z'
+  it('uses the receive time even when the bot sends a future at', () => {
+    expect(parseBotEvent({ bot: 'a', kind: 'idle', at: '2099-01-01T00:00:00Z' }, ctx).at).toBe(
+      now.toISOString()
     )
+    expect(parseBotEvent({ bot: 'a', kind: 'idle', at: '2020-01-01T00:00:00Z' }, ctx).at).toBe(
+      now.toISOString()
+    )
+  })
+  it('still validates at', () => {
     expect(() => parseBotEvent({ bot: 'a', kind: 'idle', at: 'nope' }, ctx)).toThrow(/at/)
   })
   it('rejects an unknown bot', () => {
@@ -119,7 +124,7 @@ describe('parseT3ListenEvent', () => {
       title: 'Fix',
       status: 'waiting',
       link: null,
-      at: '2026-01-01T09:00:00.000Z'
+      at: now.toISOString()
     })
   })
   it('maps resolved to running and thread end events to done', () => {
@@ -129,12 +134,12 @@ describe('parseT3ListenEvent', () => {
     for (const n of ['thread-finished', 'thread.cancelled', 'thread-failed'])
       expect(run(n)).toMatchObject({ status: 'done' })
   })
-  it('prefers completedAt', () => {
+  it('uses the receive time even when the event carries a future completedAt', () => {
     const s = parseT3ListenEvent(
-      { ...ev, type: 'thread.finished', completedAt: '2026-01-01T09:30:00.000Z' },
+      { ...ev, type: 'thread.finished', completedAt: '2099-01-01T00:00:00.000Z' },
       { threadOwner: owner, now }
     )
-    expect(s?.at).toBe('2026-01-01T09:30:00.000Z')
+    expect(s?.at).toBe(now.toISOString())
   })
   it('ignores a t3listen event for an unattributed thread', () => {
     expect(

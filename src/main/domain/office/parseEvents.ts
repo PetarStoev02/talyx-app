@@ -34,11 +34,15 @@ function required(value: unknown, field: string, max = MAX_ID): string {
   return s
 }
 
-function parseAt(value: unknown, fallback: Date): string {
-  if (value === undefined || value === null) return fallback.toISOString()
-  const date = typeof value === 'string' ? new Date(value) : new Date(NaN)
-  if (Number.isNaN(date.getTime())) throw new InvalidEventError('at', 'must be an ISO date')
-  return date.toISOString()
+// A sender's clock is not trusted for ordering or staleness (a future time would never go
+// stale), so signals carry the time Talyx received them. The field is still validated so a
+// malformed body keeps failing loudly.
+function receivedAt(value: unknown, now: Date): string {
+  if (value !== undefined && value !== null) {
+    const date = typeof value === 'string' ? new Date(value) : new Date(NaN)
+    if (Number.isNaN(date.getTime())) throw new InvalidEventError('at', 'must be an ISO date')
+  }
+  return now.toISOString()
 }
 
 export function parseBotEvent(
@@ -49,7 +53,7 @@ export function parseBotEvent(
   const botId = required(e.bot, 'bot')
   const bot = ctx.bots.find((b) => b.id === botId)
   if (!bot) throw new UnknownBotError(botId)
-  const at = parseAt(e.at, ctx.now)
+  const at = receivedAt(e.at, ctx.now)
 
   switch (e.kind) {
     case 'chat': {
@@ -115,6 +119,6 @@ export function parseT3ListenEvent(
     title: str(e.title, MAX_TITLE) ?? '',
     status,
     link: null,
-    at: parseAt(e.completedAt ?? e.createdAt, ctx.now)
+    at: receivedAt(e.completedAt ?? e.createdAt, ctx.now)
   }
 }
