@@ -9,14 +9,18 @@ const SHORT_ID = 8
 
 interface GiveTaskFormProps {
   bot: OfficeSnapshot['bots'][number]
+  t3Projects: OfficeSnapshot['t3Projects']
   onClose: () => void
 }
 
-export function GiveTaskForm({ bot, onClose }: GiveTaskFormProps): React.JSX.Element {
+export function GiveTaskForm({ bot, t3Projects, onClose }: GiveTaskFormProps): React.JSX.Element {
   const targets = [
     ...(bot.webhookReady ? [{ value: WEBHOOK, label: 'Grok routine' }] : []),
-    // The snapshot carries T3 project ids only, so label them by a short id.
-    ...bot.t3ProjectIds.map((id) => ({ value: id, label: `T3: ${id.slice(0, SHORT_ID)}` }))
+    // A short id stands in when T3's project names cannot be read.
+    ...bot.t3ProjectIds.map((id) => ({
+      value: id,
+      label: `T3: ${t3Projects.find((p) => p.id === id)?.name ?? id.slice(0, SHORT_ID)}`
+    }))
   ]
   const [task, setTask] = useState('')
   const [target, setTarget] = useState(targets[0]?.value ?? '')

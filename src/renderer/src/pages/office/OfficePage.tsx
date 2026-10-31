@@ -44,6 +44,7 @@ export function OfficePage(): React.JSX.Element {
               key={selected.id}
               bot={selected}
               roomName={snapshot.rooms.find((r) => r.id === selected.placement.roomId)?.name ?? ''}
+              t3Projects={snapshot.t3Projects}
               onClose={() => select(null)}
             />
           )}

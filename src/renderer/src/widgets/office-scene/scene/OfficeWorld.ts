@@ -70,7 +70,7 @@ export class OfficeWorld {
   }
 
   apply(snapshot: OfficeSnapshot): void {
-    this.syncRooms(snapshot.rooms)
+    this.syncRooms(snapshot.rooms, snapshot.project.windowView)
     const seats = seatBots(snapshot)
     for (const [id, actor] of this.actors) {
       if (seats.has(id)) continue
@@ -114,14 +114,17 @@ export class OfficeWorld {
     this.scene.add(actor.group)
   }
 
-  private syncRooms(rooms: RoomWithBox[]): void {
-    const key = JSON.stringify(rooms)
+  private syncRooms(
+    rooms: RoomWithBox[],
+    windowView: OfficeSnapshot['project']['windowView']
+  ): void {
+    const key = JSON.stringify([rooms, windowView])
     if (key === this.roomsKey) return
     this.roomsKey = key
     disposeTree(this.rooms)
     this.rooms = new THREE.Group()
     this.scene.add(this.rooms)
-    this.furniture = buildRooms(this.rooms, rooms)
+    this.furniture = buildRooms(this.rooms, rooms, windowView)
     this.bounds = floorBounds(rooms)
     this.frameCamera()
   }

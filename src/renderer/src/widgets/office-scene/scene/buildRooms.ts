@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js'
+import type { Project } from '../../../../../shared/office'
 import { deskPositions, roomCenter, type RoomWithBox } from './seats'
 
 export interface Furniture {
@@ -22,12 +23,24 @@ const FURNITURE_DARK = 0x2a2a2a
 const PLANT_POT = 0x8a8a8a
 const PLANT_LEAF = 0x5a5a5a
 const SCREEN = 0x0a0a0a
+const CITY_GREYS = [0x2c2c2c, 0x343434, 0x262626]
+const CITY_HEIGHTS = [1.1, 1.7, 0.8, 2, 1.4, 1, 1.8]
+const BUILDING_WIDTH = 1.4
+const FIELD_GREYS = [0x1c1c1c, 0x262626]
+const FIELD_STRIPS = 5
+const VIEW_GAP = 1.2
 
 /** Builds floors, walls, room labels and furniture for every room into `parent`. */
-export function buildRooms(parent: THREE.Object3D, rooms: RoomWithBox[]): Furniture {
+export function buildRooms(
+  parent: THREE.Object3D,
+  rooms: RoomWithBox[],
+  windowView: Project['windowView']
+): Furniture {
   const furniture: Furniture = { tables: new Map(), screens: new Map(), t3Screen: null }
   const bounds = floorBounds(rooms)
   box(parent, [bounds.w + 0.6, 0.3, bounds.d + 0.6], 0x0a0a0a, [bounds.cx, -0.16, bounds.cz])
+  if (rooms.length > 0 && windowView === 'city') addCity(parent, bounds)
+  if (rooms.length > 0 && windowView === 'fields') addFields(parent, bounds)
 
   for (const room of rooms) {
     addShell(parent, room)
@@ -53,6 +66,28 @@ export function floorBounds(rooms: RoomWithBox[]): {
   const minZ = Math.min(...rooms.map((r) => r.z))
   const maxZ = Math.max(...rooms.map((r) => r.z + r.d))
   return { cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2, w: maxX - minX, d: maxZ - minZ }
+}
+
+type Bounds = ReturnType<typeof floorBounds>
+
+/** A row of grey boxes behind the back wall (the camera looks at the back from +z). */
+function addCity(parent: THREE.Object3D, b: Bounds): void {
+  const count = Math.ceil(b.w / BUILDING_WIDTH)
+  const backZ = b.cz - b.d / 2 - VIEW_GAP
+  for (let i = 0; i < count; i++) {
+    const h = CITY_HEIGHTS[i % CITY_HEIGHTS.length]
+    const x = b.cx - b.w / 2 + BUILDING_WIDTH * (i + 0.5)
+    box(parent, [BUILDING_WIDTH - 0.15, h, 1], CITY_GREYS[i % CITY_GREYS.length], [x, h / 2, backZ])
+  }
+}
+
+/** Flat grey strips stretching away behind the back wall. */
+function addFields(parent: THREE.Object3D, b: Bounds): void {
+  const backZ = b.cz - b.d / 2 - VIEW_GAP
+  for (let i = 0; i < FIELD_STRIPS; i++) {
+    const color = FIELD_GREYS[i % FIELD_GREYS.length]
+    box(parent, [b.w + 4, 0.02, 0.9], color, [b.cx, -0.01, backZ - i])
+  }
 }
 
 function addShell(parent: THREE.Object3D, room: RoomWithBox): void {

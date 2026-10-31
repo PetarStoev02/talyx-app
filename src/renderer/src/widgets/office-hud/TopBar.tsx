@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigation } from '@app/providers/useNavigation'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
 import type { OfficeSnapshot } from '../../../../shared/office'
 import { OfficeMap } from './OfficeMap'
@@ -11,6 +12,7 @@ interface TopBarProps {
 
 export function TopBar({ snapshot, onSwitchProject }: TopBarProps): React.JSX.Element {
   const [mapOpen, setMapOpen] = useState(false)
+  const navigate = useNavigation((s) => s.navigate)
 
   function handlePick(projectId: string): void {
     setMapOpen(false)
@@ -39,6 +41,13 @@ export function TopBar({ snapshot, onSwitchProject }: TopBarProps): React.JSX.El
             <span className="text-xs text-[#949494]">{room.name}</span>
           </div>
         ))}
+        <button
+          type="button"
+          onClick={() => navigate('settings')}
+          className="ml-2 rounded-md border border-[#444] px-2.5 py-1 text-xs text-[#b4b4b4] hover:border-[#b4b4b4] hover:text-white focus-visible:outline-2 focus-visible:outline-white"
+        >
+          Settings
+        </button>
       </header>
       {mapOpen && (
         <OfficeMap snapshot={snapshot} onPick={handlePick} onClose={() => setMapOpen(false)} />

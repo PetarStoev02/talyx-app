@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type AppView = 'office'
+export type AppView = 'office' | 'settings'
 
 interface NavigationState {
   currentView: AppView

@@ -9,12 +9,13 @@ type SnapshotBot = OfficeSnapshot['bots'][number]
 interface BotCardProps {
   bot: SnapshotBot
   roomName: string
+  t3Projects: OfficeSnapshot['t3Projects']
   onClose: () => void
 }
 
 type Form = 'none' | 'task' | 'thread'
 
-export function BotCard({ bot, roomName, onClose }: BotCardProps): React.JSX.Element {
+export function BotCard({ bot, roomName, t3Projects, onClose }: BotCardProps): React.JSX.Element {
   const [form, setForm] = useState<Form>('none')
   const { placement } = bot
 
@@ -42,7 +43,9 @@ export function BotCard({ bot, roomName, onClose }: BotCardProps): React.JSX.Ele
         {roomName} · {placement.task ?? 'Idle'}
       </div>
       {placement.waiting && <div className="mt-1 text-xs text-white">Waiting for you in T3</div>}
-      {form === 'task' && <GiveTaskForm bot={bot} onClose={() => setForm('none')} />}
+      {form === 'task' && (
+        <GiveTaskForm bot={bot} t3Projects={t3Projects} onClose={() => setForm('none')} />
+      )}
       {form === 'thread' && placement.t3ThreadId && (
         <SendToThreadForm threadId={placement.t3ThreadId} onClose={() => setForm('none')} />
       )}

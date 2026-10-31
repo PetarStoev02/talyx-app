@@ -7,8 +7,6 @@ interface OfficeMapProps {
   onClose: () => void
 }
 
-// Logos are local file paths and the renderer CSP only allows 'self' images, so tiles show
-// the project's initial until main serves logos.
 export function OfficeMap({ snapshot, onPick, onClose }: OfficeMapProps): React.JSX.Element {
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {
@@ -41,9 +39,17 @@ export function OfficeMap({ snapshot, onPick, onClose }: OfficeMapProps): React.
                 aria-current={current}
                 className={`flex flex-col items-start gap-2 rounded-md border p-3 text-left hover:border-[#b4b4b4] focus-visible:outline-2 focus-visible:outline-white ${current ? 'border-white' : 'border-[#444]'}`}
               >
-                <span className="flex size-8 items-center justify-center rounded-md bg-white font-semibold text-black">
-                  {project.name.charAt(0).toUpperCase()}
-                </span>
+                {project.logoDataUrl ? (
+                  <img
+                    src={project.logoDataUrl}
+                    alt=""
+                    className="size-8 rounded-md object-contain"
+                  />
+                ) : (
+                  <span className="flex size-8 items-center justify-center rounded-md bg-white font-semibold text-black">
+                    {project.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
                 <span className="text-sm">{project.name}</span>
                 {current && (
                   <span className="text-xs text-[#949494]">
