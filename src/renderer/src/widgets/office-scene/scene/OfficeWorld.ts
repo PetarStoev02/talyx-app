@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js'
-import type { OfficeSnapshot } from '../../../../../shared/office'
+import type { ConversationTarget, OfficeSnapshot } from '../../../../../shared/office'
 import { BotActor, type SceneBot } from './BotActor'
 import { buildRooms, disposeTree, floorBounds, type Furniture } from './buildRooms'
 import { deskPositions, seatFor, type RoomWithBox, type Seat } from './seats'
@@ -40,7 +40,7 @@ export class OfficeWorld {
 
   constructor(
     private readonly container: HTMLElement,
-    private readonly onSelect: (botId: string) => void
+    private readonly onSelect: (target: ConversationTarget) => void
   ) {
     this.renderer.setPixelRatio(window.devicePixelRatio)
     this.renderer.shadowMap.enabled = true
@@ -109,7 +109,7 @@ export class OfficeWorld {
   }
 
   private addActor(bot: SceneBot, seat: Seat): void {
-    const actor = new BotActor(bot, seat, this.onSelect)
+    const actor = new BotActor(bot, seat, (botId) => this.onSelect({ kind: 'bot', botId }))
     this.actors.set(bot.id, actor)
     this.scene.add(actor.group)
   }
@@ -190,7 +190,7 @@ export class OfficeWorld {
     this.pointerDown = { x: e.clientX, y: e.clientY }
   }
 
-  // A click selects the bot under the pointer; a drag is the orbit control's.
+  // A click selects the bot under the pointer, else the conference room; a drag is the orbit control's.
   private readonly handlePointerUp = (e: PointerEvent): void => {
     const down = this.pointerDown
     this.pointerDown = null
@@ -202,8 +202,11 @@ export class OfficeWorld {
     )
     this.raycaster.setFromCamera(ndc, this.camera)
     const bodies = [...this.actors.values()].map((a) => a.body)
-    const hit = this.raycaster.intersectObjects(bodies, false)[0]
-    if (hit) this.onSelect(hit.object.userData.botId as string)
+    const bot = this.raycaster.intersectObjects(bodies, false)[0]
+    if (bot) return this.onSelect({ kind: 'bot', botId: bot.object.userData.botId as string })
+    const floors = this.rooms.children.filter((o) => o.userData.groupId)
+    const room = this.raycaster.intersectObjects(floors, false)[0]
+    if (room) this.onSelect({ kind: 'group', groupId: room.object.userData.groupId as string })
   }
 }
 

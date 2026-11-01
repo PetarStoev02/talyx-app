@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
-import type { OfficeSnapshot } from '../../../../shared/office'
+import { useMinuteClock } from '@shared/lib/useMinuteClock'
+import type { ConversationTarget, OfficeSnapshot } from '../../../../shared/office'
 
 type SnapshotBot = OfficeSnapshot['bots'][number]
 
 interface RosterPanelProps {
   snapshot: OfficeSnapshot
   selectedBotId: string | null
-  onSelect: (botId: string) => void
+  onSelect: (target: ConversationTarget) => void
 }
 
 const MINUTE_MS = 60_000
@@ -31,7 +31,7 @@ export function RosterPanel({
             <button
               key={bot.id}
               type="button"
-              onClick={() => onSelect(bot.id)}
+              onClick={() => onSelect({ kind: 'bot', botId: bot.id })}
               aria-pressed={bot.id === selectedBotId}
               className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left hover:bg-[#1c1c1c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${bot.id === selectedBotId ? 'bg-[#1c1c1c]' : ''}`}
             >
@@ -55,15 +55,6 @@ export function RosterPanel({
       ))}
     </aside>
   )
-}
-
-function useMinuteClock(): number {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), MINUTE_MS)
-    return () => clearInterval(id)
-  }, [])
-  return now
 }
 
 // A bot in several groups is listed under its first group that exists.

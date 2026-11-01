@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { useNavigation } from '@app/providers/useNavigation'
 import { useOffice } from '@app/providers/useOffice'
 import { Button } from '@shared/ui/button'
-import type { Bot, OfficeSnapshot, Project, Room } from '../../../../shared/office'
+import type { Bot, Group, OfficeSnapshot, Project, Room } from '../../../../shared/office'
 import { BotEditor } from './BotEditor'
 import { EndpointSection } from './EndpointSection'
 import { Field, Section, inputClass, outlineClass, primaryClass } from './settingsUi'
@@ -165,6 +165,13 @@ function GroupsSection({ snapshot }: { snapshot: OfficeSnapshot }): React.JSX.El
     )
   }
 
+  async function handleRelay(group: Group, relayBotId: string | null): Promise<void> {
+    await attempt(
+      () => window.api.rosterSaveGroup({ ...group, relayBotId }),
+      'Could not set the relay bot'
+    )
+  }
+
   async function handleAddRoom(): Promise<void> {
     const room: Room = {
       id: crypto.randomUUID(),
@@ -181,14 +188,32 @@ function GroupsSection({ snapshot }: { snapshot: OfficeSnapshot }): React.JSX.El
   return (
     <Section title="Groups and rooms">
       {snapshot.groups.map((g) => (
-        <input
-          key={`${g.id}:${g.name}`}
-          aria-label={`Group ${g.name}`}
-          className={inputClass}
-          defaultValue={g.name}
-          maxLength={100}
-          onBlur={(e) => handleRename(g.id, e.target.value)}
-        />
+        <div key={g.id} className="flex gap-2">
+          <input
+            key={g.name}
+            aria-label={`Group ${g.name}`}
+            className={inputClass}
+            defaultValue={g.name}
+            maxLength={100}
+            onBlur={(e) => handleRename(g.id, e.target.value)}
+          />
+          <select
+            aria-label={`Relay bot for ${g.name}`}
+            title="Relay bot: the member that posts your group messages into the Grok chat"
+            className={`${inputClass} w-44`}
+            value={g.relayBotId ?? ''}
+            onChange={(e) => handleRelay(g, e.target.value || null)}
+          >
+            <option value="">Relay bot: none</option>
+            {snapshot.bots
+              .filter((b) => b.groupIds.includes(g.id) && b.webhookUrl)
+              .map((b) => (
+                <option key={b.id} value={b.id}>
+                  Relay: {b.name}
+                </option>
+              ))}
+          </select>
+        </div>
       ))}
       <div className="flex gap-2">
         <input

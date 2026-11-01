@@ -99,6 +99,7 @@ function addShell(parent: THREE.Object3D, room: RoomWithBox): void {
   floor.rotation.x = -Math.PI / 2
   floor.position.set(c.x, 0.001, c.z)
   floor.receiveShadow = true
+  if (room.kind === 'conference' && room.groupId) floor.userData.groupId = room.groupId
   parent.add(floor)
   box(parent, [room.w, WALL_HEIGHT, 0.06], WALL_COLOR, [c.x, WALL_HEIGHT / 2, room.z])
   box(parent, [0.06, WALL_HEIGHT, room.d], WALL_COLOR, [room.x, WALL_HEIGHT / 2, c.z])

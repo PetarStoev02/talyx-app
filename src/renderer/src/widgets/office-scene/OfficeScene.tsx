@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react'
-import type { OfficeSnapshot } from '../../../../shared/office'
+import type { ConversationTarget, OfficeSnapshot } from '../../../../shared/office'
 import { OfficeWorld } from './scene/OfficeWorld'
 
 interface OfficeSceneProps {
   snapshot: OfficeSnapshot
   selectedBotId: string | null
-  onSelect: (botId: string) => void
+  onSelect: (target: ConversationTarget) => void
 }
 
 export function OfficeScene({
@@ -22,7 +22,7 @@ export function OfficeScene({
   }, [onSelect])
 
   useEffect(() => {
-    const world = new OfficeWorld(containerRef.current!, (id) => onSelectRef.current(id))
+    const world = new OfficeWorld(containerRef.current!, (target) => onSelectRef.current(target))
     worldRef.current = world
     return () => {
       world.dispose()

@@ -5,13 +5,13 @@ import { roomCounts } from '../../../src/renderer/src/widgets/office-hud/roomCou
 type SnapshotRoom = OfficeSnapshot['rooms'][number]
 type SnapshotBot = OfficeSnapshot['bots'][number]
 
-function room(id: string, name: string): SnapshotRoom {
+function room(id: string, name: string, kind: SnapshotRoom['kind'] = 'work'): SnapshotRoom {
   return {
     id,
     projectId: 'p',
     name,
-    kind: 'work',
-    groupId: null,
+    kind,
+    groupId: kind === 'work' ? null : 'g1',
     roomId: id,
     x: 0,
     z: 0,
@@ -64,8 +64,8 @@ describe('roomCounts', () => {
     const rooms = [room('team', 'Team conference'), room('work', 'Work room')]
     const bots = [bot('a', 'work'), bot('b', 'team'), bot('c', 'work')]
     expect(roomCounts(snapshot(rooms, bots))).toEqual([
-      { roomId: 'team', name: 'Team conference', count: 1 },
-      { roomId: 'work', name: 'Work room', count: 2 }
+      { roomId: 'team', name: 'Team conference', count: 1, groupId: null },
+      { roomId: 'work', name: 'Work room', count: 2, groupId: null }
     ])
   })
 
@@ -74,7 +74,13 @@ describe('roomCounts', () => {
     expect(roomCounts(snapshot(rooms, [bot('a', 'work')]))[0]).toEqual({
       roomId: 'chill',
       name: 'Chill room',
-      count: 0
+      count: 0,
+      groupId: null
     })
+  })
+
+  it('gives only a conference room its group', () => {
+    const rooms = [room('team', 'Team conference', 'conference'), room('chill', 'Chill', 'chill')]
+    expect(roomCounts(snapshot(rooms, [])).map((r) => r.groupId)).toEqual(['g1', null])
   })
 })

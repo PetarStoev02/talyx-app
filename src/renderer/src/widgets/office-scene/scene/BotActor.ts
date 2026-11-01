@@ -64,8 +64,10 @@ export class BotActor {
 
     this.label = div('flex cursor-pointer flex-col items-center pointer-events-auto')
     this.bubble = div(
-      'mb-1.5 hidden max-w-[190px] rounded-lg bg-white px-2.5 py-1.5 text-xs leading-4 text-black'
+      'mb-1.5 line-clamp-2 max-w-[190px] rounded-lg bg-white px-2.5 py-1.5 text-xs leading-4 text-black'
     )
+    // Inline display so it does not fight line-clamp's -webkit-box; '' shows it.
+    this.bubble.style.display = 'none'
     this.hand = div(
       'mb-1 hidden rounded-full bg-white px-1.5 text-[11px] leading-4 font-semibold text-black'
     )
@@ -123,7 +125,7 @@ export class BotActor {
 
   private say(line: string): void {
     this.bubble.textContent = line
-    this.bubble.style.display = 'block'
+    this.bubble.style.display = ''
     if (this.bubbleTimer) clearTimeout(this.bubbleTimer)
     this.bubbleTimer = setTimeout(() => {
       this.bubble.style.display = 'none'

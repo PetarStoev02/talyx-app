@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
-import type { OfficeSnapshot } from '../../../../shared/office'
+import type { ConversationTarget, OfficeSnapshot } from '../../../../shared/office'
 import { OfficeMap } from './OfficeMap'
 import { roomCounts } from './roomCounts'
 
@@ -8,12 +8,14 @@ interface TopBarProps {
   snapshot: OfficeSnapshot
   onSwitchProject: (projectId: string) => void
   onOpenSettings: () => void
+  onSelect: (target: ConversationTarget) => void
 }
 
 export function TopBar({
   snapshot,
   onSwitchProject,
-  onOpenSettings
+  onOpenSettings,
+  onSelect
 }: TopBarProps): React.JSX.Element {
   const [mapOpen, setMapOpen] = useState(false)
 
@@ -41,7 +43,18 @@ export function TopBar({
         {roomCounts(snapshot).map((room) => (
           <div key={room.roomId} className="border-l border-[#2e2e2e] px-5">
             <span className="block text-xl leading-6 font-semibold tabular-nums">{room.count}</span>
-            <span className="text-xs text-[#949494]">{room.name}</span>
+            {room.groupId ? (
+              <button
+                type="button"
+                onClick={() => onSelect({ kind: 'group', groupId: room.groupId! })}
+                aria-label={`Open ${room.name} chat`}
+                className="rounded-sm text-xs text-[#949494] underline-offset-2 hover:text-white hover:underline focus-visible:outline-2 focus-visible:outline-white"
+              >
+                {room.name}
+              </button>
+            ) : (
+              <span className="text-xs text-[#949494]">{room.name}</span>
+            )}
           </div>
         ))}
         <button

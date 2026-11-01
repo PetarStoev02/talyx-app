@@ -12,3 +12,17 @@ export function formatBytes(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
 }
+
+const MINUTE_MS = 60_000
+const MINUTES_PER_HOUR = 60
+const HOURS_PER_DAY = 24
+
+/** "just now", "5 min ago", "3 h ago", "2 d ago". */
+export function timeAgo(iso: string, now: number): string {
+  const minutes = Math.max(0, Math.floor((now - Date.parse(iso)) / MINUTE_MS))
+  if (minutes < 1) return 'just now'
+  if (minutes < MINUTES_PER_HOUR) return `${minutes} min ago`
+  const hours = Math.floor(minutes / MINUTES_PER_HOUR)
+  if (hours < HOURS_PER_DAY) return `${hours} h ago`
+  return `${Math.floor(hours / HOURS_PER_DAY)} d ago`
+}

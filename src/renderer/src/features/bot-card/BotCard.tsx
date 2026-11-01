@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
+import { timeAgo } from '@shared/lib/utils'
+import { useMinuteClock } from '@shared/lib/useMinuteClock'
+import { CloseButton } from '@shared/ui/CloseButton'
 import type { OfficeSnapshot } from '../../../../shared/office'
-import { GiveTaskForm } from './GiveTaskForm'
 import { cardButton, errorMessage, primaryButton } from './cardStyles'
 
 type SnapshotBot = OfficeSnapshot['bots'][number]
@@ -9,23 +11,15 @@ type SnapshotBot = OfficeSnapshot['bots'][number]
 interface BotCardProps {
   bot: SnapshotBot
   roomName: string
-  t3Projects: OfficeSnapshot['t3Projects']
+  groupNames: string[]
   onClose: () => void
 }
 
-type Form = 'none' | 'task' | 'thread'
-
-export function BotCard({ bot, roomName, t3Projects, onClose }: BotCardProps): React.JSX.Element {
-  const [form, setForm] = useState<Form>('none')
+/** The bot's details: the header of its chat. */
+export function BotCard({ bot, roomName, groupNames, onClose }: BotCardProps): React.JSX.Element {
+  const now = useMinuteClock()
+  const [threadOpen, setThreadOpen] = useState(false)
   const { placement } = bot
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent): void {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
 
   function openExternal(url: string): void {
     window.api
@@ -34,31 +28,31 @@ export function BotCard({ bot, roomName, t3Projects, onClose }: BotCardProps): R
   }
 
   return (
-    <section
-      aria-label={`${bot.name} card`}
-      className="absolute right-[280px] bottom-4 z-20 w-[290px] rounded-lg border border-[#2e2e2e] bg-[#111] p-4 shadow-[0_12px_28px_rgba(0,0,0,0.5)]"
-    >
-      <h3 className="font-semibold">{bot.name}</h3>
-      <div className="mt-0.5 text-xs text-[#949494]">
-        {roomName} · {placement.task ?? 'Idle'}
+    <div>
+      <div className="flex items-start justify-between">
+        <h3 className="flex items-center gap-2 font-semibold">
+          <span aria-hidden className="size-2.5 rounded-full" style={{ background: bot.color }} />
+          {bot.name}
+        </h3>
+        <CloseButton onClose={onClose} />
       </div>
+      <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
+        <dt className="text-[#949494]">Groups</dt>
+        <dd>{groupNames.join(', ') || 'None'}</dd>
+        <dt className="text-[#949494]">Now</dt>
+        <dd>
+          {roomName} · {placement.task ?? 'Idle'}
+        </dd>
+        <dt className="text-[#949494]">Webhook</dt>
+        <dd>{bot.webhookReady ? 'ready' : 'not set'}</dd>
+        <dt className="text-[#949494]">Last heard</dt>
+        <dd>{placement.lastSeenAt ? timeAgo(placement.lastSeenAt, now) : 'never'}</dd>
+      </dl>
       {placement.waiting && <div className="mt-1 text-xs text-white">Waiting for you in T3</div>}
-      {form === 'task' && (
-        <GiveTaskForm bot={bot} t3Projects={t3Projects} onClose={() => setForm('none')} />
-      )}
-      {form === 'thread' && placement.t3ThreadId && (
-        <SendToThreadForm threadId={placement.t3ThreadId} onClose={() => setForm('none')} />
-      )}
-      {form === 'none' && (
+      {threadOpen && placement.t3ThreadId ? (
+        <SendToThreadForm threadId={placement.t3ThreadId} onClose={() => setThreadOpen(false)} />
+      ) : (
         <div>
-          <button type="button" className={primaryButton} onClick={() => setForm('task')}>
-            Give task
-          </button>
-          {placement.t3ThreadId && (
-            <button type="button" className={cardButton} onClick={() => setForm('thread')}>
-              Send to thread
-            </button>
-          )}
           {placement.t3Link && (
             <button
               type="button"
@@ -74,12 +68,17 @@ export function BotCard({ bot, roomName, t3Projects, onClose }: BotCardProps): R
               className={cardButton}
               onClick={() => openExternal(bot.grokLink!)}
             >
-              Open chat
+              Open in Grok
+            </button>
+          )}
+          {placement.t3ThreadId && (
+            <button type="button" className={cardButton} onClick={() => setThreadOpen(true)}>
+              Send to thread
             </button>
           )}
         </div>
       )}
-    </section>
+    </div>
   )
 }
 
