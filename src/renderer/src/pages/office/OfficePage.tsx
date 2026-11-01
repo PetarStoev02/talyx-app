@@ -5,6 +5,7 @@ import { useOffice } from '@app/providers/useOffice'
 import { BotCard } from '@features/bot-card/BotCard'
 import { GiveTaskForm } from '@features/bot-card/GiveTaskForm'
 import { ChatPanel, GroupChatHeader } from '@features/chat/ChatPanel'
+import { groupSendBlocker, isTextEntry } from '@features/chat/chatRules'
 import { EventFeed } from '@widgets/event-feed/EventFeed'
 import { TopBar } from '@widgets/office-hud/TopBar'
 import { OfficeScene } from '@widgets/office-scene'
@@ -26,7 +27,7 @@ export function OfficePage(): React.JSX.Element {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {
-      if (e.key === 'Escape') select(null)
+      if (e.key === 'Escape' && !isTextEntry(e.target)) select(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -93,6 +94,7 @@ function OfficeChat({
         bots={snapshot.bots}
         header={<GroupChatHeader name={group.name} members={members} onClose={onClose} />}
         composerExtra={null}
+        sendBlocker={groupSendBlocker(group, snapshot.bots)}
       />
     )
   }
@@ -111,6 +113,7 @@ function OfficeChat({
           onClose={onClose}
         />
       }
+      sendBlocker={null}
       composerExtra={{
         label: 'Send as task',
         render: (close) => (

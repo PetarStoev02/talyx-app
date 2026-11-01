@@ -31,4 +31,14 @@ describe('DeleteBot', () => {
 
     expect(signals.botTimeline('b', ['t3'], 200)).toEqual([])
   })
+
+  it('should clear the relay of a group the deleted bot relayed', () => {
+    const roster = rosterWithBot()
+    roster.saveGroup({ id: 'g', projectId: 'p', name: 'Team', relayBotId: 'b' })
+    roster.saveGroup({ id: 'g2', projectId: 'p', name: 'Other', relayBotId: 'x' })
+
+    new DeleteBot({ roster, secrets: fakeSecrets(), signals: emptySignals() }).execute('b')
+
+    expect(roster.listGroups('p').map((g) => g.relayBotId)).toEqual([null, 'x'])
+  })
 })

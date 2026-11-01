@@ -56,7 +56,7 @@ describe('botInstructions', () => {
   })
 
   it("should ask the relay bot to report the owner's group messages", () => {
-    expect(text).toContain('"author": "owner"')
+    expect(text).toContain('"author": "owner", "group"')
     const member = botInstructions({
       bot: { ...bot, id: 'other-bot' },
       groups,
@@ -70,8 +70,24 @@ describe('botInstructions', () => {
     expect(text).toContain('"author": "bot"')
   })
 
-  it('should ask the bot to echo the message id', () => {
-    expect(text).toContain('messageId')
+  it('should ask the bot to echo the message id only on the owner message', () => {
+    expect(text).toContain('"messageId": "<id>"')
+    expect(text).toContain('never on your own reply')
+  })
+
+  it('should explain what Talyx sends to the routine', () => {
+    expect(text).toContain('When Talyx calls your routine')
+    expect(text).toContain('"target": "group"')
+    expect(text).toContain('Petar (via Talyx): <message>')
+    expect(text).toContain('"target": "dm"')
+    expect(text).toContain('history')
+    expect(text).toContain('Give task')
+  })
+
+  it('should explain $TEXT and UTF-8 JSON', () => {
+    expect(text).toContain('TEXT')
+    expect(text).toContain('UTF-8')
+    expect(text).toContain('jq -a')
   })
 
   it('should keep webhook text from triggering risky actions', () => {

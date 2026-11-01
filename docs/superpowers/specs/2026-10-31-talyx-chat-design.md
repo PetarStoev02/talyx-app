@@ -35,7 +35,7 @@ Changes to `parseBotEvent`:
   `author: "owner"` means a message Petar wrote in the Grok group, reported by the bot that saw it.
 - New `dm`: `{ bot, kind: "dm", author: "bot" | "owner", text, messageId? }` — a message in the bot's 1:1 chat,
   either direction, so 1:1 chats typed in the Grok app show up too.
-- Text cap for `chat`, `dm` and `result` goes from 500 to 4000 characters (the 16 KB body cap stays).
+- Text cap for `chat`, `dm` and `result` goes from 500 to 4000 characters (the body cap goes from 16 KB to 64 KB so an escaped 4000-character reply fits).
 - A rejected event names the field: `{"error":"invalid_event","field":"to","reason":"is required"}`, so a bot can
   fix itself. (The test lost a round on a bare `invalid_event`.)
 - Dedup: if a `chat`/`dm` arrives with a `messageId` Talyx already stored, it is dropped. This stops the owner's

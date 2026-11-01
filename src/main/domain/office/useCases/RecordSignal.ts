@@ -21,7 +21,8 @@ export class RecordSignal {
   }
 
   private isDuplicateMessage(signal: BotSignal): boolean {
-    const hasId = (signal.kind === 'chat' || signal.kind === 'dm') && signal.messageId !== null
-    return hasId && this.deps.signals.hasMessageId(signal.messageId as string)
+    if (signal.kind !== 'chat' && signal.kind !== 'dm') return false
+    if (signal.author !== 'owner' || signal.messageId === null) return false
+    return this.deps.signals.hasOwnerMessageId(signal.messageId)
   }
 }

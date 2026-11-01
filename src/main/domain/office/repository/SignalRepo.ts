@@ -85,6 +85,18 @@ export class SignalRepo {
     )
   }
 
+  hasOwnerMessageId(messageId: string): boolean {
+    return (
+      this.db
+        .prepare(
+          `SELECT 1 FROM signals
+           WHERE kind IN ('chat', 'dm') AND json_extract(payload_json, '$.author') = 'owner'
+           AND json_extract(payload_json, '$.messageId') = ? LIMIT 1`
+        )
+        .get(messageId) !== undefined
+    )
+  }
+
   failedRunIds(runIds: string[]): Set<string> {
     if (runIds.length === 0) return new Set()
     return new Set(

@@ -151,6 +151,20 @@ describe('GetOfficeSnapshot', () => {
     ])
   })
 
+  it('should word a failed owner message as a failed message in the feed', () => {
+    const { uc, signals } = setup()
+    signals.append({
+      kind: 'dm',
+      botId: CTO,
+      author: 'owner',
+      text: 'hi',
+      messageId: 'm1',
+      at: at(0)
+    })
+    signals.append({ kind: 'task-failed', botId: CTO, runId: 'm1', reason: 'timeout', at: at(1) })
+    expect(uc.execute('agro-ops').feed[0].text).toBe('Message failed: timeout')
+  })
+
   it('marks webhookReady only when url and key exist', () => {
     const { uc, roster } = setup({ [`webhook-key:${CTO}`]: 'k1', [`webhook-key:${SALES}`]: 'k2' })
     const bots = roster.listBots('agro-ops')

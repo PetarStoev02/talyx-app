@@ -104,6 +104,10 @@ export class RosterRepo {
     })()
   }
 
+  clearRelay(botId: string): void {
+    this.db.prepare('UPDATE groups SET relay_bot_id = NULL WHERE relay_bot_id = ?').run(botId)
+  }
+
   deleteBot(id: string): void {
     this.db.prepare('DELETE FROM bots WHERE id = ?').run(id)
   }

@@ -17,7 +17,7 @@ export interface GetOfficeSnapshotDeps {
     RosterRepo,
     'getProject' | 'listProjects' | 'listGroups' | 'listBots' | 'listRooms' | 'allBots'
   >
-  signals: Pick<SignalRepo, 'recent' | 'latestFeed'>
+  signals: Pick<SignalRepo, 'recent' | 'latestFeed' | 'hasOwnerMessageId'>
   secrets: { get(name: string): string | null }
   /** The project the user last chose; may point at a project that no longer exists. */
   currentProjectId: () => string | null
@@ -94,20 +94,25 @@ export class GetOfficeSnapshot {
   private feed(botIds: string[]): OfficeSnapshot['feed'] {
     const names = new Map(this.deps.roster.allBots().map((b) => [b.id, b.name]))
     return this.deps.signals.latestFeed(botIds, FEED_LINES).flatMap((s) => {
-      const text = feedText(s, (id) => names.get(id) ?? id)
+      const text = this.feedText(s, (id) => names.get(id) ?? id)
       return text ? [{ botId: s.botId, text, at: s.at }] : []
     })
   }
-}
 
-function feedText(s: BotSignal, nameOf: (botId: string) => string): string | null {
-  switch (s.kind) {
-    case 'chat':
-      if (s.text === null) return null
-      return s.author === 'owner' ? `You: ${s.text}` : s.text
-    case 'dm':
-      return s.author === 'owner' ? `You → ${nameOf(s.botId)}: ${s.text}` : s.text
-    default:
-      return describeSignal(s, nameOf)
+  private feedText(s: BotSignal, nameOf: (botId: string) => string): string | null {
+    switch (s.kind) {
+      case 'chat':
+        if (s.text === null) return null
+        return s.author === 'owner' ? `You: ${s.text}` : s.text
+      case 'dm':
+        return s.author === 'owner' ? `You → ${nameOf(s.botId)}: ${s.text}` : s.text
+      case 'task-failed':
+        if (s.runId && this.deps.signals.hasOwnerMessageId(s.runId)) {
+          return `Message failed: ${s.reason}`
+        }
+        return describeSignal(s, nameOf)
+      default:
+        return describeSignal(s, nameOf)
+    }
   }
 }

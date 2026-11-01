@@ -3,7 +3,7 @@ import { timingSafeEqual } from 'node:crypto'
 import type { AddressInfo } from 'node:net'
 import { InvalidEventError, UnknownBotError } from '../../domain/office/errors'
 
-const MAX_BODY_BYTES = 16_384
+const MAX_BODY_BYTES = 65_536
 
 export interface InboundDeps {
   port: number

@@ -18,7 +18,7 @@ const setup = (): {
   const onChange = vi.fn()
   const roster = { allBots: () => [{ id: 'b1', projectId: 'p1' }] } as unknown as RosterRepo
   const uc = new RecordSignal({
-    signals: { append, hasMessageId: () => false } as unknown as SignalRepo,
+    signals: { append, hasOwnerMessageId: () => false } as unknown as SignalRepo,
     roster,
     onChange
   })
@@ -41,10 +41,10 @@ describe('RecordSignal', () => {
   })
 
   describe('with stored messages', () => {
-    const dm = (messageId: string | null): BotSignal => ({
+    const dm = (messageId: string | null, author: 'owner' | 'bot' = 'owner'): BotSignal => ({
       kind: 'dm',
       botId: 'b',
-      author: 'bot',
+      author,
       text: 'hi',
       messageId,
       at: '2026-01-01T00:00:00Z'
@@ -62,6 +62,13 @@ describe('RecordSignal', () => {
       uc.execute(dm('m1'))
       uc.execute(dm('m1'))
       expect(signals.botTimeline('b', ['dm'], 200)).toHaveLength(1)
+    })
+
+    it("should store a bot reply that carries the owner's message id", () => {
+      const { signals, uc } = realSetup()
+      uc.execute(dm('m1'))
+      uc.execute(dm('m1', 'bot'))
+      expect(signals.botTimeline('b', ['dm'], 200)).toHaveLength(2)
     })
 
     it('should store messages without an id every time', () => {

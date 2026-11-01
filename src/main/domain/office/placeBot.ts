@@ -18,6 +18,9 @@ const LOCATING_KINDS: BotSignal['kind'][] = ['chat', 'task', 'idle', 'result', '
 const notFromOwner = (s: BotSignal): boolean =>
   !((s.kind === 'chat' || s.kind === 'dm') && s.author === 'owner')
 
+// A failed task is Talyx's own report (e.g. webhook down), so it proves nothing about the bot.
+const heardFrom = (s: BotSignal): boolean => notFromOwner(s) && s.kind !== 'task-failed'
+
 export function placeBot({ bot, rooms, signals, now, staleMinutes }: PlaceBotInput): Placement {
   const roomId = (kind: Room['kind']): string => roomOfKind(rooms, kind, bot.projectId)
   const latestChatOrResult = latest(signals, ['chat', 'result'], notFromOwner)
@@ -28,7 +31,7 @@ export function placeBot({ bot, rooms, signals, now, staleMinutes }: PlaceBotInp
     t3Link: null,
     waiting: false,
     stale: false,
-    lastSeenAt: signals.findLast(notFromOwner)?.at ?? null,
+    lastSeenAt: signals.findLast(heardFrom)?.at ?? null,
     lastLine: latestChatOrResult && 'text' in latestChatOrResult ? latestChatOrResult.text : null
   }
 
@@ -46,7 +49,8 @@ export function placeBot({ bot, rooms, signals, now, staleMinutes }: PlaceBotInp
   }
 
   const located = latest(signals, LOCATING_KINDS, notFromOwner)
-  if (located && now.getTime() - Date.parse(located.at) > staleMinutes * MS_PER_MINUTE) {
+  const heard = latest(signals, LOCATING_KINDS, heardFrom)
+  if (heard && now.getTime() - Date.parse(heard.at) > staleMinutes * MS_PER_MINUTE) {
     return { ...base, roomId: roomId('chill'), stale: true }
   }
   if (located?.kind === 'chat') {

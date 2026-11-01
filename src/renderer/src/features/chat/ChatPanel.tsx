@@ -16,13 +16,16 @@ interface ChatPanelProps {
   /** Bots that may appear as authors. */
   bots: ChatBot[]
   composerExtra: ComposerExtra | null
+  /** Hint shown instead of a usable composer, or null when sending works. */
+  sendBlocker: string | null
 }
 
 export function ChatPanel({
   target,
   header,
   bots,
-  composerExtra
+  composerExtra,
+  sendBlocker
 }: ChatPanelProps): React.JSX.Element {
   const { messages, send } = useConversation(target)
   const listRef = useRef<HTMLDivElement>(null)
@@ -64,7 +67,7 @@ export function ChatPanel({
           />
         ))}
       </div>
-      <ChatComposer onSend={trySend} extra={composerExtra} />
+      <ChatComposer onSend={trySend} extra={composerExtra} blocker={sendBlocker} />
     </section>
   )
 }

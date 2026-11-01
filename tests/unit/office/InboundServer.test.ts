@@ -96,10 +96,10 @@ describe('InboundServer', () => {
     expect(onBotEvent).not.toHaveBeenCalled()
   })
 
-  it('should reject a body over 16 KB with 413', async () => {
+  it('should reject a body over 64 KB with 413', async () => {
     const onBotEvent = vi.fn()
     const { post } = await start({ onBotEvent })
-    const res = await post('/events', JSON.stringify({ t: 'x'.repeat(17000) }))
+    const res = await post('/events', JSON.stringify({ t: 'x'.repeat(66000) }))
     expect(res.status).toBe(413)
     expect(onBotEvent).not.toHaveBeenCalled()
   })

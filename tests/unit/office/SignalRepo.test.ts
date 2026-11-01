@@ -168,6 +168,7 @@ describe('SignalRepo', () => {
     })
     expect(repo.hasMessageId('m1')).toBe(true)
     expect(repo.hasMessageId('zz')).toBe(false)
+    expect(repo.hasOwnerMessageId('m1')).toBe(false)
     expect(repo.failedRunIds(['r1', 'r2'])).toEqual(new Set(['r1']))
     expect(repo.failedRunIds([])).toEqual(new Set())
   })

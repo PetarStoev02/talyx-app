@@ -143,6 +143,24 @@ describe('placeBot', () => {
     expect(p.roomId).toBe('chill')
   })
 
+  it('should not count an owner message or a failed task as hearing from the bot', () => {
+    const seen = '2026-10-31T09:00:00Z'
+    const p = place([
+      chat('team', seen),
+      {
+        kind: 'dm',
+        botId: 'b1',
+        author: 'owner',
+        text: 'hello?',
+        messageId: 'm1',
+        at: '2026-10-31T10:03:00Z'
+      },
+      { kind: 'task-failed', botId: 'b1', runId: 'm1', reason: 'boom', at: '2026-10-31T10:04:00Z' }
+    ])
+    expect(p.lastSeenAt).toBe(seen)
+    expect(p.stale).toBe(true)
+  })
+
   it('falls back to chill when a thread is done', () => {
     const p = place([t3('running', '2026-10-31T10:01:00Z'), t3('done', '2026-10-31T10:02:00Z')])
     expect(p.roomId).toBe('chill')
