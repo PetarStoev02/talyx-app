@@ -6,8 +6,8 @@ import { BotActor, type SceneBot } from './BotActor'
 import { buildRooms, disposeTree, floorBounds, type Furniture } from './buildRooms'
 import { deskPositions, seatFor, type RoomWithBox, type Seat } from './seats'
 
-/** Width kept free on the right for the office panel (Task 10). */
-export const PANEL_WIDTH = 280
+/** Width kept free on the right for the chat panel (the roster is narrower). */
+export const PANEL_WIDTH = 360
 const FOV = 32
 const MAX_POLAR = 1.3
 const MIN_DISTANCE = 14

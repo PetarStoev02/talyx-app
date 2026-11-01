@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { cn } from '@shared/lib/utils'
 import { CloseButton } from '@shared/ui/CloseButton'
@@ -78,8 +78,16 @@ function Message({
   bot: ChatBot | null
   onRetry: (text: string) => Promise<boolean>
 }): React.JSX.Element {
+  const [retrying, setRetrying] = useState(false)
   const owner = message.author === 'owner'
   const name = owner ? 'You' : (bot?.name ?? message.author)
+
+  async function handleRetry(): Promise<void> {
+    if (retrying) return
+    setRetrying(true)
+    await onRetry(message.text)
+    setRetrying(false)
+  }
 
   if (message.kind !== 'text') {
     return (
@@ -114,10 +122,11 @@ function Message({
           failed ·{' '}
           <button
             type="button"
-            onClick={() => void onRetry(message.text)}
-            className="cursor-pointer text-white underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-white"
+            disabled={retrying}
+            onClick={handleRetry}
+            className="cursor-pointer text-white underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-white disabled:cursor-default disabled:opacity-50"
           >
-            Retry
+            {retrying ? 'Retrying…' : 'Retry'}
           </button>
         </span>
       )}

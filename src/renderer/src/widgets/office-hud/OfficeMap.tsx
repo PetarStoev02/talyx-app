@@ -9,11 +9,14 @@ interface OfficeMapProps {
 
 export function OfficeMap({ snapshot, onPick, onClose }: OfficeMapProps): React.JSX.Element {
   useEffect(() => {
+    // Capture phase + stopPropagation so Escape closes only the map, not the open chat.
     function onKey(e: KeyboardEvent): void {
-      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Escape') return
+      e.stopPropagation()
+      onClose()
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
   }, [onClose])
 
   return (
