@@ -14,7 +14,7 @@ are gone.
 - **Version:** 0.11.0
 - **Stack:** Electron 44 + React 19 + TypeScript 5.9 + TailwindCSS 4 + three.js
 - **State:** Zustand | **DB:** better-sqlite3 (`office.db`) | **Build:** electron-vite + electron-builder | **Tests:** Vitest
-- **Inbound:** HTTP server on `127.0.0.1:47321` (`POST /events` Grok bots, `POST /t3/events` T3, `GET /health`),
+- **Inbound:** HTTP server on `127.0.0.1:47321` (`POST /events` Grok bots incl. kinds `chat`, `dm`, `task`, `idle`, `result`, `message`; `POST /t3/events` T3; `GET /health`),
   Bearer token, published to the internet with Tailscale Funnel on HTTPS port 8443
   (`https://<host>.ts.net:8443`, leaving `:443` to `tailscale serve`; the tailnet admin must enable Funnel first).
 - **T3 Code:** read via `~/.t3/bin/t3 thread list|show --json`; project names read-only from
@@ -45,16 +45,17 @@ During `npm run dev` the renderer is also usable at `http://localhost:5173` (dev
 src/main/
 ├── index.ts                    # Entry — window, tray, single instance, starts the office
 ├── domain/office/              # Business logic (no framework deps)
-│   ├── model.ts, errors.ts, parseEvents.ts, placeBot.ts, layoutRooms.ts, seedAgroOps.ts, botInstructions.ts
+│   ├── model.ts, errors.ts, parseEvents.ts, describeSignal.ts, placeBot.ts, layoutRooms.ts, seedAgroOps.ts, botInstructions.ts
 │   ├── repository/             # RosterRepo, SignalRepo (SQLite)
 │   ├── services/               # T3Watcher (polls T3 threads, emits signals)
 │   └── useCases/               # one class per action: RecordSignal, GetOfficeSnapshot, GiveTask,
 │                               # SendToThread, CreateProject, SaveGroup, DeleteBot, SetWebhookKey,
-│                               # GetBotInstructions, SetFunnel
+│                               # GetBotInstructions, SetFunnel, GetConversation, SendGroupMessage,
+│                               # SendDirectMessage (both extend OwnerMessageSender)
 └── infrastructure/
     ├── office/                 # startOffice (wiring), InboundServer, FunnelControl (tailscale), T3Cli,
     │                           # T3Projects, WebhookClient, SecretStore, inboundToken, LogoStore
-    ├── ipc/                    # office.ipc, roster.ipc, settings.ipc, validation
+    ├── ipc/                    # office.ipc, roster.ipc, settings.ipc, chat.ipc, validation
     ├── tray/, bridge/, security/, database/, storage/ (SettingsStore, JSON file)
 ```
 
@@ -67,7 +68,7 @@ src/renderer/src/
 ├── app/              # Zustand stores (useOffice, useNavigation), browser bridge
 ├── pages/            # office/ (scene + panels), office-settings/ (bots, keys, Funnel, instructions)
 ├── widgets/          # office-scene/ (three.js), office-hud/ (TopBar, OfficeMap), roster-panel/, event-feed/
-├── features/         # bot-card/ (card + give-task form)
+├── features/         # bot-card/ (card + give-task form), chat/ (ChatPanel, ChatComposer, useConversation)
 └── shared/           # ui/ (shadcn primitives), lib/
 ```
 
@@ -153,7 +154,7 @@ export const useStore = create<StoreState>((set) => ({
 
 ### IPC Patterns
 
-**Channels:** `namespace:action` (e.g., `office:snapshot`, `office:give-task`, `roster:funnel`)
+**Channels:** `namespace:action` (e.g., `office:snapshot`, `office:give-task`, `roster:funnel`, `chat:send-dm`)
 
 **Handler registration:**
 
@@ -188,7 +189,7 @@ set({ snapshot: await window.api.officeSnapshot(projectId) })
 | Repositories     | `PascalCaseRepo.ts` | `RosterRepo.ts`                                                        |
 | IPC handlers     | `kebab-case.ipc.ts` | `office.ipc.ts`, `roster.ipc.ts`                                       |
 | Utilities        | `camelCase.ts`      | `utils.ts`                                                             |
-| IPC channels     | `namespace:action`  | `office:snapshot`, `office:give-task`, `roster:funnel`, `settings:get` |
+| IPC channels     | `namespace:action`  | `office:snapshot`, `office:give-task`, `roster:funnel`, `chat:send-dm` |
 | Branches         | `type/kebab-case`   | `feat/keyboard-shortcuts`                                              |
 
 ## Git Conventions
@@ -245,7 +246,7 @@ try {
 ## Key Decisions
 
 - Personal build: built for this Mac, Tailscale, T3 Code install and Grok Bots. No migration, no onboarding.
-- Grok Bots have no read API: Talyx shows what bots report to `POST /events`, never reads Grok chats.
+- Grok Bots have no read API: Talyx shows what bots report to `POST /events`, never reads Grok chats. Chats mirror Grok only as far as bots report (no history import); owner messages reach a group through its relay bot.
 - Secrets (webhook keys, inbound token) never reach the renderer, logs or git; the endpoint is
   reachable only through Funnel, with the Bearer token.
 - Staleness is shown, not hidden: a bot not heard from is marked stale rather than working.
