@@ -100,5 +100,8 @@ export interface RoomView {
   // engine posts it once even if the first attempt did land.
   failedSend: { eventId: string; draft: string } | null
   loading: boolean
+  // Why the last read failed; the next read that works clears it.
   error: string | null
+  // Why your last send, stop or answer failed; it stays until one of them works.
+  actionError: string | null
 }

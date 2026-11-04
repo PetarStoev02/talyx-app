@@ -133,19 +133,22 @@ describe('group room', () => {
       await actions.refresh(ROOM)
       engine.loseNextAnswer()
       expect(await actions.send(ROOM, { text: 'Go monthly?', attachments: [] })).toBe(false)
-      expect(view().error).toBe('Request timed out')
+      expect(view().actionError).toBe('Request timed out')
       expect(await actions.send(ROOM, { text: 'Go monthly?', attachments: [] })).toBe(true)
       const [first, second] = sent()
       expect(second.event_id).toBe(first.event_id)
       expect(engine.events.filter((item) => item.kind === 'message.user')).toHaveLength(2)
-      expect(view()).toMatchObject({ failedSend: null, error: null })
+      expect(view()).toMatchObject({ failedSend: null, actionError: null })
     })
 
-    it('should keep why a send failed while the room keeps reading', async () => {
+    it('should keep why a send failed apart from how the room reads', async () => {
       engine.failNext('groups.send', 'Room is full')
       await actions.send(ROOM, { text: 'Go monthly?', attachments: [] })
+      engine.failNext('groups.state', 'Socket closed')
       await actions.refresh(ROOM)
-      expect(view().error).toBe('Room is full')
+      expect(view()).toMatchObject({ actionError: 'Room is full', error: 'Socket closed' })
+      await actions.refresh(ROOM)
+      expect(view()).toMatchObject({ actionError: 'Room is full', error: null })
     })
 
     it('should show a sent message even when a read was already on its way', async () => {
@@ -190,6 +193,15 @@ describe('group room', () => {
   })
 
   describe('controls', () => {
+    it('should keep why a stop failed until an action works', async () => {
+      engine.failNext('groups.stop', 'Gateway busy')
+      await actions.stop(ROOM)
+      await actions.refresh(ROOM)
+      expect(view().actionError).toBe('Gateway busy')
+      await actions.stop(ROOM)
+      expect(view().actionError).toBeNull()
+    })
+
     it('should stop the room and show that it stopped', async () => {
       await actions.refresh(ROOM)
       await actions.stop(ROOM)

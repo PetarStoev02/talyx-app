@@ -16,7 +16,8 @@ const blank = (): RoomView => ({
   tasks: [],
   failedSend: null,
   loading: true,
-  error: null
+  error: null,
+  actionError: null
 })
 
 export const useRooms = create<RoomStore>((set) => ({

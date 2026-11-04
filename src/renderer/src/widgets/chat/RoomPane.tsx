@@ -111,6 +111,12 @@ export function RoomPane({
       >
         {activityLine(view, nameOf, t)}
       </p>
+      {/* The composer's Send or the card's own button is the retry for these. */}
+      {view.actionError && (
+        <p className="mx-auto w-full max-w-3xl px-6 pb-2 text-base text-destructive" role="alert">
+          {view.actionError}
+        </p>
+      )}
       {view.error && (
         <p className="mx-auto w-full max-w-3xl px-6 pb-2 text-base text-destructive" role="alert">
           {view.error}{' '}

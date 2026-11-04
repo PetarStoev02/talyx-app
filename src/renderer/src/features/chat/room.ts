@@ -50,14 +50,24 @@ export function roomActions(backend: RoomBackend): RoomActions {
   // One read per room at a time: a send's refresh joins a poll already on its way.
   const reads = new Map<string, Promise<void>>()
 
-  // A failed call shows on the room instead of throwing into the view.
-  const guarded =
+  // A failed read shows on the room instead of throwing into the view.
+  async function guardedRead(roomId: string): Promise<void> {
+    try {
+      await read(roomId)
+    } catch (error) {
+      update(roomId, { loading: false, error: messageOf(error) })
+    }
+  }
+
+  // A failed stop or answer shows on the room until an action works; polls do not clear it.
+  const acting =
     <A extends unknown[]>(run: (roomId: string, ...args: A) => Promise<void>) =>
     async (roomId: string, ...args: A): Promise<void> => {
       try {
         await run(roomId, ...args)
+        update(roomId, { actionError: null })
       } catch (error) {
-        update(roomId, { loading: false, error: messageOf(error) })
+        update(roomId, { actionError: messageOf(error) })
       }
     }
 
@@ -80,8 +90,7 @@ export function roomActions(backend: RoomBackend): RoomActions {
       phases: phasesOf(driver),
       tasks: tasksOf(driver),
       loading: false,
-      // A failed send keeps its reason until it is sent again.
-      error: current?.failedSend ? current.error : null
+      error: null
     })
   }
 
@@ -104,7 +113,7 @@ export function roomActions(backend: RoomBackend): RoomActions {
   function refresh(roomId: string): Promise<void> {
     const running = reads.get(roomId)
     if (running) return running
-    const started = guarded(read)(roomId).finally(() => reads.delete(roomId))
+    const started = guardedRead(roomId).finally(() => reads.delete(roomId))
     reads.set(roomId, started)
     return started
   }
@@ -130,21 +139,21 @@ export function roomActions(backend: RoomBackend): RoomActions {
           event_id: eventId,
           payload: { text, thread_id: eventId, attachments: draft.attachments }
         })
-        update(roomId, { failedSend: null, error: null })
+        update(roomId, { failedSend: null, actionError: null })
       } catch (error) {
-        update(roomId, { failedSend: { eventId, draft: key }, error: messageOf(error) })
+        update(roomId, { failedSend: { eventId, draft: key }, actionError: messageOf(error) })
         return false
       }
       await readAfterChange(roomId)
       return true
     },
 
-    stop: guarded(async (roomId) => {
+    stop: acting(async (roomId) => {
       await call('groups.stop', { room_id: roomId, cancel_id: crypto.randomUUID() })
       await readAfterChange(roomId)
     }),
 
-    approve: guarded(async (roomId, task: RoomTask, choice: 'once' | 'deny') => {
+    approve: acting(async (roomId, task: RoomTask, choice: 'once' | 'deny') => {
       await call('groups.approve', {
         room_id: roomId,
         member_id: task.member_id,
@@ -156,7 +165,7 @@ export function roomActions(backend: RoomBackend): RoomActions {
       await readAfterChange(roomId)
     }),
 
-    settle: guarded(async (roomId, task: RoomTask) => {
+    settle: acting(async (roomId, task: RoomTask) => {
       await call(task.kind === 'discard' ? 'groups.discard' : 'groups.retry', {
         room_id: roomId,
         member_id: task.member_id,

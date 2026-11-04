@@ -142,8 +142,17 @@ export function roomRequest(method: string, params: Record<string, unknown>): un
       return { tombstone: { room_id: room.room_id } }
     case 'groups.attachment.upload': {
       const id = `file-${Object.keys(files).length + 1}`
-      files[id] = { mime: String(params.mime), data_base64: String(params.data_base64) }
-      return { attachment_id: id }
+      const mime = String(params.mime).toLowerCase()
+      const data = String(params.data_base64)
+      files[id] = { mime, data_base64: data }
+      // As the engine does: the stored name is trimmed and the type lower-cased.
+      return {
+        attachment_id: id,
+        kind: params.kind,
+        name: String(params.name).trim(),
+        mime,
+        size: atob(data).length
+      }
     }
     case 'groups.attachment.download': {
       const file = files[String(params.attachment_id)]
