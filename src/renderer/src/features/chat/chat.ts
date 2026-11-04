@@ -1,10 +1,11 @@
 import type { EngineApiRequest } from '@shared/engine/http'
 import type { SessionMessage } from '@shared/engine/types'
+import type { ModelOptionProvider, SessionLiveInfo } from '@shared/engine/gateway-events'
 import type { GatewayEvent } from '@shared/engine/shared'
 import { useChat } from './store'
-import type { ChatState } from './store'
+import type { ChatInfo, ChatState } from './store'
 import { applyEvent, fromHistory, settlePrompt } from './transcript'
-import type { Transcript } from './types'
+import type { ApprovalChoice, Transcript } from './types'
 
 /** The bot's chat is the profile's hidden session with this exact title. */
 export const BOT_CHAT_TITLE = 'Bot Chat'
@@ -40,14 +41,17 @@ export interface ChatActions {
     promptId: string,
     answers: Record<string, string | string[]>
   ) => Promise<void>
+  answerApproval: (profile: string, promptId: string, choice: ApprovalChoice) => void
   setModel: (profile: string, model: { model: string; provider: string }) => Promise<void>
   setReasoning: (profile: string, level: string) => Promise<void>
+  models: (profile: string) => Promise<ModelOptionProvider[]>
   uploadImage: (profile: string, image: { dataUrl: string; name: string }) => Promise<ChatImage>
   transcribe: (profile: string, audio: { dataUrl: string; mime: string }) => Promise<string>
   mediaUrl: (profile: string, path: string) => Promise<string>
 }
 
 interface ResumeSnapshot {
+  info?: SessionLiveInfo | null
   running?: boolean
   last_sequence?: number
   inflight?: { assistant?: string } | null
@@ -101,6 +105,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
     update(profile, {
       sessionId,
       transcript: rebuilt(chatOf(profile)?.transcript ?? null, sessionId, history.messages, resume),
+      info: infoOf(resume.info, chatOf(profile)?.info),
       loading: false,
       error: null
     })
@@ -203,11 +208,32 @@ export function chatActions(backend: ChatBackend): ChatActions {
       if (transcript) update(profile, { transcript: settlePrompt(transcript, promptId) })
     }),
 
-    setModel: guarded((profile, { model, provider }: { model: string; provider: string }) =>
-      configure(profile, 'model', `${model} --provider ${provider}`)
-    ),
+    answerApproval: (profile, promptId, choice) => {
+      const transcript = chatOf(profile)?.transcript
+      const prompt = transcript?.prompts.find((item) => item.id === promptId)
+      if (!transcript || prompt?.kind !== 'approval') return
+      prompt.respond(choice)
+      update(profile, { transcript: settlePrompt(transcript, promptId) })
+    },
 
-    setReasoning: guarded((profile, level: string) => configure(profile, 'reasoning', level)),
+    setModel: guarded(async (profile, { model, provider }: { model: string; provider: string }) => {
+      await configure(profile, 'model', `${model} --provider ${provider}`)
+      update(profile, { info: { ...chatOf(profile)!.info, model, provider } })
+    }),
+
+    setReasoning: guarded(async (profile, level: string) => {
+      await configure(profile, 'reasoning', level)
+      update(profile, { info: { ...chatOf(profile)!.info, reasoning: level } })
+    }),
+
+    models: async (profile) => {
+      const query = new URLSearchParams({ explicit_only: '1', profile })
+      const { providers } = await backend.http<{ providers: ModelOptionProvider[] }>({
+        path: `/api/model/options?${query}`,
+        profile
+      })
+      return providers
+    },
 
     uploadImage: async (profile, { dataUrl, name }) => {
       const { path, mime_type: mime } = await backend.http<{ path: string; mime_type: string }>({
@@ -261,5 +287,19 @@ function rebuilt(
     ...transcript,
     prompts: same ? previous.prompts : [],
     lastSeq: resume.last_sequence ?? (same ? previous.lastSeq : 0)
+  }
+}
+
+/** The live session info over what the chat showed before; absent fields keep their value. */
+export function infoOf(
+  live: Partial<SessionLiveInfo> | null | undefined,
+  previous?: ChatInfo
+): ChatInfo {
+  const pick = (value: unknown, fallback: string | null | undefined): string | null =>
+    typeof value === 'string' && value ? value : (fallback ?? null)
+  return {
+    model: pick(live?.model, previous?.model),
+    provider: pick(live?.provider, previous?.provider),
+    reasoning: pick(live?.reasoning_effort, previous?.reasoning)
   }
 }

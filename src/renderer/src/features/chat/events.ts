@@ -1,4 +1,5 @@
-import type { GatewayEvent, ServerRequest } from '@shared/engine/shared'
+import type { GatewayEvent, ServerRequest, SessionLiveInfo } from '@shared/engine/shared'
+import { infoOf } from './chat'
 import type { ChatActions } from './chat'
 import { useChat } from './store'
 import { addPrompt, applyEvent, fromHistory, needsRebuild } from './transcript'
@@ -24,6 +25,10 @@ export function handleEvent(actions: ChatActions, event: GatewayEvent): ChatUpda
   }
   const next = applyEvent(transcript, event)
   if (next !== transcript) useChat.getState().update(profile, { transcript: next })
+  if (event.type === 'session.info' && next !== transcript)
+    useChat
+      .getState()
+      .update(profile, { info: infoOf(event.payload as SessionLiveInfo, chat.info) })
   const completed = event.type === 'message.complete' && next !== transcript
   // The stored history then carries what live events do not: rows from other clients and bots.
   if (completed) void actions.rebuild(profile)

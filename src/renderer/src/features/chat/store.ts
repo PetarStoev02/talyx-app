@@ -1,10 +1,18 @@
 import { create } from 'zustand'
 import type { Transcript } from './types'
 
+/** The session's model and reasoning level, as the composer shows them. */
+export interface ChatInfo {
+  model: string | null
+  provider: string | null
+  reasoning: string | null
+}
+
 export interface ChatState {
   profile: string
   sessionId: string | null
   transcript: Transcript | null
+  info: ChatInfo
   loading: boolean
   error: string | null
 }
@@ -20,6 +28,7 @@ const blank = (profile: string): ChatState => ({
   profile,
   sessionId: null,
   transcript: null,
+  info: { model: null, provider: null, reasoning: null },
   loading: false,
   error: null
 })

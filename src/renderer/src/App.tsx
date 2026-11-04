@@ -2,6 +2,7 @@ import { Toaster } from 'sonner'
 import { AppShell } from '@widgets/app-shell'
 import { useNavigation } from '@app/providers/useNavigation'
 import { useRosterBackend } from '@app/providers/useRosterBackend'
+import { useChatBackend } from '@app/providers/useChatBackend'
 import { useTheme } from '@shared/hooks/useTheme'
 import { useKeyboardShortcuts } from '@shared/hooks/useKeyboardShortcuts'
 import { AgentsPage } from '@pages/agents'
@@ -10,18 +11,19 @@ import { EngineDebugPage } from '@pages/engine-debug'
 import { TooltipProvider } from '@shared/ui/tooltip'
 import { Roster } from '@widgets/roster'
 
-const pages = {
-  agents: <AgentsPage />,
-  'engine-debug': <EngineDebugPage />,
-  settings: <SettingsPage />
-}
-
 function App(): React.JSX.Element {
   useKeyboardShortcuts()
   const { effectiveTheme } = useTheme()
   const currentView = useNavigation((s) => s.currentView)
   const navigate = useNavigation((s) => s.navigate)
   const rosterBackend = useRosterBackend()
+  // Here, not in the page: replies keep marking bots unread while another page is open.
+  const chat = useChatBackend()
+  const pages = {
+    agents: <AgentsPage chat={chat} />,
+    'engine-debug': <EngineDebugPage />,
+    settings: <SettingsPage />
+  }
 
   return (
     <TooltipProvider>

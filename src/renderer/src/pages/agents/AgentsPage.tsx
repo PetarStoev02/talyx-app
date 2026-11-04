@@ -4,8 +4,10 @@ import { BotAvatar } from '@widgets/roster'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
 import { useLanguage } from '@app/providers/useLanguage'
 import { EngineGate } from '@widgets/engine-gate'
+import { ChatPane } from '@widgets/chat'
+import type { ChatActions } from '@features/chat/chat'
 
-export function AgentsPage(): React.JSX.Element {
+export function AgentsPage({ chat }: { chat: ChatActions | null }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const { snapshot, selection, editingProfile, editProfile } = useRoster()
   const bot = snapshot.bots.find((item) => selection?.kind === 'bot' && item.name === selection.id)
@@ -28,13 +30,17 @@ export function AgentsPage(): React.JSX.Element {
               </span>
             </header>
           )}
-          <div className="grid flex-1 place-content-center justify-items-center gap-4 px-8 text-center">
-            {bot ? <BotAvatar bot={bot} size={64} /> : <TalyxLogo size={48} />}
-            <h1 className="text-2xl font-semibold">{title || t('agents.welcome')}</h1>
-            <p className="max-w-sm text-base">
-              {title ? t('agents.chatEmpty') : t('agents.chooseHint')}
-            </p>
-          </div>
+          {bot ? (
+            <ChatPane key={bot.name} bot={bot} actions={chat} />
+          ) : (
+            <div className="grid flex-1 place-content-center justify-items-center gap-4 px-8 text-center">
+              <TalyxLogo size={48} />
+              <h1 className="text-2xl font-semibold">{title || t('agents.welcome')}</h1>
+              <p className="max-w-sm text-base">
+                {title ? t('agents.roomSoon') : t('agents.chooseHint')}
+              </p>
+            </div>
+          )}
         </section>
         {bot && editingProfile === bot.name && (
           <aside

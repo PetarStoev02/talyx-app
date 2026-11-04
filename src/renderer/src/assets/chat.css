@@ -1,0 +1,73 @@
+/* Bot replies are markdown; their elements get the app's type steps, not the browser's. */
+.chat-markdown > * + * {
+  margin-top: 0.75rem;
+}
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.chat-markdown ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.chat-markdown ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.chat-markdown a {
+  text-decoration: underline;
+}
+.chat-markdown code {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+.chat-markdown pre {
+  overflow-x: auto;
+  border-radius: 1rem;
+  background: var(--secondary);
+  padding: 0.75rem 1rem;
+}
+.chat-markdown :not(pre) > code {
+  border-radius: 0.375rem;
+  background: var(--secondary);
+  padding: 0.125rem 0.375rem;
+}
+.chat-markdown table {
+  border-collapse: collapse;
+}
+.chat-markdown th,
+.chat-markdown td {
+  padding: 0.25rem 0.75rem 0.25rem 0;
+  text-align: left;
+}
+.chat-markdown blockquote {
+  padding-left: 1rem;
+  color: var(--muted-foreground);
+}
+
+/* The streaming cursor: a blinking bar after the text so far. */
+.chat-cursor {
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  margin-left: 0.125rem;
+  vertical-align: -0.125em;
+  background: currentColor;
+  animation: chat-cursor 1s steps(2, start) infinite;
+}
+@keyframes chat-cursor {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* The composer shows focus on its whole pill, not on the bare text field inside it. */
+.chat-composer:has(textarea:focus-visible) {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.chat-composer textarea:focus-visible {
+  outline: none;
+}

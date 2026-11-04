@@ -49,13 +49,20 @@ export function chatDouble(
         chats[profile] = { sessionId: String(params.session_id), messages: [] }
         return { title: params.title }
       case 'session.resume':
-        return { session_id: params.session_id, running: false, last_sequence: 7 }
+        return {
+          session_id: params.session_id,
+          running: false,
+          last_sequence: 7,
+          info: { model: 'team-manager', provider: 'custom', reasoning_effort: 'medium' }
+        }
       case 'GET /api/sessions':
         return { messages: chat?.messages ?? [] }
       case 'POST /api/chat/image-upload':
         return { path: '/images/pasted.png', mime_type: 'image/png' }
       case 'POST /api/audio/transcribe':
         return { transcript: 'dictated words' }
+      case 'GET /api/model/options':
+        return { providers: [{ slug: 'custom', name: 'Router', models: ['team-manager'] }] }
       case 'GET /api/media':
         return { data_url: 'data:image/png;base64,AAAA' }
       default:

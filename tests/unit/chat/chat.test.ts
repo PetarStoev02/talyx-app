@@ -31,7 +31,8 @@ describe('bot chat', () => {
       expect(chat(MANAGER)).toMatchObject({
         sessionId: 'manager-chat',
         loading: false,
-        error: null
+        error: null,
+        info: { model: 'team-manager', provider: 'custom', reasoning: 'medium' }
       })
       expect(chat(MANAGER).transcript?.items.map((item) => item.kind)).toEqual(['user', 'bot'])
       expect(call('session.resume')?.params).toMatchObject({
@@ -167,6 +168,24 @@ describe('bot chat', () => {
       expect(chat(MANAGER).transcript?.prompts).toEqual([])
     })
 
+    it('should answer an approval and close its card', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      const choices: string[] = []
+      useChat.getState().update(MANAGER, {
+        transcript: addPrompt(chat(MANAGER).transcript!, {
+          kind: 'approval',
+          id: 'a1',
+          command: 'rm -rf build',
+          description: '',
+          choices: ['once', 'session', 'always', 'deny'],
+          respond: (choice) => choices.push(choice)
+        })
+      })
+      actions.answerApproval(MANAGER, 'a1', 'session')
+      expect(choices).toEqual(['session'])
+      expect(chat(MANAGER).transcript?.prompts).toEqual([])
+    })
+
     it('should stop the running turn', async () => {
       await actions.open(MANAGER, 'manager-chat')
       await actions.interrupt(MANAGER)
@@ -175,14 +194,29 @@ describe('bot chat', () => {
 
     it('should set the model and reasoning on the open session', async () => {
       await actions.open(MANAGER, 'manager-chat')
-      await actions.setModel(MANAGER, { model: 'team-manager', provider: 'custom' })
+      await actions.setModel(MANAGER, { model: 'cfo-model', provider: 'custom' })
       await actions.setReasoning(MANAGER, 'high')
+      expect(chat(MANAGER).info).toEqual({
+        model: 'cfo-model',
+        provider: 'custom',
+        reasoning: 'high'
+      })
       expect(
         engine.calls.filter((item) => item.method === 'config.set').map((item) => item.params)
       ).toEqual([
-        { session_id: 'manager-chat', key: 'model', value: 'team-manager --provider custom' },
+        { session_id: 'manager-chat', key: 'model', value: 'cfo-model --provider custom' },
         { session_id: 'manager-chat', key: 'reasoning', value: 'high' }
       ])
+    })
+  })
+
+  describe('models', () => {
+    it("should list the models the profile's providers offer", async () => {
+      expect(await actions.models(MANAGER)).toEqual([
+        { slug: 'custom', name: 'Router', models: ['team-manager'] }
+      ])
+      expect(call('GET /api/model/options')?.params).toMatchObject({ explicit_only: '1' })
+      expect(engine.calls.at(-1)?.profile).toBe(MANAGER)
     })
   })
 

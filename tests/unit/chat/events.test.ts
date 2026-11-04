@@ -110,6 +110,14 @@ describe('chat events', () => {
     expect(answers).toEqual([{ choice: 'once' }])
   })
 
+  it('should follow model changes made on another client', () => {
+    handleEvent(
+      actions,
+      event('manager-chat', 'session.info', 40, { model: 'cfo-model', provider: 'custom' })
+    )
+    expect(chat(MANAGER).info).toMatchObject({ model: 'cfo-model', provider: 'custom' })
+  })
+
   it('should rebuild the chat on a replay gap', async () => {
     const before = engine.calls.length
     handleEvent(actions, event('manager-chat', 'session.replay_gap', 30))
