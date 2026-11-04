@@ -11,10 +11,11 @@ The bots run on **the engine**, a separate agent backend the user installs; Taly
 of it and holds no orchestration logic of its own.
 
 Talyx is in the middle of that pivot. The file organizer it used to be is gone; the agents app
-is built one pull request at a time. Today the app is a shell attached to the engine: sidebar, an
-Agents page that says "Nothing here yet" (or "Talyx needs its engine" when the engine is
-missing), an Engine (debug) page that sends "ping" and prints raw session events, and
-Settings → Appearance.
+is built one pull request at a time. Today the app is attached to the engine: a roster of bots in
+the sidebar (pins, folders, unread and activity marks), the Agents page with the selected bot's
+chat (transcript, clarify and approval cards, a composer with model, reasoning, images and
+dictation), "Talyx needs its engine" when the engine is missing, an Engine (debug) page that
+sends "ping" and prints raw session events, and Settings → Appearance.
 
 - **Version:** 1.0.0-alpha.1
 - **Stack:** Electron 44 + React 19 + TypeScript 5.9 + TailwindCSS 4
@@ -100,10 +101,11 @@ admits no Origin header and takes the ticket in a subprotocol) and relays frames
 
 ```
 src/renderer/src/
-├── app/              # Global state (Zustand stores), browser dev bridge
-├── pages/            # AgentsPage (empty state), SettingsPage (Appearance)
-├── widgets/          # AppShell (sidebar + page shell)
-├── features/         # User interactions (none yet)
+├── app/              # Global state, browser dev bridge, the hooks that wire `host` into
+│                     # features (useRosterBackend, useChatBackend)
+├── pages/            # AgentsPage (the selected bot's chat), SettingsPage (Appearance)
+├── widgets/          # AppShell, Roster (sidebar bots), Chat (transcript, cards, composer)
+├── features/         # bots (roster data, folders, pins, unread), chat (transcript, use cases)
 └── shared/           # Reusable: ui/ (shadcn), hooks/, api/ (IPC wrappers), lib/,
                       # engine/ (vendored engine client; host.ts is the facade features use)
 ```

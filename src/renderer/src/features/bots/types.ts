@@ -9,6 +9,8 @@ export interface BotMeta {
 }
 
 export interface SessionPreview {
+  id?: string
+  resolved_id?: string
   last_active?: number
   preview?: string
 }

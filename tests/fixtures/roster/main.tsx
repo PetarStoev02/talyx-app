@@ -4,6 +4,7 @@ import { AgentsPage } from '../../../src/renderer/src/pages/agents/AgentsPage'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { useEngine } from '../../../src/renderer/src/app/providers/useEngine'
 import type { RosterRequest } from '../../../src/renderer/src/features/bots/data'
+import { fixtureChat } from './fixtureChat'
 import './fixture.css'
 
 // Deliberately in-memory: this fixture never connects to or modifies user profiles.
@@ -88,6 +89,7 @@ useEngine.setState({
 useRoster.getState().setActivity('researcher', 'working')
 useRoster.getState().setActivity('analyst', 'waiting')
 useRoster.getState().markUnread('writer')
+const chat = fixtureChat()
 createRoot(document.getElementById('root')!).render(
   <div className="flex h-screen bg-card">
     <aside className="flex w-[320px] max-w-[85vw] shrink-0 flex-col bg-sidebar">
@@ -96,7 +98,7 @@ createRoot(document.getElementById('root')!).render(
       <Roster backend={backend} onSelect={() => undefined} />
     </aside>
     <main className="min-w-0 flex-1">
-      <AgentsPage />
+      <AgentsPage chat={chat} />
     </main>
   </div>
 )

@@ -40,18 +40,44 @@ describe('isAppUrl', () => {
 })
 
 describe('isAllowedPermission', () => {
-  it.each(['media', 'clipboard-sanitized-write', 'notifications'])(
+  it("should allow the microphone for the app's own pages only", () => {
+    const app = `${PACKAGED}index.html`
+    expect(
+      isAllowedPermission('media', { requestingUrl: app, mediaTypes: ['audio'] }, PACKAGED)
+    ).toBe(true)
+    expect(
+      isAllowedPermission('media', { requestingUrl: app, mediaTypes: ['video'] }, PACKAGED)
+    ).toBe(false)
+    expect(
+      isAllowedPermission('media', { requestingUrl: app, mediaTypes: ['audio', 'video'] }, PACKAGED)
+    ).toBe(false)
+    expect(
+      isAllowedPermission(
+        'media',
+        { requestingUrl: 'https://evil.example/', mediaTypes: ['audio'] },
+        PACKAGED
+      )
+    ).toBe(false)
+  })
+
+  it.each(['clipboard-sanitized-write', 'notifications'])(
     'should refuse %s while no feature of the app needs it',
     (permission) => {
-      expect(isAllowedPermission(permission, `${PACKAGED}index.html`, PACKAGED)).toBe(false)
+      expect(
+        isAllowedPermission(permission, { requestingUrl: `${PACKAGED}index.html` }, PACKAGED)
+      ).toBe(false)
     }
   )
 
   it('should refuse any permission to a page outside the app', () => {
-    expect(isAllowedPermission('media', 'https://evil.example/', PACKAGED)).toBe(false)
+    expect(isAllowedPermission('media', { requestingUrl: 'https://evil.example/' }, PACKAGED)).toBe(
+      false
+    )
   })
 
   it('should refuse permissions the app never needs', () => {
-    expect(isAllowedPermission('geolocation', `${PACKAGED}index.html`, PACKAGED)).toBe(false)
+    expect(
+      isAllowedPermission('geolocation', { requestingUrl: `${PACKAGED}index.html` }, PACKAGED)
+    ).toBe(false)
   })
 })

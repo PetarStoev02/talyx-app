@@ -28,6 +28,9 @@ mac:
   # No Apple account: ad-hoc signature ('-'). Apple Silicon refuses an unsigned binary,
   # and flipping the fuses below invalidates any earlier signature, so sign last.
   identity: '-'
+  # macOS asks for the microphone with this line the first time you dictate.
+  extendInfo:
+    NSMicrophoneUsageDescription: Talyx uses the microphone to turn what you say into a message.
   hardenedRuntime: false
   notarize: false
 dmg:

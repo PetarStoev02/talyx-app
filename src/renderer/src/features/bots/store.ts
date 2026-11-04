@@ -8,6 +8,8 @@ interface RosterState {
   editingProfile: string | null
   activity: Record<string, BotActivity>
   unread: Record<string, boolean>
+  // Each bot's chat activity time at the last snapshot, so a later move reads as a new reply.
+  seen: Record<string, number>
   revision: number
   loading: boolean
   saving: boolean
@@ -25,6 +27,7 @@ export const useRoster = create<RosterState>((set) => ({
   editingProfile: null,
   activity: {},
   unread: {},
+  seen: {},
   revision: 0,
   loading: true,
   saving: false,
@@ -33,7 +36,8 @@ export const useRoster = create<RosterState>((set) => ({
     set((state) => ({
       selection,
       editingProfile: null,
-      unread: selection?.kind === 'bot' ? { ...state.unread, [selection.id]: false } : state.unread
+      unread: selection?.kind === 'bot' ? { ...state.unread, [selection.id]: false } : state.unread,
+      seen: leftAt(state.selection, selection, state.seen)
     })),
   editProfile: (profile) => set({ editingProfile: profile }),
   clearError: () => set({ error: null }),
@@ -47,3 +51,14 @@ export const useRoster = create<RosterState>((set) => ({
       }
     }))
 }))
+
+// A bot you leave was read up to now: its next poll must not show what you just saw as unread.
+// Replies after this still mark it, live or on a later poll.
+function leftAt(
+  previous: Selection,
+  next: Selection,
+  seen: Record<string, number>
+): Record<string, number> {
+  if (previous?.kind !== 'bot' || (next?.kind === 'bot' && next.id === previous.id)) return seen
+  return { ...seen, [previous.id]: Math.max(seen[previous.id] ?? 0, Date.now() / 1000) }
+}

@@ -39,6 +39,11 @@ export function botPreview(bot: Bot): string {
   )
 }
 
+/** The bot's chat: the profile's canonical session, at the tip of its compression lineage. */
+export function botChatId(bot: Bot): string | null {
+  return bot.canonical_session?.resolved_id || bot.canonical_session?.id || null
+}
+
 export function botActivityTime(bot: Bot): number {
   return bot.canonical_session?.last_active ?? bot.last_session?.last_active ?? 0
 }

@@ -21,15 +21,24 @@ export async function refreshRoster(backend: RosterBackend): Promise<void> {
   applySnapshot(await readRoster(backend))
 }
 
-// A bot hidden or deleted on another client must not stay selected.
+// A bot hidden or deleted on another client must not stay selected. A chat that moved since the
+// last snapshot got a reply, including from sessions this window never opened (bot deliveries).
 export function applySnapshot(snapshot: RosterSnapshot): void {
-  const { selection } = useRoster.getState()
+  const { selection, seen, markUnread } = useRoster.getState()
+  const nextSeen: Record<string, number> = {}
+  for (const bot of snapshot.bots) {
+    // 0 for a bot with no chat yet, so the first chat a delivery opens also reads as a reply.
+    const active = bot.canonical_session?.last_active ?? 0
+    nextSeen[bot.name] = active
+    if (seen[bot.name] !== undefined && active > seen[bot.name]) markUnread(bot.name)
+  }
   const exists =
     selection?.kind === 'bot'
       ? snapshot.bots.some((bot) => bot.name === selection.id && !bot.meta.hidden)
       : snapshot.rooms.some((room) => room.room_id === selection?.id)
   useRoster.setState({
     snapshot,
+    seen: nextSeen,
     loading: false,
     error: null,
     ...(selection && !exists ? { selection: null } : {})
