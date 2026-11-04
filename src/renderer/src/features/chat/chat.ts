@@ -137,7 +137,11 @@ export function chatActions(backend: ChatBackend): ChatActions {
     open: guarded(async (profile, chatId: string | null) => {
       update(profile, { loading: true, error: null })
       const sessionId = chatId ?? (await findChat(profile))
-      if (sessionId) await load(profile, sessionId)
+      // Known before the history loads, so cards the snapshot delivers find this chat.
+      if (sessionId) {
+        update(profile, { sessionId })
+        await load(profile, sessionId)
+      }
       // Opening never creates a chat; the first send does.
       else update(profile, { sessionId: null, transcript: null, loading: false })
     }),

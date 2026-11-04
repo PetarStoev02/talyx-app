@@ -2,10 +2,10 @@ import type { EngineStatus } from '../../../../shared/engine'
 import { engineDialUrl, EngineGateway } from './client'
 import { deleteProfile } from './profiles'
 import { isStableOpen, reconnectBackoffDelayMs } from './reconnect-backoff'
-import type { ConnectionState, GatewayEvent } from './shared'
+import type { ConnectionState, GatewayEvent, ServerRequest } from './shared'
 
 export type { EngineStatus }
-export type { CanonicalProfileRow, ConnectionState, GatewayEvent } from './shared'
+export type { CanonicalProfileRow, ConnectionState, GatewayEvent, ServerRequest } from './shared'
 
 /**
  * The host calls the bots UI uses, as one plain module (upstream reaches them through a plugin
@@ -41,8 +41,7 @@ function resumeOpenSessions(): void {
         defer_history: true,
         omit_messages: true
       })
-      // ponytail: a failed re-resume leaves that session silent until it is opened again;
-      // add a retry when the chat UI (PR 4) shows sessions.
+      // A failed re-resume is covered by the chat, which reloads its open sessions on reopen.
       .catch(() => undefined)
   }
 }
@@ -100,6 +99,9 @@ export const host = {
   },
 
   onEvent: (handler: (event: GatewayEvent) => void): (() => void) => gateway.onEvent(handler),
+
+  /** Clarify and approval cards, live or re-delivered from a snapshot after a reconnect. */
+  onPrompt: (handler: (request: ServerRequest) => void): (() => void) => gateway.onRequest(handler),
 
   onState: (handler: (state: ConnectionState) => void): (() => void) => gateway.onState(handler),
 
