@@ -257,7 +257,6 @@ describe('bot chat', () => {
       await actions.setReasoning(WORKER, 'high')
       expect(chat(WORKER).info).toEqual({ model: null, provider: null, reasoning: null })
       expect(methods()).not.toContain('config.set')
-      expect(methods()).not.toContain('session.mutate')
     })
 
     it('should set the model and reasoning on the open session', async () => {
@@ -269,18 +268,12 @@ describe('bot chat', () => {
         provider: 'custom',
         reasoning: 'high'
       })
-      // The engine refuses a model through config.set; it takes a revision-fenced mutation.
-      expect(call('session.mutate')?.params).toEqual({
-        session_id: 'manager-chat',
-        request_id: expect.any(String),
-        expected_revision: 4,
-        expected_generation: 2,
-        operation: 'model',
-        payload: { model: 'cfo-model', provider: 'custom' }
-      })
       expect(
         engine.calls.filter((item) => item.method === 'config.set').map((item) => item.params)
-      ).toEqual([{ session_id: 'manager-chat', key: 'reasoning', value: 'high' }])
+      ).toEqual([
+        { session_id: 'manager-chat', key: 'model', value: 'cfo-model --provider custom' },
+        { session_id: 'manager-chat', key: 'reasoning', value: 'high' }
+      ])
     })
   })
 

@@ -24,6 +24,8 @@ export interface RoomDouble {
   holdNext: (method: string) => () => void
   // Each member's session in this room, in the member's own profile; absent until it first answers.
   memberSessions: Record<string, MemberSession>
+  // Models the engine asks to confirm before it switches to them (cost, data policy).
+  guarded: Set<string>
 }
 
 export interface MemberSession {
@@ -74,6 +76,7 @@ export function roomDouble(events: RoomEvent[] = []): RoomDouble {
       lostAnswer = true
     },
     memberSessions: {},
+    guarded: new Set(),
     holdNext: (method) => {
       let release = (): void => undefined
       holds.set(method, new Promise((resolve) => (release = resolve)))
@@ -171,15 +174,20 @@ export function roomDouble(events: RoomEvent[] = []): RoomDouble {
       case 'session.resume':
         if (!owns) throw new Error('Session not found')
         return {
+          session_id: session.id,
           revision: session.revision,
           execution_generation: session.generation,
           subscription_id: `sub-${session.id}`
         }
-      case 'session.mutate':
-        if (!owns || params.expected_revision !== session.revision)
-          throw new Error('stale_revision')
-        Object.assign(session, params.payload, { revision: session.revision + 1 })
-        return { session_id: session.id, operation: 'model', revision: session.revision }
+      // The client turns a model `config.set` into the engine's fenced model mutation.
+      case 'config.set': {
+        if (!owns || params.key !== 'model') throw new Error('invalid_params')
+        const [model, provider] = String(params.value).split(' --provider ')
+        if (double.guarded.has(model))
+          return { confirm_required: true, confirm_message: `${model} costs more per turn.` }
+        Object.assign(session, { model, provider, revision: session.revision + 1 })
+        return { key: 'model', value: model }
+      }
       case 'session.detach':
         return { detached: owns }
       default:

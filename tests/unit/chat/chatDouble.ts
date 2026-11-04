@@ -56,9 +56,6 @@ export function chatDouble(
           session_id: params.session_id,
           running: false,
           last_sequence: 7,
-          revision: 4,
-          execution_generation: 2,
-          subscription_id: `sub-${String(params.session_id)}`,
           info: { model: '9-route-provider', provider: 'custom', reasoning_effort: 'medium' }
         }
       case 'GET /api/sessions':

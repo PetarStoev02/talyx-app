@@ -10,6 +10,7 @@ import { useRooms } from '../../../src/renderer/src/features/chat/roomStore'
 import type { RoomEvent, RoomView } from '../../../src/renderer/src/features/chat/types'
 import { t } from '../../../src/renderer/src/shared/lib/i18n'
 import { ROOM, memberSession, roomDouble } from './roomDouble'
+import type { ChatCall } from './chatDouble'
 import type { RoomDouble } from './roomDouble'
 
 const NAMES: Record<string, string> = {
@@ -267,6 +268,8 @@ describe('group room', () => {
 describe('room model', () => {
   const MEMBERS = [{ profile: 'default' }, { profile: 'acme-cfo' }, { profile: 'acme-new' }]
   const PICK = { model: '9-route-provider', provider: 'custom' }
+  const calls = (method: string): ChatCall[] =>
+    engine.calls.filter((item) => item.method === method)
 
   beforeEach(() => {
     engine.memberSessions.default = memberSession('default', 'team-manager')
@@ -275,39 +278,63 @@ describe('room model', () => {
 
   it('should read the model every member runs on, or say they differ', async () => {
     await actions.readModel(ROOM, MEMBERS)
-    expect(view().model).toBe('mixed')
+    expect(view().models).toEqual(['team-manager', 'team-advisor'])
     engine.memberSessions.default.model = 'team-advisor'
+    // A built session reports its runtime provider, a cold one the configured name: same model.
+    engine.memberSessions.default.provider = 'router'
     await actions.readModel(ROOM, MEMBERS)
-    expect(view().model).toEqual({ model: 'team-advisor', provider: 'custom' })
+    expect(view().models).toEqual(['team-advisor'])
   })
 
   it('should have no model to show before any member has answered', async () => {
     engine.memberSessions = {}
     await actions.readModel(ROOM, MEMBERS)
-    expect(view().model).toBeNull()
+    expect(view().models).toEqual([])
+  })
+
+  it('should read the members it can when one cannot be read', async () => {
+    engine.failNext('session.info', 'profile_not_found')
+    await actions.readModel(ROOM, MEMBERS)
+    expect(view()).toMatchObject({ models: ['team-advisor'], error: null })
+  })
+
+  it('should keep the newest reading when an older one answers late', async () => {
+    const release = engine.holdNext('session.info')
+    const stale = actions.readModel(ROOM, MEMBERS)
+    await actions.setModel(ROOM, MEMBERS, PICK)
+    release()
+    await stale
+    expect(view().models).toEqual(['9-route-provider'])
   })
 
   it("should switch every idle member's room session and let go of it", async () => {
     await actions.refresh(ROOM)
     const result = await actions.setModel(ROOM, MEMBERS, PICK)
     expect(result).toEqual({ switched: ['default', 'acme-cfo'], skipped: ['acme-new'] })
-    expect(engine.memberSessions.default).toMatchObject({ model: '9-route-provider', revision: 4 })
-    const mutate = engine.calls.find(
-      (item) => item.method === 'session.mutate' && item.profile === 'acme-cfo'
-    )
-    expect(mutate?.params).toMatchObject({
-      session_id: 'acme-cfo-room-session',
-      expected_revision: 3,
-      expected_generation: 2,
-      operation: 'model',
-      payload: PICK
-    })
-    const detached = engine.calls.filter((item) => item.method === 'session.detach')
-    expect(detached.map((item) => item.params)).toEqual([
+    expect(engine.memberSessions.default).toMatchObject({ model: '9-route-provider' })
+    expect(calls('config.set').map((item) => [item.profile, item.params])).toEqual([
+      [
+        'default',
+        {
+          session_id: 'default-room-session',
+          key: 'model',
+          value: '9-route-provider --provider custom'
+        }
+      ],
+      [
+        'acme-cfo',
+        {
+          session_id: 'acme-cfo-room-session',
+          key: 'model',
+          value: '9-route-provider --provider custom'
+        }
+      ]
+    ])
+    expect(calls('session.detach').map((item) => item.params)).toEqual([
       { session_id: 'default-room-session', subscription_id: 'sub-default-room-session' },
       { session_id: 'acme-cfo-room-session', subscription_id: 'sub-acme-cfo-room-session' }
     ])
-    expect(view().model).toEqual(PICK)
+    expect(view()).toMatchObject({ models: ['9-route-provider'], actionError: null })
   })
 
   it('should leave alone a member that is answering or waiting on you', async () => {
@@ -317,22 +344,27 @@ describe('room model', () => {
     ]
     await actions.refresh(ROOM)
     const result = await actions.setModel(ROOM, MEMBERS, PICK)
-    expect(result.switched).toEqual([])
-    expect(result.skipped).toEqual(['default', 'acme-cfo', 'acme-new'])
-    expect(engine.calls.map((item) => item.method)).not.toContain('session.resume')
+    expect(result).toEqual({ switched: [], skipped: ['default', 'acme-cfo', 'acme-new'] })
+    expect(calls('session.resume')).toEqual([])
   })
 
-  it('should show why a member could not be switched and still switch the others', async () => {
+  it('should not count a model the engine wants confirmed as switched', async () => {
+    engine.guarded.add('9-route-provider')
     await actions.refresh(ROOM)
-    engine.failNext('session.mutate', 'stale_revision')
     const result = await actions.setModel(ROOM, MEMBERS, PICK)
-    expect(result.switched).toEqual(['acme-cfo'])
-    expect(result.skipped).toEqual(['default', 'acme-new'])
-    expect(view().actionError).toBe('stale_revision')
-    // A failed switch still lets go of the session it opened.
-    expect(
-      engine.calls.filter((item) => item.method === 'session.detach').map((item) => item.profile)
-    ).toEqual(['default', 'acme-cfo'])
+    expect(result.switched).toEqual([])
+    expect(view().actionError).toBe('9-route-provider costs more per turn.')
+    expect(engine.memberSessions.default.model).toBe('team-manager')
+    // A session opened for a refused switch is still let go of.
+    expect(calls('session.detach')).toHaveLength(2)
+  })
+
+  it('should count a switched member once its model changed, even if letting go fails', async () => {
+    await actions.refresh(ROOM)
+    engine.failNext('session.detach', 'Socket closed')
+    const result = await actions.setModel(ROOM, MEMBERS, PICK)
+    expect(result.switched).toEqual(['default', 'acme-cfo'])
+    expect(view().actionError).toBe('Socket closed')
   })
 })
 

@@ -172,7 +172,9 @@ const request: RosterRequest = async (profile, method, params) => {
   if (method === 'profiles.create') return createProfile(params)
   if (method === 'cron.manage') return manageCron(profile, params)
   if (method.startsWith('groups.')) return roomRequest(method, params)
-  const roomSession = method.startsWith('session.') && roomSessionRequest(profile, method, params)
+  const roomSession =
+    (method.startsWith('session.') || method === 'config.set') &&
+    roomSessionRequest(profile, method, params)
   if (roomSession) return roomSession
   throw new Error('Unsupported fixture operation')
 }

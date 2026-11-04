@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { botTitle } from '@features/bots/roster'
@@ -11,9 +12,8 @@ import { useRooms } from '@features/chat/roomStore'
 import type { RoomTask, RoomView } from '@features/chat/types'
 import { useRoomPolling } from '@features/chat/useRoomPolling'
 import type { TranslationKey } from '@shared/lib/i18n'
-import { ApprovalCard } from './ApprovalCard'
-import { toast } from 'sonner'
 import { ModelPicker } from '@shared/ui/ModelPicker'
+import { ApprovalCard } from './ApprovalCard'
 import { Chip, Composer } from './Composer'
 import type { ComposerTarget } from './Composer'
 import { Transcript } from './Transcript'
@@ -161,24 +161,32 @@ function RoomModelMenu({
   nameOf: (member: string) => string
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const value =
-    view.model === 'mixed' ? t('rooms.modelMixed') : (view.model?.model ?? t('rooms.modelOwn'))
+  // One switch at a time: a second pick during one would race its own fences.
+  const [switching, setSwitching] = useState(false)
+  const [shared] = view.models
+  const value = view.models.length > 1 ? t('rooms.modelMixed') : (shared ?? t('rooms.modelOwn'))
 
   async function switchAll(choice: { model: string; provider: string }): Promise<void> {
-    const { skipped } = await actions.setModel(room.room_id, room.members, choice)
-    if (skipped.length)
-      toast(t('rooms.modelSkipped').replace('{names}', skipped.map(nameOf).join(', ')))
+    setSwitching(true)
+    try {
+      const { skipped } = await actions.setModel(room.room_id, room.members, choice)
+      if (skipped.length)
+        toast(t('rooms.modelSkipped').replace('{names}', skipped.map(nameOf).join(', ')))
+    } finally {
+      setSwitching(false)
+    }
   }
 
   return (
     <ModelPicker
       load={() => chat.models('default')}
-      selected={view.model === 'mixed' ? null : view.model}
+      // The members' reading has model names only, so no provider entry is marked.
+      selected={null}
       onSelect={(choice) => void switchAll(choice)}
       loadingLabel={t('chat.modelsLoading')}
     >
       {/* Before any member has answered there is no room session to switch. */}
-      <Chip label={t('chat.model')} value={value} disabled={view.model === null} />
+      <Chip label={t('chat.model')} value={value} disabled={!shared || switching} />
     </ModelPicker>
   )
 }

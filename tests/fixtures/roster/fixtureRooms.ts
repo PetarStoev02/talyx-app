@@ -217,7 +217,7 @@ const memberSessions = new Map<string, { model: string; revision: number }>([
   ['writer:team-room', { model: '9-route-provider', revision: 1 }]
 ])
 
-/** `session.*` for members' room sessions (`Group: <room>`); null for any other session. */
+/** Calls on members' room sessions (`Group: <room>`); null for any other session. */
 export function roomSessionRequest(
   profile: string,
   method: string,
@@ -232,11 +232,11 @@ export function roomSessionRequest(
   if (!session || !id.includes('/')) return null
   if (method === 'session.info') return { model: session.model, provider: 'custom' }
   if (method === 'session.resume')
-    return { revision: session.revision, execution_generation: 1, subscription_id: `sub-${id}` }
-  if (method === 'session.mutate') {
-    session.model = (params.payload as { model: string }).model
+    return { session_id: id, revision: session.revision, subscription_id: `sub-${id}` }
+  if (method === 'config.set' && params.key === 'model') {
+    session.model = String(params.value).split(' --provider ')[0]
     session.revision++
-    return { revision: session.revision }
+    return { key: 'model', value: session.model }
   }
   if (method === 'session.detach') return { detached: true }
   return null

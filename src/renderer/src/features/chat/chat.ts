@@ -2,7 +2,6 @@ import type { EngineApiRequest } from '@shared/engine/http'
 import type { SessionMessage } from '@shared/engine/types'
 import type { ModelOptionProvider, SessionLiveInfo } from '@shared/engine/gateway-events'
 import type { GatewayEvent } from '@shared/engine/shared'
-import { changeModel, resumeForChange } from './sessionModel'
 import { useChat } from './store'
 import type { ChatInfo, ChatState } from './store'
 import { applyEvent, fromHistory, settlePrompt } from './transcript'
@@ -255,13 +254,9 @@ export function chatActions(backend: ChatBackend): ChatActions {
       update(profile, { transcript: settlePrompt(transcript, promptId) })
     },
 
-    setModel: guarded(async (profile, choice: { model: string; provider: string }) => {
-      const sessionId = sessionOf(profile)
-      if (!sessionId) return
-      // The chat stays open, so the resume's subscription is kept.
-      const fence = await resumeForChange(backend.request, { profile, sessionId })
-      await changeModel(backend.request, { profile, sessionId, fence }, choice)
-      update(profile, { info: { ...chatOf(profile)!.info, ...choice } })
+    setModel: guarded(async (profile, { model, provider }: { model: string; provider: string }) => {
+      if (await configure(profile, 'model', `${model} --provider ${provider}`))
+        update(profile, { info: { ...chatOf(profile)!.info, model, provider } })
     }),
 
     setReasoning: guarded(async (profile, level: string) => {
