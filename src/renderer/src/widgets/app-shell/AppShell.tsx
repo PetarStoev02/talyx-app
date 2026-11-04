@@ -15,7 +15,13 @@ const isMac = (window.electron?.platform ?? 'darwin') === 'darwin'
 const dragRegion = { WebkitAppRegion: 'drag' } as React.CSSProperties
 const noDragRegion = { WebkitAppRegion: 'no-drag' } as React.CSSProperties
 
-export function AppShell({ children }: { children: React.ReactNode }): React.JSX.Element {
+export function AppShell({
+  children,
+  roster
+}: {
+  children: React.ReactNode
+  roster?: React.ReactNode
+}): React.JSX.Element {
   const collapsed = useShell((s) => s.sidebarCollapsed)
   const toggleSidebar = useShell((s) => s.toggleSidebar)
   const setSidebarCollapsed = useShell((s) => s.setSidebarCollapsed)
@@ -43,7 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }): React.JSX
       <aside
         className={cn(
           'flex h-full shrink-0 flex-col border-r border-border/60 transition-[width] duration-150',
-          collapsed ? 'w-[52px]' : 'w-[240px]'
+          collapsed ? 'w-[52px]' : roster ? 'w-[320px] max-w-[85vw]' : 'w-[240px]'
         )}
       >
         {/* Collapsed: pure drag/traffic-light space — the 52px strip sits under the
@@ -82,8 +88,8 @@ export function AppShell({ children }: { children: React.ReactNode }): React.JSX
           </div>
         )}
 
-        <SidebarNav collapsed={collapsed} />
-        <div className="flex-1" />
+        {!collapsed && roster ? roster : <SidebarNav collapsed={collapsed} />}
+        {!roster || collapsed ? <div className="flex-1" /> : null}
         <SidebarFooter collapsed={collapsed} release={release} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>

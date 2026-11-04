@@ -29,7 +29,7 @@ export function readMeta(row: ProfileMetaRow, key: string): MetaRecord {
 export function metaPatch(
   name: string,
   key: string,
-  record: { meta: Record<string, unknown>; revision: number }
+  record: { meta: unknown; revision: number }
 ): Record<string, unknown> {
   return {
     name,
