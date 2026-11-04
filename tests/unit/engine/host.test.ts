@@ -23,14 +23,14 @@ describe('engine host', () => {
   })
 
   it('should keep a call in flight when a second screen connects again', async () => {
-    let answer: (value: unknown) => void = () => undefined
+    let answer: ((value: unknown) => void) | null = null
     installFakeEngineApi(() => new Promise((resolve) => (answer = resolve)))
     const { host } = await import('@shared/engine/host')
     await host.connect()
     const pending = host.request('default', 'profiles.list', {})
-    await vi.waitFor(() => expect(answer).not.toBe(undefined))
+    await vi.waitFor(() => expect(answer).not.toBeNull())
     await host.connect()
-    answer({ profiles: [] })
+    answer?.({ profiles: [] })
     await expect(pending).resolves.toEqual({ profiles: [] })
     host.disconnect()
   })

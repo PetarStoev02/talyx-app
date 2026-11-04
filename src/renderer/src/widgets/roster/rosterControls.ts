@@ -109,7 +109,7 @@ function dropOnFolder(
   }
   if (item?.kind === 'room' && snapshot.rooms.some((room) => room.room_id === item.id))
     run(() => actions.moveRoom(item.id, folderId))
-  const bot = item?.kind === 'bot' && snapshot.bots.find((bot) => bot.name === item.id)
+  const bot = item?.kind === 'bot' && snapshot.bots.find((candidate) => candidate.name === item.id)
   if (bot) run(() => actions.moveBot(bot, folderId))
 }
 
