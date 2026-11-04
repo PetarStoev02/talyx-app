@@ -1,21 +1,12 @@
-import { Box } from 'lucide-react'
-import { TalyxLogo } from '@shared/ui/TalyxLogo'
 import { cn } from '@shared/lib/utils'
 import { useLanguage } from '@app/providers/useLanguage'
 import { botActivityTime, botPreview, botTitle, timeInWords } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
+import { BotAvatar } from '@features/bots/BotAvatar'
 import type { Bot } from '@features/bots/types'
 import { RosterMenu } from './RosterMenu'
 import { ROSTER_DRAG, readRosterDrag } from './rosterControls'
 import type { MenuAction } from './RosterMenu'
-
-export function BotAvatar({ bot, size = 24 }: { bot: Bot; size?: number }): React.JSX.Element {
-  return bot.name === 'default' ? (
-    <TalyxLogo size={size} className="shrink-0" />
-  ) : (
-    <Box size={size} aria-hidden="true" className="shrink-0" strokeWidth={1.5} />
-  )
-}
 
 export function BotRow({
   bot,

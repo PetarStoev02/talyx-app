@@ -1,2 +1,2 @@
 export { Roster } from './Roster'
-export { BotAvatar } from './BotRow'
+export { BotAvatar } from '@features/bots/BotAvatar'

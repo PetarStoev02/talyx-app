@@ -9,21 +9,28 @@ import { useRoster } from '@features/bots/store'
 import type { Bot, Room } from '@features/bots/types'
 import { BotRow } from './BotRow'
 import { FolderGroup } from './FolderGroup'
-import { DeleteProfileDialog, NewFolderDialog, ProblemMessage } from './RosterDialogs'
+import { ProblemMessage } from '@features/bots/ProblemMessage'
+import type { ModelOptionProvider } from '@shared/engine/gateway-events'
+import { CreateBotDialog } from './CreateBotDialog'
+import { DeleteProfileDialog, NewFolderDialog } from './RosterDialogs'
 import { rosterControls } from './rosterControls'
+import { RosterMenu } from './RosterMenu'
 import type { MenuAction } from './RosterMenu'
 
 // `backend` must be a stable reference (see useRosterConnection).
 export function Roster({
   backend,
+  models,
   onSelect
 }: {
   backend: RosterBackend
+  models: ((profile: string) => Promise<ModelOptionProvider[]>) | null
   onSelect: () => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const state = useRoster()
   const [newFolder, setNewFolder] = useState(false)
+  const [newBot, setNewBot] = useState(false)
   const [deleting, setDeleting] = useState<Bot | null>(null)
   useRosterConnection(backend)
   const actions = rosterActions(backend)
@@ -57,7 +64,7 @@ export function Roster({
       className="min-h-0 flex-1 overflow-y-auto px-3"
     >
       <TallyLine />
-      {!deleting && !newFolder && <ProblemBanner retry={reload} />}
+      {!deleting && !newFolder && !newBot && <ProblemBanner retry={reload} />}
       {state.loading && (
         <p role="status" className="p-2">
           {t('roster.loading')}
@@ -73,6 +80,10 @@ export function Roster({
         newFolder={() => {
           state.clearError()
           setNewFolder(true)
+        }}
+        newBot={() => {
+          state.clearError()
+          setNewBot(true)
         }}
       />
       {[...state.snapshot.folders.filter((folder) => !folder.parentId), null].map((folder) => (
@@ -98,6 +109,9 @@ export function Roster({
             })
           }
         />
+      )}
+      {newBot && (
+        <CreateBotDialog backend={backend} models={models} onClose={() => setNewBot(false)} />
       )}
       <DeleteProfileDialog
         bot={deleting}
@@ -129,10 +143,12 @@ function ProblemBanner({ retry }: { retry: () => void }): React.JSX.Element | nu
 
 function FoldersHeader({
   reload,
-  newFolder
+  newFolder,
+  newBot
 }: {
   reload: () => void
   newFolder: () => void
+  newBot: () => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const saving = useRoster((state) => state.saving)
@@ -148,14 +164,15 @@ function FoldersHeader({
         >
           <RefreshCw size={16} />
         </button>
-        <button
-          aria-label={t('roster.newFolder')}
+        <RosterMenu
+          label={t('roster.add')}
           disabled={saving}
-          onClick={newFolder}
-          className="rounded-full p-2 hover:bg-accent"
-        >
-          <Plus size={18} />
-        </button>
+          icon={<Plus size={18} />}
+          actions={[
+            { label: t('create.title'), onSelect: newBot },
+            { label: t('roster.newFolder'), onSelect: newFolder }
+          ]}
+        />
       </span>
     </div>
   )

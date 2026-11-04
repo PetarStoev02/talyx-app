@@ -7,7 +7,7 @@ import type { ChatActions, ChatImage } from '@features/chat/chat'
 import type { ChatState } from '@features/chat/store'
 import { dataUrlOf, useDictation } from '@features/chat/useDictation'
 import { cn } from '@shared/lib/utils'
-import type { ModelOptionProvider } from '@shared/engine/gateway-events'
+import { MenuItem, ModelPicker } from '@shared/ui/ModelPicker'
 import type { TranslationKey } from '@shared/lib/i18n'
 
 const MAX_ROWS = 8
@@ -207,49 +207,19 @@ function ModelMenu({
   actions: ChatActions
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const [providers, setProviders] = useState<ModelOptionProvider[] | null>(null)
-
-  function load(open: boolean): void {
-    if (!open || providers) return
-    actions
-      .models(chat.profile)
-      .then(setProviders)
-      .catch((error: unknown) =>
-        toast.error(error instanceof Error ? error.message : String(error))
-      )
-  }
-
+  const selected =
+    chat.info.model && chat.info.provider
+      ? { model: chat.info.model, provider: chat.info.provider }
+      : null
   return (
-    <DropdownMenu.Root onOpenChange={load}>
+    <ModelPicker
+      load={() => actions.models(chat.profile)}
+      selected={selected}
+      onSelect={(pick) => void actions.setModel(chat.profile, pick)}
+      loadingLabel={t('chat.modelsLoading')}
+    >
       <Chip chat={chat} label={t('chat.model')} value={chat.info.model ?? t('chat.modelDefault')} />
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          sideOffset={4}
-          className="z-50 max-h-80 min-w-56 overflow-y-auto rounded-xl bg-popover p-2 text-base text-popover-foreground"
-        >
-          {!providers && (
-            <p className="px-3 py-2 text-muted-foreground">{t('chat.modelsLoading')}</p>
-          )}
-          {providers?.map((provider) => (
-            <DropdownMenu.Group key={provider.slug}>
-              <DropdownMenu.Label className="px-3 pt-2 text-sm text-muted-foreground">
-                {provider.name}
-              </DropdownMenu.Label>
-              {(provider.models ?? []).map((model) => (
-                <MenuItem
-                  key={model}
-                  label={model}
-                  selected={chat.info.model === model && chat.info.provider === provider.slug}
-                  onSelect={() =>
-                    void actions.setModel(chat.profile, { model, provider: provider.slug })
-                  }
-                />
-              ))}
-            </DropdownMenu.Group>
-          ))}
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+    </ModelPicker>
   )
 }
 
@@ -307,25 +277,5 @@ function Chip({
       <span className="truncate">{value}</span>
       <ChevronDown size={14} className="shrink-0" />
     </DropdownMenu.Trigger>
-  )
-}
-
-function MenuItem({
-  label,
-  selected,
-  onSelect
-}: {
-  label: string
-  selected: boolean
-  onSelect: () => void
-}): React.JSX.Element {
-  return (
-    <DropdownMenu.CheckboxItem
-      checked={selected}
-      onSelect={onSelect}
-      className="cursor-default rounded-lg px-3 py-2 outline-none data-[highlighted]:bg-accent data-[state=checked]:font-medium"
-    >
-      {label}
-    </DropdownMenu.CheckboxItem>
   )
 }

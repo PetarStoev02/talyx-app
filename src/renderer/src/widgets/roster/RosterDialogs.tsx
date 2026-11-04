@@ -3,7 +3,7 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot } from '@features/bots/types'
-import type { RosterProblem } from '@features/bots/roster'
+import { ProblemMessage } from '@features/bots/ProblemMessage'
 import { Button } from '@shared/ui/button'
 import {
   Dialog,
@@ -125,15 +125,5 @@ export function DeleteProfileDialog({
         </div>
       </DialogContent>
     </Dialog>
-  )
-}
-
-export function ProblemMessage({ problem }: { problem: RosterProblem }): React.JSX.Element {
-  const t = useLanguage((s) => s.t)
-  return (
-    <p className="text-base">
-      {t(problem.key)}
-      {problem.detail && <span className="block text-sm">{problem.detail}</span>}
-    </p>
   )
 }
