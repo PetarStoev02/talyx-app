@@ -160,8 +160,14 @@ app.whenReady().then(async () => {
   )
 
   app.on('second-instance', () => {
-    mainWindow?.show()
-    mainWindow?.focus()
+    // On macOS the window can be closed while the app keeps running
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      mainWindow = createWindow()
+      mainWindow.once('ready-to-show', () => mainWindow?.show())
+      return
+    }
+    mainWindow.show()
+    mainWindow.focus()
   })
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 

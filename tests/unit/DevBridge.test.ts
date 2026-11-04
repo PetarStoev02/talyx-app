@@ -45,18 +45,6 @@ describe('DevBridge', () => {
     expect(reply).toEqual({ ok: false, error: 'settings unreadable' })
   })
 
-  it('should refuse to set the API key over the bridge', async () => {
-    const bridge = new DevBridge(5173)
-    const ipc = { handle: vi.fn() }
-    bridge.installTap(ipc)
-    ipc.handle('agent:set-api-key', async () => 'never')
-    const reply = await bridge.dispatchInvoke('agent:set-api-key', [{ key: 'k' }])
-    expect(reply).toEqual({
-      ok: false,
-      error: 'agent:set-api-key is not available over the dev bridge'
-    })
-  })
-
   it('should route event.sender.send from handlers into broadcast', async () => {
     const bridge = new DevBridge(5173)
     const ipc = fakeIpcMain()

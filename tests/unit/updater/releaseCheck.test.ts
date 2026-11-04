@@ -24,7 +24,13 @@ describe('isNewerVersion', () => {
     ['v0.11.1', '0.11.0', true],
     ['0.11.0', '0.11.0', false],
     ['0.10.9', '0.11.0', false],
-    ['not-a-version', '0.11.0', false]
+    ['not-a-version', '0.11.0', false],
+    ['1.0.0', '1.0.0-alpha.1', true],
+    ['v1.0.0-alpha.2', '1.0.0-alpha.1', true],
+    ['1.0.0-alpha.10', '1.0.0-alpha.9', true],
+    ['1.0.0-alpha.1', '1.0.0-alpha.1', false],
+    ['1.0.0-alpha.1', '1.0.0', false],
+    ['0.11.0', '1.0.0-alpha.1', false]
   ])('should judge %s against %s as newer: %s', (latest, current, expected) => {
     expect(isNewerVersion(latest, current)).toBe(expected)
   })

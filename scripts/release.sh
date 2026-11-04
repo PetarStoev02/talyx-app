@@ -5,9 +5,7 @@
 # the Electron fuses invalidate any earlier one, so electron-builder signs ad hoc last.
 # Needs no credentials. macOS blocks every downloaded version the first time it is opened:
 # users click Open Anyway in System Settings > Privacy & Security, or run
-# xattr -dr com.apple.quarantine /Applications/Talyx.app. After each new version the
-# Automation and Files & Folders prompts return, and Accessibility and Screen Recording
-# must be removed with "-" and added again.
+# xattr -dr com.apple.quarantine /Applications/Talyx.app.
 
 set -e
 
@@ -34,5 +32,3 @@ gh release create "v$VERSION" \
 echo "✅ Draft created. Review it, then publish: gh release edit v$VERSION --repo PetarStoev02/talyx-app --draft=false"
 echo "   Every download is blocked on first open: users try to open it, dismiss the warning, then click"
 echo "   Open Anyway in System Settings > Privacy & Security, or: xattr -dr com.apple.quarantine /Applications/Talyx.app"
-echo "   After each update users re-grant Automation and Files & Folders, and must remove and re-add"
-echo "   Talyx under Accessibility and Screen Recording."

@@ -35,7 +35,7 @@ During `npm run dev` the interface also runs in a browser at `http://localhost:5
    ```
 
 5. Format with `npm run format` (Prettier: single quotes, no semicolons, 100 columns).
-6. Commit in the form `type: imperative description`, for example `fix: keep undo from overwriting a file`. Types: `feat`, `fix`, `docs`, `refactor`, `chore`, `ci`, `test`.
+6. Commit in the form `type: imperative description`, for example `fix: keep the sidebar state across restarts`. Types: `feat`, `fix`, `docs`, `refactor`, `chore`, `ci`, `test`.
 7. Open a pull request against `main` (during the pivot, against `pivot`; see [CLAUDE.md](CLAUDE.md)). Say what it changes and how you tested it. CI must pass before it is merged.
 
 ## Good to know

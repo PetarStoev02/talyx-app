@@ -2,8 +2,8 @@ import { app, session, shell } from 'electron'
 
 /** Only web and mail links leave the app; a file:// or custom-scheme link from model text would launch what it points at. */
 const EXTERNAL_SCHEMES = new Set(['https:', 'http:', 'mailto:'])
-/** What Talyx's own pages ask for: dictation, copy buttons, notices. */
-const APP_PERMISSIONS = new Set(['media', 'clipboard-sanitized-write', 'notifications'])
+/** Permissions Talyx's own pages may use. Empty until a feature needs one (dictation adds 'media'). */
+const APP_PERMISSIONS = new Set<string>()
 
 export function isSafeExternalUrl(url: string): boolean {
   try {

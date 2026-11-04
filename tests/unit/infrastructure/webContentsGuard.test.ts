@@ -40,11 +40,14 @@ describe('isAppUrl', () => {
 })
 
 describe('isAllowedPermission', () => {
-  it('should let the app itself use the microphone', () => {
-    expect(isAllowedPermission('media', `${PACKAGED}splash.html`, PACKAGED)).toBe(true)
-  })
+  it.each(['media', 'clipboard-sanitized-write', 'notifications'])(
+    'should refuse %s while no feature of the app needs it',
+    (permission) => {
+      expect(isAllowedPermission(permission, `${PACKAGED}index.html`, PACKAGED)).toBe(false)
+    }
+  )
 
-  it('should refuse the microphone to any other page', () => {
+  it('should refuse any permission to a page outside the app', () => {
     expect(isAllowedPermission('media', 'https://evil.example/', PACKAGED)).toBe(false)
   })
 
