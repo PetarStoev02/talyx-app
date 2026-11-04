@@ -17,17 +17,26 @@ export interface UpdateCheckResult {
   url: string | null
 }
 
-function parts(version: string): number[] | null {
-  const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(version.trim())
-  return match ? match.slice(1).map(Number) : null
+interface Version {
+  core: number[]
+  /** Pre-release label such as `alpha.1`; null for a final release. */
+  pre: string | null
+}
+
+function parse(version: string): Version | null {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/.exec(version.trim())
+  return match ? { core: match.slice(1, 4).map(Number), pre: match[4] ?? null } : null
 }
 
 export function isNewerVersion(latest: string, current: string): boolean {
-  const a = parts(latest)
-  const b = parts(current)
+  const a = parse(latest)
+  const b = parse(current)
   if (!a || !b) return false
-  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i]
-  return false
+  for (let i = 0; i < 3; i++) if (a.core[i] !== b.core[i]) return a.core[i] > b.core[i]
+  // Same core: a final release beats any pre-release of it (1.0.0 > 1.0.0-alpha.1)
+  if (a.pre === null || b.pre === null) return a.pre === null && b.pre !== null
+  // ponytail: numeric-aware string compare, not full semver identifier rules; fine for alpha.N / beta.N
+  return a.pre.localeCompare(b.pre, 'en', { numeric: true }) > 0
 }
 
 /**
@@ -57,7 +66,7 @@ export async function fetchLatestRelease(
       log.warn('Update check: release page is outside the Talyx repository')
       return { kind: 'failed' }
     }
-    if (!parts(body.tag_name)) {
+    if (!parse(body.tag_name)) {
       log.warn('Update check: release tag is not a version number')
       return { kind: 'failed' }
     }

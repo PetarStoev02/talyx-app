@@ -1,125 +1,66 @@
-import { useState } from 'react'
-import { MessageSquarePlus, Settings, Sparkles } from 'lucide-react'
+import { Settings, Sparkles } from 'lucide-react'
 import { cn } from '@shared/lib/utils'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@shared/ui/tooltip'
-import { useNavigation } from '@app/providers/useNavigation'
 import { useLanguage } from '@app/providers/useLanguage'
-import { FeedbackDialog } from '@features/feedback/FeedbackDialog'
-import type { UpdateStatus } from '@shared/hooks/useAutoUpdater'
+import type { ReleaseInfo } from '@shared/hooks/useAutoUpdater'
+import { NavButton } from './NavButton'
 
-export interface UpdaterControls {
-  status: UpdateStatus
-  version: string | null
-  onOpen: () => void
-}
+const isMac = navigator.platform.toLowerCase().includes('mac')
 
 export function SidebarFooter({
   collapsed,
-  updater
+  release
 }: {
   collapsed: boolean
-  updater: UpdaterControls
+  release: ReleaseInfo | null
 }): React.JSX.Element {
-  const currentView = useNavigation((s) => s.currentView)
-  const navigate = useNavigation((s) => s.navigate)
   const t = useLanguage((s) => s.t)
 
-  const [feedbackOpen, setFeedbackOpen] = useState(false)
-
-  const updateLabel = t('nav.updateVersion').replace('{version}', updater.version ?? '')
-
-  const feedbackDialog = <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
-
-  if (collapsed) {
-    return (
-      <>
-        {feedbackDialog}
-        <div className="flex flex-col items-center gap-1 px-2 pb-2">
-          {updater.status === 'available' && (
-            <Tooltip delayDuration={300}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={updater.onOpen}
-                  aria-label={updateLabel}
-                  className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-                >
-                  <Sparkles className="size-[18px]" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">{updateLabel}</TooltipContent>
-            </Tooltip>
-          )}
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <button
-                data-tour="feedback"
-                onClick={() => setFeedbackOpen(true)}
-                aria-label={t('sidebar.feedback')}
-                className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-              >
-                <MessageSquarePlus className="size-[18px]" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">{t('sidebar.feedback')}</TooltipContent>
-          </Tooltip>
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => navigate('settings')}
-                aria-label={t('sidebar.settings')}
-                className={cn(
-                  'flex size-9 items-center justify-center rounded-md transition-colors',
-                  currentView === 'settings'
-                    ? 'bg-accent text-foreground'
-                    : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
-                )}
-              >
-                <Settings className="size-[18px]" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">{t('sidebar.settings')}</TooltipContent>
-          </Tooltip>
-        </div>
-      </>
-    )
-  }
-
   return (
-    <>
-      {feedbackDialog}
-      <div className="flex flex-col gap-0.5 px-2 pb-2">
-        {updater.status === 'available' && (
-          <button
-            onClick={updater.onOpen}
-            className="flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-          >
-            <Sparkles className="size-4 shrink-0" />
-            <span className="flex-1 truncate text-left">{updateLabel}</span>
-          </button>
-        )}
+    <div className="flex flex-col gap-0.5 px-2 pb-2">
+      {release && (
+        <UpdateButton
+          collapsed={collapsed}
+          label={t('nav.updateVersion').replace('{version}', release.version)}
+          onOpen={() => window.open(release.url, '_blank')}
+        />
+      )}
+      <NavButton
+        view="settings"
+        labelKey="nav.settings"
+        icon={Settings}
+        shortcut={isMac ? '⌘,' : 'Ctrl+,'}
+        collapsed={collapsed}
+      />
+    </div>
+  )
+}
 
+function UpdateButton({
+  collapsed,
+  label,
+  onOpen
+}: {
+  collapsed: boolean
+  label: string
+  onOpen: () => void
+}): React.JSX.Element {
+  return (
+    <Tooltip delayDuration={300}>
+      <TooltipTrigger asChild>
         <button
-          data-tour="feedback"
-          onClick={() => setFeedbackOpen(true)}
-          className="flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-        >
-          <MessageSquarePlus className="size-4 shrink-0" />
-          <span className="flex-1 truncate text-left">{t('sidebar.feedback')}</span>
-        </button>
-
-        <button
-          onClick={() => navigate('settings')}
+          onClick={onOpen}
+          aria-label={collapsed ? label : undefined}
           className={cn(
-            'flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors',
-            currentView === 'settings'
-              ? 'bg-accent text-foreground'
-              : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+            'flex items-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground',
+            collapsed ? 'mx-auto size-9 justify-center' : 'h-8 w-full gap-2.5 px-2 text-[13px]'
           )}
         >
-          <Settings className="size-4 shrink-0" />
-          <span className="flex-1 truncate text-left">{t('sidebar.settings')}</span>
+          <Sparkles className={cn('shrink-0', collapsed ? 'size-[18px]' : 'size-4')} />
+          {!collapsed && <span className="flex-1 truncate text-left">{label}</span>}
         </button>
-      </div>
-    </>
+      </TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
   )
 }

@@ -22,9 +22,9 @@ describe('DevBridge', () => {
     const ipc = fakeIpcMain()
     bridge.installTap(ipc)
     const handler = vi.fn().mockResolvedValue(42)
-    ipc.handle('sort:preview', handler)
-    expect(ipc.registered.get('sort:preview')).toBe(handler)
-    const reply = await bridge.dispatchInvoke('sort:preview', [['f'], { deep: true }])
+    ipc.handle('settings:set', handler)
+    expect(ipc.registered.get('settings:set')).toBe(handler)
+    const reply = await bridge.dispatchInvoke('settings:set', [['f'], { deep: true }])
     expect(handler).toHaveBeenCalledWith(expect.anything(), ['f'], { deep: true })
     expect(reply).toEqual({ ok: true, result: 42 })
   })
@@ -40,21 +40,9 @@ describe('DevBridge', () => {
     const bridge = new DevBridge(5173)
     const ipc = fakeIpcMain()
     bridge.installTap(ipc)
-    ipc.handle('sort:undo', vi.fn().mockRejectedValue(new Error('batch missing')))
-    const reply = await bridge.dispatchInvoke('sort:undo', ['b1'])
-    expect(reply).toEqual({ ok: false, error: 'batch missing' })
-  })
-
-  it('should refuse to set the API key over the bridge', async () => {
-    const bridge = new DevBridge(5173)
-    const ipc = { handle: vi.fn() }
-    bridge.installTap(ipc)
-    ipc.handle('agent:set-api-key', async () => 'never')
-    const reply = await bridge.dispatchInvoke('agent:set-api-key', [{ key: 'k' }])
-    expect(reply).toEqual({
-      ok: false,
-      error: 'agent:set-api-key is not available over the dev bridge'
-    })
+    ipc.handle('theme:set-native', vi.fn().mockRejectedValue(new Error('settings unreadable')))
+    const reply = await bridge.dispatchInvoke('theme:set-native', ['b1'])
+    expect(reply).toEqual({ ok: false, error: 'settings unreadable' })
   })
 
   it('should route event.sender.send from handlers into broadcast', async () => {
@@ -63,24 +51,24 @@ describe('DevBridge', () => {
     bridge.installTap(ipc)
     const events: Array<{ channel: string; args: unknown[] }> = []
     bridge.onBroadcast((channel, ...args) => events.push({ channel, args }))
-    ipc.handle('sort:execute', async (event) => {
+    ipc.handle('example:run', async (event) => {
       const e = event as { sender: { send: (ch: string, ...a: unknown[]) => void } }
-      e.sender.send('sort:progress', { done: 1 })
+      e.sender.send('example:progress', { done: 1 })
       return 'ok'
     })
-    await bridge.dispatchInvoke('sort:execute', [])
-    expect(events).toEqual([{ channel: 'sort:progress', args: [{ done: 1 }] }])
+    await bridge.dispatchInvoke('example:run', [])
+    expect(events).toEqual([{ channel: 'example:progress', args: [{ done: 1 }] }])
   })
 
   it('should dispatch successfully to a handler that checks event.sender.isDestroyed', async () => {
     const bridge = new DevBridge(5173)
     const ipc = fakeIpcMain()
     bridge.installTap(ipc)
-    ipc.handle('voice:download-model', async (event) => {
+    ipc.handle('example:download', async (event) => {
       const e = event as { sender: { isDestroyed: () => boolean } }
       return { destroyed: e.sender.isDestroyed() }
     })
-    const reply = await bridge.dispatchInvoke('voice:download-model', [])
+    const reply = await bridge.dispatchInvoke('example:download', [])
     expect(reply).toEqual({ ok: true, result: { destroyed: false } })
   })
 })
@@ -142,7 +130,7 @@ describe('DevBridge over HTTP', () => {
         }
       )
       req.on('error', reject)
-      req.end(JSON.stringify({ channel: 'folder:home', args: [] }))
+      req.end(JSON.stringify({ channel: 'settings:get', args: [] }))
     })
   }
 
@@ -153,7 +141,7 @@ describe('DevBridge over HTTP', () => {
     const ipc = fakeIpcMain()
     bridge.installTap(ipc)
     const handler = vi.fn().mockResolvedValue('/home')
-    ipc.handle('folder:home', handler)
+    ipc.handle('settings:get', handler)
     const port = await freePort()
     await bridge.start(port)
     try {

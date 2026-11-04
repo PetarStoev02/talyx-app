@@ -1,7 +1,6 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --animate-sphere-sheen: sphere-sheen 31s linear infinite;
   --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, 'Courier New', monospace;
   --color-background: var(--background);
@@ -198,26 +197,6 @@
   outline-offset: 1px;
 }
 
-/* The sheen bloom on the assistant sphere turns instead of sliding, which is
-   what reads as a surface moving rather than a light panned across it. */
-@keyframes sphere-sheen {
-  from {
-    transform: rotate(0deg) scale(1.15);
-  }
-  to {
-    transform: rotate(360deg) scale(1.15);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(400%);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -225,17 +204,5 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-  }
-}
-
-@keyframes slide {
-  0% {
-    transform: translateX(-100%);
-  }
-  50% {
-    transform: translateX(200%);
-  }
-  100% {
-    transform: translateX(-100%);
   }
 }

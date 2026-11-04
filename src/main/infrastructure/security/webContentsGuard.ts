@@ -2,8 +2,8 @@ import { app, session, shell } from 'electron'
 
 /** Only web and mail links leave the app; a file:// or custom-scheme link from model text would launch what it points at. */
 const EXTERNAL_SCHEMES = new Set(['https:', 'http:', 'mailto:'])
-/** What Talyx's own pages ask for: dictation, copy buttons, notices. */
-const APP_PERMISSIONS = new Set(['media', 'clipboard-sanitized-write', 'notifications'])
+/** Permissions Talyx's own pages may use. Empty until a feature needs one (dictation adds 'media'). */
+const APP_PERMISSIONS = new Set<string>()
 
 export function isSafeExternalUrl(url: string): boolean {
   try {
@@ -27,7 +27,7 @@ export function isAllowedPermission(
 }
 
 /**
- * Every window Talyx creates — main, overlay, splash, and anything a link tries
+ * Every window Talyx creates — main, splash, and anything a link tries
  * to open — follows the same rules: no new Electron windows (web links go to the
  * browser), no navigating away from the app's own pages (a dropped .html file or
  * a model-written link would otherwise load with the preload attached), and

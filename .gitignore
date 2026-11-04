@@ -16,7 +16,7 @@ Thumbs.db
 # Logs
 *.log
 
-# Local env (Apple credentials, secrets)
+# Local env (secrets)
 .env.local
 
 # Editor
@@ -32,19 +32,12 @@ Thumbs.db
 .env
 .env.*
 
-# License keys (private keys)
-scripts/.keys/
-
-# AI model files (downloaded separately, ~1.1GB)
-models/
-
 # Claude Code
 .claude/
 
 # Brainstorming mockups
 .superpowers/
 docs/superpowers/plans/
-tests/eval/corpus/
 
 # Local CDP driver scripts for verifying a packaged build
 /drive*.mjs

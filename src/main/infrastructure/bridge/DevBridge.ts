@@ -84,9 +84,6 @@ export class DevBridge {
     channel: string,
     args: unknown[]
   ): Promise<{ ok: boolean; result?: unknown; error?: string }> {
-    if (channel === 'agent:set-api-key') {
-      return { ok: false, error: 'agent:set-api-key is not available over the dev bridge' }
-    }
     const handler = this.handlers.get(channel)
     if (!handler) return { ok: false, error: `No ipcMain handler registered for "${channel}"` }
     const fakeEvent = {

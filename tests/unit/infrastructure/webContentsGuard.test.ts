@@ -29,9 +29,9 @@ describe('isSafeExternalUrl', () => {
 describe('isAppUrl', () => {
   it.each([
     [`${PACKAGED}index.html`, PACKAGED, true],
-    [`${PACKAGED}assistant.html#x`, PACKAGED, true],
+    [`${PACKAGED}splash.html#x`, PACKAGED, true],
     ['file:///Users/v/Downloads/evil.html', PACKAGED, false],
-    [`${DEV}assistant.html`, DEV, true],
+    [`${DEV}splash.html`, DEV, true],
     ['http://localhost:51730/', DEV, false],
     ['https://evil.example/', DEV, false]
   ])('should judge %s inside %s as %s', (url, root, expected) => {
@@ -40,11 +40,14 @@ describe('isAppUrl', () => {
 })
 
 describe('isAllowedPermission', () => {
-  it('should let the app itself use the microphone', () => {
-    expect(isAllowedPermission('media', `${PACKAGED}assistant.html`, PACKAGED)).toBe(true)
-  })
+  it.each(['media', 'clipboard-sanitized-write', 'notifications'])(
+    'should refuse %s while no feature of the app needs it',
+    (permission) => {
+      expect(isAllowedPermission(permission, `${PACKAGED}index.html`, PACKAGED)).toBe(false)
+    }
+  )
 
-  it('should refuse the microphone to any other page', () => {
+  it('should refuse any permission to a page outside the app', () => {
     expect(isAllowedPermission('media', 'https://evil.example/', PACKAGED)).toBe(false)
   })
 

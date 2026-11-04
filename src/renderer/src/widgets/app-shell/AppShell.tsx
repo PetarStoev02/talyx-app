@@ -9,7 +9,6 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { useAutoUpdater } from '@shared/hooks/useAutoUpdater'
 import { settingsApi } from '@shared/api/ipc'
 import { SidebarNav } from './SidebarNav'
-import { QuickActions } from './QuickActions'
 import { SidebarFooter } from './SidebarFooter'
 
 const isMac = (window.electron?.platform ?? 'darwin') === 'darwin'
@@ -22,7 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }): React.JSX
   const setSidebarCollapsed = useShell((s) => s.setSidebarCollapsed)
   const t = useLanguage((s) => s.t)
   const hydrated = useRef(false)
-  const { status, version, openReleasePage } = useAutoUpdater()
+  const release = useAutoUpdater()
 
   useEffect(() => {
     settingsApi
@@ -33,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }): React.JSX
       })
   }, [setSidebarCollapsed])
 
-  // Persist every change after hydration — covers both the button and the ⌘\ shortcut
+  // Persist every change after hydration: covers both the button and the ⌘\ shortcut
   useEffect(() => {
     if (hydrated.current) settingsApi.set({ sidebarCollapsed: collapsed })
   }, [collapsed])
@@ -83,13 +82,9 @@ export function AppShell({ children }: { children: React.ReactNode }): React.JSX
           </div>
         )}
 
-        <QuickActions />
         <SidebarNav collapsed={collapsed} />
         <div className="flex-1" />
-        <SidebarFooter
-          collapsed={collapsed}
-          updater={{ status, version, onOpen: openReleasePage }}
-        />
+        <SidebarFooter collapsed={collapsed} release={release} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>
     </div>

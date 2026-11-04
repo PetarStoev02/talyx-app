@@ -1,13 +1,6 @@
 import { create } from 'zustand'
 
-export type AppView = 'ask' | 'sort' | 'watch' | 'history' | 'search' | 'settings'
-
-export type SettingsSectionId =
-  | 'assistant'
-  | 'general'
-  | 'appearance'
-  | 'classification'
-  | 'feedback'
+export type AppView = 'agents' | 'settings'
 
 interface NavigationState {
   currentView: AppView
@@ -15,6 +8,6 @@ interface NavigationState {
 }
 
 export const useNavigation = create<NavigationState>((set) => ({
-  currentView: 'ask',
+  currentView: 'agents',
   navigate: (view) => set({ currentView: view })
 }))

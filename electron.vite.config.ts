@@ -2,20 +2,13 @@ import { resolve } from 'path'
 import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import pkg from './package.json'
 
 export default defineConfig({
   main: {
-    define: {
-      __APP_VERSION__: JSON.stringify(pkg.version)
-    },
     build: {
       rollupOptions: {
         input: {
-          index: resolve('src/main/index.ts'),
-          'stt.worker': resolve('src/main/infrastructure/workers/stt.worker.ts'),
-          'tts.worker': resolve('src/main/infrastructure/workers/tts.worker.ts'),
-          'mcp/server': resolve('src/main/mcp/server.ts')
+          index: resolve('src/main/index.ts')
         }
       }
     }
@@ -35,13 +28,9 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve('src/renderer/index.html'),
-          splash: resolve('src/renderer/splash.html'),
-          assistant: resolve('src/renderer/assistant.html')
+          splash: resolve('src/renderer/splash.html')
         }
       }
-    },
-    define: {
-      __APP_VERSION__: JSON.stringify(pkg.version)
     },
     server: {
       proxy: {
