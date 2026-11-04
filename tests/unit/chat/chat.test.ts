@@ -102,6 +102,13 @@ describe('bot chat', () => {
       })
     })
 
+    it('should stop keeping live events once a reload fails', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      engine.failNext('session.resume', 'Gateway restarting')
+      await actions.rebuild(MANAGER)
+      expect(chat(MANAGER)).toMatchObject({ pending: null, error: 'Gateway restarting' })
+    })
+
     it('should not let an older reload overwrite a newer one', async () => {
       await actions.open(MANAGER, 'manager-chat')
       const release = engine.holdNext('GET /api/sessions')
@@ -242,6 +249,14 @@ describe('bot chat', () => {
       await actions.open(MANAGER, 'manager-chat')
       await actions.interrupt(MANAGER)
       expect(call('session.interrupt')?.params).toEqual({ session_id: 'manager-chat' })
+    })
+
+    it('should not show a model or reasoning level the chat cannot use before it exists', async () => {
+      await actions.open(WORKER, null)
+      await actions.setModel(WORKER, { model: 'cfo-model', provider: 'custom' })
+      await actions.setReasoning(WORKER, 'high')
+      expect(chat(WORKER).info).toEqual({ model: null, provider: null, reasoning: null })
+      expect(methods()).not.toContain('config.set')
     })
 
     it('should set the model and reasoning on the open session', async () => {

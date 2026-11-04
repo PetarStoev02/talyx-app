@@ -47,6 +47,21 @@ export function handlePrompt(request: ServerRequest): ChatUpdate | null {
   return { profile: chat.profile, completed: false, activity: activityOf(transcript) }
 }
 
+/**
+ * The `host.onPrompt` handler. A request the chat cannot show (another kind, or a session no chat
+ * has open) returns false, so the channel declines it at once instead of the bot waiting it out.
+ */
+export function promptHandler(
+  onUpdate: (update: ChatUpdate) => void
+): (request: ServerRequest) => false | undefined {
+  return (request) => {
+    const update = handlePrompt(request)
+    if (!update) return false
+    onUpdate(update)
+    return undefined
+  }
+}
+
 export function activityOf(transcript: Transcript): ChatActivity {
   if (transcript.prompts.length) return 'waiting'
   return transcript.running ? 'working' : 'idle'

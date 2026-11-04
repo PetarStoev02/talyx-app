@@ -221,7 +221,7 @@ function ModelMenu({
 
   return (
     <DropdownMenu.Root onOpenChange={load}>
-      <Chip label={t('chat.model')} value={chat.info.model ?? t('chat.modelDefault')} />
+      <Chip chat={chat} label={t('chat.model')} value={chat.info.model ?? t('chat.modelDefault')} />
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           sideOffset={4}
@@ -264,7 +264,11 @@ function ReasoningMenu({
   const current = REASONING_LEVELS.find(([level]) => level === chat.info.reasoning)
   return (
     <DropdownMenu.Root>
-      <Chip label={t('chat.reasoning')} value={current ? t(current[1]) : t('chat.reasoning')} />
+      <Chip
+        chat={chat}
+        label={t('chat.reasoning')}
+        value={current ? t(current[1]) : t('chat.reasoning')}
+      />
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           sideOffset={4}
@@ -284,11 +288,21 @@ function ReasoningMenu({
   )
 }
 
-function Chip({ label, value }: { label: string; value: string }): React.JSX.Element {
+// A chat with no session yet uses the bot's own model; it can be changed after the first send.
+function Chip({
+  chat,
+  label,
+  value
+}: {
+  chat: ChatState
+  label: string
+  value: string
+}): React.JSX.Element {
   return (
     <DropdownMenu.Trigger
+      disabled={!chat.sessionId}
       aria-label={`${label}: ${value}`}
-      className="flex max-w-48 items-center gap-1 rounded-full px-3 py-1.5 text-sm hover:bg-accent"
+      className="flex max-w-48 items-center gap-1 rounded-full px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50 disabled:hover:bg-transparent"
     >
       <span className="truncate">{value}</span>
       <ChevronDown size={14} className="shrink-0" />

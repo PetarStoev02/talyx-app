@@ -101,7 +101,8 @@ export const host = {
   onEvent: (handler: (event: GatewayEvent) => void): (() => void) => gateway.onEvent(handler),
 
   /** Clarify and approval cards, live or re-delivered from a snapshot after a reconnect. */
-  onPrompt: (handler: (request: ServerRequest) => void): (() => void) => gateway.onRequest(handler),
+  onPrompt: (handler: (request: ServerRequest) => false | undefined): (() => void) =>
+    gateway.onRequest(handler),
 
   onState: (handler: (state: ConnectionState) => void): (() => void) => gateway.onState(handler),
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRoster } from '@features/bots/store'
 import { chatActions } from '@features/chat/chat'
 import type { ChatActions } from '@features/chat/chat'
-import { handleEvent, handlePrompt } from '@features/chat/events'
+import { handleEvent, promptHandler } from '@features/chat/events'
 import type { ChatUpdate } from '@features/chat/events'
 import { useChat } from '@features/chat/store'
 import { host } from '@shared/engine/host'
@@ -32,7 +32,7 @@ export function useChatBackend(): ChatActions | null {
     if (!actions) return
     let dropped = false
     const offEvent = host.onEvent((event) => showOnRoster(handleEvent(actions, event)))
-    const offPrompt = host.onPrompt((request) => showOnRoster(handlePrompt(request)))
+    const offPrompt = host.onPrompt(promptHandler(showOnRoster))
     const offState = host.onState((state) => {
       if (state === 'closed' || state === 'error') dropped = true
       if (state !== 'open' || !dropped) return

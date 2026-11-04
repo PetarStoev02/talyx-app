@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { chatActions } from '../../../src/renderer/src/features/chat/chat'
 import type { ChatActions } from '../../../src/renderer/src/features/chat/chat'
-import { handleEvent, handlePrompt } from '../../../src/renderer/src/features/chat/events'
+import {
+  handleEvent,
+  handlePrompt,
+  promptHandler
+} from '../../../src/renderer/src/features/chat/events'
+import type { ChatUpdate } from '../../../src/renderer/src/features/chat/events'
 import { useChat } from '../../../src/renderer/src/features/chat/store'
 import type { ChatState } from '../../../src/renderer/src/features/chat/store'
 import type { GatewayEvent, ServerRequest } from '../../../src/renderer/src/shared/engine/shared'
@@ -132,6 +137,15 @@ describe('chat events', () => {
     handleEvent(actions, event('manager-chat', 'session.replay_gap', 30))
     await Promise.resolve()
     expect(engine.calls.slice(before).map((call) => call.method)).toContain('session.resume')
+  })
+
+  it('should hand back requests the chat cannot show, so the engine is declined at once', () => {
+    const updates: ChatUpdate[] = []
+    const handle = promptHandler((update) => updates.push(update))
+    expect(handle({ ...clarifyRequest('manager-chat'), id: 's1', method: 'sudo' })).toBe(false)
+    expect(handle(clarifyRequest('elsewhere'))).toBe(false)
+    expect(handle(clarifyRequest('manager-chat'))).toBeUndefined()
+    expect(updates).toEqual([{ profile: MANAGER, completed: false, activity: 'waiting' }])
   })
 
   it('should ignore events for sessions no chat has open', () => {

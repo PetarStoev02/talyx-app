@@ -111,7 +111,11 @@ export function chatActions(backend: ChatBackend): ChatActions {
         defer_history: true,
         omit_messages: true
       })
-    ])
+    ]).catch((error: unknown) => {
+      // A failed reload stops buffering; the next reload starts a fresh buffer.
+      if (loads.get(profile) === token) update(profile, { pending: null })
+      throw error
+    })
     if (loads.get(profile) !== token) return
     const current = chatOf(profile)
     const fresh = rebuilt(current?.transcript ?? null, sessionId, history.messages, resume)
@@ -160,10 +164,12 @@ export function chatActions(backend: ChatBackend): ChatActions {
     }
   }
 
-  async function configure(profile: string, key: string, value: string): Promise<void> {
+  // Before the first send there is no session to configure; the composer disables the chips.
+  async function configure(profile: string, key: string, value: string): Promise<boolean> {
     const sessionId = sessionOf(profile)
-    if (sessionId)
-      await backend.request(profile, 'config.set', { session_id: sessionId, key, value })
+    if (!sessionId) return false
+    await backend.request(profile, 'config.set', { session_id: sessionId, key, value })
+    return true
   }
 
   return {
@@ -249,13 +255,13 @@ export function chatActions(backend: ChatBackend): ChatActions {
     },
 
     setModel: guarded(async (profile, { model, provider }: { model: string; provider: string }) => {
-      await configure(profile, 'model', `${model} --provider ${provider}`)
-      update(profile, { info: { ...chatOf(profile)!.info, model, provider } })
+      if (await configure(profile, 'model', `${model} --provider ${provider}`))
+        update(profile, { info: { ...chatOf(profile)!.info, model, provider } })
     }),
 
     setReasoning: guarded(async (profile, level: string) => {
-      await configure(profile, 'reasoning', level)
-      update(profile, { info: { ...chatOf(profile)!.info, reasoning: level } })
+      if (await configure(profile, 'reasoning', level))
+        update(profile, { info: { ...chatOf(profile)!.info, reasoning: level } })
     }),
 
     models: async (profile) => {
