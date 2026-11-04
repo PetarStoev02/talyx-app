@@ -2,14 +2,15 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { refreshRoster } from '../../../src/renderer/src/features/bots/actions'
 import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
 import {
-  UnfiledBotError,
+  IncompleteBotError,
   createBot,
   profileIdFor
 } from '../../../src/renderer/src/features/bots/create'
 import type { NewBot } from '../../../src/renderer/src/features/bots/create'
 import { RosterError, folderBots } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
-import { BOT_META_KEY, backendFor, engineDouble } from './engineDouble'
+import { matchName } from '../../../src/renderer/src/features/bots/look'
+import { BOT_META_KEY, backendFor, engineDouble, pngOf } from './engineDouble'
 import type { EngineDouble } from './engineDouble'
 
 const TEAM = { id: 'team', name: 'Team' }
@@ -19,6 +20,8 @@ const SOUL = [
   'You are Agro Ops Legal, a persistent named agent (profile `agro-ops-legal`) on this machine.',
   'You keep your own memory, skills, and conversation history across sessions.'
 ].join('\n')
+
+const LOOK = { shape: 'stair' as const, hue: 4, faces: true }
 
 let engine: EngineDouble
 let backend: RosterBackend
@@ -32,6 +35,7 @@ const newBot = (patch: Partial<NewBot> = {}): NewBot => ({
   name: 'Agro Ops Legal',
   folder: TEAM,
   model: { provider: 'custom', model: 'paid-model' },
+  look: LOOK,
   ...patch
 })
 
@@ -71,16 +75,43 @@ describe('creating a bot', () => {
       expect(engine.created[0]).not.toHaveProperty('provider')
     })
 
-    it('should place the new bot in its folder with its title and no avatar', async () => {
+    it('should place the new bot in its folder with its title and look', async () => {
       await createBot(backend, newBot(), [])
       expect(engine.metadata['agro-ops-legal'][BOT_META_KEY]).toEqual({
         title: 'Agro Ops Legal',
         sectionId: 'team',
-        sectionName: 'Team'
+        sectionName: 'Team',
+        shape: 'stair',
+        color: 4
       })
       await refreshRoster(backend)
       const team = folderBots(useRoster.getState().snapshot, 'team').map((bot) => bot.name)
       expect(team).toContain('agro-ops-legal')
+    })
+
+    it("should export the look as the new profile's avatar image", async () => {
+      const look = { ...matchName('agro-ops-legal'), faces: false }
+      await createBot(backend, newBot({ look }), [])
+      expect(engine.assets).toEqual([
+        {
+          profile: 'agro-ops-legal',
+          params: { name: 'agro-ops-legal', asset: 'avatar', data: pngOf(look) }
+        }
+      ])
+    })
+
+    it('should name the created profile when the image export fails', async () => {
+      engine.failAssetOnce()
+      const creating = createBot(backend, newBot(), [])
+      await expect(creating).rejects.toBeInstanceOf(IncompleteBotError)
+      await expect(creating).rejects.toMatchObject({
+        profile: 'agro-ops-legal',
+        key: 'create.errorNoAvatar',
+        detail: 'Asset store is read-only'
+      })
+      expect(engine.metadata['agro-ops-legal'][BOT_META_KEY]).toMatchObject({
+        title: 'Agro Ops Legal'
+      })
     })
 
     it('should leave an unfiled bot without a folder', async () => {
@@ -94,13 +125,14 @@ describe('creating a bot', () => {
     it('should name the created profile when filing it fails, so a retry does not make another', async () => {
       engine.failMetaOnce()
       const creating = createBot(backend, newBot({ name: 'Агро Юрист' }), [])
-      await expect(creating).rejects.toBeInstanceOf(UnfiledBotError)
+      await expect(creating).rejects.toBeInstanceOf(IncompleteBotError)
       await expect(creating).rejects.toMatchObject({
         profile: 'bot-1',
         key: 'create.errorNotFiled',
         detail: 'Socket closed'
       })
       expect(engine.created).toHaveLength(1)
+      expect(engine.assets).toEqual([])
     })
 
     it('should refuse a taken name without asking the engine', async () => {

@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { saveBotMeta } from './data'
 import type { RosterBackend } from './data'
+import { exportAvatar, lookMeta, sameLook } from './look'
+import type { Look } from './look'
 import { RosterError } from './roster'
 import type { Bot, BotMeta } from './types'
 
@@ -18,6 +20,7 @@ export interface ProfileDetails {
 
 export interface DetailsDraft extends ProfileDetails {
   title: string
+  look: Look
 }
 
 /** The engine wants a yes before it pins this model; nothing else is waiting on it. */
@@ -25,6 +28,9 @@ export interface ModelConfirm {
   message: string
   model: ModelChoice
 }
+
+// The manager's profile; its avatar is the logo, so it never gets an exported image.
+const MANAGER = 'default'
 
 const describeSchema = z.object({
   description: z.string().catch(''),
@@ -54,7 +60,10 @@ export async function loadDetails(
   }
 }
 
-/** Title goes to the bot's metadata; description, SOUL and model to the profile, only if changed. */
+/**
+ * Title and look go to the bot's metadata; description, SOUL and model to the profile, only if
+ * changed. A new look is then exported as the profile's avatar image (Talyx is always the logo).
+ */
 export async function saveDetails(
   backend: RosterBackend,
   bot: Bot,
@@ -62,24 +71,16 @@ export async function saveDetails(
 ): Promise<ModelConfirm | null> {
   const { opening, draft } = change
   const descriptionChanged = draft.description.trim() !== opening.description.trim()
-  const meta: Partial<BotMeta> = {}
+  const lookChanged = !sameLook(draft.look, opening.look)
+  const meta: Partial<BotMeta> = lookChanged ? lookMeta(draft.look) : {}
   if (draft.title.trim() !== opening.title.trim()) meta.title = draft.title.trim()
   // An older client's description in the metadata would hide the one saved on the profile.
   if (descriptionChanged && bot.meta.description !== undefined) meta.description = undefined
   if (Object.keys(meta).length > 0) await saveBotMeta(backend, bot.name, meta)
 
-  const sections: Record<string, unknown> = {}
-  if (descriptionChanged) sections.description = draft.description.trim()
-  if (draft.soul !== opening.soul) sections.soul = draft.soul
-  if (draft.model && !sameModel(draft.model, opening.model)) {
-    sections.model = draft.model.model
-    sections.provider = draft.model.provider
-  }
-  if (Object.keys(sections).length === 0) return null
-  const result = await configure(backend, bot.name, sections)
-  return result.confirm_required && draft.model
-    ? { message: result.confirm_message ?? '', model: draft.model }
-    : null
+  const asked = await saveSections(backend, bot.name, change)
+  if (lookChanged && bot.name !== MANAGER) await exportAvatar(backend, bot.name, draft.look)
+  return asked
 }
 
 export async function confirmModel(
@@ -108,6 +109,26 @@ async function configure(
   )
   if (failed.length > 0) throw new RosterError('details.errorNotApplied', failed.join(', '))
   return result
+}
+
+async function saveSections(
+  backend: RosterBackend,
+  profile: string,
+  { opening, draft }: { opening: DetailsDraft; draft: DetailsDraft }
+): Promise<ModelConfirm | null> {
+  const sections: Record<string, unknown> = {}
+  if (draft.description.trim() !== opening.description.trim())
+    sections.description = draft.description.trim()
+  if (draft.soul !== opening.soul) sections.soul = draft.soul
+  if (draft.model && !sameModel(draft.model, opening.model)) {
+    sections.model = draft.model.model
+    sections.provider = draft.model.provider
+  }
+  if (Object.keys(sections).length === 0) return null
+  const result = await configure(backend, profile, sections)
+  return result.confirm_required && draft.model
+    ? { message: result.confirm_message ?? '', model: draft.model }
+    : null
 }
 
 function sameModel(a: ModelChoice, b: ModelChoice | null): boolean {

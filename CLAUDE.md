@@ -12,9 +12,9 @@ of it and holds no orchestration logic of its own.
 
 Talyx is in the middle of that pivot. The file organizer it used to be is gone; the agents app
 is built one pull request at a time. Today the app is attached to the engine: a roster of bots in
-the sidebar (pins, folders, unread and activity marks), the Agents page with the selected bot's
+the sidebar (pins, folders, unread and activity marks, each bot an isometric block avatar), the Agents page with the selected bot's
 chat (transcript, clarify and approval cards, a composer with model, reasoning, images and
-dictation), the details panel from the name pill (title, description, model, routines, SOUL),
+dictation), the details panel from the name pill (title, description, model, routines, look, SOUL),
 the create-bot dialog from the roster's `+`, group rooms hosted by the engine (history, send, who
 is answering, approvals, create, pin, delete), "Talyx needs its engine" when the engine is
 missing, an Engine (debug) page that sends "ping" and prints raw session events, and Settings

@@ -7,6 +7,8 @@ interface RosterState {
   selection: Selection
   editingProfile: string | null
   activity: Record<string, BotActivity>
+  // False while the engine socket is down: every bot shows as offline.
+  online: boolean
   unread: Record<string, boolean>
   // By room id: a room and a bot may share an id.
   roomUnread: Record<string, boolean>
@@ -22,6 +24,7 @@ interface RosterState {
   editProfile: (profile: string | null) => void
   clearError: () => void
   setActivity: (profile: string, activity: BotActivity) => void
+  setOnline: (online: boolean) => void
   markUnread: (profile: string) => void
   markRoomUnread: (roomId: string) => void
   seeRoom: (roomId: string, seq: number) => void
@@ -32,6 +35,7 @@ export const useRoster = create<RosterState>((set) => ({
   selection: null,
   editingProfile: null,
   activity: {},
+  online: true,
   unread: {},
   roomUnread: {},
   seen: {},
@@ -55,6 +59,7 @@ export const useRoster = create<RosterState>((set) => ({
   clearError: () => set({ error: null }),
   setActivity: (profile, activity) =>
     set((state) => ({ activity: { ...state.activity, [profile]: activity } })),
+  setOnline: (online) => set({ online }),
   markUnread: (profile) =>
     set((state) => ({
       unread: {
