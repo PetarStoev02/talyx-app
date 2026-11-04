@@ -8,6 +8,8 @@ interface RosterState {
   editingProfile: string | null
   activity: Record<string, BotActivity>
   unread: Record<string, boolean>
+  // Each bot's chat activity time at the last snapshot, so a later move reads as a new reply.
+  seen: Record<string, number>
   revision: number
   loading: boolean
   saving: boolean
@@ -25,6 +27,7 @@ export const useRoster = create<RosterState>((set) => ({
   editingProfile: null,
   activity: {},
   unread: {},
+  seen: {},
   revision: 0,
   loading: true,
   saving: false,

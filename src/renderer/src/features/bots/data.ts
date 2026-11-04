@@ -30,6 +30,8 @@ const lenient = <T extends z.ZodType>(schema: T): z.ZodCatch<z.ZodOptional<T>> =
 const jsonObject = z.record(z.string(), z.unknown())
 const preview = z
   .object({
+    id: lenient(z.string()),
+    resolved_id: lenient(z.string()),
     last_active: lenient(z.number().finite()),
     preview: lenient(z.string())
   })
