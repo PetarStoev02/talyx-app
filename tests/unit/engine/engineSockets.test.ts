@@ -19,7 +19,10 @@ class FakeSocket extends EventTarget {
       this.dispatchEvent(new Event('open'))
     }, 0)
   }
-  send(): void {}
+  readonly sent: unknown[] = []
+  send(data: unknown): void {
+    this.sent.push(data)
+  }
   close(): void {
     if (this.closed) return
     this.closed = true
