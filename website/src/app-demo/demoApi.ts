@@ -10,7 +10,19 @@ const noop = (): (() => void) => () => {}
 
 const SETTINGS = { theme: 'system', sidebarCollapsed: false }
 
+// The landing page has no engine; it shows the attached shell. The keys are placeholders.
+const ENGINE_STATUS = {
+  state: 'attached',
+  version: '0.22.5',
+  commit: null,
+  home: '/demo',
+  stale: false,
+  botMetaKey: 'demo-bots',
+  botGroupsMetaKey: 'demo-bots-groups'
+}
+
 const fixtures: Record<string, unknown> = {
+  getEngineStatus: () => Promise.resolve({ ...ENGINE_STATUS }),
   getSettings: () => Promise.resolve({ ...SETTINGS }),
   setSettings: (partial: Record<string, unknown>) => {
     Object.assign(SETTINGS, partial)

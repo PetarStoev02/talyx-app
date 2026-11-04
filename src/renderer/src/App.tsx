@@ -5,10 +5,12 @@ import { useTheme } from '@shared/hooks/useTheme'
 import { useKeyboardShortcuts } from '@shared/hooks/useKeyboardShortcuts'
 import { AgentsPage } from '@pages/agents'
 import { SettingsPage } from '@pages/settings'
+import { EngineDebugPage } from '@pages/engine-debug'
 import { TooltipProvider } from '@shared/ui/tooltip'
 
 const pages = {
   agents: <AgentsPage />,
+  'engine-debug': <EngineDebugPage />,
   settings: <SettingsPage />
 }
 

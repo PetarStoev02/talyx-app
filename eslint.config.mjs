@@ -28,5 +28,21 @@ export default defineConfig(
       ...eslintPluginReactRefresh.configs.vite.rules
     }
   },
+  {
+    // Vendored from the engine's desktop app (see README, Engine). Upstream's own lint rules
+    // differ; keeping its code as written is what makes a re-sync a clean diff.
+    files: [
+      'src/renderer/src/shared/engine/{canonical-protocol,client,config,cron,gateway-contract.generated,gateway-events,gateway-rpc,json-rpc-channel,json-rpc-gateway,models,profiles,reconnect-backoff,session-http-mutations,session-owner-stamp,sessions,transcript-tail,types}.ts',
+      'tests/unit/engine/canonical-*.test.ts'
+    ],
+    rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { varsIgnorePattern: '^_', argsIgnorePattern: '^_' }
+      ]
+    }
+  },
   eslintConfigPrettier
 )

@@ -1,15 +1,18 @@
 import { app } from 'electron'
-import { join } from 'path'
+import { isAbsolute, join } from 'path'
 import { readFileSync, writeFileSync, mkdirSync } from 'fs'
 
 export interface UserSettings {
   theme: 'light' | 'dark' | 'system'
   sidebarCollapsed: boolean
+  /** Absolute path to the engine's command, picked by the user; null means look it up. */
+  enginePath: string | null
 }
 
 const defaults: UserSettings = {
   theme: 'system',
-  sidebarCollapsed: false
+  sidebarCollapsed: false,
+  enginePath: null
 }
 
 function getSettingsPath(): string {
@@ -27,7 +30,11 @@ export function migrateSettings(raw: Record<string, unknown>): UserSettings {
       .filter((key) => key in raw)
       .map((key) => [key, raw[key]])
   )
-  return { ...defaults, ...known } as UserSettings
+  const settings = { ...defaults, ...known } as UserSettings
+  // Talyx runs this file: a hand-edited value that is not an absolute path is ignored.
+  const path: unknown = settings.enginePath
+  if (typeof path !== 'string' || !isAbsolute(path)) settings.enginePath = null
+  return settings
 }
 
 function read(): UserSettings {

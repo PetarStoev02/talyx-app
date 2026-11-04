@@ -6,6 +6,7 @@ const isMac = navigator.platform.toLowerCase().includes('mac')
 
 const NAV_KEYS: Record<string, AppView> = {
   '1': 'agents',
+  '2': 'engine-debug',
   ',': 'settings'
 }
 

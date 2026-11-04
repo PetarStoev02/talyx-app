@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type AppView = 'agents' | 'settings'
+export type AppView = 'agents' | 'engine-debug' | 'settings'
 
 interface NavigationState {
   currentView: AppView

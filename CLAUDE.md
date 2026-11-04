@@ -11,8 +11,10 @@ The bots run on **the engine**, a separate agent backend the user installs; Taly
 of it and holds no orchestration logic of its own.
 
 Talyx is in the middle of that pivot. The file organizer it used to be is gone; the agents app
-is built one pull request at a time. Today the app is an empty shell: sidebar, an Agents page
-that says "Nothing here yet", and Settings → Appearance.
+is built one pull request at a time. Today the app is a shell attached to the engine: sidebar, an
+Agents page that says "Nothing here yet" (or "Talyx needs its engine" when the engine is
+missing), an Engine (debug) page that sends "ping" and prints raw session events, and
+Settings → Appearance.
 
 - **Version:** 1.0.0-alpha.1
 - **Stack:** Electron 44 + React 19 + TypeScript 5.9 + TailwindCSS 4
@@ -30,6 +32,10 @@ that says "Nothing here yet", and Settings → Appearance.
 - The engine's upstream project is never named anywhere in this repo: code, docs, specs,
   commits or PR text. It is "the engine" (`shared/engine/`, `infrastructure/engine/`,
   `EngineStatus`, `talyx-engine`); its CLI, paths and data keys are written as `talyx`.
+  Strings the engine's wire protocol needs with the name in them (socket subprotocols, the
+  ticket header, the `ui_meta` bot keys) are built at runtime by `engineWire()` in
+  `src/shared/engine.ts` from the first word of `talyx-engine --version`. Never write them as
+  literals; tests use a fake name. `tests/unit/engineName.test.ts` fails on any hit.
 
 ## Commands
 
@@ -73,7 +79,9 @@ src/main/
 ├── lib/electronUtils.ts        # is.dev, window shortcuts
 └── infrastructure/
     ├── bridge/DevBridge.ts     # Dev-only HTTP+SSE bridge for the browser renderer
-    ├── ipc/                    # settings.ipc.ts, validation.ts (zod at the IPC boundary)
+    ├── engine/                 # engine.ts (Engine: CLI, attach, tickets, REST),
+    │                           # gateway.ts (vendored attach + ticket mint), engineSockets.ts
+    ├── ipc/                    # settings.ipc.ts, engine.ipc.ts, validation.ts (zod at the boundary)
     ├── security/               # webContentsGuard: no new windows, no navigation away
     ├── storage/SettingsStore.ts # settings.json in userData
     └── updater/releaseCheck.ts # GitHub latest-release check (announces, never installs)
@@ -82,8 +90,11 @@ src/main/
 `src/shared/api.ts` is the single definition of `window.api`; the preload builds it over
 `ipcRenderer`, the browser dev bridge over HTTP.
 
-Planned (see the design): `infrastructure/engine/` wraps the engine CLI and attaches to its
-gateway; the main process never owns or kills the gateway.
+`infrastructure/engine/` runs the engine CLI (`talyx-engine`: the `enginePath` setting, then
+PATH, then `~/.local/bin`), attaches with `gateway ensure --json` and mints one-use tickets
+through the profile's control socket. Main opens the gateway websocket itself (the gateway
+admits no Origin header and takes the ticket in a subprotocol) and relays frames over
+`engine:socket-*` IPC; REST goes through `engine:http`. Main never owns or kills the gateway.
 
 ### Renderer Process (React Frontend — Feature-Sliced Design)
 
@@ -93,7 +104,8 @@ src/renderer/src/
 ├── pages/            # AgentsPage (empty state), SettingsPage (Appearance)
 ├── widgets/          # AppShell (sidebar + page shell)
 ├── features/         # User interactions (none yet)
-└── shared/           # Reusable: ui/ (shadcn), hooks/, api/ (IPC wrappers), lib/
+└── shared/           # Reusable: ui/ (shadcn), hooks/, api/ (IPC wrappers), lib/,
+                      # engine/ (vendored engine client; host.ts is the facade features use)
 ```
 
 **FSD Layer Rules** (strict top-down dependency):
@@ -137,6 +149,8 @@ import { AppShell } from '@widgets/app-shell'
 - Never use `any`; prefer `unknown` with type guards
 - Always type IPC return values explicitly
 - Use `string | null` not optional for nullable values
+- Exception: the vendored engine files (listed in `eslint.config.mjs`) keep upstream's code as
+  written so re-syncs stay clean diffs; see README → Engine → Re-syncing the vendored client
 
 ### React Components
 
