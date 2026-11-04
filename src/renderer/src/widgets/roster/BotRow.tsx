@@ -69,7 +69,8 @@ export function BotRow({
         )}
       >
         <BotAvatar bot={bot} size={pinned ? avatarSize : 24} />
-        <span className="min-w-0 flex-1" title={botTitle(bot)}>
+        {/* In a tile the column would grow to the name; the full width lets it truncate. */}
+        <span className={cn('min-w-0 flex-1', pinned && 'w-full')} title={botTitle(bot)}>
           <span className={cn('flex items-baseline gap-2', pinned && 'justify-center')}>
             <span className="truncate text-base font-medium">{botTitle(bot)}</span>
             {!pinned && (

@@ -113,7 +113,8 @@ Petar is the main user of Talyx. He will use it more after the pivot than before
    is not ported. History: all of Petar's rooms are already hosted rooms, nothing to migrate.
    Built in PR 6 (Petar's decisions, 2026-11-04): the engine pushes no room events, so an open
    room polls `groups.state` and `groups.log` every 2 s; who is answering shows in the open room
-   only; a pinned room leads its folder (`talyx-room-pins` in the default profile's `ui_meta`);
+   only; a pinned room leaves its folder for the pinned tiles, after the pinned bots
+   (`talyx-room-pins` in the default profile's `ui_meta`);
    member approvals, Retry and Discard are answered in the room; rooms take images only. Talyx's
    handle in a room Talyx creates is `talyx`.
 7. **Folders are stored in the backend**, in the default profile's `ui_meta` (my call: key

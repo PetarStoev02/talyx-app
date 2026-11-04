@@ -7,7 +7,7 @@ import {
 } from '../../../src/renderer/src/features/bots/actions'
 import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
 import { createRoom, seatableProfiles } from '../../../src/renderer/src/features/bots/rooms'
-import { folderRooms } from '../../../src/renderer/src/features/bots/roster'
+import { folderRooms, pinnedRooms } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import type { Bot, Room, RosterSnapshot } from '../../../src/renderer/src/features/bots/types'
 import { BOT_META_KEY, backendFor, engineDouble } from './engineDouble'
@@ -106,20 +106,34 @@ describe('group rooms in the roster', () => {
   })
 
   describe('pinning', () => {
-    it('should lead its folder while pinned and return to its place when unpinned', async () => {
+    it('should move a pinned room out of its folder to the pins, and back when unpinned', async () => {
       expect(roomIds(null)).toEqual(['standup', 'review'])
       await act(() => rosterActions(backend).pinRoom(room('review')))
-      expect(snapshot().roomPins).toEqual(['review'])
       expect(engine.metadata.default['talyx-room-pins']).toEqual(['review'])
-      expect(roomIds(null)).toEqual(['review', 'standup'])
+      expect(roomIds(null)).toEqual(['standup'])
+      expect(pinnedRooms(snapshot()).map((item) => item.room_id)).toEqual(['review'])
       await act(() => rosterActions(backend).pinRoom(room('review')))
       expect(roomIds(null)).toEqual(['standup', 'review'])
+      expect(pinnedRooms(snapshot())).toEqual([])
+    })
+
+    it('should unpin a pinned room that is moved to a folder, as it does a bot', async () => {
+      await act(() => rosterActions(backend).pinRoom(room('review')))
+      await act(() => rosterActions(backend).moveRoom('review', 'team'))
+      expect(pinnedRooms(snapshot())).toEqual([])
+      expect(engine.metadata.default['talyx-room-pins']).toEqual([])
+      expect(roomIds('team')).toEqual(['review'])
     })
 
     it('should keep pinned rooms in the order they were pinned', async () => {
       await act(() => rosterActions(backend).pinRoom(room('review')))
       await act(() => rosterActions(backend).pinRoom(room('standup')))
-      expect(roomIds(null)).toEqual(['review', 'standup'])
+      expect(pinnedRooms(snapshot()).map((item) => item.room_id)).toEqual(['review', 'standup'])
+    })
+
+    it('should drop a pin whose room is gone', () => {
+      useRoster.setState({ snapshot: { ...snapshot(), roomPins: ['gone', 'review'] } })
+      expect(pinnedRooms(snapshot()).map((item) => item.room_id)).toEqual(['review'])
     })
   })
 

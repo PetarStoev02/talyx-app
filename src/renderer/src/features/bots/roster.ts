@@ -97,22 +97,21 @@ export function folderBots(snapshot: RosterSnapshot, folderId: string | null): B
   })
 }
 
-// A room in a folder that no longer exists shows as unassigned; pinned rooms lead, in pin order.
+// A room in a folder that no longer exists shows as unassigned; a pinned room shows with the pins.
 export function folderRooms(snapshot: RosterSnapshot, folderId: string | null): Room[] {
   const ids = new Set(snapshot.folders.map((folder) => folder.id))
-  const pinOrder = (room: Room): number => {
-    const index = snapshot.roomPins.indexOf(room.room_id)
-    return index < 0 ? Infinity : index
-  }
-  return (
-    snapshot.rooms
-      .filter((room) => {
-        const assigned = snapshot.roomFolders[room.room_id]
-        return (assigned && ids.has(assigned) ? assigned : null) === folderId
-      })
-      // Two unpinned rooms compare as NaN, which keeps their engine order.
-      .sort((a, b) => pinOrder(a) - pinOrder(b) || 0)
-  )
+  return snapshot.rooms.filter((room) => {
+    const assigned = snapshot.roomFolders[room.room_id]
+    return (
+      !snapshot.roomPins.includes(room.room_id) &&
+      (assigned && ids.has(assigned) ? assigned : null) === folderId
+    )
+  })
+}
+
+/** Pinned rooms in the order they were pinned; a pin whose room is gone is skipped. */
+export function pinnedRooms(snapshot: RosterSnapshot): Room[] {
+  return snapshot.roomPins.flatMap((id) => snapshot.rooms.filter((room) => room.room_id === id))
 }
 
 // A folder counts the bots in it and in its subfolders; Unassigned counts only its own.

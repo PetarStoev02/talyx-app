@@ -137,7 +137,6 @@ const en = {
   'routines.postToChat': 'Post to this chat',
   'routines.create': 'Create routine',
   'roster.label': 'Agent roster',
-  'roster.tally': '{agents} agents · {waiting} waiting on you · {working} working',
   'roster.loading': 'Loading agents…',
   'roster.retry': 'Retry',
   'roster.folders': 'Folders',
@@ -177,9 +176,6 @@ const en = {
   'roster.hide': 'Hide',
   'roster.deleteProfile': 'Delete profile',
   'roster.newRoom': 'New room',
-  'roster.pinRoom': 'Pin to top',
-  'roster.pinned': 'Pinned',
-  'roster.unpinRoom': 'Unpin',
   'roster.deleteRoom': 'Delete room',
   'roster.deleteRoomWarning':
     'The room stops and leaves Talyx on every machine. Its bots and their own chats stay.',

@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Pin } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { folderBots, folderCount, folderRooms } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { Bot, Folder, Room } from '@features/bots/types'
-import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { BotRow } from './BotRow'
+import { RoomRow } from './RoomRow'
 import { ROSTER_DRAG } from './rosterControls'
 import { RosterMenu } from './RosterMenu'
 import type { MenuAction } from './RosterMenu'
@@ -118,67 +118,16 @@ function FolderHeader({
         <span className="truncate">{folder?.name ?? t('roster.unassigned')}</span>
         <span className="ml-auto tabular-nums">{folderCount(snapshot, folder?.id ?? null)}</span>
       </button>
-      {folder && (
+      {folder ? (
         <RosterMenu
           label={t('roster.folderActionsFor').replace('{name}', folder.name)}
           actions={folderActions(folder)}
           disabled={saving}
         />
+      ) : (
+        // Unassigned has no menu; the gap keeps its count in line with the folders above.
+        <span className="size-8 shrink-0" aria-hidden="true" />
       )}
-    </div>
-  )
-}
-
-function RoomRow({
-  room,
-  actions,
-  onSelect
-}: {
-  room: Room
-  actions: MenuAction[]
-  onSelect: () => void
-}): React.JSX.Element {
-  const selected = useRoster(
-    (state) => state.selection?.kind === 'room' && state.selection.id === room.room_id
-  )
-  const bots = useRoster((state) => state.snapshot.bots)
-  const pinned = useRoster((state) => state.snapshot.roomPins.includes(room.room_id))
-  const unread = useRoster((state) => state.roomUnread[room.room_id])
-  const saving = useRoster((state) => state.saving)
-  const t = useLanguage((s) => s.t)
-  return (
-    <div
-      className="flex rounded-xl hover:bg-accent"
-      draggable={!saving}
-      onDragStart={(event) =>
-        event.dataTransfer.setData(ROSTER_DRAG, JSON.stringify({ kind: 'room', id: room.room_id }))
-      }
-    >
-      <button
-        onClick={onSelect}
-        aria-pressed={selected}
-        aria-description={unread ? t('roster.statusNewMessages') : undefined}
-        className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-left aria-pressed:bg-accent"
-      >
-        <RoomAvatars room={room} bots={bots} />
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1">
-            <span className="truncate text-base font-medium">{room.name}</span>
-            {pinned && <Pin size={14} className="shrink-0" aria-label={t('roster.pinned')} />}
-          </span>
-          <span className="block text-base">
-            {room.members.length === 1
-              ? t('roster.oneBot')
-              : t('roster.bots').replace('{count}', String(room.members.length))}
-          </span>
-        </span>
-        {unread && <span className="size-2 shrink-0 rounded-full bg-brand" aria-hidden="true" />}
-      </button>
-      <RosterMenu
-        label={t('roster.actionsFor').replace('{name}', room.name)}
-        disabled={saving}
-        actions={actions}
-      />
     </div>
   )
 }

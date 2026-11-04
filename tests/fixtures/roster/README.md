@@ -32,8 +32,8 @@ Rooms (`fixtureRooms.ts`): Team discussion has a history with three senders; Arc
 room the engine does not run, so it reads but has no composer. Sending to a room makes each member
 answer in turn, a few seconds apart, with "Answering:" and "Up next:" under the transcript. A message
 containing "approve" shows an approval card, "stall" a turn to retry, "fail" a failed turn. Check
-New room from `+` (name, 2 to 6 bots, folder), Pin to top, Move to, Delete room with its name in the
-confirmation, images in the room composer, and the unread dot on a room that gets a reply while
-another one is open.
+New room from `+` (name, 2 to 6 bots, folder), Pin (the room joins the pinned tiles, which center
+when a row is not full), Move to, Delete room with its name in the confirmation, images in the room
+composer, and the unread dot on a room that gets a reply while another one is open.
 
 Use the engine integration for final acceptance; this fixture does not prove gateway access.
