@@ -34,6 +34,14 @@ export class EngineMissingError extends Error {
   }
 }
 
+/** A REST path that resolves outside the gateway's `/api/` routes; its ticket must not leave. */
+export class EngineRouteError extends Error {
+  constructor() {
+    super('Engine request path leaves the gateway API')
+    this.name = 'EngineRouteError'
+  }
+}
+
 export class EngineHttpError extends Error {
   constructor(
     readonly status: number,
@@ -180,6 +188,8 @@ export function createEngine(deps: EngineDeps): Engine {
       // The grant is chosen from the path alone; the origin comes from the endpoint the mint used,
       // because a stale mint re-ensures and the new gateway may listen on another port.
       const route = new URL(request.path, 'http://gateway.invalid')
+      // Dot segments resolve here, so `/api/../x` is caught after resolution, not before.
+      if (!route.pathname.startsWith('/api/')) throw new EngineRouteError()
       if (request.profile && !route.searchParams.has('profile'))
         route.searchParams.set('profile', request.profile)
       const method = (request.method ?? 'GET').toUpperCase()
@@ -188,7 +198,10 @@ export function createEngine(deps: EngineDeps): Engine {
         grantProfile,
         nativeGrantPurpose(route.toString(), method)
       )
-      const url = new URL(route.pathname + route.search, endpoint.api_origin)
+      // Set the path on the gateway's own URL: joining strings would read `//host` as a new host.
+      const url = new URL(endpoint.api_origin)
+      url.pathname = route.pathname
+      url.search = route.search
       const response = await fetchFn(url, {
         method,
         headers: {

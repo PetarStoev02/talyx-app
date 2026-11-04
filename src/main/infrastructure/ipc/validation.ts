@@ -21,7 +21,7 @@ export const EngineSocketIdSchema = z.string().regex(/^[A-Za-z0-9-]{8,64}$/)
 export const EngineSocketTextSchema = z.string().max(16 * 1024 * 1024)
 
 export const EngineHttpRequestSchema = z.object({
-  // A gateway API path only: never an absolute URL, so the request cannot leave the gateway.
+  // A gateway API path only. engine.ts also checks the resolved path, which this regex cannot see.
   path: z.string().regex(/^\/api\/[^\s]*$/),
   method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']).optional(),
   body: z.unknown().optional(),

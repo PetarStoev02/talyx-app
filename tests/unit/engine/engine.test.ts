@@ -7,6 +7,7 @@ import {
   createEngine,
   engineCandidates,
   EngineHttpError,
+  EngineRouteError,
   type EngineDeps
 } from '../../../src/main/infrastructure/engine/engine'
 import {
@@ -291,6 +292,26 @@ describe('tickets and REST', () => {
     await engine.http({ path: '/api/cron/jobs?profile=default' })
     const [url] = fetchFn.mock.calls[0] as unknown as [URL]
     expect(url.toString()).toBe('http://127.0.0.1:5678/api/cron/jobs?profile=default')
+  })
+
+  it.each(['/api/..//evil.example/steal?x=1', '/api/%2e%2e//evil.example/x', '/api/../other'])(
+    'should never send the ticket for a path that resolves outside the gateway API (%s)',
+    async (path) => {
+      const fetchFn = vi.fn(async () => new Response('{}', { status: 200 }))
+      const mintTicket = vi.fn(async () => 'grant')
+      const { engine } = engineWith({ fetch: fetchFn as unknown as typeof fetch, mintTicket })
+      await expect(engine.http({ path })).rejects.toBeInstanceOf(EngineRouteError)
+      expect(mintTicket).not.toHaveBeenCalled()
+      expect(fetchFn).not.toHaveBeenCalled()
+    }
+  )
+
+  it('should keep a doubled slash on the gateway host', async () => {
+    const fetchFn = vi.fn(async () => new Response('{}', { status: 200 }))
+    const { engine } = engineWith({ fetch: fetchFn as unknown as typeof fetch })
+    await engine.http({ path: '/api//evil.example/x' })
+    const [url] = fetchFn.mock.calls[0] as unknown as [URL]
+    expect(url.origin).toBe('http://127.0.0.1:4567')
   })
 
   it('should raise the gateway detail of a failed request', async () => {

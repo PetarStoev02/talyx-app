@@ -22,6 +22,8 @@ export class EngineSockets {
     if (this.sockets.has(id)) throw new Error('Engine socket id already in use')
     // One window keeps one socket. A page that went away without closing its own (a dev-bridge
     // browser tab has no lifecycle events) must not lock out the next one: drop the oldest.
+    // ponytail: the oldest may be the live window's socket, which then redials and replays;
+    // track sockets per dev-bridge tab if dev sessions ever need more than one live tab.
     if (this.sockets.size >= MAX_SOCKETS) this.close(this.sockets.keys().next().value!)
     const { endpoint, wire, ticket } = await this.engine.mint(profile, 'interactive')
     const url = `${endpoint.api_origin.replace(/^http/, 'ws')}/api/ws`
