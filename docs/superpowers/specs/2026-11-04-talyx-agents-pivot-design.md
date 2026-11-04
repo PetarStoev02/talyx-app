@@ -116,6 +116,10 @@ Petar is the main user of Talyx. He will use it more after the pivot than before
    same layout. Bot membership stays in each bot's `ui_meta['talyx-bots'].sectionId` as today.
 8. **Details panel replaces Edit Profile**, with tabs Details (incl. routines), Look, Soul.
    Capabilities tab dropped. Save semantics as in the old desktop today. Create-bot keeps its own dialog.
+   Built in PR 5 (2026-11-04): SOUL is read and saved over the socket (`profiles.describe` /
+   `profiles.configure`), not the `/soul` REST path; routines go through `cron.manage` and apply
+   when toggled, not on Save; new routines post into the bot's chat by default. The Look tab and the
+   create dialog's look stay a placeholder until PR 8 (Petar, 2026-11-04).
 9. **Composer behaviour kept** (`+`, placeholder, model chip, reasoning level, mic, chevron);
    visual restyled to Talyx. **Voice is dictation only** (Petar's decision): the mic button
    transcribes into the composer through the gateway's `/api/audio/transcribe-stream`. The
