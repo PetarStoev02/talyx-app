@@ -1,12 +1,14 @@
 import { Toaster } from 'sonner'
 import { AppShell } from '@widgets/app-shell'
 import { useNavigation } from '@app/providers/useNavigation'
+import { useRosterBackend } from '@app/providers/useRosterBackend'
 import { useTheme } from '@shared/hooks/useTheme'
 import { useKeyboardShortcuts } from '@shared/hooks/useKeyboardShortcuts'
 import { AgentsPage } from '@pages/agents'
 import { SettingsPage } from '@pages/settings'
 import { EngineDebugPage } from '@pages/engine-debug'
 import { TooltipProvider } from '@shared/ui/tooltip'
+import { Roster } from '@widgets/roster'
 
 const pages = {
   agents: <AgentsPage />,
@@ -18,11 +20,17 @@ function App(): React.JSX.Element {
   useKeyboardShortcuts()
   const { effectiveTheme } = useTheme()
   const currentView = useNavigation((s) => s.currentView)
+  const navigate = useNavigation((s) => s.navigate)
+  const rosterBackend = useRosterBackend()
 
   return (
     <TooltipProvider>
       <Toaster position="bottom-right" richColors closeButton theme={effectiveTheme} />
-      <AppShell>
+      <AppShell
+        roster={
+          rosterBackend && <Roster backend={rosterBackend} onSelect={() => navigate('agents')} />
+        }
+      >
         <main
           key={currentView}
           className="min-h-0 flex-1 overflow-hidden animate-in fade-in duration-200"
