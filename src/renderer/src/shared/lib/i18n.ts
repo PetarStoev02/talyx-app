@@ -20,6 +20,8 @@ const en = {
   'engine.debugDrop': 'Drop socket',
   'engine.debugClear': 'Clear',
   'engine.debugWaiting': 'Events appear here.',
+  'engine.stale':
+    'The gateway runs older code than the engine. Run talyx-engine gateway restart when no bot is working.',
   'settings.appearance': 'Appearance',
   'settings.theme': 'Theme',
   'settings.themeDesc': 'Choose your preferred color scheme',

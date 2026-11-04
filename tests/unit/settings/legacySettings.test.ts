@@ -21,4 +21,15 @@ describe('migrateSettings', () => {
     })
     expect(migrated).toEqual({ theme: 'dark', sidebarCollapsed: true, enginePath: null })
   })
+
+  it.each([
+    ['a relative path', 'talyx-engine'],
+    ['a number', 42]
+  ])('should ignore a hand-edited engine path that is %s', (_case, enginePath) => {
+    expect(migrateSettings({ enginePath }).enginePath).toBeNull()
+  })
+
+  it('should keep an absolute engine path', () => {
+    expect(migrateSettings({ enginePath: '/opt/engine/cli' }).enginePath).toBe('/opt/engine/cli')
+  })
 })

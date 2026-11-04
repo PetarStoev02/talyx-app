@@ -26,7 +26,11 @@ export class EngineIpcSocket extends EventTarget {
     sockets.set(this.id, this)
     window.api.openEngineSocket(this.id, profile).then(
       () => {
-        if (this.readyState !== WebSocket.CONNECTING) return
+        // Closed while main was still opening it: main never saw that close, so send it now.
+        if (this.readyState !== WebSocket.CONNECTING) {
+          void window.api.closeEngineSocket(this.id)
+          return
+        }
         this.readyState = WebSocket.OPEN
         this.dispatchEvent(new Event('open'))
         for (const text of this.early.splice(0)) this.receive(text)
@@ -40,7 +44,8 @@ export class EngineIpcSocket extends EventTarget {
   }
 
   send(text: string): void {
-    void window.api.sendEngineSocket(this.id, text)
+    // A send after main closed the socket fails; main's close event already reports the drop.
+    window.api.sendEngineSocket(this.id, text).catch(() => undefined)
   }
 
   close(): void {

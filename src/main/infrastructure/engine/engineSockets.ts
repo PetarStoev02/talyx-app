@@ -20,7 +20,9 @@ export class EngineSockets {
 
   async open(id: string, profile: string, sink: SocketEventSink): Promise<void> {
     if (this.sockets.has(id)) throw new Error('Engine socket id already in use')
-    if (this.sockets.size >= MAX_SOCKETS) throw new Error('Too many engine sockets')
+    // One window keeps one socket. A page that went away without closing its own (a dev-bridge
+    // browser tab has no lifecycle events) must not lock out the next one: drop the oldest.
+    if (this.sockets.size >= MAX_SOCKETS) this.close(this.sockets.keys().next().value!)
     const { endpoint, wire, ticket } = await this.engine.mint(profile, 'interactive')
     const url = `${endpoint.api_origin.replace(/^http/, 'ws')}/api/ws`
     const socket = new WebSocket(url, [wire.wsProtocol, `${wire.wsTicketPrefix}${ticket}`])

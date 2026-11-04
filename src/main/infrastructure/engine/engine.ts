@@ -25,6 +25,7 @@ import {
 /** The command Talyx runs; the engine's own installer never names it this, so the user links it. */
 export const ENGINE_COMMAND = 'talyx-engine'
 const DEFAULT_HTTP_TIMEOUT_MS = 30_000
+const WINDOWS_UNSUPPORTED = 'Talyx cannot attach to the engine on Windows yet'
 
 export class EngineMissingError extends Error {
   constructor() {
@@ -66,20 +67,20 @@ export interface EngineDeps {
   home?: string
 }
 
-/** Resolution order: the chosen file, else `talyx-engine` on PATH, else the per-OS user bin. */
+/** Resolution order: the chosen file, then `talyx-engine` on PATH, then the per-OS user bin. A
+ *  chosen file that has since moved falls back to the lookups instead of locking Talyx out. */
 export function engineCandidates(
   enginePath: string | null,
   platform: NodeJS.Platform,
   home: string
 ): string[] {
-  if (enginePath) return [enginePath]
   const userBin = join(
     home,
     '.local',
     'bin',
     platform === 'win32' ? `${ENGINE_COMMAND}.exe` : ENGINE_COMMAND
   )
-  return [ENGINE_COMMAND, userBin]
+  return enginePath ? [enginePath, ENGINE_COMMAND, userBin] : [ENGINE_COMMAND, userBin]
 }
 
 export function createEngine(deps: EngineDeps): Engine {
@@ -151,6 +152,8 @@ export function createEngine(deps: EngineDeps): Engine {
 
   return {
     async status(): Promise<EngineStatus> {
+      // Windows mints tickets through the engine's own runtime, which Talyx does not drive yet.
+      if (platform === 'win32') return { state: 'error', message: WINDOWS_UNSUPPORTED }
       attached = null
       try {
         const { version, ensure } = await attach()
@@ -174,15 +177,18 @@ export function createEngine(deps: EngineDeps): Engine {
     mint,
 
     async http(request: EngineHttpRequest): Promise<unknown> {
-      const { endpoint } = (await attach()).ensure
-      const url = new URL(request.path, endpoint.api_origin)
-      if (url.origin !== new URL(endpoint.api_origin).origin)
-        throw new Error('Engine request left the gateway origin')
-      if (request.profile && !url.searchParams.has('profile'))
-        url.searchParams.set('profile', request.profile)
+      // The grant is chosen from the path alone; the origin comes from the endpoint the mint used,
+      // because a stale mint re-ensures and the new gateway may listen on another port.
+      const route = new URL(request.path, 'http://gateway.invalid')
+      if (request.profile && !route.searchParams.has('profile'))
+        route.searchParams.set('profile', request.profile)
       const method = (request.method ?? 'GET').toUpperCase()
-      const grantProfile = nativeGrantProfile(url.toString(), request.body, method) ?? 'default'
-      const { wire, ticket } = await mint(grantProfile, nativeGrantPurpose(url.toString(), method))
+      const grantProfile = nativeGrantProfile(route.toString(), request.body, method) ?? 'default'
+      const { endpoint, wire, ticket } = await mint(
+        grantProfile,
+        nativeGrantPurpose(route.toString(), method)
+      )
+      const url = new URL(route.pathname + route.search, endpoint.api_origin)
       const response = await fetchFn(url, {
         method,
         headers: {
@@ -202,7 +208,7 @@ export function createEngine(deps: EngineDeps): Engine {
 
 function isNotFound(error: unknown): boolean {
   const code = (error as NodeJS.ErrnoException)?.code
-  return code === 'ENOENT' || code === 'EACCES' || code === 'ENOTDIR'
+  return code === 'ENOENT' || code === 'ENOTDIR'
 }
 
 function parseJson(text: string): unknown {

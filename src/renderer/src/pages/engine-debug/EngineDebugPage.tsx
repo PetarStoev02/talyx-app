@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useEngine } from '@app/providers/useEngine'
 import { useLanguage } from '@app/providers/useLanguage'
 import { host } from '@shared/engine/host'
 import type { ConnectionState } from '@shared/engine/shared'
@@ -24,6 +25,7 @@ export function EngineDebugPage(): React.JSX.Element {
 
 function DebugConsole(): React.JSX.Element {
   const t = useLanguage((s) => s.t)
+  const stale = useEngine((s) => s.status?.state === 'attached' && s.status.stale)
   const [profiles, setProfiles] = useState<string[]>([])
   const [profile, setProfile] = useState('default')
   const [connection, setConnection] = useState<ConnectionState>('idle')
@@ -103,6 +105,7 @@ function DebugConsole(): React.JSX.Element {
           {connection}
         </span>
       </div>
+      {stale && <p className="text-sm text-foreground">{t('engine.stale')}</p>}
       <pre
         className="min-h-0 flex-1 overflow-auto rounded-lg bg-secondary p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap"
         data-testid="engine-log"

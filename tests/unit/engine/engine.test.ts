@@ -75,10 +75,22 @@ function engineWith(overrides: Partial<EngineDeps> & { ensure?: () => CliResult 
 }
 
 describe('engine command', () => {
-  it('should run only the chosen file when one is set', () => {
+  it('should try the chosen file first, then still look on PATH and in the user bin', () => {
     expect(engineCandidates('/opt/engine/bin/cli', 'darwin', '/home/u')).toEqual([
-      '/opt/engine/bin/cli'
+      '/opt/engine/bin/cli',
+      'talyx-engine',
+      '/home/u/.local/bin/talyx-engine'
     ])
+  })
+
+  it('should explain a command that exists but cannot run, instead of calling it missing', async () => {
+    const run = vi.fn(async () => {
+      throw Object.assign(new Error('spawn EACCES'), { code: 'EACCES' })
+    })
+    expect(await engineWith({ run }).engine.status()).toEqual({
+      state: 'error',
+      message: 'spawn EACCES'
+    })
   })
 
   it.each([
@@ -135,6 +147,15 @@ describe('engine version and wire strings', () => {
 })
 
 describe('engine status', () => {
+  it('should say Windows cannot attach yet instead of opening a gate it cannot serve', async () => {
+    const { engine, run } = engineWith({ platform: 'win32' })
+    expect(await engine.status()).toEqual({
+      state: 'error',
+      message: 'Talyx cannot attach to the engine on Windows yet'
+    })
+    expect(run).not.toHaveBeenCalled()
+  })
+
   it('should report missing when no candidate runs', async () => {
     const run = vi.fn(async () => {
       throw notFound()
@@ -250,6 +271,28 @@ describe('tickets and REST', () => {
     rmSync(root, { recursive: true, force: true })
   })
 
+  it('should send a request to the gateway that answered the re-ensure, not the old port', async () => {
+    let ensures = 0
+    const fetchFn = vi.fn(async () => new Response('[]', { status: 200 }))
+    const mintTicket = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Gateway ticket control socket missing'))
+      .mockResolvedValueOnce('fresh')
+    const { engine } = engineWith({
+      fetch: fetchFn as unknown as typeof fetch,
+      mintTicket,
+      ensure: () =>
+        ensureOutput(
+          endpointFixture({
+            api_origin: ++ensures === 1 ? 'http://127.0.0.1:4567' : 'http://127.0.0.1:5678'
+          })
+        )
+    })
+    await engine.http({ path: '/api/cron/jobs?profile=default' })
+    const [url] = fetchFn.mock.calls[0] as unknown as [URL]
+    expect(url.toString()).toBe('http://127.0.0.1:5678/api/cron/jobs?profile=default')
+  })
+
   it('should raise the gateway detail of a failed request', async () => {
     const fetchFn = vi.fn(async () => new Response('{"detail":"Profile busy"}', { status: 409 }))
     const { engine } = engineWith({ fetch: fetchFn as unknown as typeof fetch })
@@ -310,6 +353,22 @@ describe('control socket ticket', () => {
     await expect(
       mintLocalGatewayTicket(endpointFixture({ profile_id: home }), 'interactive')
     ).rejects.toThrow('Invalid gateway ticket response')
+  })
+
+  it('should refuse a control socket other users can open', async () => {
+    const home = await homeAnswering(() => ({}))
+    chmodSync(join(home, 'gateway.sock'), 0o666)
+    await expect(
+      mintLocalGatewayTicket(endpointFixture({ profile_id: home }), 'interactive')
+    ).rejects.toThrow('is accessible to other users')
+  })
+
+  it('should refuse a profile home other users can write to', async () => {
+    const home = await homeAnswering(() => ({}))
+    chmodSync(home, 0o775)
+    await expect(
+      mintLocalGatewayTicket(endpointFixture({ profile_id: home }), 'interactive')
+    ).rejects.toThrow('is writable by other users')
   })
 
   it('should treat a missing control socket as a stopped gateway', async () => {

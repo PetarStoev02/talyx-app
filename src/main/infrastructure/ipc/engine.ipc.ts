@@ -19,8 +19,11 @@ const sockets = new EngineSockets(engine)
 interface Sender {
   send: (channel: string, ...args: unknown[]) => void
   isDestroyed: () => boolean
-  once?: (event: 'destroyed' | 'did-navigate', listener: () => void) => void
+  on?: (event: 'destroyed' | 'did-navigate', listener: () => void) => void
 }
+
+/** Open sockets per page, so a reload or a closed window closes exactly that page's sockets. */
+const ownedSockets = new WeakMap<Sender, Set<string>>()
 
 export function registerEngineIpc(): void {
   ipcMain.handle('engine:status', (): Promise<EngineStatus> => engine.status())
@@ -47,9 +50,7 @@ export function registerEngineIpc(): void {
       const id = validateInput(EngineSocketIdSchema, rawId)
       const sender = event.sender as Sender
       await sockets.open(id, validateInput(ProfileNameSchema, rawProfile), senderSink(sender))
-      // A reload or a closed window leaves no page to read the socket: close it with the page.
-      sender.once?.('did-navigate', () => sockets.close(id))
-      sender.once?.('destroyed', () => sockets.close(id))
+      ownedBy(sender).add(id)
     }
   )
 
@@ -70,8 +71,27 @@ export function closeEngineSockets(): void {
   sockets.closeAll()
 }
 
+/** The page's socket ids; a reload or a closed window leaves no page to read them, so they close. */
+function ownedBy(sender: Sender): Set<string> {
+  let ids = ownedSockets.get(sender)
+  if (!ids) {
+    const owned = new Set<string>()
+    const closeOwned = (): void => {
+      for (const id of owned) sockets.close(id)
+      owned.clear()
+    }
+    // Once per page, not per socket: every redial would otherwise add two more listeners.
+    sender.on?.('did-navigate', closeOwned)
+    sender.on?.('destroyed', closeOwned)
+    ownedSockets.set(sender, owned)
+    ids = owned
+  }
+  return ids
+}
+
 function senderSink(sender: Sender): SocketEventSink {
   return (channel, ...args) => {
+    if (channel === 'engine:socket-closed') ownedSockets.get(sender)?.delete(args[0] as string)
     if (!sender.isDestroyed()) sender.send(channel, ...args)
   }
 }
