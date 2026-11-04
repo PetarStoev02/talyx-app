@@ -1,4 +1,6 @@
+import type { ModelPick } from '@shared/ui/ModelPicker'
 import { useRooms } from './roomStore'
+import { changeModel, resumeForChange } from './sessionModel'
 import type { MemberPhase, RoomAttachment, RoomEvent, RoomTask, RoomView } from './types'
 
 // The engine's own page cap for `groups.log`.
@@ -27,6 +29,21 @@ export interface RoomActions {
     image: { dataUrl: string; name: string; mime: string }
   ) => Promise<RoomAttachment>
   image: (roomId: string, file: { eventId: string; attachmentId: string }) => Promise<string>
+  /** Read which model the members' room sessions run on. */
+  readModel: (roomId: string, members: RoomMember[]) => Promise<void>
+  /** Switch every idle member's room session to one model; the rest keep theirs for now. */
+  setModel: (roomId: string, members: RoomMember[], choice: ModelPick) => Promise<ModelSwitch>
+}
+
+export interface RoomMember {
+  profile: string
+  member_id?: string
+}
+
+/** Members by profile: switched, or skipped (answering, waiting on you, or not answered here yet). */
+export interface ModelSwitch {
+  switched: string[]
+  skipped: string[]
 }
 
 interface DriverStatus {
@@ -124,6 +141,60 @@ export function roomActions(backend: RoomBackend): RoomActions {
     await refresh(roomId)
   }
 
+  // A member's session in this room lives in the member's own profile, titled after the room.
+  async function memberSession(roomId: string, member: RoomMember): Promise<string | null> {
+    const { sessions } = (await backend.request(member.profile, 'session.list', {
+      title: `Group: ${roomId}`,
+      include_hidden: true,
+      limit: 1
+    })) as { sessions: { id: string; resolved_id?: string | null }[] }
+    return sessions[0] ? sessions[0].resolved_id || sessions[0].id : null
+  }
+
+  async function readModel(roomId: string, members: RoomMember[]): Promise<RoomView['model']> {
+    const models: ModelPick[] = []
+    for (const member of members) {
+      const sessionId = await memberSession(roomId, member)
+      if (!sessionId) continue
+      const info = (await backend.request(member.profile, 'session.info', {
+        session_id: sessionId
+      })) as { model?: string | null; provider?: string | null }
+      models.push({ model: info.model ?? '', provider: info.provider ?? '' })
+    }
+    if (!models.length) return null
+    const [first] = models
+    const same = models.every(
+      (item) => item.model === first.model && item.provider === first.provider
+    )
+    return same ? first : 'mixed'
+  }
+
+  // A member that is answering or waiting on you keeps its model: switching would fence its turn.
+  async function switchMember(
+    roomId: string,
+    member: RoomMember,
+    choice: ModelPick
+  ): Promise<boolean> {
+    const view = viewOf(roomId)
+    const id = member.member_id ?? member.profile
+    if (view?.phases[id] || view?.tasks.some((task) => task.member_id === id)) return false
+    const sessionId = await memberSession(roomId, member)
+    if (!sessionId) return false
+    const target = { profile: member.profile, sessionId }
+    const fence = await resumeForChange(backend.request, target)
+    try {
+      await changeModel(backend.request, { ...target, fence }, choice)
+    } finally {
+      // The room's driver runs this session; this window opened it only to change it.
+      if (fence.subscription)
+        await backend.request(member.profile, 'session.detach', {
+          session_id: sessionId,
+          subscription_id: fence.subscription
+        })
+    }
+    return true
+  }
+
   return {
     refresh,
 
@@ -192,6 +263,30 @@ export function roomActions(backend: RoomBackend): RoomActions {
         mime: stored.mime,
         size: stored.size
       }
+    },
+
+    readModel: async (roomId, members) => {
+      try {
+        update(roomId, { model: await readModel(roomId, members) })
+      } catch (error) {
+        update(roomId, { error: messageOf(error) })
+      }
+    },
+
+    setModel: async (roomId, members, choice) => {
+      const result: ModelSwitch = { switched: [], skipped: [] }
+      let failure: string | null = null
+      for (const member of members) {
+        try {
+          const switched = await switchMember(roomId, member, choice)
+          result[switched ? 'switched' : 'skipped'].push(member.profile)
+        } catch (error) {
+          failure = messageOf(error)
+          result.skipped.push(member.profile)
+        }
+      }
+      update(roomId, { actionError: failure, model: await readModel(roomId, members) })
+      return result
     },
 
     image: async (roomId, { eventId, attachmentId }) => {

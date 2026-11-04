@@ -9,7 +9,7 @@ import {
 import { useRooms } from '../../../src/renderer/src/features/chat/roomStore'
 import type { RoomEvent, RoomView } from '../../../src/renderer/src/features/chat/types'
 import { t } from '../../../src/renderer/src/shared/lib/i18n'
-import { ROOM, roomDouble } from './roomDouble'
+import { ROOM, memberSession, roomDouble } from './roomDouble'
 import type { RoomDouble } from './roomDouble'
 
 const NAMES: Record<string, string> = {
@@ -261,6 +261,78 @@ describe('group room', () => {
       await actions.refresh(ROOM)
       expect(view().tasks).toEqual([])
     })
+  })
+})
+
+describe('room model', () => {
+  const MEMBERS = [{ profile: 'default' }, { profile: 'acme-cfo' }, { profile: 'acme-new' }]
+  const PICK = { model: '9-route-provider', provider: 'custom' }
+
+  beforeEach(() => {
+    engine.memberSessions.default = memberSession('default', 'team-manager')
+    engine.memberSessions['acme-cfo'] = memberSession('acme-cfo', 'team-advisor')
+  })
+
+  it('should read the model every member runs on, or say they differ', async () => {
+    await actions.readModel(ROOM, MEMBERS)
+    expect(view().model).toBe('mixed')
+    engine.memberSessions.default.model = 'team-advisor'
+    await actions.readModel(ROOM, MEMBERS)
+    expect(view().model).toEqual({ model: 'team-advisor', provider: 'custom' })
+  })
+
+  it('should have no model to show before any member has answered', async () => {
+    engine.memberSessions = {}
+    await actions.readModel(ROOM, MEMBERS)
+    expect(view().model).toBeNull()
+  })
+
+  it("should switch every idle member's room session and let go of it", async () => {
+    await actions.refresh(ROOM)
+    const result = await actions.setModel(ROOM, MEMBERS, PICK)
+    expect(result).toEqual({ switched: ['default', 'acme-cfo'], skipped: ['acme-new'] })
+    expect(engine.memberSessions.default).toMatchObject({ model: '9-route-provider', revision: 4 })
+    const mutate = engine.calls.find(
+      (item) => item.method === 'session.mutate' && item.profile === 'acme-cfo'
+    )
+    expect(mutate?.params).toMatchObject({
+      session_id: 'acme-cfo-room-session',
+      expected_revision: 3,
+      expected_generation: 2,
+      operation: 'model',
+      payload: PICK
+    })
+    const detached = engine.calls.filter((item) => item.method === 'session.detach')
+    expect(detached.map((item) => item.params)).toEqual([
+      { session_id: 'default-room-session', subscription_id: 'sub-default-room-session' },
+      { session_id: 'acme-cfo-room-session', subscription_id: 'sub-acme-cfo-room-session' }
+    ])
+    expect(view().model).toEqual(PICK)
+  })
+
+  it('should leave alone a member that is answering or waiting on you', async () => {
+    engine.driver!.member_activity = [{ member_id: 'acme-cfo', status: 'running' }]
+    engine.driver!.pending_actions = [
+      { kind: 'retry', member_id: 'default', task_id: 't', execution_generation: 1 }
+    ]
+    await actions.refresh(ROOM)
+    const result = await actions.setModel(ROOM, MEMBERS, PICK)
+    expect(result.switched).toEqual([])
+    expect(result.skipped).toEqual(['default', 'acme-cfo', 'acme-new'])
+    expect(engine.calls.map((item) => item.method)).not.toContain('session.resume')
+  })
+
+  it('should show why a member could not be switched and still switch the others', async () => {
+    await actions.refresh(ROOM)
+    engine.failNext('session.mutate', 'stale_revision')
+    const result = await actions.setModel(ROOM, MEMBERS, PICK)
+    expect(result.switched).toEqual(['acme-cfo'])
+    expect(result.skipped).toEqual(['default', 'acme-new'])
+    expect(view().actionError).toBe('stale_revision')
+    // A failed switch still lets go of the session it opened.
+    expect(
+      engine.calls.filter((item) => item.method === 'session.detach').map((item) => item.profile)
+    ).toEqual(['default', 'acme-cfo'])
   })
 })
 

@@ -95,6 +95,9 @@ export const host = {
     if (OPENING_METHODS.has(method) && typeof sessionId === 'string') {
       openSessions.set(JSON.stringify([profile, sessionId]), { profile, sessionId })
     }
+    // A session this window let go of is not subscribed again after a redial.
+    if (method === 'session.detach')
+      openSessions.delete(JSON.stringify([profile, params.session_id]))
     return result
   },
 

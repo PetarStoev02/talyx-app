@@ -9,6 +9,7 @@ interface RoomStore {
 
 const blank = (): RoomView => ({
   events: [],
+  model: null,
   lastSeq: 0,
   live: false,
   working: false,

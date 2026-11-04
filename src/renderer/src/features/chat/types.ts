@@ -1,3 +1,5 @@
+import type { ModelPick } from '@shared/ui/ModelPicker'
+
 export type ChatItem =
   | { kind: 'user'; id: string; text: string; images: string[] }
   | {
@@ -89,6 +91,9 @@ export type MemberPhase = 'queued' | 'working'
 
 export interface RoomView {
   events: RoomEvent[]
+  // The model every member's room session runs on, 'mixed' when they differ, null before any
+  // member has answered here (a member's session starts on its own bot's model).
+  model: ModelPick | 'mixed' | null
   // The last log seq read, so a poll asks only for what came after it.
   lastSeq: number
   // The engine runs the room's members; without it the room can be read, not sent to.

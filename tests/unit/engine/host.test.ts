@@ -78,4 +78,23 @@ describe('engine host', () => {
     expect(sent.filter((frame) => frame.method === 'session.resume')).toHaveLength(2)
     host.disconnect()
   })
+
+  it('should not subscribe a detached session again after a redial', async () => {
+    const { sent, opened, dropAll } = installFakeEngineApi((frame) =>
+      frame.method === 'session.resume'
+        ? { session_id: 's', revision: 1, execution_generation: 1, subscription_id: 'sub' }
+        : {}
+    )
+    const { host } = await import('@shared/engine/host')
+    await host.connect()
+    await host.request('cfo', 'session.resume', { session_id: 's' })
+    await host.request('cfo', 'session.detach', { session_id: 's', subscription_id: 'sub' })
+
+    dropAll()
+
+    await vi.waitFor(() => expect(opened).toHaveLength(2), { timeout: 3000 })
+    await host.request('cfo', 'profiles.list', {})
+    expect(sent.filter((frame) => frame.method === 'session.resume')).toHaveLength(1)
+    host.disconnect()
+  })
 })

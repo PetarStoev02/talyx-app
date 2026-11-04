@@ -4,6 +4,7 @@ import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot, Room } from '@features/bots/types'
+import type { ChatActions } from '@features/chat/chat'
 import type { RoomActions } from '@features/chat/room'
 import { parseAttachmentKey, roomItems } from '@features/chat/roomLog'
 import { useRooms } from '@features/chat/roomStore'
@@ -11,29 +12,38 @@ import type { RoomTask, RoomView } from '@features/chat/types'
 import { useRoomPolling } from '@features/chat/useRoomPolling'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { ApprovalCard } from './ApprovalCard'
-import { Composer } from './Composer'
+import { toast } from 'sonner'
+import { ModelPicker } from '@shared/ui/ModelPicker'
+import { Chip, Composer } from './Composer'
 import type { ComposerTarget } from './Composer'
 import { Transcript } from './Transcript'
 
-type Transcribe = (audio: { dataUrl: string; mime: string }) => Promise<string>
-
-/** A hosted room: its log with who is answering below, then a composer without model chips. */
+/** A hosted room: its log with who is answering below, then a composer with the room's model. */
 export function RoomPane({
   room,
   actions,
-  transcribe
+  chat
 }: {
   room: Room
   actions: RoomActions | null
-  // Dictation runs through Talyx's own profile; a room has none.
-  transcribe: Transcribe | null
+  // Dictation and the model list run through Talyx's own profile; a room has none.
+  chat: ChatActions | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const bots = useRoster((state) => state.snapshot.bots)
   const view = useRooms((state) => state.rooms[room.room_id])
   const roomId = room.room_id
   const lastSeq = view?.lastSeq ?? 0
+  const working = view?.working ?? false
+  const memberKey = room.members.map((member) => member.profile).join(',')
   useRoomPolling(actions, roomId)
+
+  // Read on open and after each round: a member's room session exists from its first answer on.
+  useEffect(() => {
+    if (!actions || working) return
+    const members = memberKey.split(',').map((profile) => ({ profile }))
+    void actions.readModel(roomId, members)
+  }, [actions, roomId, memberKey, working])
 
   // What you read here must not come back as unread once you leave.
   useEffect(() => {
@@ -54,7 +64,7 @@ export function RoomPane({
     [actions, roomId]
   )
 
-  if (!actions || !transcribe || !view || (view.loading && !view.events.length))
+  if (!actions || !chat || !view || (view.loading && !view.events.length))
     return <p className="m-auto text-base text-muted-foreground">{t('chat.loading')}</p>
 
   const target: ComposerTarget = {
@@ -79,7 +89,7 @@ export function RoomPane({
       })
       return { id: stored.attachment_id, name: stored.name, mime: stored.mime, size: stored.size }
     },
-    transcribe,
+    transcribe: (audio) => chat.transcribe('default', audio),
     stop: () => void actions.stop(roomId)
   }
 
@@ -126,11 +136,50 @@ export function RoomPane({
         </p>
       )}
       {view.live ? (
-        <Composer target={target} />
+        <Composer target={target}>
+          <RoomModelMenu room={room} view={view} actions={actions} chat={chat} nameOf={nameOf} />
+        </Composer>
       ) : (
         <p className="mx-auto w-full max-w-3xl px-6 pb-6 text-base">{t('rooms.readOnly')}</p>
       )}
     </>
+  )
+}
+
+// One model for the whole room: every idle member's room session switches to it.
+function RoomModelMenu({
+  room,
+  view,
+  actions,
+  chat,
+  nameOf
+}: {
+  room: Room
+  view: RoomView
+  actions: RoomActions
+  chat: ChatActions
+  nameOf: (member: string) => string
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const value =
+    view.model === 'mixed' ? t('rooms.modelMixed') : (view.model?.model ?? t('rooms.modelOwn'))
+
+  async function switchAll(choice: { model: string; provider: string }): Promise<void> {
+    const { skipped } = await actions.setModel(room.room_id, room.members, choice)
+    if (skipped.length)
+      toast(t('rooms.modelSkipped').replace('{names}', skipped.map(nameOf).join(', ')))
+  }
+
+  return (
+    <ModelPicker
+      load={() => chat.models('default')}
+      selected={view.model === 'mixed' ? null : view.model}
+      onSelect={(choice) => void switchAll(choice)}
+      loadingLabel={t('chat.modelsLoading')}
+    >
+      {/* Before any member has answered there is no room session to switch. */}
+      <Chip label={t('chat.model')} value={value} disabled={view.model === null} />
+    </ModelPicker>
   )
 }
 

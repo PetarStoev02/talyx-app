@@ -5,7 +5,7 @@ import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { useEngine } from '../../../src/renderer/src/app/providers/useEngine'
 import type { RosterRequest } from '../../../src/renderer/src/features/bots/data'
 import { fixtureChat } from './fixtureChat'
-import { roomRequest } from './fixtureRooms'
+import { roomRequest, roomSessionRequest } from './fixtureRooms'
 import './fixture.css'
 
 // Deliberately in-memory: this fixture never connects to or modifies user profiles.
@@ -172,6 +172,8 @@ const request: RosterRequest = async (profile, method, params) => {
   if (method === 'profiles.create') return createProfile(params)
   if (method === 'cron.manage') return manageCron(profile, params)
   if (method.startsWith('groups.')) return roomRequest(method, params)
+  const roomSession = method.startsWith('session.') && roomSessionRequest(profile, method, params)
+  if (roomSession) return roomSession
   throw new Error('Unsupported fixture operation')
 }
 async function deleteProfile(profile: string): Promise<void> {

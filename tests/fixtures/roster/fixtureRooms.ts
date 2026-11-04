@@ -209,7 +209,45 @@ function answer(room: FixtureRoom, text: string): void {
   )
 }
 
+// Each member's session in a room, by profile and room, from its first answer on. Analyst runs on
+// another model than the rest of Team discussion, so the room's model chip reads "Mixed models".
+const memberSessions = new Map<string, { model: string; revision: number }>([
+  ['default:team-room', { model: '9-route-provider', revision: 1 }],
+  ['analyst:team-room', { model: 'paid-model', revision: 1 }],
+  ['writer:team-room', { model: '9-route-provider', revision: 1 }]
+])
+
+/** `session.*` for members' room sessions (`Group: <room>`); null for any other session. */
+export function roomSessionRequest(
+  profile: string,
+  method: string,
+  params: Record<string, unknown>
+): unknown {
+  const title = typeof params.title === 'string' ? params.title : ''
+  const id = String(params.session_id ?? '')
+  const roomId = title.startsWith('Group: ') ? title.slice(7) : id.split('/')[1]
+  const session = roomId ? memberSessions.get(`${profile}:${roomId}`) : undefined
+  if (method === 'session.list' && title.startsWith('Group: '))
+    return { sessions: session ? [{ id: `${profile}/${roomId}` }] : [] }
+  if (!session || !id.includes('/')) return null
+  if (method === 'session.info') return { model: session.model, provider: 'custom' }
+  if (method === 'session.resume')
+    return { revision: session.revision, execution_generation: 1, subscription_id: `sub-${id}` }
+  if (method === 'session.mutate') {
+    session.model = (params.payload as { model: string }).model
+    session.revision++
+    return { revision: session.revision }
+  }
+  if (method === 'session.detach') return { detached: true }
+  return null
+}
+
 function reply(room: FixtureRoom, from: Member, text: string): void {
+  if (!memberSessions.has(`${from.profile}:${room.room_id}`))
+    memberSessions.set(`${from.profile}:${room.room_id}`, {
+      model: '9-route-provider',
+      revision: 1
+    })
   append(room, 'message.member', from.member_id, { text, member_id: from.member_id })
   append(room, 'turn.settled', 'gateway', { member_id: from.member_id })
 }

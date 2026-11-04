@@ -244,7 +244,12 @@ function ModelMenu({
       onSelect={(pick) => void actions.setModel(chat.profile, pick)}
       loadingLabel={t('chat.modelsLoading')}
     >
-      <Chip chat={chat} label={t('chat.model')} value={chat.info.model ?? t('chat.modelDefault')} />
+      {/* A chat with no session yet uses the bot's own model; it can change after the first send. */}
+      <Chip
+        label={t('chat.model')}
+        value={chat.info.model ?? t('chat.modelDefault')}
+        disabled={!chat.sessionId}
+      />
     </ModelPicker>
   )
 }
@@ -261,9 +266,9 @@ function ReasoningMenu({
   return (
     <DropdownMenu.Root>
       <Chip
-        chat={chat}
         label={t('chat.reasoning')}
         value={current ? t(current[1]) : t('chat.reasoning')}
+        disabled={!chat.sessionId}
       />
       <DropdownMenu.Portal>
         <DropdownMenu.Content
@@ -284,19 +289,19 @@ function ReasoningMenu({
   )
 }
 
-// A chat with no session yet uses the bot's own model; it can be changed after the first send.
-function Chip({
-  chat,
+/** A composer chip that opens a menu; the bot chat's model and reasoning, a room's model. */
+export function Chip({
   label,
-  value
+  value,
+  disabled
 }: {
-  chat: ChatState
   label: string
   value: string
+  disabled: boolean
 }): React.JSX.Element {
   return (
     <DropdownMenu.Trigger
-      disabled={!chat.sessionId}
+      disabled={disabled}
       aria-label={`${label}: ${value}`}
       className="flex max-w-48 items-center gap-1 rounded-full px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50 disabled:hover:bg-transparent"
     >

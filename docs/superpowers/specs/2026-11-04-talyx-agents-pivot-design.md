@@ -115,7 +115,12 @@ Petar is the main user of Talyx. He will use it more after the pivot than before
    room polls `groups.state` and `groups.log` every 2 s; who is answering shows in the open room
    only; a pinned room leads its folder (`talyx-room-pins` in the default profile's `ui_meta`);
    member approvals, Retry and Discard are answered in the room; rooms take images only. Talyx's
-   handle in a room Talyx creates is `talyx`.
+   handle in a room Talyx creates is `talyx`. Revised 2026-11-04 (Petar): the room composer has a
+   model chip after all. The engine has no room-wide model; each member answers through its own
+   room session (`Group: <room id>` in its profile), whose model is frozen when it is created. The
+   chip switches every idle member's session with `session.mutate` (the engine refuses a model
+   through `config.set`), skips one that is answering or waiting on you, and is off until a member
+   has answered there.
 7. **Folders are stored in the backend**, in the default profile's `ui_meta` (my call: key
    `talyx-folders`, same shape as today's `bot-sections-v1` record), so every machine sees the
    same layout. Bot membership stays in each bot's `ui_meta['talyx-bots'].sectionId` as today.

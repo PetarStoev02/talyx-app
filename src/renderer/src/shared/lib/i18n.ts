@@ -61,6 +61,10 @@ const en = {
   'rooms.placeholder': 'Message the room · @ to address one bot',
   'rooms.empty': 'Say something to the room. Each bot answers in turn.',
   'rooms.working': 'Answering: {names}',
+  'rooms.modelOwn': 'Each bot’s own model',
+  'rooms.modelMixed': 'Mixed models',
+  'rooms.modelSkipped':
+    'Not switched: {names}. They are answering, waiting on you, or have not spoken here yet.',
   'rooms.queued': 'Up next: {names}',
   'rooms.readOnly':
     'The engine is not running rooms right now. You can read this one, but not send to it.',
