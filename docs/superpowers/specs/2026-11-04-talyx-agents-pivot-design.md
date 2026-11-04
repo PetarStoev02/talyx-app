@@ -120,6 +120,11 @@ Petar is the main user of Talyx. He will use it more after the pivot than before
    visual restyled to Talyx. **Voice is dictation only** (Petar's decision): the mic button
    transcribes into the composer through the gateway's `/api/audio/transcribe-stream`. The
    old desktop's voice-conversation mode (wake word, spoken replies, engine picker) is not moved.
+   Revised for PR 4 (Petar's decisions, 2026-11-04): the composer is written new, with the old
+   desktop's composer only as a reference (its queue, slash commands and popout are not moved),
+   and dictation in 1.0 is one-shot through `POST /api/audio/transcribe` (the text lands when
+   recording stops); streaming through `/api/audio/transcribe-stream` comes later. Editing a sent
+   message is not in 1.0; a rewind from another client rebuilds the transcript.
 10. **Avatars: Blocks** (decided 2026-11-04; fallback: Tiles).
     Every bot is an isometric block drawn from the Talyx mark: one of 6 voxel shapes (cube,
     tall, slab, stair, twin, tower; Petar dropped corner and pile on 2026-11-04) in one of 12 hues, three flat lightness steps
