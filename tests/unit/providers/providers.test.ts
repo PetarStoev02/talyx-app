@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   ProvidersError,
   canRemoveEndpoint,
+  confirmDefaultModel,
   cancelSignIn,
   checkEndpoint,
   checkKey,
@@ -134,6 +135,21 @@ describe('providers', () => {
       for (const profile of Object.values(engine.profiles)) expect(profile.env).toEqual({})
     })
 
+    it('should count a bot that never had the key as done when the key is removed', async () => {
+      engine.profiles[HOME].env.OPENAI_API_KEY = 'sk-only-talyx'
+
+      expect(await removeKey(engine.backend, 'OPENAI_API_KEY')).toEqual([])
+      expect(engine.profiles[HOME].env).toEqual({})
+    })
+
+    it('should name a bot that still has the key after a failed removal', async () => {
+      await saveKey(engine.backend, { key: 'OPENAI_API_KEY', value: 'sk-new' })
+      engine.failOn('writer')
+
+      expect(await removeKey(engine.backend, 'OPENAI_API_KEY')).toEqual(['writer'])
+      expect(engine.profiles.writer.env.OPENAI_API_KEY).toBe('sk-new')
+    })
+
     it.each([
       ['sk-good', { verdict: 'works', message: '' }],
       ['bad', { verdict: 'rejected', message: 'Key rejected' }],
@@ -222,6 +238,13 @@ describe('providers', () => {
       expect(engine.writes).toEqual(['default POST /api/providers/custom-endpoints/validate'])
     })
 
+    it('should remove an endpoint only Talyx has without naming the other bots', async () => {
+      engine.profiles[HOME].endpoints.push({ ...ROUTER, id: 'local', source: 'providers' })
+
+      expect(await removeEndpoint(engine.backend, 'local')).toEqual([])
+      expect(engine.profiles[HOME].endpoints.map((endpoint) => endpoint.id)).toEqual(['custom'])
+    })
+
     it('should remove a listed endpoint from every bot', async () => {
       await saveEndpoint(engine.backend, { ...routerDraft(), editing: null, name: 'Local' })
 
@@ -241,17 +264,29 @@ describe('providers', () => {
 
   describe('default model', () => {
     it("should set Talyx's model and leave every other bot on its own", async () => {
-      await setDefaultModel(engine.backend, { provider: 'anthropic', model: 'claude-haiku' })
+      expect(
+        await setDefaultModel(engine.backend, { provider: 'anthropic', model: 'claude-haiku' })
+      ).toBeNull()
 
-      expect(engine.profiles[HOME].model).toMatchObject({
-        provider: 'anthropic',
-        model: 'claude-haiku',
-        scope: 'main'
-      })
+      expect(engine.profiles[HOME].model).toEqual({ provider: 'anthropic', model: 'claude-haiku' })
+      expect(engine.bodies['POST /api/model/set']).toMatchObject({ scope: 'main' })
       expect(engine.profiles.analyst.model).toEqual({
         provider: 'custom',
         model: '9-route-provider'
       })
+    })
+
+    it('should ask before a costly model and set it only after a yes', async () => {
+      const pick = { provider: 'custom', model: 'paid-model' }
+
+      expect(await setDefaultModel(engine.backend, pick)).toEqual({
+        message: 'paid-model costs more.',
+        model: pick
+      })
+      expect(engine.profiles[HOME].model.model).toBe('9-route-provider')
+
+      await confirmDefaultModel(engine.backend, pick)
+      expect(engine.profiles[HOME].model).toEqual(pick)
     })
   })
 

@@ -50,6 +50,7 @@ export function ProvidersSection({
   const [removing, setRemoving] = useState<Removal | null>(null)
   const [revealed, setRevealed] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
+  const [loads, setLoads] = useState(0)
 
   const load = useCallback(
     (): Promise<void> =>
@@ -57,6 +58,9 @@ export function ProvidersSection({
         (next) => {
           setOverview(next)
           setProblem(null)
+          // A revealed value may be stale now, and the model menu must load the new list.
+          setRevealed({})
+          setLoads((count) => count + 1)
         },
         (error: unknown) => setProblem(failureText(t, error))
       ),
@@ -234,6 +238,7 @@ export function ProvidersSection({
         </Dialog>
       </Card>
       <DefaultModelSection
+        key={loads}
         backend={backend}
         model={overview?.model ?? null}
         models={overview ? models : null}

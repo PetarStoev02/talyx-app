@@ -8,6 +8,8 @@ import type {
 } from '../../../src/renderer/src/shared/engine/types'
 
 export const HOME = 'default'
+// Models the engine asks about before making them a profile's main model.
+const COSTLY = new Set(['paid-model'])
 
 // The fields the routes below read; each route gets the ones it needs.
 interface Body {
@@ -22,6 +24,7 @@ interface Body {
   api_key?: string
   discover_models: boolean
   provider: string
+  confirm_expensive_model?: boolean
 }
 
 export interface ProfileConfig {
@@ -104,7 +107,10 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
     }
     if (path === '/api/env' && method === 'GET') return envOf(config)
     if (path === '/api/env' && method === 'PUT') return void (config.env[body.key] = body.value)
-    if (path === '/api/env' && method === 'DELETE') return void delete config.env[body.key]
+    if (path === '/api/env' && method === 'DELETE') {
+      if (!(body.key in config.env)) throw new Error(`HTTP 404: ${body.key} not found in .env`)
+      return void delete config.env[body.key]
+    }
     if (path === '/api/env/reveal') return { key: body.key, value: config.env[body.key] }
     if (path === '/api/providers/validate')
       return body.value === 'offline'
@@ -118,16 +124,18 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
       return { ok: true, reachable: true, message: '', models: ['a', 'b', 'c'] }
     if (path === '/api/providers/custom-endpoints') {
       const id = body.id ?? body.name.toLowerCase()
+      const existing = config.endpoints.find((e) => e.id === id)
       const saved: CustomEndpoint = {
         id,
         name: body.name,
         base_url: body.base_url,
         model: body.model,
-        models: body.models,
+        // The engine adds the listed models to the saved ones and never drops one.
+        models: [...new Set([...(existing?.models ?? []), ...body.models])],
         discover_models: body.discover_models,
         source: 'providers',
         // A save moves a config.yaml endpoint into the list, keeping only a key it is handed.
-        has_api_key: Boolean(body.api_key) || savedKey(config.endpoints.find((e) => e.id === id))
+        has_api_key: Boolean(body.api_key) || savedKey(existing)
       }
       config.endpoints = [...config.endpoints.filter((e) => e.id !== id), saved]
       return { endpoints: config.endpoints }
@@ -142,7 +150,12 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
       return { endpoints: config.endpoints }
     }
     if (path === '/api/model/info') return config.model
-    if (path === '/api/model/set') return void (config.model = { ...body })
+    if (path === '/api/model/set') {
+      if (COSTLY.has(body.model) && !body.confirm_expensive_model)
+        return { ok: false, confirm_required: true, confirm_message: `${body.model} costs more.` }
+      config.model = { provider: body.provider, model: body.model }
+      return { ok: true, provider: body.provider, model: body.model }
+    }
     if (path === '/api/providers/oauth') return { providers: accounts }
     if (path.endsWith('/start'))
       return path.includes('xai')

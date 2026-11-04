@@ -270,9 +270,13 @@ const en = {
   'providers.endpointModels': 'Models',
   'providers.endpointModelsHint':
     'One per line. Bots can pick only these; the first is the endpoint’s default.',
+  'providers.endpointModelsAdd': 'Models to add',
+  'providers.endpointModelsSaved':
+    'One per line. Saved already: {models}. A saved model cannot be removed here yet.',
   'providers.endpointHint': 'Any OpenAI-compatible server, such as a local router.',
   'providers.accountsAll': 'Every account is signed in.',
   'providers.signIn': 'Sign in',
+  'providers.signInStarting': 'Starting the sign-in…',
   'providers.signInWaiting': 'Approve the sign-in in your browser. This page updates by itself.',
   'providers.signInCode': 'Your code',
   'providers.signInOpen': 'Open the sign-in page',
@@ -289,6 +293,7 @@ const en = {
   'providers.errorEndpointIncomplete': 'An endpoint needs a name and a base URL.',
   'providers.errorEndpointNoModels': 'List at least one model.',
   'providers.errorEndpointKeyNeeded': 'Enter the endpoint’s key again before saving.',
+  'providers.errorModelNotSet': 'The engine did not change the model.',
   'providers.errorNotSignedOut': 'There was no sign-in to remove.',
   'providers.defaultTitle': 'Default model',
   'providers.defaultHint': 'Talyx’s model. New bots start with it; other bots keep their own.',

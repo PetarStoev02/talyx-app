@@ -46,6 +46,8 @@ export function SignIn({
   const [busy, setBusy] = useState(false)
   const done = useRef(onDone)
   done.current = onDone
+  // A pasted code finishes outside the effect; its session must not be cancelled on close.
+  const approved = useRef(false)
 
   // Unmounting (closing the dialog) ends the wait and drops the engine's sign-in session.
   useEffect(() => {
@@ -76,7 +78,7 @@ export function SignIn({
     run().catch((error: unknown) => finish({ status: 'failed', message: failureText(t, error) }))
     return () => {
       live = false
-      if (session) void cancelSignIn(backend, session).catch(() => undefined)
+      if (session && !approved.current) void cancelSignIn(backend, session).catch(() => undefined)
     }
   }, [backend, account.id, account.flow, t])
 
@@ -88,8 +90,10 @@ export function SignIn({
         sessionId,
         code
       })
-      if (result.status === 'approved') await onDone()
-      else if (result.status === 'failed') setStep({ kind: 'failed', message: result.message })
+      if (result.status === 'approved') {
+        approved.current = true
+        await onDone()
+      } else if (result.status === 'failed') setStep({ kind: 'failed', message: result.message })
     } catch (error) {
       setStep({ kind: 'failed', message: failureText(t, error) })
     } finally {
@@ -152,7 +156,7 @@ export function SignIn({
   if (step.kind === 'starting')
     return (
       <p role="status" className="text-base text-muted-foreground">
-        {t('providers.checking')}
+        {t('providers.signInStarting')}
       </p>
     )
 

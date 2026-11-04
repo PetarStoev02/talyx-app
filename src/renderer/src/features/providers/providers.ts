@@ -47,6 +47,12 @@ export interface ModelPick {
   model: string
 }
 
+/** The engine wants a yes before it makes this model Talyx's; nothing is saved yet. */
+export interface ModelConfirm {
+  message: string
+  model: ModelPick
+}
+
 export interface ProvidersOverview {
   keys: KeySlot[]
   endpoints: CustomEndpoint[]
@@ -132,7 +138,16 @@ export function saveKey(
 
 export function removeKey(backend: ProvidersBackend, key: string): Promise<string[]> {
   return onEveryBot(backend, (profile) =>
-    backend.http({ path: scoped('/api/env', profile), method: 'DELETE', body: { key }, profile })
+    removing(
+      backend.http({ path: scoped('/api/env', profile), method: 'DELETE', body: { key }, profile }),
+      async () => {
+        const env = await backend.http<Record<string, EnvVarInfo>>({
+          path: scoped('/api/env', profile),
+          profile
+        })
+        return env[key]?.is_set === true
+      }
+    )
   )
 }
 
@@ -180,15 +195,16 @@ export async function checkEndpoint(
   const { ok, message, models } = await backend.http<CustomEndpointValidationResponse>({
     path: scoped('/api/providers/custom-endpoints/validate', profile),
     method: 'POST',
-    body: { ...endpointBody(draft, null), model: draft.models[0] ?? '' },
+    body: { ...endpointBody(draft, null), model: draft.models[0]?.trim() ?? '' },
     profile
   })
   return { ok, message, models }
 }
 
 /**
- * Saves the endpoint with only the models listed, on every bot. It never changes a bot's model;
- * the default model picks one of them.
+ * Saves the endpoint on every bot. The engine adds the listed models to the ones it has and
+ * never drops one, so an edit can only add models. It never changes a bot's model; the default
+ * model picks one of them.
  */
 export function saveEndpoint(backend: ProvidersBackend, draft: EndpointDraft): Promise<string[]> {
   const models = [...new Set(draft.models.map((model) => model.trim()).filter(Boolean))]
@@ -223,23 +239,47 @@ export function canRemoveEndpoint(endpoint: CustomEndpoint): boolean {
 /** Removes the endpoint from every bot; a bot whose model it served falls back to its default. */
 export function removeEndpoint(backend: ProvidersBackend, id: string): Promise<string[]> {
   return onEveryBot(backend, (profile) =>
-    backend.http({
-      path: scoped(`/api/providers/custom-endpoints/${encodeURIComponent(id)}`, profile),
-      method: 'DELETE',
-      profile
-    })
+    removing(
+      backend.http({
+        path: scoped(`/api/providers/custom-endpoints/${encodeURIComponent(id)}`, profile),
+        method: 'DELETE',
+        profile
+      }),
+      async () => {
+        const { endpoints } = await backend.http<CustomEndpointsResponse>({
+          path: scoped('/api/providers/custom-endpoints', profile),
+          profile
+        })
+        return endpoints.some((endpoint) => endpoint.id === id)
+      }
+    )
   )
 }
 
-/** Talyx's model, which new bots copy. Other bots keep the model each one has. */
-export async function setDefaultModel(backend: ProvidersBackend, pick: ModelPick): Promise<void> {
-  const profile = backend.home
-  await backend.http({
-    path: scoped('/api/model/set', profile),
-    method: 'POST',
-    body: { scope: 'main', provider: pick.provider, model: pick.model },
-    profile
+/**
+ * Talyx's model, which new bots copy; other bots keep the model each one has. For a costly model
+ * the engine saves nothing and asks first: the question comes back, `confirmDefaultModel` answers.
+ */
+export async function setDefaultModel(
+  backend: ProvidersBackend,
+  pick: ModelPick
+): Promise<ModelConfirm | null> {
+  const result = await assignMainModel(backend, { scope: 'main', ...pick })
+  if (result.confirm_required) return { message: result.confirm_message ?? '', model: pick }
+  if (result.ok === false) throw new ProvidersError('providers.errorModelNotSet')
+  return null
+}
+
+export async function confirmDefaultModel(
+  backend: ProvidersBackend,
+  pick: ModelPick
+): Promise<void> {
+  const result = await assignMainModel(backend, {
+    scope: 'main',
+    ...pick,
+    confirm_expensive_model: true
   })
+  if (result.ok === false) throw new ProvidersError('providers.errorModelNotSet')
 }
 
 /** Opens a sign-in; the caller shows its code or page, then waits or submits. */
@@ -319,7 +359,7 @@ export async function disconnectAccount(backend: ProvidersBackend, id: string): 
 }
 
 /** Builds the provider key list from the engine's env catalog, one slot per provider. */
-export function keySlots(env: Record<string, EnvVarInfo>): KeySlot[] {
+function keySlots(env: Record<string, EnvVarInfo>): KeySlot[] {
   const byProvider = new Map<string, { key: string; info: EnvVarInfo; primary: boolean }[]>()
   for (const [key, info] of Object.entries(env)) {
     if (info.category !== 'provider') continue
@@ -345,6 +385,26 @@ export function keySlots(env: Record<string, EnvVarInfo>): KeySlot[] {
       entries[0]
     return { key, provider, docsUrl: info.url, preview: info.is_set ? preview(info) : null }
   })
+}
+
+// A bot that never had it refuses the removal; that bot is done all the same.
+async function removing(
+  remove: Promise<unknown>,
+  stillThere: () => Promise<boolean>
+): Promise<void> {
+  try {
+    await remove
+  } catch (error) {
+    if (await stillThere()) throw error
+  }
+}
+
+async function assignMainModel(
+  backend: ProvidersBackend,
+  body: Record<string, unknown>
+): Promise<{ ok?: boolean; confirm_required?: boolean; confirm_message?: string | null }> {
+  const profile = backend.home
+  return backend.http({ path: scoped('/api/model/set', profile), method: 'POST', body, profile })
 }
 
 // The home profile goes first: if it refuses the change, no bot gets it.

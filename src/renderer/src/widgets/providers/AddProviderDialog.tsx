@@ -234,10 +234,12 @@ function EndpointForm({
   const [name, setName] = useState(editing?.name ?? '')
   const [baseUrl, setBaseUrl] = useState(editing?.base_url ?? '')
   const [apiKey, setApiKey] = useState('')
-  const [models, setModels] = useState(editing?.models.join('\n') ?? '')
+  // An edit can only add models (the engine never drops one), so the field holds the new ones.
+  const [models, setModels] = useState('')
   const [note, setNote] = useState<string | null>(null)
   const [busy, setBusy] = useState<'check' | 'save' | null>(null)
-  const draft = { editing, name, baseUrl, apiKey, models: models.split(/[\n,]/) }
+  const typed = models.split(/[\n,]/)
+  const draft = { editing, name, baseUrl, apiKey, models: [...(editing?.models ?? []), ...typed] }
   const keyNeeded = keyMustBeRetyped(editing)
 
   async function check(): Promise<void> {
@@ -249,7 +251,7 @@ function EndpointForm({
           ? t('providers.checkModels').replace('{count}', String(result.models.length))
           : result.message
       )
-      if (result.ok && !models.trim() && result.models[0]) setModels(result.models[0])
+      if (result.ok && !editing && !models.trim() && result.models[0]) setModels(result.models[0])
     } catch (error) {
       setNote(failureText(t, error))
     } finally {
@@ -315,7 +317,7 @@ function EndpointForm({
         )}
       </label>
       <label className="block text-base">
-        {t('providers.endpointModels')}
+        {t(editing ? 'providers.endpointModelsAdd' : 'providers.endpointModels')}
         <textarea
           value={models}
           rows={3}
@@ -324,7 +326,9 @@ function EndpointForm({
           className={fieldClass}
         />
         <span className="mt-1 block text-sm text-muted-foreground">
-          {t('providers.endpointModelsHint')}
+          {editing
+            ? t('providers.endpointModelsSaved').replace('{models}', editing.models.join(', '))
+            : t('providers.endpointModelsHint')}
         </span>
       </label>
       <Note text={note} />
