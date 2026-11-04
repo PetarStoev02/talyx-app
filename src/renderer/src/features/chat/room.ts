@@ -59,7 +59,7 @@ export function roomActions(backend: RoomBackend): RoomActions {
     }
   }
 
-  // A failed stop or answer shows on the room until an action works; polls do not clear it.
+  // A failed stop, answer, retry or discard shows until an action works; polls do not clear it.
   const acting =
     <A extends unknown[]>(run: (roomId: string, ...args: A) => Promise<void>) =>
     async (roomId: string, ...args: A): Promise<void> => {
