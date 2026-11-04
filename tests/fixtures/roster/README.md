@@ -37,3 +37,7 @@ when a row is not full), Move to, Delete room with its name in the confirmation,
 composer, and the unread dot on a room that gets a reply while another one is open.
 
 Use the engine integration for final acceptance; this fixture does not prove gateway access.
+
+Room model: Team discussion starts on mixed models (Analyst runs on `paid-model`), so its model
+chip reads "Mixed models" and a pick switches every member. Clients discussion's chip is off until
+its bots have answered once.

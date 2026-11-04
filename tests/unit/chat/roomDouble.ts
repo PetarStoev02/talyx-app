@@ -22,7 +22,27 @@ export interface RoomDouble {
   // The next call to `method` is answered now but delivered only when the returned release runs,
   // as a reply already on its way when something else changes the room.
   holdNext: (method: string) => () => void
+  // Each member's session in this room, in the member's own profile; absent until it first answers.
+  memberSessions: Record<string, MemberSession>
+  // Models the engine asks to confirm before it switches to them (cost, data policy).
+  guarded: Set<string>
 }
+
+export interface MemberSession {
+  id: string
+  model: string
+  provider: string
+  revision: number
+  generation: number
+}
+
+export const memberSession = (profile: string, model = 'team-advisor'): MemberSession => ({
+  id: `${profile}-room-session`,
+  model,
+  provider: 'custom',
+  revision: 3,
+  generation: 2
+})
 
 export const ROOM = 'team-room'
 // The engine pages by bytes too; two rows a page makes paging show in small tests.
@@ -55,6 +75,8 @@ export function roomDouble(events: RoomEvent[] = []): RoomDouble {
     loseNextAnswer: () => {
       lostAnswer = true
     },
+    memberSessions: {},
+    guarded: new Set(),
     holdNext: (method) => {
       let release = (): void => undefined
       holds.set(method, new Promise((resolve) => (release = resolve)))
@@ -128,6 +150,46 @@ export function roomDouble(events: RoomEvent[] = []): RoomDouble {
         if (!file) throw new Error('Attachment not found')
         return file
       }
+      default:
+        return answerSession(profile, method, params)
+    }
+  }
+
+  // Member sessions are addressed in the member's profile; a room never owns them.
+  function answerSession(
+    profile: string,
+    method: string,
+    params: Record<string, unknown>
+  ): unknown {
+    const session = double.memberSessions[profile]
+    const owns = session?.id === params.session_id
+    switch (method) {
+      case 'session.list':
+        return {
+          sessions: session && params.title === `Group: ${ROOM}` ? [{ id: session.id }] : []
+        }
+      case 'session.info':
+        if (!owns) throw new Error('Session not found')
+        return { model: session.model, provider: session.provider }
+      case 'session.resume':
+        if (!owns) throw new Error('Session not found')
+        return {
+          session_id: session.id,
+          revision: session.revision,
+          execution_generation: session.generation,
+          subscription_id: `sub-${session.id}`
+        }
+      // The client turns a model `config.set` into the engine's fenced model mutation.
+      case 'config.set': {
+        if (!owns || params.key !== 'model') throw new Error('invalid_params')
+        const [model, provider] = String(params.value).split(' --provider ')
+        if (double.guarded.has(model))
+          return { confirm_required: true, confirm_message: `${model} costs more per turn.` }
+        Object.assign(session, { model, provider, revision: session.revision + 1 })
+        return { key: 'model', value: model }
+      }
+      case 'session.detach':
+        return { detached: owns }
       default:
         throw new Error(`Unexpected method ${method}`)
     }

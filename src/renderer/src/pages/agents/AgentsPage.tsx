@@ -75,12 +75,7 @@ export function AgentsPage({
               actions={chat}
             />
           ) : room ? (
-            <RoomPane
-              key={room.room_id}
-              room={room}
-              actions={rooms}
-              transcribe={chat && ((audio) => chat.transcribe('default', audio))}
-            />
+            <RoomPane key={room.room_id} room={room} actions={rooms} chat={chat} />
           ) : (
             <div className="grid flex-1 place-content-center justify-items-center gap-4 px-8 text-center">
               <TalyxLogo size={48} />

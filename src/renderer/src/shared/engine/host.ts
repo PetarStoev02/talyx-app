@@ -90,6 +90,10 @@ export const host = {
     method: string,
     params: Record<string, unknown> = {}
   ): Promise<T> {
+    // A session this window lets go of is not subscribed again after a redial, even when the
+    // socket drops before the detach is answered.
+    if (method === 'session.detach')
+      openSessions.delete(JSON.stringify([profile, params.session_id]))
     const result = await gateway.request<T>(method, { ...params, profile })
     const sessionId = (result as { session_id?: unknown } | null)?.session_id ?? params.session_id
     if (OPENING_METHODS.has(method) && typeof sessionId === 'string') {

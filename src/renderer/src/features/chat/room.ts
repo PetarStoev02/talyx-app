@@ -1,3 +1,4 @@
+import type { ModelPick } from '@shared/ui/ModelPicker'
 import { useRooms } from './roomStore'
 import type { MemberPhase, RoomAttachment, RoomEvent, RoomTask, RoomView } from './types'
 
@@ -27,6 +28,21 @@ export interface RoomActions {
     image: { dataUrl: string; name: string; mime: string }
   ) => Promise<RoomAttachment>
   image: (roomId: string, file: { eventId: string; attachmentId: string }) => Promise<string>
+  /** Read which model the members' room sessions run on. */
+  readModel: (roomId: string, members: RoomMember[]) => Promise<void>
+  /** Switch every idle member's room session to one model; the rest keep theirs for now. */
+  setModel: (roomId: string, members: RoomMember[], choice: ModelPick) => Promise<ModelSwitch>
+}
+
+export interface RoomMember {
+  profile: string
+  member_id?: string
+}
+
+/** Members by profile: switched, or skipped (answering, waiting on you, or not answered here yet). */
+export interface ModelSwitch {
+  switched: string[]
+  skipped: string[]
 }
 
 interface DriverStatus {
@@ -49,6 +65,8 @@ export function roomActions(backend: RoomBackend): RoomActions {
     backend.request('default', method, params) as Promise<T>
   // One read per room at a time: a send's refresh joins a poll already on its way.
   const reads = new Map<string, Promise<void>>()
+  // The newest model reading per room; an older one that answers later is dropped.
+  const modelReads = new Map<string, number>()
 
   // A failed read shows on the room instead of throwing into the view.
   async function guardedRead(roomId: string): Promise<void> {
@@ -124,6 +142,106 @@ export function roomActions(backend: RoomBackend): RoomActions {
     await refresh(roomId)
   }
 
+  // A member's session in this room lives in the member's own profile, titled after the room.
+  async function memberSession(roomId: string, member: RoomMember): Promise<string | null> {
+    const { sessions } = (await backend.request(member.profile, 'session.list', {
+      title: `Group: ${roomId}`,
+      include_hidden: true,
+      limit: 1
+    })) as { sessions: { id: string; resolved_id?: string | null }[] }
+    return sessions[0] ? sessions[0].resolved_id || sessions[0].id : null
+  }
+
+  // A member that cannot be read (a gone profile, a bot on another machine) is left out.
+  async function readMemberModel(roomId: string, member: RoomMember): Promise<string | null> {
+    try {
+      const sessionId = await memberSession(roomId, member)
+      if (!sessionId) return null
+      const info = (await backend.request(member.profile, 'session.info', {
+        session_id: sessionId
+      })) as { model?: string | null }
+      return info.model || null
+    } catch (error) {
+      console.warn(`Room ${roomId}: could not read ${member.profile}'s model`, messageOf(error))
+      return null
+    }
+  }
+
+  // Only the newest reading lands: one that answers after a later switch would show a stale model.
+  async function readModel(roomId: string, members: RoomMember[]): Promise<void> {
+    const token = (modelReads.get(roomId) ?? 0) + 1
+    modelReads.set(roomId, token)
+    const models: string[] = []
+    for (const member of members) {
+      const model = await readMemberModel(roomId, member)
+      if (model) models.push(model)
+    }
+    if (modelReads.get(roomId) !== token) return
+    // Model names only: a built session reports its runtime provider, a cold one the configured name.
+    update(roomId, { models: [...new Set(models)] })
+  }
+
+  // A member that is answering or waiting on you is skipped: the engine would hold the pick for
+  // its next turn, and a held pick that needs confirming would ask a window that has let go.
+  async function switchMember(
+    roomId: string,
+    member: RoomMember,
+    choice: ModelPick
+  ): Promise<{ switched: boolean; problem: string | null }> {
+    const view = viewOf(roomId)
+    const id = member.member_id ?? member.profile
+    if (view?.phases[id] || view?.tasks.some((task) => task.member_id === id))
+      return { switched: false, problem: null }
+    const found = await memberSession(roomId, member)
+    if (!found) return { switched: false, problem: null }
+    const { profile } = member
+    const opened = (await backend.request(profile, 'session.resume', {
+      session_id: found,
+      defer_history: true,
+      omit_messages: true
+    })) as { session_id?: string; subscription_id?: string }
+    const session = { profile, sessionId: opened.session_id ?? found }
+    const outcome = await changeModel(session, choice)
+    const problem = opened.subscription_id ? await letGo(session, opened.subscription_id) : null
+    return { switched: outcome.switched, problem: outcome.problem ?? problem }
+  }
+
+  // The engine client turns a model `config.set` into the engine's fenced model mutation, with
+  // its one retry and its confirmation answer for a costly or restricted model.
+  async function changeModel(
+    session: { profile: string; sessionId: string },
+    choice: ModelPick
+  ): Promise<{ switched: boolean; problem: string | null }> {
+    try {
+      const answer = (await backend.request(session.profile, 'config.set', {
+        session_id: session.sessionId,
+        key: 'model',
+        value: `${choice.model} --provider ${choice.provider}`
+      })) as { confirm_required?: boolean; confirm_message?: string }
+      return answer.confirm_required
+        ? { switched: false, problem: answer.confirm_message || 'confirm_required' }
+        : { switched: true, problem: null }
+    } catch (error) {
+      return { switched: false, problem: messageOf(error) }
+    }
+  }
+
+  // The room's driver runs this session; this window opened it only to change it.
+  async function letGo(
+    session: { profile: string; sessionId: string },
+    subscription: string
+  ): Promise<string | null> {
+    try {
+      await backend.request(session.profile, 'session.detach', {
+        session_id: session.sessionId,
+        subscription_id: subscription
+      })
+      return null
+    } catch (error) {
+      return messageOf(error)
+    }
+  }
+
   return {
     refresh,
 
@@ -192,6 +310,26 @@ export function roomActions(backend: RoomBackend): RoomActions {
         mime: stored.mime,
         size: stored.size
       }
+    },
+
+    readModel,
+
+    setModel: async (roomId, members, choice) => {
+      const result: ModelSwitch = { switched: [], skipped: [] }
+      let failure: string | null = null
+      for (const member of members) {
+        try {
+          const { switched, problem } = await switchMember(roomId, member, choice)
+          result[switched ? 'switched' : 'skipped'].push(member.profile)
+          failure = problem ?? failure
+        } catch (error) {
+          failure = messageOf(error)
+          result.skipped.push(member.profile)
+        }
+      }
+      update(roomId, { actionError: failure })
+      await readModel(roomId, members)
+      return result
     },
 
     image: async (roomId, { eventId, attachmentId }) => {
