@@ -203,6 +203,17 @@ Petar is the main user of Talyx. He will use it more after the pivot than before
     lines) over the `api/config.ts` endpoints (env credentials, custom endpoints, OAuth
     providers, global model), lets Petar add API-key, OAuth and custom-endpoint providers and
     set the default and fallback models. The per-bot model picker reads the same list.
+    Built in PR 7 (Petar's decisions, 2026-11-04): every profile holds its own keys (`.env`) and
+    endpoints, so a key or endpoint added in Settings is written to Talyx (the `default` profile)
+    first and then to every other bot; a sign-in is made on Talyx only, because every profile
+    reads the root sign-in store. The default model is Talyx's own (new bots copy it); other bots
+    keep theirs. A custom endpoint offers only its saved models in every picker (the router
+    advertises every model behind it; Talyx filters, the engine config is unchanged). No fallback
+    editor: the router falls back by itself. External sign-ins (another tool's CLI) show the
+    command to run. The UI is written new with the old files as reference. My call: an endpoint
+    written straight into `config.yaml` (the router today) can be edited only with its key typed
+    again, because the engine's save moves it into its endpoint list and keeps only a key it is
+    handed; it cannot be removed from Talyx, as in the old app.
 15. **Engine version** (my call): the vendored client is cut from the `v0.22.5` tag, the
     installed release (`talyx --version` -> 0.22.5, `bf0203a`), and that version is pinned in
     the README. Upgrading the engine means re-syncing the vendored folder against the new tag.
