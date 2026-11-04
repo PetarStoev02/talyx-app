@@ -5,7 +5,7 @@ interface StepperProps {
   current: number
 }
 
-/** Dot-stepper for the onboarding gate's steps. */
+/** Dot-stepper for a short sequence of steps. */
 export function Stepper({ total, current }: StepperProps): React.JSX.Element {
   return (
     <div className="flex justify-center gap-2">

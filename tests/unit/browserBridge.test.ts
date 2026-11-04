@@ -19,19 +19,19 @@ function fakeEventSource(): {
 describe('createBrowserTransport', () => {
   it('should post channel and args on invoke and unwrap the result', async () => {
     const fetchFn = vi.fn().mockResolvedValue({
-      json: () => Promise.resolve({ ok: true, result: [{ name: 'a.txt' }] })
+      json: () => Promise.resolve({ ok: true, result: { theme: 'dark' } })
     }) as unknown as typeof fetch
     const transport = createBrowserTransport({
       fetchFn,
       eventSource: () => fakeEventSource().source
     })
-    const result = await transport.invoke('folder:scan', '/tmp')
+    const result = await transport.invoke('settings:set', { theme: 'dark' })
     expect(fetchFn).toHaveBeenCalledWith('/bridge/invoke', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channel: 'folder:scan', args: ['/tmp'] })
+      body: JSON.stringify({ channel: 'settings:set', args: [{ theme: 'dark' }] })
     })
-    expect(result).toEqual([{ name: 'a.txt' }])
+    expect(result).toEqual({ theme: 'dark' })
   })
 
   it('should drop trailing undefined args so JSON does not turn them into null', async () => {
@@ -42,11 +42,11 @@ describe('createBrowserTransport', () => {
       fetchFn,
       eventSource: () => fakeEventSource().source
     })
-    await transport.invoke('sort:preview', [{ p: 1 }], undefined)
+    await transport.invoke('theme:set-native', 'dark', undefined)
     expect(fetchFn).toHaveBeenCalledWith('/bridge/invoke', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channel: 'sort:preview', args: [[{ p: 1 }]] })
+      body: JSON.stringify({ channel: 'theme:set-native', args: ['dark'] })
     })
   })
 
@@ -67,23 +67,15 @@ describe('createBrowserTransport', () => {
       fetchFn: vi.fn() as unknown as typeof fetch,
       eventSource: () => es.source
     })
-    const sortEvents: unknown[] = []
-    const watchEvents: unknown[] = []
-    const offSort = transport.on('sort:progress', (p) => sortEvents.push(p))
-    transport.on('watch:event', (e) => watchEvents.push(e))
-    es.emit({ channel: 'sort:progress', args: [{ done: 2 }] })
-    es.emit({ channel: 'watch:event', args: ['moved'] })
-    offSort()
-    es.emit({ channel: 'sort:progress', args: [{ done: 3 }] })
-    expect(sortEvents).toEqual([{ done: 2 }])
-    expect(watchEvents).toEqual(['moved'])
-  })
-
-  it('should throw a browser-mode explanation from getPathForFile', () => {
-    const transport = createBrowserTransport({
-      fetchFn: vi.fn() as unknown as typeof fetch,
-      eventSource: () => fakeEventSource().source
-    })
-    expect(() => transport.getPathForFile(new File([], 'a'))).toThrow(/folder picker/)
+    const progressEvents: unknown[] = []
+    const otherEvents: unknown[] = []
+    const offProgress = transport.on('example:progress', (p) => progressEvents.push(p))
+    transport.on('example:event', (e) => otherEvents.push(e))
+    es.emit({ channel: 'example:progress', args: [{ done: 2 }] })
+    es.emit({ channel: 'example:event', args: ['changed'] })
+    offProgress()
+    es.emit({ channel: 'example:progress', args: [{ done: 3 }] })
+    expect(progressEvents).toEqual([{ done: 2 }])
+    expect(otherEvents).toEqual(['changed'])
   })
 })

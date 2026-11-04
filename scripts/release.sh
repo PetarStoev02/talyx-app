@@ -8,9 +8,6 @@
 # xattr -dr com.apple.quarantine /Applications/Talyx.app. After each new version the
 # Automation and Files & Folders prompts return, and Accessibility and Screen Recording
 # must be removed with "-" and added again.
-# Windows is not built here: @huggingface/transformers imports sharp, whose
-# win32 native binary is not installed on a macOS host, so a cross-built
-# Windows package would ship with voice broken.
 
 set -e
 
