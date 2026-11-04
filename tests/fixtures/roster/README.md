@@ -36,6 +36,15 @@ New room from `+` (name, 2 to 6 bots, folder), Pin (the room joins the pinned ti
 when a row is not full), Move to, Delete room with its name in the confirmation, images in the room
 composer, and the unread dot on a room that gets a reply while another one is open.
 
+Settings (the button under the roster) shows the Providers and Default model sections against an
+in-memory providers double (`fixtureProviders.ts`, the unit tests' double): the router as the active
+endpoint, written in config.yaml, so Edit asks for its key again and it has no Remove. Check Add
+provider with an API key (`sk-` keys pass Check, others are rejected), Reveal and Hide, an account
+sign-in (openai-codex: a device code the "browser" approves after two polls; xai-oauth: paste `good`,
+anything else fails with Retry; qwen-oauth: an external command with Copy and Check again), a new
+custom endpoint (Check fills the first served model), the default model, and that every model picker
+lists only an endpoint's saved models.
+
 Use the engine integration for final acceptance; this fixture does not prove gateway access.
 
 Room model: Team discussion starts on mixed models (Analyst runs on `paid-model`), so its model

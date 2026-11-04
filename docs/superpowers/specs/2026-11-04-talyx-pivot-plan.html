@@ -295,7 +295,7 @@ td:first-child { font-weight: 500; white-space: nowrap; }
       <li>The manager bot delegates to other bots through the engine tool <code>message_agent</code></li>
       <li>Group rooms hosted by the gateway, with today's history (6 rooms in the engine's <code>state.db</code>)</li>
       <li>Routines (cron), SOUL, model and reasoning level, dictation</li>
-      <li>Providers exactly as today: the engine's <code>config.yaml</code> (your custom router on <code>127.0.0.1:20128</code> with its 9 models), keys, OAuth logins. Untouched by the pivot; a Providers settings page lets you add more</li>
+      <li>Providers exactly as today: the engine's <code>config.yaml</code> (your custom router on <code>127.0.0.1:20128</code> with its one combo, <code>9-route-provider</code>), keys, OAuth logins. Untouched by the pivot; a Providers settings page lets you add more</li>
       <li>The composer behaviour: <code>+</code>, model chip, reasoning level, mic, chevron</li>
     </ul>
   </div>
@@ -501,19 +501,19 @@ td:first-child { font-weight: 500; white-space: nowrap; }
   <header><h3>PR 7 · Providers and models</h3><span class="branch">feat/providers</span><span class="meta">3 days</span></header>
   <div>
     <h4>Goal</h4>
-    <p>Add and edit model providers in Talyx the way the old desktop app did, so the router setup (one custom endpoint, 9 models) and any future provider are managed in the app, never by hand in YAML.</p>
+    <p>Add and edit model providers in Talyx the way the old desktop app did, so the router setup (one custom endpoint, one combo model) and any future provider are managed in the app, never by hand in YAML.</p>
     <h4>Steps</h4>
     <ol class="steps">
       <li>Vendor the config endpoints from <code>api/config.ts</code>: env credentials (<code>getEnvVars</code>, <code>setEnvVar</code>, <code>revealEnvVar</code>, <code>validateProviderCredential</code>), custom endpoints (<code>getCustomEndpoints</code>, <code>saveCustomEndpoint</code>, <code>validateCustomEndpoint</code>, <code>activateCustomEndpoint</code>), OAuth providers (<code>listOAuthProviders</code>, <code>startOAuthLogin</code>, <code>pollOAuthSession</code>), global model (<code>getGlobalModelOptions</code>, <code>setGlobalModel</code>).</li>
       <li>Move <code>providers-settings.tsx</code>, <code>custom-endpoints-settings.tsx</code>, <code>env-credentials.tsx</code>, <code>credential-key-ui.tsx</code>, <code>model-settings.tsx</code>, <code>model-select.tsx</code>, <code>fallback-models-field.tsx</code> (about 3.8k lines) into <code>features/providers/</code>; restyle to Talyx Card sections.</li>
       <li>Settings gets a Providers section: connected providers with status, "Add provider" (API key, OAuth, or custom OpenAI-compatible endpoint with base URL and key), default model and fallback list.</li>
-      <li>The per-bot model picker (PR 5) reads the same model list, so the router's 9 models appear for every bot.</li>
+      <li>The per-bot model picker (PR 5) reads the same model list, so the router's saved models appear for every bot.</li>
     </ol>
   </div>
   <div>
     <h4>Done when</h4>
     <ul class="plain">
-      <li>The existing router shows as the active custom endpoint with its 9 models, without editing <code>config.yaml</code></li>
+      <li>The existing router shows as the active custom endpoint with its models, without editing <code>config.yaml</code></li>
       <li>Adding an API-key provider and an OAuth provider works end to end and survives a relaunch</li>
       <li>A bot switched to a router model answers through it</li>
     </ul>

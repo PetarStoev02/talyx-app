@@ -65,7 +65,24 @@ export function chatDouble(
       case 'POST /api/audio/transcribe':
         return { transcript: 'dictated words' }
       case 'GET /api/model/options':
-        return { providers: [{ slug: 'custom', name: 'Router', models: ['9-route-provider'] }] }
+        return {
+          providers: [
+            {
+              slug: 'custom',
+              name: 'Router',
+              is_user_defined: true,
+              api_url: 'http://127.0.0.1:20128/v1/',
+              models: ['9-route-provider', 'behind/the-router']
+            },
+            { slug: 'anthropic', name: 'Anthropic', models: ['claude-haiku'] }
+          ]
+        }
+      case 'GET /api/providers/custom-endpoints':
+        return {
+          endpoints: [
+            { id: 'custom', base_url: 'http://127.0.0.1:20128/v1', models: ['9-route-provider'] }
+          ]
+        }
       case 'GET /api/media':
         return { data_url: 'data:image/png;base64,AAAA' }
       default:

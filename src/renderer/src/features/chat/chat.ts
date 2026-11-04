@@ -1,5 +1,5 @@
 import type { EngineApiRequest } from '@shared/engine/http'
-import type { SessionMessage } from '@shared/engine/types'
+import type { CustomEndpoint, SessionMessage } from '@shared/engine/types'
 import type { ModelOptionProvider, SessionLiveInfo } from '@shared/engine/gateway-events'
 import type { GatewayEvent } from '@shared/engine/shared'
 import { useChat } from './store'
@@ -266,11 +266,20 @@ export function chatActions(backend: ChatBackend): ChatActions {
 
     models: async (profile) => {
       const query = new URLSearchParams({ explicit_only: '1', profile })
-      const { providers } = await backend.http<{ providers: ModelOptionProvider[] }>({
-        path: `/api/model/options?${query}`,
-        profile
-      })
-      return providers
+      const [{ providers }, { endpoints }] = await Promise.all([
+        backend.http<{ providers: ModelOptionProvider[] }>({
+          path: `/api/model/options?${query}`,
+          profile
+        }),
+        backend
+          .http<{ endpoints?: CustomEndpoint[] }>({
+            path: `/api/providers/custom-endpoints?${new URLSearchParams({ profile })}`,
+            profile
+          })
+          // The saved lists only narrow the picker: without them it shows every model offered.
+          .catch(() => ({ endpoints: [] }))
+      ])
+      return providers.map((provider) => withSavedModels(provider, endpoints ?? []))
     },
 
     uploadImage: async (profile, { dataUrl, name }) => {
@@ -341,4 +350,23 @@ export function infoOf(
     provider: pick(live?.provider, previous?.provider),
     reasoning: pick(live?.reasoning_effort, previous?.reasoning)
   }
+}
+
+/**
+ * A custom endpoint offers the models saved on it. A router that also lists every model behind it
+ * would otherwise fill the picker with routes that skip its fallback.
+ */
+function withSavedModels(
+  provider: ModelOptionProvider,
+  endpoints: CustomEndpoint[]
+): ModelOptionProvider {
+  const url = provider.is_user_defined ? baseUrl(provider.api_url ?? '') : ''
+  const endpoint = url && endpoints.find((item) => baseUrl(item.base_url) === url)
+  return endpoint && endpoint.models.length > 0
+    ? { ...provider, models: endpoint.models }
+    : provider
+}
+
+function baseUrl(url: string): string {
+  return url.trim().replace(/\/+$/, '')
 }

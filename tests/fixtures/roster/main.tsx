@@ -1,10 +1,14 @@
+import { useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { Toaster } from 'sonner'
 import { Roster } from '../../../src/renderer/src/widgets/roster/Roster'
 import { AgentsPage } from '../../../src/renderer/src/pages/agents/AgentsPage'
+import { ProvidersSection } from '../../../src/renderer/src/widgets/providers'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { useEngine } from '../../../src/renderer/src/app/providers/useEngine'
 import type { RosterRequest } from '../../../src/renderer/src/features/bots/data'
 import { fixtureChat } from './fixtureChat'
+import { fixtureProviders } from './fixtureProviders'
 import { roomRequest, roomSessionRequest } from './fixtureRooms'
 import './fixture.css'
 
@@ -205,16 +209,38 @@ useEngine.setState({
 useRoster.getState().setActivity('researcher', 'working')
 useRoster.getState().setActivity('analyst', 'waiting')
 useRoster.getState().markUnread('writer')
-const chat = fixtureChat()
-createRoot(document.getElementById('root')!).render(
-  <div className="flex h-screen bg-card">
-    <aside className="flex w-[320px] max-w-[85vw] shrink-0 flex-col bg-sidebar">
-      <h1 className="px-5 pt-4 text-xl font-semibold">Talyx</h1>
-      <span className="px-5 text-xs">Interaction fixture · synthetic data</span>
-      <Roster backend={backend} models={chat.models} onSelect={() => undefined} />
-    </aside>
-    <main className="min-w-0 flex-1">
-      <AgentsPage chat={chat} roster={backend} />
-    </main>
-  </div>
-)
+const providers = fixtureProviders(profiles.map((bot) => bot.name))
+const chat = fixtureChat(providers)
+
+export function Fixture(): React.JSX.Element {
+  const [page, setPage] = useState<'agents' | 'settings'>('agents')
+  return (
+    <div className="flex h-screen bg-card">
+      <Toaster position="bottom-right" closeButton />
+      <aside className="flex w-[320px] max-w-[85vw] shrink-0 flex-col bg-sidebar">
+        <h1 className="px-5 pt-4 text-xl font-semibold">Talyx</h1>
+        <span className="px-5 text-xs">Interaction fixture · synthetic data</span>
+        <Roster backend={backend} models={chat.models} onSelect={() => setPage('agents')} />
+        <button
+          className="m-3 rounded-full px-3 py-2 text-left text-sm hover:bg-accent"
+          aria-pressed={page === 'settings'}
+          onClick={() => setPage(page === 'settings' ? 'agents' : 'settings')}
+        >
+          {page === 'settings' ? 'Back to agents' : 'Settings'}
+        </button>
+      </aside>
+      <main className="min-w-0 flex-1">
+        {page === 'settings' ? (
+          // The settings page's own sections, without Appearance: it needs the desktop bridge.
+          <div className="mx-auto w-full max-w-2xl space-y-4 overflow-y-auto p-6">
+            <ProvidersSection backend={providers} models={chat.models} />
+          </div>
+        ) : (
+          <AgentsPage chat={chat} roster={backend} />
+        )}
+      </main>
+    </div>
+  )
+}
+
+createRoot(document.getElementById('root')!).render(<Fixture />)

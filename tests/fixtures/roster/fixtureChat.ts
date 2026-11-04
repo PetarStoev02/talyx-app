@@ -1,5 +1,6 @@
 import { chatActions } from '../../../src/renderer/src/features/chat/chat'
 import type { ChatActions, ChatBackend } from '../../../src/renderer/src/features/chat/chat'
+import type { ProvidersBackend } from '../../../src/renderer/src/features/providers/providers'
 import { handleEvent, handlePrompt } from '../../../src/renderer/src/features/chat/events'
 import type { ChatUpdate } from '../../../src/renderer/src/features/chat/events'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
@@ -35,7 +36,8 @@ const history: Record<string, Array<Record<string, unknown>>> = {
 }
 let seq = 100
 
-export function fixtureChat(): ChatActions {
+/** `providers` answers the model lists, so a provider added in Settings shows in every picker. */
+export function fixtureChat(providers: ProvidersBackend): ChatActions {
   const sessionOf = (profile: string): string => `${profile}-chat`
   const emit = (profile: string, type: string, payload: Record<string, unknown> = {}): void =>
     show(
@@ -178,10 +180,8 @@ export function fixtureChat(): ChatActions {
   const http: ChatBackend['http'] = async <T>({ path }: { path: string }): Promise<T> => {
     const profile = new URL(path, 'http://fixture.invalid').searchParams.get('profile') ?? ''
     if (path.startsWith('/api/sessions/')) return { messages: history[profile] ?? [] } as T
-    if (path.startsWith('/api/model/options'))
-      return {
-        providers: [{ slug: 'custom', name: 'Router', models: ['9-route-provider', 'paid-model'] }]
-      } as T
+    if (path.startsWith('/api/model/options') || path.startsWith('/api/providers/'))
+      return providers.http<T>({ path, profile })
     if (path.startsWith('/api/chat/image-upload'))
       return { path: '/images/fixture.png', mime_type: 'image/png' } as T
     if (path.startsWith('/api/audio/transcribe'))

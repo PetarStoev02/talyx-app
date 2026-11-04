@@ -278,12 +278,23 @@ describe('bot chat', () => {
   })
 
   describe('models', () => {
-    it("should list the models the profile's providers offer", async () => {
+    it("should list the models the profile's providers offer, a router only its saved ones", async () => {
       expect(await actions.models(MANAGER)).toEqual([
-        { slug: 'custom', name: 'Router', models: ['9-route-provider'] }
+        expect.objectContaining({ slug: 'custom', models: ['9-route-provider'] }),
+        { slug: 'anthropic', name: 'Anthropic', models: ['claude-haiku'] }
       ])
       expect(call('GET /api/model/options')?.params).toMatchObject({ explicit_only: '1' })
+      expect(call('GET /api/providers/custom-endpoints')?.profile).toBe(MANAGER)
       expect(engine.calls.at(-1)?.profile).toBe(MANAGER)
+    })
+
+    it('should list every model offered when the saved lists cannot be read', async () => {
+      engine.failNext('GET /api/providers/custom-endpoints', 'Not Found')
+
+      expect((await actions.models(MANAGER))[0].models).toEqual([
+        '9-route-provider',
+        'behind/the-router'
+      ])
     })
   })
 

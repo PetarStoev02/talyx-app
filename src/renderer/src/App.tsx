@@ -3,6 +3,7 @@ import { AppShell } from '@widgets/app-shell'
 import { useNavigation } from '@app/providers/useNavigation'
 import { useRosterBackend } from '@app/providers/useRosterBackend'
 import { useChatBackend } from '@app/providers/useChatBackend'
+import { useProvidersBackend } from '@app/providers/useProvidersBackend'
 import { useTheme } from '@shared/hooks/useTheme'
 import { useKeyboardShortcuts } from '@shared/hooks/useKeyboardShortcuts'
 import { AgentsPage } from '@pages/agents'
@@ -21,11 +22,12 @@ function App(): React.JSX.Element {
   const rosterBackend = useRosterBackend()
   // Here, not in the page: replies keep marking bots unread while another page is open.
   const chat = useChatBackend()
+  const providers = useProvidersBackend()
   const engineKnown = useEngine((s) => s.status !== null)
   const pages = {
     agents: <AgentsPage chat={chat} roster={rosterBackend} />,
     'engine-debug': <EngineDebugPage />,
-    settings: <SettingsPage />
+    settings: <SettingsPage providers={providers} models={chat?.models ?? null} />
   }
 
   if (!engineKnown) return <EngineSplash />

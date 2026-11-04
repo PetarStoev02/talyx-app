@@ -17,8 +17,8 @@ chat (transcript, clarify and approval cards, a composer with model, reasoning, 
 dictation), the details panel from the name pill (title, description, model, routines, SOUL),
 the create-bot dialog from the roster's `+`, group rooms hosted by the engine (history, send, who
 is answering, approvals, create, pin, delete), "Talyx needs its engine" when the engine is
-missing, an Engine (debug) page that sends "ping" and prints raw session events, and Settings →
-Appearance.
+missing, an Engine (debug) page that sends "ping" and prints raw session events, and Settings
+(providers: API keys, account sign-ins and custom endpoints, Talyx's default model; appearance).
 
 - **Version:** 1.0.0-alpha.1
 - **Stack:** Electron 44 + React 19 + TypeScript 5.9 + TailwindCSS 4
@@ -105,12 +105,14 @@ admits no Origin header and takes the ticket in a subprotocol) and relays frames
 ```
 src/renderer/src/
 ├── app/              # Global state, browser dev bridge, the hooks that wire `host` into
-│                     # features (useRosterBackend, useChatBackend)
+│                     # features (useRosterBackend, useChatBackend, useProvidersBackend)
 ├── pages/            # AgentsPage (the selected bot's chat or room, and details), SettingsPage
 ├── widgets/          # AppShell, Roster (sidebar bots and rooms, create dialogs), Chat (transcript,
-│                     # cards, composer, RoomPane), BotDetails (the details panel and routines)
+│                     # cards, composer, RoomPane), BotDetails (the details panel and routines),
+│                     # Providers (the settings sections, add-provider dialog, sign-in)
 ├── features/         # bots (roster data, folders, pins, unread, details, routines, create, rooms),
-│                     # chat (transcript, use cases, hosted rooms polled over `groups.*`)
+│                     # chat (transcript, use cases, hosted rooms polled over `groups.*`),
+│                     # providers (keys, endpoints and sign-ins over REST; writes go to every bot)
 └── shared/           # Reusable: ui/ (shadcn), hooks/, api/ (IPC wrappers), lib/,
                       # engine/ (vendored engine client; host.ts is the facade features use)
 ```
