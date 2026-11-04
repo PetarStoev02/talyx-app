@@ -118,12 +118,15 @@ function FolderHeader({
         <span className="truncate">{folder?.name ?? t('roster.unassigned')}</span>
         <span className="ml-auto tabular-nums">{folderCount(snapshot, folder?.id ?? null)}</span>
       </button>
-      {folder && (
+      {folder ? (
         <RosterMenu
           label={t('roster.folderActionsFor').replace('{name}', folder.name)}
           actions={folderActions(folder)}
           disabled={saving}
         />
+      ) : (
+        // Unassigned has no menu; the gap keeps its count in line with the folders above.
+        <span className="size-8 shrink-0" aria-hidden="true" />
       )}
     </div>
   )
