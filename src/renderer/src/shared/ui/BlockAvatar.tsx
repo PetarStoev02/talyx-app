@@ -18,7 +18,6 @@ export interface BlockAvatarProps {
   animated?: boolean
   // Degrees about the vertical axis, for the details hero following the cursor.
   yaw?: number
-  className?: string
 }
 
 // The face is drawn from this size up; a 24px row shows the plain block.
@@ -78,8 +77,7 @@ export function BlockAvatar({
   state = 'idle',
   face = true,
   animated = false,
-  yaw = 0,
-  className
+  yaw = 0
 }: BlockAvatarProps): React.JSX.Element {
   const outline = useId()
   const faced = face && size >= FACE_MIN_SIZE
@@ -103,7 +101,7 @@ export function BlockAvatar({
       height={size}
       viewBox={drawing.viewBox}
       aria-hidden="true"
-      className={cn('shrink-0', animated && state === 'working' && 'block-bob', className)}
+      className={cn('shrink-0', animated && state === 'working' && 'block-bob')}
     >
       {drawing.body}
     </svg>

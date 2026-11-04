@@ -60,7 +60,8 @@ function useTurnToCursor(enabled: boolean): [React.RefObject<HTMLSpanElement | n
     let frame = 0
     let last = 0
     const step = (time: number): void => {
-      current += (target - current) * Math.min(1, (time - last) / TURN_MS)
+      // A frame can be stamped before the pointer event that asked for it.
+      current += (target - current) * Math.min(1, Math.max(0, time - last) / TURN_MS)
       last = time
       setYaw(current)
       frame = Math.abs(target - current) > 0.05 ? requestAnimationFrame(step) : 0

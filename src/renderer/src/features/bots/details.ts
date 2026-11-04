@@ -62,7 +62,8 @@ export async function loadDetails(
 
 /**
  * Title and look go to the bot's metadata; description, SOUL and model to the profile, only if
- * changed. A new look is then exported as the profile's avatar image (Talyx is always the logo).
+ * changed. A new look is exported as the profile's avatar image first, so a failed export saves
+ * nothing and Save stays there to retry. Talyx is always the logo: only its face is its own.
  */
 export async function saveDetails(
   backend: RosterBackend,
@@ -72,15 +73,16 @@ export async function saveDetails(
   const { opening, draft } = change
   const descriptionChanged = draft.description.trim() !== opening.description.trim()
   const lookChanged = !sameLook(draft.look, opening.look)
-  const meta: Partial<BotMeta> = lookChanged ? lookMeta(draft.look) : {}
+  const manager = bot.name === MANAGER
+  if (lookChanged && !manager) await exportAvatar(backend, bot.name, draft.look)
+  const look = lookMeta(draft.look)
+  const meta: Partial<BotMeta> = !lookChanged ? {} : manager ? { faces: look.faces } : look
   if (draft.title.trim() !== opening.title.trim()) meta.title = draft.title.trim()
   // An older client's description in the metadata would hide the one saved on the profile.
   if (descriptionChanged && bot.meta.description !== undefined) meta.description = undefined
   if (Object.keys(meta).length > 0) await saveBotMeta(backend, bot.name, meta)
 
-  const asked = await saveSections(backend, bot.name, change)
-  if (lookChanged && bot.name !== MANAGER) await exportAvatar(backend, bot.name, draft.look)
-  return asked
+  return saveSections(backend, bot.name, change)
 }
 
 export async function confirmModel(

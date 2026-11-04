@@ -204,7 +204,7 @@ const en = {
   'create.errorTaken': 'An agent with that name already exists.',
   'create.errorNotFiled': 'The agent was created, but its name and folder were not saved.',
   'create.errorNoAvatar':
-    'The agent was created, but its avatar image was not saved. Save its look again to retry.',
+    'The agent was created, but its avatar image for the engine was not saved. Pick another look in its details to try again.',
   'look.shape': 'Shape',
   'look.color': 'Color',
   'look.colorN': 'Color {n}',

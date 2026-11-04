@@ -110,18 +110,23 @@ describe('bot details', () => {
         opening: before,
         draft: { ...before, look: { ...before.look, faces: false } }
       })
-      expect(engine.metadata.default[BOT_META_KEY]).toMatchObject({ faces: false })
+      expect(engine.metadata.default[BOT_META_KEY]).toEqual({ faces: false })
       expect(engine.assets).toEqual([])
     })
 
-    it('should keep the saved look when the image export fails', async () => {
+    it('should save nothing when the image export fails, so the same Save can retry', async () => {
       engine.failAssetOnce()
       const before = await opening('analyst')
       const look = { shape: 'slab' as const, hue: 8, faces: true }
-      await expect(
-        saveDetails(backend, bot('analyst'), { opening: before, draft: { ...before, look } })
-      ).rejects.toThrow('Asset store is read-only')
+      const change = { opening: before, draft: { ...before, look, soul: '# New' } }
+      await expect(saveDetails(backend, bot('analyst'), change)).rejects.toThrow(
+        'Asset store is read-only'
+      )
+      expect(engine.metadata.analyst[BOT_META_KEY]).not.toHaveProperty('shape')
+      expect(engine.configured).toEqual([])
+      await saveDetails(backend, bot('analyst'), change)
       expect(engine.metadata.analyst[BOT_META_KEY]).toMatchObject({ shape: 'slab', color: 8 })
+      expect(engine.assets.map((asset) => asset.params.data)).toEqual([pngOf(look)])
     })
 
     it('should drop a stale metadata description when the description changes', async () => {

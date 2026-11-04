@@ -164,7 +164,7 @@ Petar is the main user of Talyx. He will use it more after the pivot than before
     tick face in white. It is the one bot without a hue; that is how the manager is told apart. Data: `ui_meta['talyx-bots']` keeps `shape` and `color`; new values are the shape
     name and hue index; old values map once (hue from the hsl string, shape from a hash of the
     blobatar id); bots with no values get "Match the name" (hash of the name) written back
-    through `profiles.configure`. A 1024px PNG is exported as the profile asset so other engine
+    through `profiles.configure` (revised for PR 8 below: read, never written back). A 1024px PNG is exported as the profile asset so other engine
     surfaces match. The profile's old `avatar.png` is overwritten by that export. No upload in
     1.0. Faces are on by default (Petar, 2026-11-04), one flag turns them off; no initials on
     the blocks. Fallback if blocks feel too playful after a day: Tiles, a rounded square in a pale tint
