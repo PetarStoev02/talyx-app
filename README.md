@@ -4,7 +4,7 @@ Talyx is a desktop app to tally your AI agents: a roster of bots on the left, on
 
 ## Status
 
-Talyx is being rebuilt. Version 1.0.0-alpha.1 is an empty shell: the sidebar, an Agents page with nothing on it yet, and Settings with the theme. The roster, chat, bot details, group rooms and providers arrive in the next releases, one at a time. 1.0 is the first build meant for daily use.
+Talyx is being rebuilt. Version 1.0.0-alpha.1 is an empty shell: the sidebar, an Agents page with nothing on it yet, Settings with the theme, and an Engine (debug) page that proves Talyx can talk to the engine. The roster, chat, bot details, group rooms and providers arrive in the next releases, one at a time. 1.0 is the first build meant for daily use.
 
 ## Before the pivot
 
@@ -19,7 +19,23 @@ Builds come from the [GitHub releases](https://github.com/PetarStoev02/talyx-app
 
 Talyx checks GitHub for a newer release and opens the release page. It installs nothing itself.
 
-The engine install step comes with the release that connects Talyx to it.
+## Engine
+
+Talyx runs its bots on the engine, a separate agent backend you install yourself. Talyx needs **engine 0.22.5**.
+
+- The engine's command must be reachable as `talyx-engine`: on your `PATH`, in `~/.local/bin/talyx-engine` (on Windows, `%USERPROFILE%\.local\bin\talyx-engine.exe`), or picked with **Choose file** on the first-run screen. The engine's installer gives its command another name, so make a link once, for example `ln -s <the engine's command> ~/.local/bin/talyx-engine`.
+- Talyx attaches to the engine's gateway on this machine with `talyx-engine gateway ensure --json`. The gateway runs on its own and outlives Talyx: quitting Talyx never stops it, and the next launch attaches to the same process.
+- Talyx reads every path and port from the engine's own output; it never assumes where the engine keeps its data.
+- Windows cannot attach yet: minting a gateway ticket there goes through the engine's own runtime, which comes with the 1.0 release work.
+
+### Re-syncing the vendored client
+
+`src/renderer/src/shared/engine/` is the engine desktop app's protocol client and API wrappers, cut from tag `v0.22.5` (its MIT licence is in that folder). `src/main/infrastructure/engine/gateway.ts` is its gateway attach and ticket code. When the engine moves to a new version:
+
+1. Take the same files from the engine desktop app at the new tag: `src/api/{canonical-protocol,client,profiles,sessions,cron,models,config}.ts`, `src/types/` (the engine types file, as `types.ts`), `src/lib/{gateway-rpc,session-owner-stamp}.ts`, `src/store/transcript-tail.ts`, the shared package's `{json-rpc-gateway,json-rpc-channel,gateway-events,gateway-contract.generated,reconnect-backoff,session-http-mutations}.ts`, and `electron/local-gateway.ts` for `gateway.ts`. Take the protocol tests the same way into `tests/unit/engine/`.
+2. Rename every word that carries the engine's name to `engine` (types, functions, comments, messages), point imports at the local files, and run `npx prettier --write` on them.
+3. Diff against this folder and keep Talyx's changes, each marked `Talyx:` in a comment: main opens the gateway socket (`socket.ts`, `socketFactory`); REST goes through `http.ts`; wire strings and metadata keys come from `engineWire()` in `src/shared/engine.ts` at runtime; the remote-registry code paths are cut.
+4. Run `npm run typecheck`, `npm run lint` and `npm test`, then send "ping" from the Engine (debug) page.
 
 ## Build from source
 

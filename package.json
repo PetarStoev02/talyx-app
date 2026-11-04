@@ -38,6 +38,7 @@
     "clsx": "^2.1.1",
     "electron-log": "^5.4.3",
     "lucide-react": "^0.577.0",
+    "nanostores": "1.4.2",
     "radix-ui": "^1.4.3",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",

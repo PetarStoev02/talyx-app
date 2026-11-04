@@ -1,4 +1,4 @@
-import { Bot } from 'lucide-react'
+import { Bot, Bug } from 'lucide-react'
 import { NavButton } from './NavButton'
 
 const isMac = navigator.platform.toLowerCase().includes('mac')
@@ -11,6 +11,13 @@ export function SidebarNav({ collapsed }: { collapsed: boolean }): React.JSX.Ele
         labelKey="nav.agents"
         icon={Bot}
         shortcut={`${isMac ? '⌘' : 'Ctrl+'}1`}
+        collapsed={collapsed}
+      />
+      <NavButton
+        view="engine-debug"
+        labelKey="nav.engineDebug"
+        icon={Bug}
+        shortcut={`${isMac ? '⌘' : 'Ctrl+'}2`}
         collapsed={collapsed}
       />
     </nav>

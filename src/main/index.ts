@@ -5,6 +5,7 @@ import { pathToFileURL } from 'url'
 import { optimizer, is } from './lib/electronUtils'
 import { installWebContentsGuard } from './infrastructure/security/webContentsGuard'
 import { registerSettingsIpc } from './infrastructure/ipc/settings.ipc'
+import { closeEngineSockets, registerEngineIpc } from './infrastructure/ipc/engine.ipc'
 import { checkForUpdate } from './infrastructure/updater/releaseCheck'
 import { settingsStore } from './infrastructure/storage/SettingsStore'
 import { DevBridge } from './infrastructure/bridge/DevBridge'
@@ -29,6 +30,7 @@ function registerIpc(): void {
   // Bridge tap first: it must see every registration
   devBridge?.installTap(ipcMain)
   registerSettingsIpc()
+  registerEngineIpc()
   ipcMain.handle('theme:set-native', (_event, theme: unknown) => syncNativeTheme(theme))
   void devBridge?.start(Number(process.env['TALYX_BRIDGE_PORT'] ?? 5175))
 }
@@ -191,6 +193,9 @@ app.whenReady().then(async () => {
     if (BrowserWindow.getAllWindows().length === 0) bringMainWindowForward()
   })
 })
+
+// Only Talyx's sockets close; the engine gateway outlives the app and is never stopped here.
+app.on('before-quit', closeEngineSockets)
 
 app.on('window-all-closed', () => {
   if (!isMac) app.quit()

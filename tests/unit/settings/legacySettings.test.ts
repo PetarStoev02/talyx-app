@@ -3,7 +3,11 @@ import { migrateSettings } from '../../../src/main/infrastructure/storage/Settin
 
 describe('migrateSettings', () => {
   it('should start a fresh install on the system theme with the sidebar open', () => {
-    expect(migrateSettings({})).toEqual({ theme: 'system', sidebarCollapsed: false })
+    expect(migrateSettings({})).toEqual({
+      theme: 'system',
+      sidebarCollapsed: false,
+      enginePath: null
+    })
   })
 
   it('should keep the theme and sidebar of a file-organizer settings file and drop the rest', () => {
@@ -15,6 +19,6 @@ describe('migrateSettings', () => {
       noticeMarks: { briefing: '2026-01-01' },
       appLanguage: 'bg'
     })
-    expect(migrated).toEqual({ theme: 'dark', sidebarCollapsed: true })
+    expect(migrated).toEqual({ theme: 'dark', sidebarCollapsed: true, enginePath: null })
   })
 })

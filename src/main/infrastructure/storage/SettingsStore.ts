@@ -5,11 +5,14 @@ import { readFileSync, writeFileSync, mkdirSync } from 'fs'
 export interface UserSettings {
   theme: 'light' | 'dark' | 'system'
   sidebarCollapsed: boolean
+  /** Absolute path to the engine's command, picked by the user; null means look it up. */
+  enginePath: string | null
 }
 
 const defaults: UserSettings = {
   theme: 'system',
-  sidebarCollapsed: false
+  sidebarCollapsed: false,
+  enginePath: null
 }
 
 function getSettingsPath(): string {
