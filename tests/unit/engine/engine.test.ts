@@ -142,7 +142,8 @@ describe('engine version and wire strings', () => {
       wsTicketPrefix: 'acme-gateway-ticket.',
       ticketHeader: 'X-Acme-Gateway-Ticket',
       botMetaKey: 'acme-bots',
-      botGroupsMetaKey: 'acme-bots-groups'
+      botGroupsMetaKey: 'acme-bots-groups',
+      managerHandle: 'acme'
     })
   })
 })
@@ -175,7 +176,8 @@ describe('engine status', () => {
       home: HOME,
       stale: false,
       botMetaKey: 'acme-bots',
-      botGroupsMetaKey: 'acme-bots-groups'
+      botGroupsMetaKey: 'acme-bots-groups',
+      managerHandle: 'acme'
     })
   })
 

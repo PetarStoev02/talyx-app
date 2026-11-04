@@ -17,6 +17,8 @@ export interface EngineWire {
   ticketHeader: string
   botMetaKey: string
   botGroupsMetaKey: string
+  /** The @handle the engine gives the default profile (Talyx) in messages between bots. */
+  managerHandle: string
 }
 
 export type EngineStatus =
@@ -31,6 +33,7 @@ export type EngineStatus =
       stale: boolean
       botMetaKey: string
       botGroupsMetaKey: string
+      managerHandle: string
     }
 
 export class UnrecognizedEngineError extends Error {
@@ -58,7 +61,8 @@ export function engineWire(name: string): EngineWire {
     wsTicketPrefix: `${name}-gateway-ticket.`,
     ticketHeader: `X-${title}-Gateway-Ticket`,
     botMetaKey: `${name}-bots`,
-    botGroupsMetaKey: `${name}-bots-groups`
+    botGroupsMetaKey: `${name}-bots-groups`,
+    managerHandle: name
   }
 }
 

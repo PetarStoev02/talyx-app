@@ -4,6 +4,7 @@ import {
   applyEvent,
   fromHistory,
   needsRebuild,
+  senderProfile,
   settlePrompt
 } from '../../../src/renderer/src/features/chat/transcript'
 import type { ChatPrompt, Transcript } from '../../../src/renderer/src/features/chat/types'
@@ -57,8 +58,22 @@ describe('chat transcript', () => {
           done: true,
           target: 'cfo'
         },
-        { kind: 'notice', id: '4', text: 'Message from 🤖 CFO (@cfo): done' },
-        { kind: 'bot', id: '5', text: 'Margins are up.', streaming: false, error: null }
+        {
+          kind: 'bot',
+          id: '4',
+          text: 'done',
+          streaming: false,
+          error: null,
+          sender: { name: 'CFO', profile: 'cfo' }
+        },
+        {
+          kind: 'bot',
+          id: '5',
+          text: 'Margins are up.',
+          streaming: false,
+          error: null,
+          sender: null
+        }
       ])
     })
 
@@ -96,6 +111,30 @@ describe('chat transcript', () => {
       expect(item).toMatchObject({ kind: 'tool', name: 'terminal', label: 'terminal' })
     })
 
+    it('should show a message another bot delivered as a reply from that bot', () => {
+      const [item] = history({
+        id: 1,
+        role: 'user',
+        content: 'Message from 🤖 Agro Ops CFO (@agro-ops-cfo): Margins are up.\n\n- Costs flat',
+        display_kind: 'internal_notification'
+      }).items
+      expect(item).toEqual({
+        kind: 'bot',
+        id: '1',
+        text: 'Margins are up.\n\n- Costs flat',
+        streaming: false,
+        error: null,
+        sender: { name: 'Agro Ops CFO', profile: 'agro-ops-cfo' }
+      })
+    })
+
+    it("should read a delivery from Talyx's handle as Talyx's own profile", () => {
+      expect(senderProfile('acme', 'acme')).toBe('default')
+      expect(senderProfile('agro-ops-cfo', 'acme')).toBe('agro-ops-cfo')
+      // Before the engine reports its handle, a sender stays as written.
+      expect(senderProfile('acme', null)).toBe('acme')
+    })
+
     it('should show engine notices as one quiet line', () => {
       const transcript = history(
         {
@@ -110,18 +149,11 @@ describe('chat transcript', () => {
           role: 'user',
           content: '[IMPORTANT: Background process proc_2 completed]\nmore',
           display_kind: 'process_complete'
-        },
-        {
-          id: 3,
-          role: 'user',
-          content: 'Message from 🤖 CFO (@cfo): done',
-          display_kind: 'internal_notification'
         }
       )
       expect(transcript.items).toEqual([
         { kind: 'notice', id: '1', text: 'Background build finished' },
-        { kind: 'notice', id: '2', text: '[IMPORTANT: Background process proc_2 completed]' },
-        { kind: 'notice', id: '3', text: 'Message from 🤖 CFO (@cfo): done' }
+        { kind: 'notice', id: '2', text: '[IMPORTANT: Background process proc_2 completed]' }
       ])
     })
 

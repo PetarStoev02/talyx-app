@@ -1,7 +1,7 @@
 import { isWithin, pinnedBots } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { RosterActions } from '@features/bots/actions'
-import type { Bot, Folder } from '@features/bots/types'
+import type { Bot, Folder, Room } from '@features/bots/types'
 import type { TranslationKey } from '@shared/lib/i18n'
 import type { MenuAction } from './RosterMenu'
 
@@ -29,16 +29,19 @@ interface ControlsOptions {
   run: (operation: () => Promise<void>) => void
   selectBot: (bot: Bot) => void
   setDeleting: (bot: Bot) => void
+  setDeletingRoom: (room: Room) => void
   t: (key: TranslationKey) => string
 }
 
 export function rosterControls(options: ControlsOptions): {
   botActions: (bot: Bot) => MenuAction[]
+  roomActions: (room: Room) => MenuAction[]
   folderActions: (folder: Folder) => MenuAction[]
   dropOnFolder: (data: string, folderId: string | null) => void
 } {
   return {
     botActions: (bot) => botActions(bot, options),
+    roomActions: (room) => roomActions(room, options),
     folderActions: (folder) => folderActions(folder, options),
     dropOnFolder: (data, folderId) => dropOnFolder(readRosterDrag(data), folderId, options)
   }
@@ -76,6 +79,26 @@ function botActions(bot: Bot, options: ControlsOptions): MenuAction[] {
       disabled: bot.name === 'default',
       onSelect: () => setDeleting(bot)
     }
+  ]
+}
+
+function roomActions(room: Room, options: ControlsOptions): MenuAction[] {
+  const { actions, run, setDeletingRoom, t } = options
+  const { folders, roomFolders, roomPins } = useRoster.getState().snapshot
+  const assigned = roomFolders[room.room_id]
+  const current = folders.some((folder) => folder.id === assigned) ? assigned : null
+  return [
+    {
+      label: roomPins.includes(room.room_id) ? t('roster.unpinRoom') : t('roster.pinRoom'),
+      onSelect: () => run(() => actions.pinRoom(room))
+    },
+    ...[{ id: null, name: t('roster.unassigned') }, ...folders]
+      .filter((folder) => folder.id !== current)
+      .map((folder) => ({
+        label: t('roster.moveTo').replace('{name}', folder.name),
+        onSelect: () => run(() => actions.moveRoom(room.room_id, folder.id))
+      })),
+    { label: t('roster.deleteRoom'), onSelect: () => setDeletingRoom(room) }
   ]
 }
 

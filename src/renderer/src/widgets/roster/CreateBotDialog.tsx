@@ -5,9 +5,8 @@ import { UnfiledBotError, createBot, profileIdFor } from '@features/bots/create'
 import type { RosterBackend } from '@features/bots/data'
 import type { ModelChoice } from '@features/bots/details'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
-import { problemOf } from '@features/bots/roster'
+import { folderPath, problemOf } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
-import type { Folder } from '@features/bots/types'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
 import { Button } from '@shared/ui/button'
 import {
@@ -153,9 +152,4 @@ function idPreview(
   } catch (error) {
     return { ok: false, text: problemOf(error).key }
   }
-}
-
-function folderPath(folders: Folder[], folder: Folder): string {
-  const parent = folders.find((item) => item.id === folder.parentId)
-  return parent ? `${folderPath(folders, parent)} / ${folder.name}` : folder.name
 }

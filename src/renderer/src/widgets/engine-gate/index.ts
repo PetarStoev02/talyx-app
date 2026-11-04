@@ -1,1 +1,1 @@
-export { EngineGate } from './EngineGate'
+export { EngineGate, EngineSplash } from './EngineGate'

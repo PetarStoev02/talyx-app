@@ -4,6 +4,11 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { Button } from '@shared/ui/button'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
 
+// Fills a plain block (the Agents page) or a flex column (the debug page) and centers in it.
+const centered = 'flex h-full flex-1 flex-col items-center justify-center gap-4 px-6 text-center'
+// The splash has no title bar; the whole window drags it on macOS.
+const dragRegion = { WebkitAppRegion: 'drag' } as React.CSSProperties
+
 /** Shows its children once the engine is attached; until then, why not and how to fix it. */
 export function EngineGate({ children }: { children: React.ReactNode }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
@@ -17,34 +22,48 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
   }, [check])
 
   if (status?.state === 'attached') return <>{children}</>
+  if (!status) return <Checking />
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+    <div className={centered}>
       <TalyxLogo size={40} className="text-foreground" />
-      {!status ? (
-        <p className="text-base text-muted-foreground">{t('engine.checking')}</p>
-      ) : (
-        <>
-          <h2 className="text-xl font-semibold text-foreground">
-            {status.state === 'missing' ? t('engine.missingTitle') : t('engine.errorTitle')}
-          </h2>
-          <p className="max-w-md text-base text-foreground">
-            {status.state === 'missing' ? t('engine.missingBody') : status.message}
-          </p>
-          <div className="flex items-center gap-4">
-            <Button className="rounded-full px-5" disabled={checking} onClick={() => void check()}>
-              {t('engine.retry')}
-            </Button>
-            <button
-              className="text-sm text-foreground underline underline-offset-4 disabled:opacity-50"
-              disabled={checking}
-              onClick={() => void pickPath()}
-            >
-              {t('engine.chooseFile')}
-            </button>
-          </div>
-        </>
-      )}
+      <h2 className="text-xl font-semibold text-foreground">
+        {status.state === 'missing' ? t('engine.missingTitle') : t('engine.errorTitle')}
+      </h2>
+      <p className="max-w-md text-base text-foreground">
+        {status.state === 'missing' ? t('engine.missingBody') : status.message}
+      </p>
+      <div className="flex items-center gap-4">
+        <Button className="rounded-full px-5" disabled={checking} onClick={() => void check()}>
+          {t('engine.retry')}
+        </Button>
+        <button
+          className="text-sm text-foreground underline underline-offset-4 disabled:opacity-50"
+          disabled={checking}
+          onClick={() => void pickPath()}
+        >
+          {t('engine.chooseFile')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** The whole window while the first engine check runs: no sidebar, nothing to click yet. */
+export function EngineSplash(): React.JSX.Element {
+  return (
+    <div className="flex h-screen" style={dragRegion}>
+      <Checking />
+    </div>
+  )
+}
+
+function Checking(): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  return (
+    <div className={centered} role="status">
+      <TalyxLogo size={48} className="animate-pulse text-foreground motion-reduce:animate-none" />
+      <p className="text-base text-foreground">{t('engine.checking')}</p>
     </div>
   )
 }

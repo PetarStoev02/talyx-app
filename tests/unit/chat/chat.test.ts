@@ -34,7 +34,7 @@ describe('bot chat', () => {
         sessionId: 'manager-chat',
         loading: false,
         error: null,
-        info: { model: 'team-manager', provider: 'custom', reasoning: 'medium' }
+        info: { model: '9-route-provider', provider: 'custom', reasoning: 'medium' }
       })
       expect(chat(MANAGER).transcript?.items.map((item) => item.kind)).toEqual(['user', 'bot'])
       expect(call('session.resume')?.params).toMatchObject({
@@ -280,7 +280,7 @@ describe('bot chat', () => {
   describe('models', () => {
     it("should list the models the profile's providers offer", async () => {
       expect(await actions.models(MANAGER)).toEqual([
-        { slug: 'custom', name: 'Router', models: ['team-manager'] }
+        { slug: 'custom', name: 'Router', models: ['9-route-provider'] }
       ])
       expect(call('GET /api/model/options')?.params).toMatchObject({ explicit_only: '1' })
       expect(engine.calls.at(-1)?.profile).toBe(MANAGER)

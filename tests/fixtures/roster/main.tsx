@@ -5,6 +5,7 @@ import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { useEngine } from '../../../src/renderer/src/app/providers/useEngine'
 import type { RosterRequest } from '../../../src/renderer/src/features/bots/data'
 import { fixtureChat } from './fixtureChat'
+import { roomRequest } from './fixtureRooms'
 import './fixture.css'
 
 // Deliberately in-memory: this fixture never connects to or modifies user profiles.
@@ -37,7 +38,7 @@ const profiles = [
     last_active: Date.now() / 1000 - index * 120
   }
 }))
-// Profile details and routines, also synthetic. team-worker stands in for a model the engine asks
+// Profile details and routines, also synthetic. paid-model stands in for a model the engine asks
 // about before pinning.
 const details: Record<
   string,
@@ -49,7 +50,7 @@ const details: Record<
       description: `Synthetic ${name} agent`,
       soul: `# ${name}\n\nYou are a synthetic fixture agent.`,
       provider: 'custom',
-      model: 'team-manager'
+      model: '9-route-provider'
     }
   ])
 )
@@ -88,12 +89,12 @@ function configure(profile: string, params: Record<string, unknown>): unknown {
       applied.soul = true
     }
     if (typeof params.model === 'string') {
-      if (params.model === 'team-worker' && params.confirm_expensive_model !== true)
+      if (params.model === 'paid-model' && params.confirm_expensive_model !== true)
         return {
           ok: true,
           applied,
           confirm_required: true,
-          confirm_message: 'team-worker costs more per turn.'
+          confirm_message: 'paid-model costs more per turn.'
         }
       state.model = params.model
       state.provider = params.provider as string
@@ -145,7 +146,7 @@ function createProfile(params: Record<string, unknown>): unknown {
     description: '',
     soul: params.soul as string,
     provider: (params.provider as string) ?? 'custom',
-    model: (params.model as string) ?? 'team-manager'
+    model: (params.model as string) ?? '9-route-provider'
   }
   return { ok: true, name, path: `/fixture/${name}`, mirrored: {} }
 }
@@ -170,22 +171,7 @@ const request: RosterRequest = async (profile, method, params) => {
   if (method === 'profiles.configure') return configure(profile, params)
   if (method === 'profiles.create') return createProfile(params)
   if (method === 'cron.manage') return manageCron(profile, params)
-  if (method === 'groups.list')
-    return {
-      rooms: [
-        {
-          room_id: 'team-room',
-          name: 'Team discussion',
-          members: [{ profile: 'analyst' }, { profile: 'writer' }]
-        },
-        {
-          room_id: 'clients-room',
-          name: 'Clients discussion',
-          members: [{ profile: 'support' }, { profile: 'sales' }]
-        }
-      ],
-      next_offset: null
-    }
+  if (method.startsWith('groups.')) return roomRequest(method, params)
   throw new Error('Unsupported fixture operation')
 }
 async function deleteProfile(profile: string): Promise<void> {
@@ -208,7 +194,8 @@ useEngine.setState({
     home: '',
     stale: false,
     botMetaKey: 'acme-bots',
-    botGroupsMetaKey: 'acme-bots-groups'
+    botGroupsMetaKey: 'acme-bots-groups',
+    managerHandle: 'acme'
   }
 })
 useRoster.getState().setActivity('researcher', 'working')

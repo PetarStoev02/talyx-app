@@ -12,7 +12,8 @@ import { FolderGroup } from './FolderGroup'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
 import { CreateBotDialog } from './CreateBotDialog'
-import { DeleteProfileDialog, NewFolderDialog } from './RosterDialogs'
+import { CreateRoomDialog } from './CreateRoomDialog'
+import { DeleteProfileDialog, DeleteRoomDialog, NewFolderDialog } from './RosterDialogs'
 import { rosterControls } from './rosterControls'
 import { RosterMenu } from './RosterMenu'
 import type { MenuAction } from './RosterMenu'
@@ -31,7 +32,9 @@ export function Roster({
   const state = useRoster()
   const [newFolder, setNewFolder] = useState(false)
   const [newBot, setNewBot] = useState(false)
+  const [newRoom, setNewRoom] = useState(false)
   const [deleting, setDeleting] = useState<Bot | null>(null)
+  const [deletingRoom, setDeletingRoom] = useState<Room | null>(null)
   useRosterConnection(backend)
   const actions = rosterActions(backend)
   const run = (operation: () => Promise<void>): void => {
@@ -47,7 +50,7 @@ export function Roster({
     state.select({ kind: 'room', id: room.room_id })
     onSelect()
   }
-  const { botActions, folderActions, dropOnFolder } = rosterControls({
+  const { botActions, roomActions, folderActions, dropOnFolder } = rosterControls({
     actions,
     run,
     selectBot,
@@ -55,8 +58,13 @@ export function Roster({
       state.clearError()
       setDeleting(bot)
     },
+    setDeletingRoom: (room) => {
+      state.clearError()
+      setDeletingRoom(room)
+    },
     t
   })
+  const dialogOpen = !!deleting || !!deletingRoom || newFolder || newBot || newRoom
   return (
     <nav
       aria-label={t('roster.label')}
@@ -64,7 +72,7 @@ export function Roster({
       className="min-h-0 flex-1 overflow-y-auto px-3"
     >
       <TallyLine />
-      {!deleting && !newFolder && !newBot && <ProblemBanner retry={reload} />}
+      {!dialogOpen && <ProblemBanner retry={reload} />}
       {state.loading && (
         <p role="status" className="p-2">
           {t('roster.loading')}
@@ -85,6 +93,10 @@ export function Roster({
           state.clearError()
           setNewBot(true)
         }}
+        newRoom={() => {
+          state.clearError()
+          setNewRoom(true)
+        }}
       />
       {[...state.snapshot.folders.filter((folder) => !folder.parentId), null].map((folder) => (
         <FolderGroup
@@ -95,7 +107,7 @@ export function Roster({
           selectBot={selectBot}
           selectRoom={selectRoom}
           dropOnFolder={dropOnFolder}
-          moveRoom={(room, folderId) => run(() => actions.moveRoom(room.room_id, folderId))}
+          roomActions={roomActions}
         />
       ))}
       <HiddenAgents restore={(bot) => run(() => actions.hide(bot))} />
@@ -113,6 +125,19 @@ export function Roster({
       {newBot && (
         <CreateBotDialog backend={backend} models={models} onClose={() => setNewBot(false)} />
       )}
+      {newRoom && <CreateRoomDialog backend={backend} onClose={() => setNewRoom(false)} />}
+      <DeleteRoomDialog
+        room={deletingRoom}
+        onClose={() => setDeletingRoom(null)}
+        onDelete={(room) =>
+          run(async () => {
+            await actions.deleteRoom(room)
+            // The room is gone; a failed layout cleanup shows on the roster, not in this dialog.
+            setDeletingRoom(null)
+            await actions.forgetRoom(room)
+          })
+        }
+      />
       <DeleteProfileDialog
         bot={deleting}
         onClose={() => setDeleting(null)}
@@ -144,11 +169,13 @@ function ProblemBanner({ retry }: { retry: () => void }): React.JSX.Element | nu
 function FoldersHeader({
   reload,
   newFolder,
-  newBot
+  newBot,
+  newRoom
 }: {
   reload: () => void
   newFolder: () => void
   newBot: () => void
+  newRoom: () => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const saving = useRoster((state) => state.saving)
@@ -170,6 +197,7 @@ function FoldersHeader({
           icon={<Plus size={18} />}
           actions={[
             { label: t('create.title'), onSelect: newBot },
+            { label: t('roster.newRoom'), onSelect: newRoom },
             { label: t('roster.newFolder'), onSelect: newFolder }
           ]}
         />

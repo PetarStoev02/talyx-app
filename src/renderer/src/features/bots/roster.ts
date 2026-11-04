@@ -1,8 +1,9 @@
 import type { TranslationKey } from '@shared/lib/i18n'
-import type { Bot, Folder, RosterSnapshot } from './types'
+import type { Bot, Folder, Room, RosterSnapshot } from './types'
 
 export const FOLDERS_KEY = 'talyx-folders'
 export const ROOM_FOLDERS_KEY = 'talyx-room-folders'
+export const ROOM_PINS_KEY = 'talyx-room-pins'
 
 // Thrown for a roster problem the user can act on; `key` is its message in i18n.ts.
 export class RosterError extends Error {
@@ -96,6 +97,24 @@ export function folderBots(snapshot: RosterSnapshot, folderId: string | null): B
   })
 }
 
+// A room in a folder that no longer exists shows as unassigned; pinned rooms lead, in pin order.
+export function folderRooms(snapshot: RosterSnapshot, folderId: string | null): Room[] {
+  const ids = new Set(snapshot.folders.map((folder) => folder.id))
+  const pinOrder = (room: Room): number => {
+    const index = snapshot.roomPins.indexOf(room.room_id)
+    return index < 0 ? Infinity : index
+  }
+  return (
+    snapshot.rooms
+      .filter((room) => {
+        const assigned = snapshot.roomFolders[room.room_id]
+        return (assigned && ids.has(assigned) ? assigned : null) === folderId
+      })
+      // Two unpinned rooms compare as NaN, which keeps their engine order.
+      .sort((a, b) => pinOrder(a) - pinOrder(b) || 0)
+  )
+}
+
 // A folder counts the bots in it and in its subfolders; Unassigned counts only its own.
 export function folderCount(snapshot: RosterSnapshot, folderId: string | null): number {
   if (folderId === null) return folderBots(snapshot, null).length
@@ -138,6 +157,12 @@ export function normalizeFolders(value: unknown): Folder[] {
       delete folder.parentId
   }
   return folders
+}
+
+/** A folder's name with its parents, for a folder picker. */
+export function folderPath(folders: Folder[], folder: Folder): string {
+  const parent = folders.find((item) => item.id === folder.parentId)
+  return parent ? `${folderPath(folders, parent)} / ${folder.name}` : folder.name
 }
 
 export function recoverFolders(bots: Bot[]): Folder[] {

@@ -158,7 +158,7 @@ export function fixtureChat(): ChatActions {
           return {
             running: false,
             last_sequence: seq,
-            info: { model: 'team-manager', provider: 'custom', reasoning_effort: 'medium' }
+            info: { model: '9-route-provider', provider: 'custom', reasoning_effort: 'medium' }
           }
         case 'prompt.submit':
           history[profile].push({ id: Date.now(), role: 'user', content: String(params.text) })
@@ -180,7 +180,7 @@ export function fixtureChat(): ChatActions {
     if (path.startsWith('/api/sessions/')) return { messages: history[profile] ?? [] } as T
     if (path.startsWith('/api/model/options'))
       return {
-        providers: [{ slug: 'custom', name: 'Router', models: ['team-manager', 'team-worker'] }]
+        providers: [{ slug: 'custom', name: 'Router', models: ['9-route-provider', 'paid-model'] }]
       } as T
     if (path.startsWith('/api/chat/image-upload'))
       return { path: '/images/fixture.png', mime_type: 'image/png' } as T

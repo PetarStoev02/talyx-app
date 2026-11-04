@@ -2,7 +2,8 @@ import type { GatewayEvent } from '@shared/engine/shared'
 import type { SessionMessage } from '@shared/engine/types'
 import type { ChatItem, ChatPrompt, Transcript } from './types'
 
-const DELIVERY_PREFIX = 'Message from 🤖'
+// A message another bot delivered: `Message from 🤖 <name> (@<handle>): <text>`.
+const DELIVERY = /^Message from 🤖 (.+?) \(@([^\s)]+)\):\s*([\s\S]*)$/
 // Rows the engine writes into the chat itself (a delivery, a finished job, a model switch): no
 // one typed them, so they show as one quiet line.
 const NOTICE_KINDS = new Set([
@@ -30,6 +31,14 @@ export function fromHistory(
   const calls = toolCalls(messages)
   const items = messages.flatMap((message) => historyItem(message, calls))
   return { sessionId, items, prompts: [], running, lastSeq: 0, epoch: null }
+}
+
+/**
+ * The profile behind a sender. A delivery names its sender by @handle, which is the profile's name
+ * except for Talyx: the engine gives the default profile its own name as handle.
+ */
+export function senderProfile(handle: string, managerHandle: string | null): string {
+  return handle === managerHandle ? 'default' : handle
 }
 
 export function applyEvent(transcript: Transcript, event: GatewayEvent): Transcript {
@@ -97,13 +106,21 @@ function historyItem(
   const id = String(message.row_id ?? message.id ?? '')
   const text = messageText(message.display_content ?? message.content)
   if (message.role === 'user') {
-    if (text.startsWith(DELIVERY_PREFIX)) return [{ kind: 'notice', id, text }]
+    const delivery = DELIVERY.exec(text)
+    if (delivery) {
+      const [, name, profile, body] = delivery
+      return [
+        { kind: 'bot', id, text: body, streaming: false, error: null, sender: { name, profile } }
+      ]
+    }
     if (message.display_kind && NOTICE_KINDS.has(message.display_kind))
       return [{ kind: 'notice', id, text: noticeText(message, text) }]
     return [userItem(id, text)]
   }
   if (message.role === 'assistant')
-    return text.trim() ? [{ kind: 'bot', id, text, streaming: false, error: null }] : []
+    return text.trim()
+      ? [{ kind: 'bot', id, text, streaming: false, error: null, sender: null }]
+      : []
   if (message.role === 'tool') {
     const call = calls.get(message.tool_call_id ?? '')
     const name = message.tool_name ?? message.name ?? call?.name ?? 'tool'
@@ -189,7 +206,14 @@ function lastStreamingReply(transcript: Transcript): number {
 
 function withStreamingReply(transcript: Transcript, id: string): Transcript {
   if (lastStreamingReply(transcript) >= 0) return transcript
-  const reply: BotItem = { kind: 'bot', id: `live-${id}`, text: '', streaming: true, error: null }
+  const reply: BotItem = {
+    kind: 'bot',
+    id: `live-${id}`,
+    text: '',
+    streaming: true,
+    error: null,
+    sender: null
+  }
   return { ...transcript, items: [...transcript.items, reply] }
 }
 

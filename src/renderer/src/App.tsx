@@ -10,6 +10,8 @@ import { SettingsPage } from '@pages/settings'
 import { EngineDebugPage } from '@pages/engine-debug'
 import { TooltipProvider } from '@shared/ui/tooltip'
 import { Roster } from '@widgets/roster'
+import { EngineSplash } from '@widgets/engine-gate'
+import { useEngine } from '@app/providers/useEngine'
 
 function App(): React.JSX.Element {
   useKeyboardShortcuts()
@@ -19,11 +21,14 @@ function App(): React.JSX.Element {
   const rosterBackend = useRosterBackend()
   // Here, not in the page: replies keep marking bots unread while another page is open.
   const chat = useChatBackend()
+  const engineKnown = useEngine((s) => s.status !== null)
   const pages = {
     agents: <AgentsPage chat={chat} roster={rosterBackend} />,
     'engine-debug': <EngineDebugPage />,
     settings: <SettingsPage />
   }
+
+  if (!engineKnown) return <EngineSplash />
 
   return (
     <TooltipProvider>

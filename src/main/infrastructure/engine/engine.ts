@@ -173,7 +173,8 @@ export function createEngine(deps: EngineDeps): Engine {
           home: ensure.endpoint.profile_id,
           stale: ensure.stale,
           botMetaKey: wire.botMetaKey,
-          botGroupsMetaKey: wire.botGroupsMetaKey
+          botGroupsMetaKey: wire.botGroupsMetaKey,
+          managerHandle: wire.managerHandle
         }
       } catch (error) {
         if (error instanceof EngineMissingError)

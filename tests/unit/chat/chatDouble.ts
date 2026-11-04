@@ -56,7 +56,7 @@ export function chatDouble(
           session_id: params.session_id,
           running: false,
           last_sequence: 7,
-          info: { model: 'team-manager', provider: 'custom', reasoning_effort: 'medium' }
+          info: { model: '9-route-provider', provider: 'custom', reasoning_effort: 'medium' }
         }
       case 'GET /api/sessions':
         return { messages: chat?.messages ?? [] }
@@ -65,7 +65,7 @@ export function chatDouble(
       case 'POST /api/audio/transcribe':
         return { transcript: 'dictated words' }
       case 'GET /api/model/options':
-        return { providers: [{ slug: 'custom', name: 'Router', models: ['team-manager'] }] }
+        return { providers: [{ slug: 'custom', name: 'Router', models: ['9-route-provider'] }] }
       case 'GET /api/media':
         return { data_url: 'data:image/png;base64,AAAA' }
       default:

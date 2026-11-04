@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useRoster } from '@features/bots/store'
 import { botTitle } from '@features/bots/roster'
@@ -6,7 +7,9 @@ import { TalyxLogo } from '@shared/ui/TalyxLogo'
 import { cn } from '@shared/lib/utils'
 import { useLanguage } from '@app/providers/useLanguage'
 import { EngineGate } from '@widgets/engine-gate'
-import { ChatPane } from '@widgets/chat'
+import { ChatPane, RoomPane } from '@widgets/chat'
+import { RoomAvatars } from '@features/bots/RoomAvatars'
+import { roomActions } from '@features/chat/room'
 import { DetailsPanel } from '@widgets/bot-details'
 import type { ChatActions } from '@features/chat/chat'
 import type { RosterBackend } from '@features/bots/data'
@@ -28,6 +31,7 @@ export function AgentsPage({
     (item) => selection?.kind === 'room' && item.room_id === selection.id
   )
   const title = bot ? botTitle(bot) : room?.name
+  const rooms = useMemo(() => roster && roomActions(roster), [roster])
   return (
     <EngineGate>
       <div className="flex h-full min-w-0">
@@ -57,6 +61,7 @@ export function AgentsPage({
                 </button>
               ) : (
                 <span className={pillClass}>
+                  {room && <RoomAvatars room={room} bots={snapshot.bots} />}
                   <span className="truncate">{title}</span>
                 </span>
               )}
@@ -69,13 +74,18 @@ export function AgentsPage({
               avatar={<BotAvatar bot={bot} size={64} />}
               actions={chat}
             />
+          ) : room ? (
+            <RoomPane
+              key={room.room_id}
+              room={room}
+              actions={rooms}
+              transcribe={chat && ((audio) => chat.transcribe('default', audio))}
+            />
           ) : (
             <div className="grid flex-1 place-content-center justify-items-center gap-4 px-8 text-center">
               <TalyxLogo size={48} />
-              <h1 className="text-2xl font-semibold">{title || t('agents.welcome')}</h1>
-              <p className="max-w-sm text-base">
-                {title ? t('agents.roomSoon') : t('agents.chooseHint')}
-              </p>
+              <h1 className="text-2xl font-semibold">{t('agents.welcome')}</h1>
+              <p className="max-w-sm text-base">{t('agents.chooseHint')}</p>
             </div>
           )}
         </section>

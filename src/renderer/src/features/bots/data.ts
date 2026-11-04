@@ -3,6 +3,7 @@ import { metaPatch } from '@shared/engine/botMeta'
 import {
   FOLDERS_KEY,
   ROOM_FOLDERS_KEY,
+  ROOM_PINS_KEY,
   RosterError,
   normalizeFolders,
   recoverFolders
@@ -60,6 +61,7 @@ const metaSchema = z
   })
   .catch({})
 const roomFoldersSchema = z.record(z.string(), z.string().nullable())
+const roomPinsSchema = z.array(z.string()).catch([])
 const profilesSchema = z.object({ profiles: z.array(profileSchema) })
 type ProfileRow = z.infer<typeof profileSchema>
 const roomsSchema = z.object({
@@ -67,8 +69,15 @@ const roomsSchema = z.object({
     z.object({
       room_id: z.string().min(1),
       name: z.string(),
-      members: z.array(z.object({ profile: z.string(), display_name: z.string().optional() })),
-      disbanded_at: z.number().nullable().optional()
+      members: z.array(
+        z.object({
+          profile: z.string(),
+          member_id: z.string().optional(),
+          display_name: z.string().optional()
+        })
+      ),
+      disbanded_at: z.number().nullable().optional(),
+      latest_seq: lenient(z.number().int().nonnegative())
     })
   ),
   next_offset: z.number().int().nonnegative().nullable()
@@ -87,7 +96,8 @@ export async function readRoster(backend: RosterBackend): Promise<RosterSnapshot
   const roomFolders = storedRoomFolders.success
     ? storedRoomFolders.data
     : recoverRoomFolders(manager.ui_meta?.[backend.botGroupsMetaKey], rooms)
-  return { bots, rooms, folders, roomFolders }
+  const roomPins = roomPinsSchema.parse(manager.ui_meta?.[ROOM_PINS_KEY] ?? [])
+  return { bots, rooms, folders, roomFolders, roomPins }
 }
 
 export function hasSharedLayout(snapshot: RosterSnapshot): boolean {
@@ -133,6 +143,15 @@ export function saveRoomFolders(
     const stored = roomFoldersSchema.safeParse(value)
     return update(stored.success ? stored.data : fallback)
   })
+}
+
+export function saveRoomPins(
+  backend: RosterBackend,
+  update: (roomPins: string[]) => string[]
+): Promise<void> {
+  return updateMetadata(backend, { profile: 'default', key: ROOM_PINS_KEY }, (value) =>
+    update(roomPinsSchema.parse(value ?? []))
+  )
 }
 
 // Read-modify-CAS preserves fields owned by other screens and concurrent desktops.

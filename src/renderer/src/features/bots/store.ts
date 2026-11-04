@@ -8,8 +8,12 @@ interface RosterState {
   editingProfile: string | null
   activity: Record<string, BotActivity>
   unread: Record<string, boolean>
+  // By room id: a room and a bot may share an id.
+  roomUnread: Record<string, boolean>
   // Each bot's chat activity time at the last snapshot, so a later move reads as a new reply.
   seen: Record<string, number>
+  // Each room's newest log seq read, by the roster's poll or by the open room.
+  roomSeen: Record<string, number>
   revision: number
   loading: boolean
   saving: boolean
@@ -19,15 +23,19 @@ interface RosterState {
   clearError: () => void
   setActivity: (profile: string, activity: BotActivity) => void
   markUnread: (profile: string) => void
+  markRoomUnread: (roomId: string) => void
+  seeRoom: (roomId: string, seq: number) => void
 }
 
 export const useRoster = create<RosterState>((set) => ({
-  snapshot: { bots: [], folders: [], rooms: [], roomFolders: {} },
+  snapshot: { bots: [], folders: [], rooms: [], roomFolders: {}, roomPins: [] },
   selection: null,
   editingProfile: null,
   activity: {},
   unread: {},
+  roomUnread: {},
   seen: {},
+  roomSeen: {},
   revision: 0,
   loading: true,
   saving: false,
@@ -37,6 +45,10 @@ export const useRoster = create<RosterState>((set) => ({
       selection,
       editingProfile: null,
       unread: selection?.kind === 'bot' ? { ...state.unread, [selection.id]: false } : state.unread,
+      roomUnread:
+        selection?.kind === 'room'
+          ? { ...state.roomUnread, [selection.id]: false }
+          : state.roomUnread,
       seen: leftAt(state.selection, selection, state.seen)
     })),
   editProfile: (profile) => set({ editingProfile: profile }),
@@ -49,6 +61,17 @@ export const useRoster = create<RosterState>((set) => ({
         ...state.unread,
         [profile]: !(state.selection?.kind === 'bot' && state.selection.id === profile)
       }
+    })),
+  markRoomUnread: (roomId) =>
+    set((state) => ({
+      roomUnread: {
+        ...state.roomUnread,
+        [roomId]: !(state.selection?.kind === 'room' && state.selection.id === roomId)
+      }
+    })),
+  seeRoom: (roomId, seq) =>
+    set((state) => ({
+      roomSeen: { ...state.roomSeen, [roomId]: Math.max(state.roomSeen[roomId] ?? 0, seq) }
     }))
 }))
 
