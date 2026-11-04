@@ -87,7 +87,7 @@ export function DetailsPanel({
     if (!draft || !opening) return
     void runRosterMutation(backend, async () => {
       const asked = await saveDetails(backend, bot, { opening, draft })
-      if (!asked) return editProfile(null)
+      if (!asked) return closeIfShowing()
       // Everything but the model is saved; the panel now opens from there.
       setLoaded({ ...draft, model: opening.model })
       setConfirm(asked)
@@ -98,8 +98,13 @@ export function DetailsPanel({
     void runRosterMutation(backend, async () => {
       await confirmModel(backend, bot.name, model)
       setConfirm(null)
-      editProfile(null)
+      closeIfShowing()
     })
+  }
+
+  // A save can finish after the user moved to another bot's panel; that panel stays open.
+  function closeIfShowing(): void {
+    if (useRoster.getState().editingProfile === bot.name) editProfile(null)
   }
 
   // Declining keeps the model the engine has, in the field as well.

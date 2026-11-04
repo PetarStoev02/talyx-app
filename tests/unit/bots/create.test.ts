@@ -103,6 +103,13 @@ describe('creating a bot', () => {
       expect(engine.created).toHaveLength(1)
     })
 
+    it('should refuse a taken name without asking the engine', async () => {
+      await expect(createBot(backend, newBot({ name: 'Analyst' }), ['analyst'])).rejects.toThrow(
+        RosterError
+      )
+      expect(engine.created).toEqual([])
+    })
+
     it("should surface the engine's refusal and write no metadata", async () => {
       await expect(createBot(backend, newBot({ name: 'reserved' }), [])).rejects.toThrow(
         'Profile name is reserved'

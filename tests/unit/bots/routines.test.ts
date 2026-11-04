@@ -67,6 +67,13 @@ describe('routines', () => {
       if (value.kind === 'weekly') expect(read.weekday).toBe(value.weekday)
     })
 
+    it.each(['60 8 * * *', '0 24 * * *'])(
+      'should read an out-of-range time %s as custom',
+      (line) => {
+        expect(describeSchedule(line).kind).toBe('custom')
+      }
+    )
+
     it('should treat an unknown schedule as custom', () => {
       expect(describeSchedule('once in 30m')).toEqual({
         kind: 'custom',

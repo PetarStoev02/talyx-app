@@ -102,8 +102,9 @@ async function configure(
   const result = configureSchema.parse(
     await backend.request(profile, 'profiles.configure', { name: profile, ...sections })
   )
+  // A model waiting on the user's yes is not a failure, however the engine reports it.
   const failed = Object.entries(result.applied).flatMap(([name, ok]) =>
-    ok === false ? [name] : []
+    ok === false && !(name === 'model' && result.confirm_required) ? [name] : []
   )
   if (failed.length > 0) throw new RosterError('details.errorNotApplied', failed.join(', '))
   return result

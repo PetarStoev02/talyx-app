@@ -108,6 +108,37 @@ describe('bot details', () => {
       expect(engine.profiles.analyst.model).toEqual({ provider: 'custom', model: 'team-manager' })
     })
 
+    it('should still ask when the engine reports the waiting model as not applied', async () => {
+      engine.expensiveModels.add('big')
+      const reportsModelFalse = backendFor({
+        request: async (profile, method, params) => {
+          const result = await engine.request(profile, method, params)
+          const answer = result as { confirm_required?: boolean; applied?: object }
+          return answer.confirm_required
+            ? { ...answer, applied: { ...answer.applied, model: false } }
+            : result
+        }
+      })
+      const before = await opening('analyst')
+      const confirm = await saveDetails(reportsModelFalse, bot('analyst'), {
+        opening: before,
+        draft: { ...before, model: { provider: 'custom', model: 'big' } }
+      })
+      expect(confirm?.model).toEqual({ provider: 'custom', model: 'big' })
+    })
+
+    it('should send a plain model change without asking', async () => {
+      const before = await opening('analyst')
+      const confirm = await saveDetails(backend, bot('analyst'), {
+        opening: before,
+        draft: { ...before, model: { provider: 'custom', model: 'team-worker' } }
+      })
+      expect(confirm).toBeNull()
+      expect(engine.configured).toEqual([
+        { name: 'analyst', model: 'team-worker', provider: 'custom' }
+      ])
+    })
+
     it('should name the sections the engine did not apply', async () => {
       engine.failSection('soul')
       const before = await opening('analyst')
