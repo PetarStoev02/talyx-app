@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { chatActions } from '../../../src/renderer/src/features/chat/chat'
 import type { ChatActions } from '../../../src/renderer/src/features/chat/chat'
 import { useChat } from '../../../src/renderer/src/features/chat/store'
+import { handleEvent } from '../../../src/renderer/src/features/chat/events'
 import { addPrompt } from '../../../src/renderer/src/features/chat/transcript'
+import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/shared'
 import { chatDouble } from './chatDouble'
 import type { ChatCall, ChatDouble } from './chatDouble'
 import type { ChatState } from '../../../src/renderer/src/features/chat/store'
@@ -84,7 +86,57 @@ describe('bot chat', () => {
     })
   })
 
+  describe('reloading', () => {
+    it('should keep live events that arrive while the chat reloads', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      const reload = actions.rebuild(MANAGER)
+      for (const [type, seq, payload] of [
+        ['message.start', 8, {}],
+        ['message.delta', 9, { text: 'Live' }]
+      ] as const)
+        handleEvent(actions, { type, seq, payload, session_id: 'manager-chat' } as GatewayEvent)
+      await reload
+      expect(chat(MANAGER).transcript?.items.at(-1)).toMatchObject({
+        text: 'Live',
+        streaming: true
+      })
+    })
+
+    it('should not let an older reload overwrite a newer one', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      const release = engine.holdNext('GET /api/sessions')
+      const older = actions.rebuild(MANAGER)
+      engine.chats[MANAGER].messages = [{ id: 9, role: 'user', content: 'Newer' }]
+      await actions.rebuild(MANAGER)
+      release()
+      await older
+      expect(chat(MANAGER).transcript?.items.map((item) => item.id)).toEqual(['9'])
+    })
+  })
+
   describe('sending', () => {
+    it('should create one Bot Chat when two sends race', async () => {
+      await actions.open(WORKER, null)
+      await Promise.all([
+        actions.send(WORKER, { text: 'One', images: [] }),
+        actions.send(WORKER, { text: 'Two', images: [] })
+      ])
+      expect(methods().filter((method) => method === 'session.create')).toHaveLength(1)
+      expect(
+        engine.calls
+          .filter((item) => item.method === 'prompt.submit')
+          .map((item) => item.params.session_id)
+      ).toEqual(['created-1', 'created-1'])
+    })
+
+    it('should give a failed send back to the composer', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      engine.failNext('prompt.submit', 'Gateway refused the prompt')
+      expect(await actions.send(MANAGER, { text: 'Hi', images: [] })).toBe(false)
+      expect(chat(MANAGER).transcript?.items.map((item) => item.kind)).toEqual(['user', 'bot'])
+      expect(await actions.send(MANAGER, { text: 'Hi', images: [] })).toBe(true)
+    })
+
     it('should create one Bot Chat on the first send and submit the text', async () => {
       await actions.open(WORKER, null)
       await actions.send(WORKER, { text: '  Hi worker  ', images: [] })

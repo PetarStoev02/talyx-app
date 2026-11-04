@@ -3,6 +3,17 @@ import type { SessionMessage } from '@shared/engine/types'
 import type { ChatItem, ChatPrompt, Transcript } from './types'
 
 const DELIVERY_PREFIX = 'Message from 🤖'
+// Rows the engine writes into the chat itself (a delivery, a finished job, a model switch): no
+// one typed them, so they show as one quiet line.
+const NOTICE_KINDS = new Set([
+  'internal_notification',
+  'model_switch',
+  'async_delegation_complete',
+  'process_complete',
+  'auto_continue',
+  'personality_switch',
+  'failed_turn'
+])
 const MESSAGE_AGENT = 'message_agent'
 const IMAGE_LINE = /^@image:(.+)$/gm
 const IMAGE_NOTE = /\[Image attached: ([^\]]+)\]/g
@@ -18,10 +29,13 @@ export function fromHistory(
 ): Transcript {
   const calls = toolCalls(messages)
   const items = messages.flatMap((message) => historyItem(message, calls))
-  return { sessionId, items, prompts: [], running, lastSeq: 0 }
+  return { sessionId, items, prompts: [], running, lastSeq: 0, epoch: null }
 }
 
 export function applyEvent(transcript: Transcript, event: GatewayEvent): Transcript {
+  const epoch = event.replay_epoch ?? event.replayEpoch
+  if (epoch && epoch !== transcript.epoch)
+    transcript = { ...transcript, epoch, lastSeq: transcript.epoch ? 0 : transcript.lastSeq }
   if (typeof event.seq === 'number') {
     if (event.seq <= transcript.lastSeq) return transcript
     transcript = { ...transcript, lastSeq: event.seq }
@@ -84,6 +98,8 @@ function historyItem(
   const text = messageText(message.display_content ?? message.content)
   if (message.role === 'user') {
     if (text.startsWith(DELIVERY_PREFIX)) return [{ kind: 'notice', id, text }]
+    if (message.display_kind && NOTICE_KINDS.has(message.display_kind))
+      return [{ kind: 'notice', id, text: noticeText(message, text) }]
     return [userItem(id, text)]
   }
   if (message.role === 'assistant')
@@ -95,6 +111,13 @@ function historyItem(
     return [{ ...toolItem(id, name, args, message.labels), done: true }]
   }
   return []
+}
+
+function noticeText(message: SessionMessage, text: string): string {
+  const metadata = parseArgs(message.display_metadata)
+  return typeof metadata.display_text === 'string' && metadata.display_text.trim()
+    ? metadata.display_text
+    : text.split('\n')[0].trim()
 }
 
 function userItem(id: string, raw: string): ChatItem {

@@ -14,6 +14,8 @@ export interface ChatDouble {
   // Every Bot Chat by profile: [session id, its stored messages].
   chats: Record<string, { sessionId: string; messages: SessionMessage[] }>
   failNext: (method: string, message: string) => void
+  // Holds the next call to `method` until the returned release runs.
+  holdNext: (method: string) => () => void
 }
 
 // In-memory engine for the chat: Bot Chat lookup, create, resume, submit and the REST paths.
@@ -30,6 +32,7 @@ export function chatDouble(
 ): ChatDouble {
   const calls: ChatCall[] = []
   const failures = new Map<string, string>()
+  const holds = new Map<string, Promise<void>>()
   let created = 0
   const answer = (profile: string, method: string, params: Record<string, unknown>): unknown => {
     calls.push({ profile, method, params })
@@ -69,9 +72,16 @@ export function chatDouble(
         return {}
     }
   }
+  const held = async (method: string, run: () => unknown): Promise<unknown> => {
+    const hold = holds.get(method)
+    holds.delete(method)
+    const value = run()
+    await hold
+    return value
+  }
   const backend: ChatBackend = {
     request: async <T>(profile: string, method: string, params: Record<string, unknown> = {}) =>
-      answer(profile, method, params) as T,
+      (await held(method, () => answer(profile, method, params))) as T,
     http: async <T>(request: EngineHttpRequest) => {
       const url = new URL(request.path, 'http://engine.invalid')
       const route = `${request.method ?? 'GET'} ${url.pathname.replace(/^(\/api\/sessions)\/.*/, '$1')}`
@@ -80,13 +90,20 @@ export function chatDouble(
         ...((request.body as Record<string, unknown> | undefined) ?? {}),
         path: url.pathname
       }
-      return answer(url.searchParams.get('profile') ?? '', route, params) as T
+      return (await held(route, () =>
+        answer(url.searchParams.get('profile') ?? '', route, params)
+      )) as T
     }
   }
   return {
     backend,
     calls,
     chats,
-    failNext: (method, message) => failures.set(method, message)
+    failNext: (method, message) => failures.set(method, message),
+    holdNext: (method) => {
+      let release = (): void => undefined
+      holds.set(method, new Promise<void>((resolve) => (release = resolve)))
+      return () => release()
+    }
   }
 }

@@ -41,4 +41,6 @@ export interface Transcript {
   running: boolean
   // The last per-session event sequence applied, so a replayed frame is not applied twice.
   lastSeq: number
+  // The replay epoch that sequence counts in; a new epoch restarts it.
+  epoch: string | null
 }

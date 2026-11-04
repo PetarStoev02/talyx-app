@@ -38,7 +38,7 @@ const en = {
   'chat.toolRunning': 'Running {name}',
   'chat.toolSeconds': '{seconds} s',
   'chat.asked': 'Asked {name}',
-  'chat.typing': '{name} is typing',
+  'chat.waiting': '{name} is waiting for your answer.',
   'chat.clarifyBack': 'Back',
   'chat.clarifyNext': 'Next',
   'chat.clarifySend': 'Send',

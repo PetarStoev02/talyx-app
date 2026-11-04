@@ -34,7 +34,8 @@ export interface ChatDraft {
 export interface ChatActions {
   open: (profile: string, chatId: string | null) => Promise<void>
   rebuild: (profile: string) => Promise<void>
-  send: (profile: string, draft: ChatDraft) => Promise<void>
+  /** False when nothing was sent; the caller keeps the draft. */
+  send: (profile: string, draft: ChatDraft) => Promise<boolean>
   interrupt: (profile: string) => Promise<void>
   answerClarify: (
     profile: string,
@@ -52,6 +53,7 @@ export interface ChatActions {
 
 interface ResumeSnapshot {
   info?: SessionLiveInfo | null
+  replay_epoch?: string
   running?: boolean
   last_sequence?: number
   inflight?: { assistant?: string } | null
@@ -61,6 +63,10 @@ export function chatActions(backend: ChatBackend): ChatActions {
   const { update } = useChat.getState()
   const chatOf = (profile: string): ChatState | undefined => useChat.getState().chats[profile]
   const sessionOf = (profile: string): string | null => chatOf(profile)?.sessionId ?? null
+  // The newest load per profile; an older one that answers later is dropped.
+  const loads = new Map<string, number>()
+  // The first send's create per profile, so a second quick send joins it.
+  const creating = new Map<string, Promise<string>>()
 
   // A failed call shows on its chat instead of throwing into the view.
   const guarded =
@@ -85,6 +91,10 @@ export function chatActions(backend: ChatBackend): ChatActions {
   }
 
   async function load(profile: string, sessionId: string): Promise<void> {
+    const token = (loads.get(profile) ?? 0) + 1
+    loads.set(profile, token)
+    // Events that land while the history is on its way are kept and replayed over it.
+    update(profile, { pending: [] })
     const query = new URLSearchParams({
       profile,
       limit: String(HISTORY_LIMIT),
@@ -102,13 +112,31 @@ export function chatActions(backend: ChatBackend): ChatActions {
         omit_messages: true
       })
     ])
+    if (loads.get(profile) !== token) return
+    const current = chatOf(profile)
+    const fresh = rebuilt(current?.transcript ?? null, sessionId, history.messages, resume)
     update(profile, {
       sessionId,
-      transcript: rebuilt(chatOf(profile)?.transcript ?? null, sessionId, history.messages, resume),
-      info: infoOf(resume.info, chatOf(profile)?.info),
+      transcript: (current?.pending ?? []).reduce(applyEvent, fresh),
+      pending: null,
+      info: infoOf(resume.info, current?.info),
       loading: false,
       error: null
     })
+  }
+
+  function startChat(profile: string): Promise<string> {
+    const started =
+      creating.get(profile) ??
+      createChat(profile)
+        .then(async (sessionId) => {
+          update(profile, { sessionId })
+          await load(profile, sessionId)
+          return sessionId
+        })
+        .finally(() => creating.delete(profile))
+    creating.set(profile, started)
+    return started
   }
 
   async function createChat(profile: string): Promise<string> {
@@ -156,36 +184,40 @@ export function chatActions(backend: ChatBackend): ChatActions {
       if (sessionId) await load(profile, sessionId)
     }),
 
-    send: guarded(async (profile, draft: ChatDraft) => {
+    send: async (profile, draft) => {
       const text = draft.text.trim()
-      if (!text && !draft.images.length) return
-      let sessionId = sessionOf(profile)
-      if (!sessionId) {
-        sessionId = await createChat(profile)
-        await load(profile, sessionId)
+      if (!text && !draft.images.length) return false
+      const local = `local-${Date.now()}-${Math.random()}`
+      try {
+        const sessionId = sessionOf(profile) ?? (await startChat(profile))
+        const transcript = chatOf(profile)?.transcript ?? fromHistory(sessionId, [], false)
+        const images = draft.images.map((image) => image.path)
+        update(profile, {
+          error: null,
+          transcript: {
+            ...transcript,
+            items: [...transcript.items, { kind: 'user', id: local, text, images }]
+          }
+        })
+        await backend.request(profile, 'prompt.submit', {
+          session_id: sessionId,
+          text,
+          ...(draft.images.length ? { attachments: draft.images } : {})
+        })
+        return true
+      } catch (error) {
+        // The composer gets the draft back, so the bubble for it goes.
+        const transcript = chatOf(profile)?.transcript ?? null
+        update(profile, {
+          error: error instanceof Error ? error.message : String(error),
+          transcript: transcript && {
+            ...transcript,
+            items: transcript.items.filter((item) => item.id !== local)
+          }
+        })
+        return false
       }
-      const transcript = chatOf(profile)?.transcript ?? fromHistory(sessionId, [], false)
-      update(profile, {
-        error: null,
-        transcript: {
-          ...transcript,
-          items: [
-            ...transcript.items,
-            {
-              kind: 'user',
-              id: `local-${Date.now()}`,
-              text,
-              images: draft.images.map((image) => image.path)
-            }
-          ]
-        }
-      })
-      await backend.request(profile, 'prompt.submit', {
-        session_id: sessionId,
-        text,
-        ...(draft.images.length ? { attachments: draft.images } : {})
-      })
-    }),
+    },
 
     interrupt: guarded(async (profile) => {
       const sessionId = sessionOf(profile)
@@ -286,7 +318,8 @@ function rebuilt(
   return {
     ...transcript,
     prompts: same ? previous.prompts : [],
-    lastSeq: resume.last_sequence ?? (same ? previous.lastSeq : 0)
+    lastSeq: resume.last_sequence ?? (same ? previous.lastSeq : 0),
+    epoch: resume.replay_epoch ?? (same ? previous.epoch : null)
   }
 }
 

@@ -31,7 +31,12 @@ export function AgentsPage({ chat }: { chat: ChatActions | null }): React.JSX.El
             </header>
           )}
           {bot ? (
-            <ChatPane key={bot.name} bot={bot} actions={chat} />
+            <ChatPane
+              key={bot.name}
+              bot={bot}
+              avatar={<BotAvatar bot={bot} size={64} />}
+              actions={chat}
+            />
           ) : (
             <div className="grid flex-1 place-content-center justify-items-center gap-4 px-8 text-center">
               <TalyxLogo size={48} />

@@ -31,8 +31,10 @@ export function Composer({
   const t = useLanguage((s) => s.t)
   const [text, setText] = useState('')
   const [images, setImages] = useState<Attached[]>([])
+  const [sending, setSending] = useState(false)
   const picker = useRef<HTMLInputElement>(null)
-  const running = chat.transcript?.running === true
+  // Until the engine starts the turn, a send in flight counts as running: no second send.
+  const running = sending || chat.transcript?.running === true
   const { profile } = chat
   const dictation = useDictation(
     (audio) => actions.transcribe(profile, audio),
@@ -43,9 +45,15 @@ export function Composer({
   async function send(): Promise<void> {
     if (running || (!text.trim() && !images.length)) return
     const draft = { text, images: images.map(({ path, mime }) => ({ path, mime })) }
+    const attached = images
     setText('')
     setImages([])
-    await actions.send(profile, draft)
+    setSending(true)
+    const sent = await actions.send(profile, draft).finally(() => setSending(false))
+    if (sent) return
+    // A failed send gives the draft back, unless something new was typed meanwhile.
+    setText((current) => current || text)
+    setImages((current) => (current.length ? current : attached))
   }
 
   async function attach(files: Iterable<File>): Promise<void> {
@@ -152,7 +160,7 @@ export function Composer({
                   : t('chat.dictate')
             }
             aria-pressed={dictation.state === 'recording'}
-            disabled={dictation.state === 'transcribing'}
+            disabled={dictation.state === 'transcribing' || dictation.state === 'starting'}
             onClick={dictation.toggle}
             className={cn(
               'rounded-full p-2 hover:bg-accent',

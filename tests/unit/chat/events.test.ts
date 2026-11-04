@@ -118,6 +118,15 @@ describe('chat events', () => {
     expect(chat(MANAGER).info).toMatchObject({ model: 'cfo-model', provider: 'custom' })
   })
 
+  it('should follow a model change that carries no sequence', () => {
+    handleEvent(actions, {
+      type: 'session.info',
+      session_id: 'manager-chat',
+      payload: { model: 'other-model' }
+    } as GatewayEvent)
+    expect(chat(MANAGER).info.model).toBe('other-model')
+  })
+
   it('should rebuild the chat on a replay gap', async () => {
     const before = engine.calls.length
     handleEvent(actions, event('manager-chat', 'session.replay_gap', 30))

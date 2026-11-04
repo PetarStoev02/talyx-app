@@ -45,6 +45,27 @@ describe('roster selection and unread state', () => {
     applySnapshot(snapshotWith({ analyst: 200 }))
     expect(useRoster.getState().unread.analyst).toBe(true)
   })
+  it('should mark a bot unread when its first chat appears in the background', () => {
+    applySnapshot({
+      ...snapshotWith({ analyst: 100 }),
+      bots: [bot('analyst', { last_active: 100 }), bot('worker')]
+    })
+    applySnapshot(snapshotWith({ analyst: 100, worker: 300 }))
+    expect(useRoster.getState().unread).toEqual({ worker: true })
+  })
+  it('should not mark a bot unread the first time it shows up', () => {
+    applySnapshot(snapshotWith({ analyst: 100 }))
+    applySnapshot(snapshotWith({ analyst: 100, created: 300 }))
+    expect(useRoster.getState().unread).toEqual({})
+  })
+  it('should not mark a reply unread that landed while the bot was open', () => {
+    const now = Date.now() / 1000
+    useRoster.getState().select({ kind: 'bot', id: 'analyst' })
+    applySnapshot(snapshotWith({ analyst: now - 60 }))
+    useRoster.getState().select({ kind: 'bot', id: 'designer' })
+    applySnapshot(snapshotWith({ analyst: now - 5 }))
+    expect(useRoster.getState().unread.analyst).toBeFalsy()
+  })
   it('should not mark the selected bot unread', () => {
     useRoster.getState().select({ kind: 'bot', id: 'analyst' })
     applySnapshot(snapshotWith({ analyst: 100 }))

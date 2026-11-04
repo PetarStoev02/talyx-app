@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { GatewayEvent } from '@shared/engine/shared'
 import type { Transcript } from './types'
 
 /** The session's model and reasoning level, as the composer shows them. */
@@ -13,6 +14,8 @@ export interface ChatState {
   sessionId: string | null
   transcript: Transcript | null
   info: ChatInfo
+  // Events that arrived while the chat reloads; null when no load is running.
+  pending: GatewayEvent[] | null
   loading: boolean
   error: string | null
 }
@@ -29,6 +32,7 @@ const blank = (profile: string): ChatState => ({
   sessionId: null,
   transcript: null,
   info: { model: null, provider: null, reasoning: null },
+  pending: null,
   loading: false,
   error: null
 })

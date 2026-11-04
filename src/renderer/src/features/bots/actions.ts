@@ -27,8 +27,8 @@ export function applySnapshot(snapshot: RosterSnapshot): void {
   const { selection, seen, markUnread } = useRoster.getState()
   const nextSeen: Record<string, number> = {}
   for (const bot of snapshot.bots) {
-    const active = bot.canonical_session?.last_active
-    if (active === undefined) continue
+    // 0 for a bot with no chat yet, so the first chat a delivery opens also reads as a reply.
+    const active = bot.canonical_session?.last_active ?? 0
     nextSeen[bot.name] = active
     if (seen[bot.name] !== undefined && active > seen[bot.name]) markUnread(bot.name)
   }

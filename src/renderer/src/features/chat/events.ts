@@ -17,18 +17,19 @@ export interface ChatUpdate {
 
 export function handleEvent(actions: ChatActions, event: GatewayEvent): ChatUpdate | null {
   const chat = event.session_id ? useChat.getState().chatForSession(event.session_id) : null
+  if (chat?.pending) useChat.getState().update(chat.profile, { pending: [...chat.pending, event] })
   if (!chat?.transcript) return null
   const { profile, transcript } = chat
+  if (event.type === 'session.info')
+    useChat.getState().update(profile, {
+      info: infoOf(event.payload as SessionLiveInfo, chat.info)
+    })
   if (needsRebuild(event)) {
     void actions.rebuild(profile)
     return { profile, completed: false, activity: activityOf(transcript) }
   }
   const next = applyEvent(transcript, event)
   if (next !== transcript) useChat.getState().update(profile, { transcript: next })
-  if (event.type === 'session.info' && next !== transcript)
-    useChat
-      .getState()
-      .update(profile, { info: infoOf(event.payload as SessionLiveInfo, chat.info) })
   const completed = event.type === 'message.complete' && next !== transcript
   // The stored history then carries what live events do not: rows from other clients and bots.
   if (completed) void actions.rebuild(profile)

@@ -96,6 +96,35 @@ describe('chat transcript', () => {
       expect(item).toMatchObject({ kind: 'tool', name: 'terminal', label: 'terminal' })
     })
 
+    it('should show engine notices as one quiet line', () => {
+      const transcript = history(
+        {
+          id: 1,
+          role: 'user',
+          content: '[IMPORTANT: Background process proc_1 completed]\nlong output',
+          display_kind: 'process_complete',
+          display_metadata: { display_text: 'Background build finished' }
+        } as SessionMessage,
+        {
+          id: 2,
+          role: 'user',
+          content: '[IMPORTANT: Background process proc_2 completed]\nmore',
+          display_kind: 'process_complete'
+        },
+        {
+          id: 3,
+          role: 'user',
+          content: 'Message from 🤖 CFO (@cfo): done',
+          display_kind: 'internal_notification'
+        }
+      )
+      expect(transcript.items).toEqual([
+        { kind: 'notice', id: '1', text: 'Background build finished' },
+        { kind: 'notice', id: '2', text: '[IMPORTANT: Background process proc_2 completed]' },
+        { kind: 'notice', id: '3', text: 'Message from 🤖 CFO (@cfo): done' }
+      ])
+    })
+
     it('should skip hidden history rows', () => {
       expect(
         history({ id: 1, role: 'user', content: 'secret', display_kind: 'hidden' }).items
@@ -189,6 +218,15 @@ describe('chat transcript', () => {
         event('tool.start', { tool_id: 't1', name: 'message_agent', args: { target: 'cfo' } }, 1)
       )
       expect(transcript.items[0]).toMatchObject({ target: 'cfo', done: false })
+    })
+
+    it('should accept events from a new replay epoch', () => {
+      const transcript = { ...empty(), lastSeq: 50, epoch: 'old' }
+      const next = applyEvent(transcript, {
+        ...event('message.start', {}, 3),
+        replay_epoch: 'new'
+      } as GatewayEvent)
+      expect(next).toMatchObject({ lastSeq: 3, epoch: 'new', running: true })
     })
 
     it('should follow the running flag from session info', () => {

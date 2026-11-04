@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { cn } from '@shared/lib/utils'
 import type { ChatPrompt } from '@features/chat/types'
@@ -18,10 +18,13 @@ export function ClarifyCard({
   const [page, setPage] = useState(0)
   const [answers, setAnswers] = useState<Answers>(prompt.answers)
   const [sending, setSending] = useState(false)
+  const titleId = useId()
   const question = prompt.questions[page]
   if (!question) return <></>
   const last = page === prompt.questions.length - 1
   const picked = answers[question.qid]
+  const empty =
+    picked === undefined || (Array.isArray(picked) ? !picked.length : !String(picked).trim())
   const chosen = (choice: string): boolean =>
     Array.isArray(picked) ? picked.includes(choice) : picked === choice
 
@@ -49,8 +52,24 @@ export function ClarifyCard({
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-3xl bg-secondary p-5" aria-live="polite">
-      <p className="text-base font-medium">{question.question}</p>
+    <section className="flex flex-col gap-4 rounded-3xl bg-secondary p-5" aria-labelledby={titleId}>
+      <p id={titleId} className="text-base font-medium">
+        {question.question}
+      </p>
+      {/* An open question has no choices: the answer is typed. */}
+      {!question.choices.length && (
+        <input
+          aria-labelledby={titleId}
+          value={typeof picked === 'string' ? picked : ''}
+          onChange={(event) =>
+            setAnswers((current) => ({ ...current, [question.qid]: event.target.value }))
+          }
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !empty && !sending) void next()
+          }}
+          className="rounded-full bg-background px-4 py-2 text-base"
+        />
+      )}
       <div className="flex flex-wrap gap-2">
         {question.choices.map((choice) => (
           <button
@@ -72,6 +91,7 @@ export function ClarifyCard({
       <div className="flex items-center gap-4">
         {prompt.questions.length > 1 && (
           <span
+            role="img"
             className="flex gap-1.5"
             aria-label={t('chat.clarifyPage')
               .replace('{page}', String(page + 1))
@@ -96,7 +116,7 @@ export function ClarifyCard({
           )}
           <button
             type="button"
-            disabled={sending || picked === undefined || (Array.isArray(picked) && !picked.length)}
+            disabled={sending || empty}
             onClick={() => void next()}
             className="rounded-full bg-primary px-5 py-2 text-base text-primary-foreground disabled:opacity-50"
           >

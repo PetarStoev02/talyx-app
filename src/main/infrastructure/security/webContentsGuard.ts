@@ -20,10 +20,14 @@ export function isAppUrl(url: string, appRoot: string): boolean {
 
 export function isAllowedPermission(
   permission: string,
-  requestingUrl: string,
+  details: { requestingUrl: string; mediaTypes?: string[] },
   appRoot: string
 ): boolean {
-  return APP_PERMISSIONS.has(permission) && isAppUrl(requestingUrl, appRoot)
+  // 'media' covers the camera too; dictation only ever asks for audio.
+  const audioOnly =
+    permission !== 'media' ||
+    (!!details.mediaTypes?.length && details.mediaTypes.every((type) => type === 'audio'))
+  return APP_PERMISSIONS.has(permission) && audioOnly && isAppUrl(details.requestingUrl, appRoot)
 }
 
 /**
@@ -35,7 +39,7 @@ export function isAllowedPermission(
  */
 export function installWebContentsGuard(appRoot: string): void {
   session.defaultSession.setPermissionRequestHandler((_contents, permission, callback, details) =>
-    callback(isAllowedPermission(permission, details.requestingUrl, appRoot))
+    callback(isAllowedPermission(permission, details, appRoot))
   )
   app.on('web-contents-created', (_event, contents) => {
     contents.setWindowOpenHandler(({ url }) => {

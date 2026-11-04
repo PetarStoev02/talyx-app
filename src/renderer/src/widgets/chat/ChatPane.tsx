@@ -4,7 +4,6 @@ import { botChatId, botTitle } from '@features/bots/roster'
 import type { Bot } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
 import { useChat } from '@features/chat/store'
-import { BotAvatar } from '@widgets/roster'
 import { ApprovalCard } from './ApprovalCard'
 import { ClarifyCard } from './ClarifyCard'
 import { Composer } from './Composer'
@@ -13,9 +12,12 @@ import { Transcript } from './Transcript'
 /** A bot's chat: its transcript with any open cards below, then the composer. */
 export function ChatPane({
   bot,
+  avatar,
   actions
 }: {
   bot: Bot
+  // The bot's large avatar for the empty chat; the page draws it.
+  avatar: React.ReactNode
   actions: ChatActions | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
@@ -59,7 +61,7 @@ export function ChatPane({
         </Transcript>
       ) : (
         <div className="grid flex-1 place-content-center justify-items-center gap-4 px-8 text-center">
-          <BotAvatar bot={bot} size={64} />
+          {avatar}
           <h1 className="text-2xl font-semibold">{title}</h1>
           <p className="max-w-sm text-base">{t('chat.empty')}</p>
         </div>
@@ -75,6 +77,10 @@ export function ChatPane({
           </button>
         </p>
       )}
+      {/* Always mounted, so a screen reader hears when a card asks for an answer. */}
+      <p className="sr-only" aria-live="polite">
+        {prompts.length ? t('chat.waiting').replace('{name}', title) : ''}
+      </p>
       <Composer chat={chat} title={title} actions={actions} />
     </>
   )
