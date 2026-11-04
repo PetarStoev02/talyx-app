@@ -138,6 +138,19 @@ function showMainWindow(splash: BrowserWindow): void {
   }, WINDOW_SHOW_TIMEOUT_MS)
 }
 
+/** On macOS the window can be closed while the app keeps running; reopen it then. */
+function bringMainWindowForward(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    const win = createWindow()
+    mainWindow = win
+    win.once('ready-to-show', () => win.show())
+    return
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
 /** Tells the user about a newer release; Talyx is unsigned and installs nothing itself. */
 function scheduleUpdateChecks(): void {
   if (is.dev) return
@@ -159,16 +172,6 @@ app.whenReady().then(async () => {
       : `${pathToFileURL(join(__dirname, '../renderer')).href}/`
   )
 
-  app.on('second-instance', () => {
-    // On macOS the window can be closed while the app keeps running
-    if (!mainWindow || mainWindow.isDestroyed()) {
-      mainWindow = createWindow()
-      mainWindow.once('ready-to-show', () => mainWindow?.show())
-      return
-    }
-    mainWindow.show()
-    mainWindow.focus()
-  })
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 
   const splash = createSplashWindow()
@@ -182,11 +185,10 @@ app.whenReady().then(async () => {
   showMainWindow(splash)
   scheduleUpdateChecks()
 
+  // Registered only now: a launch during the splash must not race showMainWindow
+  app.on('second-instance', bringMainWindowForward)
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      mainWindow = createWindow()
-      mainWindow.once('ready-to-show', () => mainWindow?.show())
-    }
+    if (BrowserWindow.getAllWindows().length === 0) bringMainWindowForward()
   })
 })
 
