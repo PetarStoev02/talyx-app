@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Pin } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { folderBots, folderCount, folderRooms } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { Bot, Folder, Room } from '@features/bots/types'
-import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { BotRow } from './BotRow'
+import { RoomRow } from './RoomRow'
 import { ROSTER_DRAG } from './rosterControls'
 import { RosterMenu } from './RosterMenu'
 import type { MenuAction } from './RosterMenu'
@@ -29,17 +29,6 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
   const id = folder?.id ?? null
   const bots = folderBots(snapshot, id)
   const rooms = folderRooms(snapshot, id)
-  // "Pin to top" puts a room above everything in its folder, bots included.
-  const pinnedRooms = rooms.filter((room) => snapshot.roomPins.includes(room.room_id))
-  const otherRooms = rooms.filter((room) => !snapshot.roomPins.includes(room.room_id))
-  const roomRow = (room: Room): React.JSX.Element => (
-    <RoomRow
-      key={room.room_id}
-      room={room}
-      actions={props.roomActions(room)}
-      onSelect={() => selectRoom(room)}
-    />
-  )
   const children = snapshot.folders.filter((item) => item.parentId === id)
   return (
     <section
@@ -65,7 +54,6 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
       />
       {!collapsed && (
         <div className="space-y-1">
-          {pinnedRooms.map(roomRow)}
           {bots.map((bot) => (
             <BotRow
               key={bot.name}
@@ -74,7 +62,14 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
               onSelect={() => selectBot(bot)}
             />
           ))}
-          {otherRooms.map(roomRow)}
+          {rooms.map((room) => (
+            <RoomRow
+              key={room.room_id}
+              room={room}
+              actions={props.roomActions(room)}
+              onSelect={() => selectRoom(room)}
+            />
+          ))}
           {children.map((child) => (
             <div className="pl-3" key={child.id}>
               <FolderGroup {...props} folder={child} />
@@ -130,60 +125,6 @@ function FolderHeader({
           disabled={saving}
         />
       )}
-    </div>
-  )
-}
-
-function RoomRow({
-  room,
-  actions,
-  onSelect
-}: {
-  room: Room
-  actions: MenuAction[]
-  onSelect: () => void
-}): React.JSX.Element {
-  const selected = useRoster(
-    (state) => state.selection?.kind === 'room' && state.selection.id === room.room_id
-  )
-  const bots = useRoster((state) => state.snapshot.bots)
-  const pinned = useRoster((state) => state.snapshot.roomPins.includes(room.room_id))
-  const unread = useRoster((state) => state.roomUnread[room.room_id])
-  const saving = useRoster((state) => state.saving)
-  const t = useLanguage((s) => s.t)
-  return (
-    <div
-      className="flex rounded-xl hover:bg-accent"
-      draggable={!saving}
-      onDragStart={(event) =>
-        event.dataTransfer.setData(ROSTER_DRAG, JSON.stringify({ kind: 'room', id: room.room_id }))
-      }
-    >
-      <button
-        onClick={onSelect}
-        aria-pressed={selected}
-        aria-description={unread ? t('roster.statusNewMessages') : undefined}
-        className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-left aria-pressed:bg-accent"
-      >
-        <RoomAvatars room={room} bots={bots} />
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1">
-            <span className="truncate text-base font-medium">{room.name}</span>
-            {pinned && <Pin size={14} className="shrink-0" aria-label={t('roster.pinned')} />}
-          </span>
-          <span className="block text-base">
-            {room.members.length === 1
-              ? t('roster.oneBot')
-              : t('roster.bots').replace('{count}', String(room.members.length))}
-          </span>
-        </span>
-        {unread && <span className="size-2 shrink-0 rounded-full bg-brand" aria-hidden="true" />}
-      </button>
-      <RosterMenu
-        label={t('roster.actionsFor').replace('{name}', room.name)}
-        disabled={saving}
-        actions={actions}
-      />
     </div>
   )
 }

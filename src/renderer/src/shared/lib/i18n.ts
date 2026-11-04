@@ -177,9 +177,6 @@ const en = {
   'roster.hide': 'Hide',
   'roster.deleteProfile': 'Delete profile',
   'roster.newRoom': 'New room',
-  'roster.pinRoom': 'Pin to top',
-  'roster.pinned': 'Pinned',
-  'roster.unpinRoom': 'Unpin',
   'roster.deleteRoom': 'Delete room',
   'roster.deleteRoomWarning':
     'The room stops and leaves Talyx on every machine. Its bots and their own chats stay.',

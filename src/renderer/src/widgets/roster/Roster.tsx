@@ -4,11 +4,12 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { useRosterConnection } from '@features/bots/useRosterConnection'
 import type { RosterBackend } from '@features/bots/data'
 import { rosterActions, runRosterMutation } from '@features/bots/actions'
-import { botTitle, pinnedBots } from '@features/bots/roster'
+import { botTitle, pinnedBots, pinnedRooms } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot, Room } from '@features/bots/types'
 import { BotRow } from './BotRow'
 import { FolderGroup } from './FolderGroup'
+import { RoomRow } from './RoomRow'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
 import { CreateBotDialog } from './CreateBotDialog'
@@ -80,7 +81,9 @@ export function Roster({
       )}
       <PinnedGrid
         botActions={botActions}
+        roomActions={roomActions}
         selectBot={selectBot}
+        selectRoom={selectRoom}
         orderPin={(from, to) => run(() => actions.orderPin(from, to))}
       />
       <FoldersHeader
@@ -225,23 +228,30 @@ function TallyLine(): React.JSX.Element {
   )
 }
 
-// Up to three pins show as large tiles; a fourth switches the grid to four small ones.
+// Up to three pins show as large tiles; a fourth switches to four small ones a row. Pinned bots
+// come first, then pinned rooms; a row that is not full is centered.
 function PinnedGrid({
   botActions,
+  roomActions,
   selectBot,
+  selectRoom,
   orderPin
 }: {
   botActions: (bot: Bot) => MenuAction[]
+  roomActions: (room: Room) => MenuAction[]
   selectBot: (bot: Bot) => void
+  selectRoom: (room: Room) => void
   orderPin: (from: string, to: string) => void
 }): React.JSX.Element {
-  const bots = useRoster((state) => state.snapshot.bots)
-  const pins = pinnedBots(bots)
-  const large = pins.length <= 3
+  const snapshot = useRoster((state) => state.snapshot)
+  const pins = pinnedBots(snapshot.bots)
+  const rooms = pinnedRooms(snapshot)
+  const large = pins.length + rooms.length <= 3
+  const tile = large ? 'calc((100% - 1rem) / 3)' : 'calc((100% - 1.5rem) / 4)'
   return (
     <div
-      className="grid gap-2"
-      style={{ gridTemplateColumns: `repeat(${large ? 3 : 4}, minmax(0, 1fr))` }}
+      className="flex flex-wrap justify-center gap-2 [&>*]:w-(--tile)"
+      style={{ '--tile': tile } as React.CSSProperties}
     >
       {pins.map((bot) => (
         <BotRow
@@ -252,6 +262,16 @@ function PinnedGrid({
           actions={botActions(bot)}
           onSelect={() => selectBot(bot)}
           onDropPin={(from) => orderPin(from, bot.name)}
+        />
+      ))}
+      {rooms.map((room) => (
+        <RoomRow
+          key={room.room_id}
+          room={room}
+          pinned
+          avatarSize={large ? 44 : 32}
+          actions={roomActions(room)}
+          onSelect={() => selectRoom(room)}
         />
       ))}
     </div>

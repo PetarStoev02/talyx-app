@@ -89,7 +89,7 @@ function roomActions(room: Room, options: ControlsOptions): MenuAction[] {
   const current = folders.some((folder) => folder.id === assigned) ? assigned : null
   return [
     {
-      label: roomPins.includes(room.room_id) ? t('roster.unpinRoom') : t('roster.pinRoom'),
+      label: roomPins.includes(room.room_id) ? t('roster.unpin') : t('roster.pin'),
       onSelect: () => run(() => actions.pinRoom(room))
     },
     ...[{ id: null, name: t('roster.unassigned') }, ...folders]
