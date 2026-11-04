@@ -14,7 +14,8 @@ Talyx is in the middle of that pivot. The file organizer it used to be is gone; 
 is built one pull request at a time. Today the app is attached to the engine: a roster of bots in
 the sidebar (pins, folders, unread and activity marks), the Agents page with the selected bot's
 chat (transcript, clarify and approval cards, a composer with model, reasoning, images and
-dictation), "Talyx needs its engine" when the engine is missing, an Engine (debug) page that
+dictation), the details panel from the name pill (title, description, model, routines, SOUL),
+the create-bot dialog from the roster's `+`, "Talyx needs its engine" when the engine is missing, an Engine (debug) page that
 sends "ping" and prints raw session events, and Settings → Appearance.
 
 - **Version:** 1.0.0-alpha.1
@@ -103,9 +104,11 @@ admits no Origin header and takes the ticket in a subprotocol) and relays frames
 src/renderer/src/
 ├── app/              # Global state, browser dev bridge, the hooks that wire `host` into
 │                     # features (useRosterBackend, useChatBackend)
-├── pages/            # AgentsPage (the selected bot's chat), SettingsPage (Appearance)
-├── widgets/          # AppShell, Roster (sidebar bots), Chat (transcript, cards, composer)
-├── features/         # bots (roster data, folders, pins, unread), chat (transcript, use cases)
+├── pages/            # AgentsPage (the selected bot's chat and details), SettingsPage (Appearance)
+├── widgets/          # AppShell, Roster (sidebar bots, create dialog), Chat (transcript, cards,
+│                     # composer), BotDetails (the details panel and routines)
+├── features/         # bots (roster data, folders, pins, unread, details, routines, create),
+│                     # chat (transcript, use cases)
 └── shared/           # Reusable: ui/ (shadcn), hooks/, api/ (IPC wrappers), lib/,
                       # engine/ (vendored engine client; host.ts is the facade features use)
 ```

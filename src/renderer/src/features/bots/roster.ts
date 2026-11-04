@@ -6,7 +6,10 @@ export const ROOM_FOLDERS_KEY = 'talyx-room-folders'
 
 // Thrown for a roster problem the user can act on; `key` is its message in i18n.ts.
 export class RosterError extends Error {
-  constructor(readonly key: TranslationKey) {
+  constructor(
+    readonly key: TranslationKey,
+    readonly detail: string | null = null
+  ) {
     super(key)
     this.name = 'RosterError'
   }
@@ -19,7 +22,7 @@ export interface RosterProblem {
 
 export function problemOf(error: unknown): RosterProblem {
   return error instanceof RosterError
-    ? { key: error.key, detail: null }
+    ? { key: error.key, detail: error.detail }
     : { key: 'roster.errorUnexpected', detail: error instanceof Error ? error.message : null }
 }
 

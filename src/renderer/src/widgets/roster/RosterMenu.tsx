@@ -11,12 +11,14 @@ export function RosterMenu({
   label,
   actions,
   disabled = false,
-  compact = false
+  compact = false,
+  icon = <Ellipsis size={16} />
 }: {
   label: string
   actions: MenuAction[]
   disabled?: boolean
   compact?: boolean
+  icon?: React.ReactNode
 }): React.JSX.Element {
   return (
     <DropdownMenu.Root>
@@ -25,7 +27,7 @@ export function RosterMenu({
         aria-label={label}
         className={`${compact ? 'absolute right-0 top-0' : 'self-center'} shrink-0 rounded-full p-2 hover:bg-accent`}
       >
-        <Ellipsis size={16} />
+        {icon}
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content

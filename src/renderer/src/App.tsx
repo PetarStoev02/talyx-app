@@ -20,7 +20,7 @@ function App(): React.JSX.Element {
   // Here, not in the page: replies keep marking bots unread while another page is open.
   const chat = useChatBackend()
   const pages = {
-    agents: <AgentsPage chat={chat} />,
+    agents: <AgentsPage chat={chat} roster={rosterBackend} />,
     'engine-debug': <EngineDebugPage />,
     settings: <SettingsPage />
   }
@@ -30,7 +30,13 @@ function App(): React.JSX.Element {
       <Toaster position="bottom-right" richColors closeButton theme={effectiveTheme} />
       <AppShell
         roster={
-          rosterBackend && <Roster backend={rosterBackend} onSelect={() => navigate('agents')} />
+          rosterBackend && (
+            <Roster
+              backend={rosterBackend}
+              models={chat?.models ?? null}
+              onSelect={() => navigate('agents')}
+            />
+          )
         }
       >
         <main

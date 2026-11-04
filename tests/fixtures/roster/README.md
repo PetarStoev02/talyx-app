@@ -20,4 +20,12 @@ card, "approve" an approval card, "ask" a delegation line before the reply; anyt
 a short markdown reply. Check streaming, the cards, Stop, the model and reasoning chips, images,
 scroll-to-bottom and unread marks on a bot you leave while it replies.
 
+The details panel opens from the name pill or "Edit profile". Each profile has a synthetic
+description, SOUL and model (`custom · team-manager`); Analyst has two routines, one paused.
+Picking `team-worker` makes the double ask for confirmation, as the engine does for a costly
+model. Check that the panel pushes the chat, Save applies title, description, model and SOUL,
+Cancel discards, the confirm dialog's two answers, routine toggles, New routine and Delete. The
+roster's `+` opens New bot: check the profile-id hint, a taken name, a non-Latin name (`bot-N`),
+the default folder, and that the new bot lands in its folder, is selected and answers a message.
+
 Use the engine integration for final acceptance; this fixture does not prove gateway access.

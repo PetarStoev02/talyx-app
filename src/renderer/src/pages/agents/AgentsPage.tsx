@@ -1,13 +1,26 @@
+import { ChevronRight } from 'lucide-react'
 import { useRoster } from '@features/bots/store'
 import { botTitle } from '@features/bots/roster'
 import { BotAvatar } from '@widgets/roster'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
+import { cn } from '@shared/lib/utils'
 import { useLanguage } from '@app/providers/useLanguage'
 import { EngineGate } from '@widgets/engine-gate'
 import { ChatPane } from '@widgets/chat'
+import { DetailsPanel } from '@widgets/bot-details'
 import type { ChatActions } from '@features/chat/chat'
+import type { RosterBackend } from '@features/bots/data'
 
-export function AgentsPage({ chat }: { chat: ChatActions | null }): React.JSX.Element {
+const pillClass =
+  'flex max-w-full items-center gap-2 rounded-full bg-secondary px-4 py-2 text-base font-medium'
+
+export function AgentsPage({
+  chat,
+  roster
+}: {
+  chat: ChatActions | null
+  roster: RosterBackend | null
+}): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const { snapshot, selection, editingProfile, editProfile } = useRoster()
   const bot = snapshot.bots.find((item) => selection?.kind === 'bot' && item.name === selection.id)
@@ -23,11 +36,30 @@ export function AgentsPage({ chat }: { chat: ChatActions | null }): React.JSX.El
           className="flex min-w-0 flex-1 flex-col"
         >
           {title && (
-            <header className="flex h-16 shrink-0 items-center px-6">
-              <span className="flex max-w-full items-center gap-2 rounded-full bg-secondary px-4 py-2 text-base font-medium">
-                {bot && <BotAvatar bot={bot} />}
-                <span className="truncate">{title}</span>
-              </span>
+            <header className="flex h-16 shrink-0 items-center justify-center px-6">
+              {bot ? (
+                <button
+                  aria-expanded={editingProfile === bot.name}
+                  aria-label={t('agents.openDetails').replace('{name}', title)}
+                  onClick={() => editProfile(editingProfile === bot.name ? null : bot.name)}
+                  className={cn(
+                    pillClass,
+                    'group transition-colors select-none hover:bg-foreground/10 aria-expanded:bg-foreground/10'
+                  )}
+                >
+                  <BotAvatar bot={bot} />
+                  <span className="truncate">{title}</span>
+                  <ChevronRight
+                    size={16}
+                    aria-hidden="true"
+                    className="shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-aria-expanded:rotate-180 group-aria-expanded:group-hover:-translate-x-0.5 motion-reduce:transition-none"
+                  />
+                </button>
+              ) : (
+                <span className={pillClass}>
+                  <span className="truncate">{title}</span>
+                </span>
+              )}
             </header>
           )}
           {bot ? (
@@ -47,20 +79,8 @@ export function AgentsPage({ chat }: { chat: ChatActions | null }): React.JSX.El
             </div>
           )}
         </section>
-        {bot && editingProfile === bot.name && (
-          <aside
-            aria-label={t('agents.details')}
-            className="w-[340px] max-w-[50%] shrink-0 bg-secondary p-6"
-          >
-            <button className="mb-6 underline" onClick={() => editProfile(null)}>
-              {t('agents.closeDetails')}
-            </button>
-            <h2 className="text-xl font-semibold">{botTitle(bot)}</h2>
-            <p className="mt-3 text-base">
-              {bot.meta.description || bot.description || t('agents.noDescription')}
-            </p>
-            <p className="mt-6 text-base">{t('agents.editingSoon')}</p>
-          </aside>
+        {bot && roster && editingProfile === bot.name && (
+          <DetailsPanel key={bot.name} bot={bot} backend={roster} models={chat?.models ?? null} />
         )}
       </div>
     </EngineGate>
