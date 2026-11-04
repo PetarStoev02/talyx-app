@@ -14,7 +14,8 @@ const snapshotWith = (lastActive: Record<string, number>): RosterSnapshot => ({
   bots: Object.entries(lastActive).map(([name, last_active]) => bot(name, { last_active })),
   folders: [],
   rooms: [],
-  roomFolders: {}
+  roomFolders: {},
+  roomPins: []
 })
 
 beforeEach(() =>

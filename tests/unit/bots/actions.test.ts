@@ -22,7 +22,7 @@ let backend: RosterBackend
 
 beforeEach(async () => {
   useRoster.setState({
-    snapshot: { bots: [], folders: [], rooms: [], roomFolders: {} },
+    snapshot: { bots: [], folders: [], rooms: [], roomFolders: {}, roomPins: [] },
     selection: null,
     error: null,
     saving: false,

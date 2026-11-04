@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
-import type { Bot } from '@features/bots/types'
+import type { Bot, Room } from '@features/bots/types'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
 import { Button } from '@shared/ui/button'
 import {
@@ -89,20 +89,68 @@ export function DeleteProfileDialog({
   onDelete: (bot: Bot) => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
+  return (
+    <ConfirmDeleteDialog
+      open={!!bot}
+      title={t('roster.deleteTitle').replace('{name}', bot ? botTitle(bot) : '')}
+      warning={t('roster.deleteWarning')}
+      confirm={t('roster.deleteProfile')}
+      onClose={onClose}
+      onConfirm={() => bot && onDelete(bot)}
+    />
+  )
+}
+
+export function DeleteRoomDialog({
+  room,
+  onClose,
+  onDelete
+}: {
+  room: Room | null
+  onClose: () => void
+  onDelete: (room: Room) => void
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  return (
+    <ConfirmDeleteDialog
+      open={!!room}
+      title={t('roster.deleteTitle').replace('{name}', room?.name ?? '')}
+      warning={t('roster.deleteRoomWarning')}
+      confirm={t('roster.deleteRoom')}
+      onClose={onClose}
+      onConfirm={() => room && onDelete(room)}
+    />
+  )
+}
+
+function ConfirmDeleteDialog({
+  open,
+  title,
+  warning,
+  confirm,
+  onClose,
+  onConfirm
+}: {
+  open: boolean
+  title: string
+  warning: string
+  confirm: string
+  onClose: () => void
+  onConfirm: () => void
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
   const saving = useRoster((state) => state.saving)
   const error = useRoster((state) => state.error)
   return (
     <Dialog
-      open={!!bot}
-      onOpenChange={(open) => {
-        if (!open) onClose()
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose()
       }}
     >
       <DialogContent className={dialogClass}>
-        <DialogTitle>
-          {t('roster.deleteTitle').replace('{name}', bot ? botTitle(bot) : '')}
-        </DialogTitle>
-        <DialogDescription>{t('roster.deleteWarning')}</DialogDescription>
+        <DialogTitle>{title}</DialogTitle>
+        <DialogDescription>{warning}</DialogDescription>
         {error && (
           <div role="alert">
             <ProblemMessage problem={error} />
@@ -113,9 +161,9 @@ export function DeleteProfileDialog({
             className="rounded-full text-base"
             variant="destructive"
             disabled={saving}
-            onClick={() => bot && onDelete(bot)}
+            onClick={onConfirm}
           >
-            {t('roster.deleteProfile')}
+            {confirm}
           </Button>
           <DialogClose asChild>
             <Button className="rounded-full text-base" variant="ghost">

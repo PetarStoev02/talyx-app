@@ -40,11 +40,15 @@ export interface EngineDouble {
   failSection: (section: Section) => void
   failCronOnce: (error: string) => void
   failMetaOnce: () => void
+  rooms: Room[]
+  // What groups.capabilities says the engine will seat; null when it does not say.
+  seatable: string[] | null
 }
 
 const blank = (): ProfileState => ({ description: '', soul: '', model: null })
 
-// In-memory engine: profiles.list/describe/create/configure, groups.list and cron.manage.
+// In-memory engine: profiles.list/describe/create/configure, groups.list/capabilities/create/
+// disband and cron.manage.
 export function engineDouble(
   metadata: Record<string, Record<string, unknown>> = {
     default: {},
@@ -67,7 +71,7 @@ export function engineDouble(
     profiles.analyst = {
       description: 'Numbers',
       soul: '# Analyst',
-      model: { provider: 'custom', model: 'team-manager' }
+      model: { provider: 'custom', model: '9-route-provider' }
     }
   const jobs: Record<string, CronJob[]> = {}
   const configureCalls: string[] = []
@@ -195,6 +199,18 @@ export function engineDouble(
         }))
       }
     if (method === 'groups.list') return { rooms: structuredClone(rooms), next_offset: null }
+    if (method === 'groups.capabilities') return { seatable_profiles: double.seatable }
+    if (method === 'groups.create') {
+      const room = { room_id: params.room_id, name: params.name, members: params.members } as Room
+      rooms.push(structuredClone(room))
+      return { room }
+    }
+    if (method === 'groups.disband') {
+      const index = rooms.findIndex((room) => room.room_id === params.room_id)
+      if (index < 0) throw new Error('Room not found')
+      rooms.splice(index, 1)
+      return { tombstone: { room_id: params.room_id } }
+    }
     if (method === 'profiles.describe') {
       const state = profiles[params.name as string]
       if (!state) throw new Error('Profile not found')
@@ -210,8 +226,10 @@ export function engineDouble(
     if (method !== 'profiles.configure') throw new Error(`Unexpected method ${method}`)
     return params.ui_meta ? configureMeta(profile, params) : configureSections(params)
   }
-  return {
+  const double: EngineDouble = {
     request,
+    rooms,
+    seatable: null,
     metadata,
     profiles,
     jobs,
@@ -232,6 +250,7 @@ export function engineDouble(
       metaFailure = true
     }
   }
+  return double
 }
 
 export function backendFor(

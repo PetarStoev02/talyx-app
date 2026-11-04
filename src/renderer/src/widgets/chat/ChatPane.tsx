@@ -6,7 +6,8 @@ import type { ChatActions } from '@features/chat/chat'
 import { useChat } from '@features/chat/store'
 import { ApprovalCard } from './ApprovalCard'
 import { ClarifyCard } from './ClarifyCard'
-import { Composer } from './Composer'
+import { ChatChips, Composer } from './Composer'
+import type { ComposerTarget } from './Composer'
 import { Transcript } from './Transcript'
 
 /** A bot's chat: its transcript with any open cards below, then the composer. */
@@ -37,6 +38,21 @@ export function ChatPane({
   const items = chat.transcript?.items ?? []
   const prompts = chat.transcript?.prompts ?? []
   const loadImage = (path: string): Promise<string> => actions.mediaUrl(bot.name, path)
+  const target: ComposerTarget = {
+    placeholder: t('chat.placeholder').replace('{name}', title),
+    running: chat.transcript?.running === true,
+    send: ({ text, files }) =>
+      actions.send(bot.name, {
+        text,
+        images: files.map((file) => ({ path: file.id, mime: file.mime }))
+      }),
+    upload: async (file, dataUrl) => {
+      const image = await actions.uploadImage(bot.name, { dataUrl, name: file.name })
+      return { id: image.path, name: file.name, mime: image.mime, size: file.size }
+    },
+    transcribe: (audio) => actions.transcribe(bot.name, audio),
+    stop: () => void actions.interrupt(bot.name)
+  }
 
   return (
     <>
@@ -81,7 +97,9 @@ export function ChatPane({
       <p className="sr-only" aria-live="polite">
         {prompts.length ? t('chat.waiting').replace('{name}', title) : ''}
       </p>
-      <Composer chat={chat} title={title} actions={actions} />
+      <Composer target={target}>
+        <ChatChips chat={chat} actions={actions} />
+      </Composer>
     </>
   )
 }

@@ -3,7 +3,7 @@ import { DropdownMenu } from 'radix-ui'
 import { ArrowUp, ChevronDown, LoaderCircle, Mic, Plus, Square, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
-import type { ChatActions, ChatImage } from '@features/chat/chat'
+import type { ChatActions } from '@features/chat/chat'
 import type { ChatState } from '@features/chat/store'
 import { dataUrlOf, useDictation } from '@features/chat/useDictation'
 import { cn } from '@shared/lib/utils'
@@ -17,54 +17,65 @@ const REASONING_LEVELS: Array<[string, TranslationKey]> = [
   ['high', 'chat.reasoningHigh']
 ]
 
-type Attached = ChatImage & { name: string }
+/** A file attached to the draft: a bot chat's upload path, or a room attachment id. */
+export interface ComposerFile {
+  id: string
+  name: string
+  mime: string
+  size: number
+}
+
+/** Where the composer sends: a bot's chat or a room. */
+export interface ComposerTarget {
+  placeholder: string
+  running: boolean
+  /** False when nothing was sent; the composer gets the draft back. */
+  send: (draft: { text: string; files: ComposerFile[] }) => Promise<boolean>
+  upload: (file: File, dataUrl: string) => Promise<ComposerFile>
+  transcribe: (audio: { dataUrl: string; mime: string }) => Promise<string>
+  stop: () => void
+}
 
 export function Composer({
-  chat,
-  title,
-  actions
+  target,
+  children
 }: {
-  chat: ChatState
-  title: string
-  actions: ChatActions
+  target: ComposerTarget
+  // Chips between the + and the mic, such as the bot chat's model and reasoning level.
+  children?: React.ReactNode
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const [text, setText] = useState('')
-  const [images, setImages] = useState<Attached[]>([])
+  const [files, setFiles] = useState<ComposerFile[]>([])
   const [sending, setSending] = useState(false)
   const picker = useRef<HTMLInputElement>(null)
   // Until the engine starts the turn, a send in flight counts as running: no second send.
-  const running = sending || chat.transcript?.running === true
-  const { profile } = chat
+  const running = sending || target.running
   const dictation = useDictation(
-    (audio) => actions.transcribe(profile, audio),
+    target.transcribe,
     (words) => setText((current) => (current.trim() ? `${current}\n${words}` : words)),
     (error) => toast.error(error instanceof Error ? error.message : String(error))
   )
 
   async function send(): Promise<void> {
-    if (running || (!text.trim() && !images.length)) return
-    const draft = { text, images: images.map(({ path, mime }) => ({ path, mime })) }
-    const attached = images
+    if (running || (!text.trim() && !files.length)) return
+    const attached = files
     setText('')
-    setImages([])
+    setFiles([])
     setSending(true)
-    const sent = await actions.send(profile, draft).finally(() => setSending(false))
+    const sent = await target.send({ text, files: attached }).finally(() => setSending(false))
     if (sent) return
     // A failed send gives the draft back, unless something new was typed meanwhile.
     setText((current) => current || text)
-    setImages((current) => (current.length ? current : attached))
+    setFiles((current) => (current.length ? current : attached))
   }
 
-  async function attach(files: Iterable<File>): Promise<void> {
-    for (const file of files) {
+  async function attach(list: Iterable<File>): Promise<void> {
+    for (const file of list) {
       if (!file.type.startsWith('image/')) continue
       try {
-        const image = await actions.uploadImage(profile, {
-          dataUrl: await dataUrlOf(file),
-          name: file.name
-        })
-        setImages((current) => [...current, { ...image, name: file.name }])
+        const attached = await target.upload(file, await dataUrlOf(file))
+        setFiles((current) => [...current, attached])
       } catch {
         toast.error(t('chat.imageFailed').replace('{name}', file.name))
       }
@@ -91,18 +102,18 @@ export function Composer({
       }}
     >
       <div className="chat-composer flex flex-col gap-2 rounded-3xl bg-secondary p-3">
-        {images.length > 0 && (
+        {files.length > 0 && (
           <ul className="flex flex-wrap gap-2">
-            {images.map((image) => (
+            {files.map((image) => (
               <li
-                key={image.path}
+                key={image.id}
                 className="flex items-center gap-1 rounded-full bg-background py-1 pr-1 pl-3 text-sm"
               >
                 {image.name}
                 <button
                   type="button"
                   aria-label={t('chat.removeImage').replace('{name}', image.name)}
-                  onClick={() => setImages((current) => current.filter((item) => item !== image))}
+                  onClick={() => setFiles((current) => current.filter((item) => item !== image))}
                   className="rounded-full p-1 hover:bg-accent"
                 >
                   <X size={14} />
@@ -114,8 +125,8 @@ export function Composer({
         <textarea
           value={text}
           rows={1}
-          aria-label={t('chat.placeholder').replace('{name}', title)}
-          placeholder={t('chat.placeholder').replace('{name}', title)}
+          aria-label={target.placeholder}
+          placeholder={target.placeholder}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={onKeyDown}
           onPaste={(event) => {
@@ -147,8 +158,7 @@ export function Composer({
               event.target.value = ''
             }}
           />
-          <ModelMenu chat={chat} actions={actions} />
-          <ReasoningMenu chat={chat} actions={actions} />
+          {children}
           <span className="ml-auto" />
           <button
             type="button"
@@ -178,7 +188,7 @@ export function Composer({
             <button
               type="button"
               aria-label={t('chat.stop')}
-              onClick={() => void actions.interrupt(profile)}
+              onClick={target.stop}
               className="rounded-full bg-primary p-2 text-primary-foreground"
             >
               <Square size={16} fill="currentColor" />
@@ -187,7 +197,7 @@ export function Composer({
             <button
               type="submit"
               aria-label={t('chat.send')}
-              disabled={!text.trim() && !images.length}
+              disabled={!text.trim() && !files.length}
               className="rounded-full bg-primary p-2 text-primary-foreground disabled:opacity-50"
             >
               <ArrowUp size={16} />
@@ -196,6 +206,22 @@ export function Composer({
         </div>
       </div>
     </form>
+  )
+}
+
+/** The bot chat's model and reasoning chips. */
+export function ChatChips({
+  chat,
+  actions
+}: {
+  chat: ChatState
+  actions: ChatActions
+}): React.JSX.Element {
+  return (
+    <>
+      <ModelMenu chat={chat} actions={actions} />
+      <ReasoningMenu chat={chat} actions={actions} />
+    </>
   )
 }
 

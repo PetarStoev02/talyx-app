@@ -1,14 +1,16 @@
-import { readRoster, saveBotMeta, saveFolders, saveRoomFolders } from './data'
+import { readRoster, saveBotMeta, saveFolders, saveRoomFolders, saveRoomPins } from './data'
 import type { RosterBackend } from './data'
 import { moveFolder, pinnedBots, problemOf, reorder } from './roster'
 import type { RosterProblem } from './roster'
 import { useRoster } from './store'
-import type { Bot, Folder, RosterSnapshot } from './types'
+import type { Bot, Folder, Room, RosterSnapshot } from './types'
 
 export interface RosterActions {
   pin: (bot: Bot) => Promise<void>
   moveBot: (bot: Bot, folderId: string | null) => Promise<void>
   moveRoom: (roomId: string, folderId: string | null) => Promise<void>
+  pinRoom: (room: Room) => Promise<void>
+  deleteRoom: (room: Room) => Promise<void>
   nest: (id: string, parentId: string | null) => Promise<void>
   orderFolder: (id: string, direction: number) => Promise<void>
   orderPin: (from: string, to: string) => Promise<void>
@@ -23,14 +25,22 @@ export async function refreshRoster(backend: RosterBackend): Promise<void> {
 
 // A bot hidden or deleted on another client must not stay selected. A chat that moved since the
 // last snapshot got a reply, including from sessions this window never opened (bot deliveries).
+// A room whose log grew past what was last read has new messages.
 export function applySnapshot(snapshot: RosterSnapshot): void {
-  const { selection, seen, markUnread } = useRoster.getState()
+  const { selection, seen, roomSeen, markUnread, markRoomUnread } = useRoster.getState()
   const nextSeen: Record<string, number> = {}
   for (const bot of snapshot.bots) {
     // 0 for a bot with no chat yet, so the first chat a delivery opens also reads as a reply.
     const active = bot.canonical_session?.last_active ?? 0
     nextSeen[bot.name] = active
     if (seen[bot.name] !== undefined && active > seen[bot.name]) markUnread(bot.name)
+  }
+  const nextRoomSeen: Record<string, number> = {}
+  for (const room of snapshot.rooms) {
+    const latest = room.latest_seq ?? 0
+    const read = roomSeen[room.room_id]
+    nextRoomSeen[room.room_id] = Math.max(latest, read ?? 0)
+    if (read !== undefined && latest > read) markRoomUnread(room.room_id)
   }
   const exists =
     selection?.kind === 'bot'
@@ -39,6 +49,7 @@ export function applySnapshot(snapshot: RosterSnapshot): void {
   useRoster.setState({
     snapshot,
     seen: nextSeen,
+    roomSeen: nextRoomSeen,
     loading: false,
     error: null,
     ...(selection && !exists ? { selection: null } : {})
@@ -74,6 +85,29 @@ export function rosterActions(backend: RosterBackend): RosterActions {
         (roomFolders) => ({ ...roomFolders, [roomId]: folderId }),
         snapshot().roomFolders
       ),
+    pinRoom: (room) =>
+      saveRoomPins(backend, (pins) =>
+        pins.includes(room.room_id)
+          ? pins.filter((id) => id !== room.room_id)
+          : [...pins, room.room_id]
+      ),
+    deleteRoom: async (room) => {
+      await backend.request('default', 'groups.disband', {
+        room_id: room.room_id,
+        cancel_id: crypto.randomUUID()
+      })
+      // The room is gone either way; its place in the shared layout goes with it.
+      const { roomFolders, roomPins } = snapshot()
+      if (room.room_id in roomFolders)
+        await saveRoomFolders(
+          backend,
+          (folders) =>
+            Object.fromEntries(Object.entries(folders).filter(([id]) => id !== room.room_id)),
+          roomFolders
+        )
+      if (roomPins.includes(room.room_id))
+        await saveRoomPins(backend, (pins) => pins.filter((id) => id !== room.room_id))
+    },
     nest: (id, parentId) => saveLayout((value) => moveFolder(value, id, parentId)),
     orderFolder: (id, direction) =>
       saveLayout((value) => {

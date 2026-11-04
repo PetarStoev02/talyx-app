@@ -47,6 +47,12 @@
   color: var(--muted-foreground);
 }
 
+/* Inside a reply bubble, code steps back down to the ground so it still reads as a block. */
+.chat-bubble pre,
+.chat-bubble :not(pre) > code {
+  background: var(--background);
+}
+
 /* The streaming cursor: a blinking bar after the text so far. */
 .chat-cursor {
   display: inline-block;

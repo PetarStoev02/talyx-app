@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
-import { folderBots, folderCount } from '@features/bots/roster'
+import { ChevronDown, ChevronRight, Pin } from 'lucide-react'
+import { folderBots, folderCount, folderRooms } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { Bot, Folder, Room } from '@features/bots/types'
-import { BotAvatar } from '@features/bots/BotAvatar'
+import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { BotRow } from './BotRow'
 import { ROSTER_DRAG } from './rosterControls'
 import { RosterMenu } from './RosterMenu'
@@ -16,7 +16,7 @@ export interface FolderGroupProps {
   folderActions: (folder: Folder) => MenuAction[]
   selectBot: (bot: Bot) => void
   selectRoom: (room: Room) => void
-  moveRoom: (room: Room, folderId: string | null) => void
+  roomActions: (room: Room) => MenuAction[]
   dropOnFolder: (data: string, folderId: string | null) => void
 }
 
@@ -28,10 +28,7 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
   const saving = useRoster((state) => state.saving)
   const id = folder?.id ?? null
   const bots = folderBots(snapshot, id)
-  const rooms = snapshot.rooms.filter((room) => {
-    const assigned = snapshot.roomFolders[room.room_id]
-    return (snapshot.folders.some((item) => item.id === assigned) ? assigned : null) === id
-  })
+  const rooms = folderRooms(snapshot, id)
   const children = snapshot.folders.filter((item) => item.parentId === id)
   return (
     <section
@@ -69,9 +66,8 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
             <RoomRow
               key={room.room_id}
               room={room}
-              folderId={id}
+              actions={props.roomActions(room)}
               onSelect={() => selectRoom(room)}
-              onMove={(folderId) => props.moveRoom(room, folderId)}
             />
           ))}
           {children.map((child) => (
@@ -135,20 +131,19 @@ function FolderHeader({
 
 function RoomRow({
   room,
-  folderId,
-  onSelect,
-  onMove
+  actions,
+  onSelect
 }: {
   room: Room
-  folderId: string | null
+  actions: MenuAction[]
   onSelect: () => void
-  onMove: (folderId: string | null) => void
 }): React.JSX.Element {
   const selected = useRoster(
     (state) => state.selection?.kind === 'room' && state.selection.id === room.room_id
   )
-  const folders = useRoster((state) => state.snapshot.folders)
   const bots = useRoster((state) => state.snapshot.bots)
+  const pinned = useRoster((state) => state.snapshot.roomPins.includes(room.room_id))
+  const unread = useRoster((state) => state.roomUnread[room.room_id])
   const saving = useRoster((state) => state.saving)
   const t = useLanguage((s) => s.t)
   return (
@@ -162,40 +157,27 @@ function RoomRow({
       <button
         onClick={onSelect}
         aria-pressed={selected}
+        aria-description={unread ? t('roster.statusNewMessages') : undefined}
         className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-left aria-pressed:bg-accent"
       >
-        <span className="flex shrink-0 -space-x-3" aria-hidden="true">
-          {room.members.slice(0, 3).map((member) => (
-            <span key={member.profile} className="rounded-full bg-sidebar">
-              <BotAvatar
-                bot={
-                  bots.find((bot) => bot.name === member.profile) ?? {
-                    name: member.profile,
-                    meta: {}
-                  }
-                }
-              />
-            </span>
-          ))}
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate text-base font-medium">{room.name}</span>
+        <RoomAvatars room={room} bots={bots} />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1">
+            <span className="truncate text-base font-medium">{room.name}</span>
+            {pinned && <Pin size={14} className="shrink-0" aria-label={t('roster.pinned')} />}
+          </span>
           <span className="block text-base">
             {room.members.length === 1
               ? t('roster.oneBot')
               : t('roster.bots').replace('{count}', String(room.members.length))}
           </span>
         </span>
+        {unread && <span className="size-2 shrink-0 rounded-full bg-brand" aria-hidden="true" />}
       </button>
       <RosterMenu
         label={t('roster.actionsFor').replace('{name}', room.name)}
         disabled={saving}
-        actions={[{ id: null, name: t('roster.unassigned') }, ...folders]
-          .filter((folder) => folder.id !== folderId)
-          .map((folder) => ({
-            label: t('roster.moveTo').replace('{name}', folder.name),
-            onSelect: () => onMove(folder.id)
-          }))}
+        actions={actions}
       />
     </div>
   )

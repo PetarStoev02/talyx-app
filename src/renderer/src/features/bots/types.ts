@@ -36,8 +36,10 @@ export interface Folder {
 export interface Room {
   room_id: string
   name: string
-  members: { profile: string; display_name?: string }[]
+  members: { profile: string; member_id?: string; display_name?: string }[]
   disbanded_at?: number | null
+  // The seq of the room's newest log row; a higher one than last seen is an unread message.
+  latest_seq?: number | null
 }
 
 export interface RosterSnapshot {
@@ -45,6 +47,8 @@ export interface RosterSnapshot {
   folders: Folder[]
   rooms: Room[]
   roomFolders: Record<string, string | null>
+  // Rooms pinned to the top of their folder, in order.
+  roomPins: string[]
 }
 
 export type Selection = { kind: 'bot' | 'room'; id: string } | null

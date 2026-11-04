@@ -22,7 +22,8 @@ const snapshot = (bots: Bot[]): RosterSnapshot => ({
   bots,
   rooms: [],
   folders: [{ id: 'team', name: 'Team' }],
-  roomFolders: {}
+  roomFolders: {},
+  roomPins: []
 })
 
 describe('roster layout', () => {
