@@ -1,0 +1,1070 @@
+<title>Talyx Pivot Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono&display=swap">
+<style>
+/* Layout: one 1100px reading column. Mockups are app fragments (data-ui) built from Talyx's own tokens (theme.css) and
+   component geometry (shadcn Button, Dialog, Card, the AppShell sidebar, the settings switch), scrolling sideways when narrow. */
+:root {
+  /* Talyx theme.css, light */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0.004 285);
+  --card: oklch(1 0 0);
+  --primary: oklch(0 0 0);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.965 0 0);
+  --muted: oklch(0.955 0.003 285);
+  --muted-foreground: oklch(0.45 0.006 285);
+  --accent: oklch(0 0 0 / 0.05);
+  --border: oklch(0 0 0 / 0.09);
+  --input: oklch(0 0 0 / 0.12);
+  --ring: oklch(0 0 0 / 0.35);
+  --sidebar: oklch(0.972 0.003 285);
+  --sidebar-border: oklch(0 0 0 / 0.09);
+  --brand: oklch(0.55 0.16 285);
+  --brand-foreground: oklch(0.98 0 0);
+  --success: oklch(0.55 0.15 150);
+  --success-subtle: oklch(0.55 0.15 150 / 0.1);
+  --destructive: oklch(0.577 0.245 27.325);
+  --radius: 0.5rem;            /* md 6px · lg 8px · xl 12px */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px -12px rgb(0 0 0 / 0.2);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: oklch(0.146 0.004 285); --foreground: oklch(0.93 0.004 285); --card: oklch(0.192 0.005 285);
+    --primary: oklch(0.97 0.002 285); --primary-foreground: oklch(0.15 0.004 285); --secondary: oklch(0.24 0.006 285);
+    --muted: oklch(0.24 0.006 285); --muted-foreground: oklch(0.64 0.01 285); --accent: oklch(1 0 0 / 0.06);
+    --border: oklch(1 0 0 / 0.08); --input: oklch(1 0 0 / 0.1); --ring: oklch(1 0 0 / 0.4);
+    --sidebar: oklch(0.146 0.004 285); --sidebar-border: oklch(1 0 0 / 0.08);
+    --brand: oklch(0.68 0.14 285); --brand-foreground: oklch(0.15 0.004 285);
+    --success: oklch(0.72 0.14 150); --success-subtle: oklch(0.72 0.14 150 / 0.12); --destructive: oklch(0.396 0.141 25.723);
+    --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --background: oklch(0.146 0.004 285); --foreground: oklch(0.93 0.004 285); --card: oklch(0.192 0.005 285);
+  --primary: oklch(0.97 0.002 285); --primary-foreground: oklch(0.15 0.004 285); --secondary: oklch(0.24 0.006 285);
+  --muted: oklch(0.24 0.006 285); --muted-foreground: oklch(0.64 0.01 285); --accent: oklch(1 0 0 / 0.06);
+  --border: oklch(1 0 0 / 0.08); --input: oklch(1 0 0 / 0.1); --ring: oklch(1 0 0 / 0.4);
+  --sidebar: oklch(0.146 0.004 285); --sidebar-border: oklch(1 0 0 / 0.08);
+  --brand: oklch(0.68 0.14 285); --brand-foreground: oklch(0.15 0.004 285);
+  --success: oklch(0.72 0.14 150); --success-subtle: oklch(0.72 0.14 150 / 0.12); --destructive: oklch(0.396 0.141 25.723);
+  --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+  color-scheme: dark;
+}
+/* page aliases */
+:root { --bg: var(--background); --bg2: var(--muted); --ink: var(--foreground); --ink2: var(--muted-foreground); --rule: var(--border); --active: var(--accent); --font: var(--font-sans); }
+html, body { height: auto; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font);
+  font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 96px;
+}
+main { max-width: 1100px; margin: 0 auto; }
+h1, h2, h3, h4 { text-wrap: balance; letter-spacing: -0.02em; line-height: 1.1; margin: 0; }
+h1 { font-size: clamp(40px, 6vw, 64px); font-weight: 700; letter-spacing: -0.035em; }
+h2 { font-size: clamp(28px, 3.6vw, 40px); font-weight: 600; margin-top: 128px; }
+h3 { font-size: 22px; font-weight: 600; margin-top: 56px; }
+h4 { font-size: 17px; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+.lead { font-size: 22px; line-height: 1.4; max-width: 60ch; }
+.meta { color: var(--ink2); font-size: 15px; }
+a { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
+a:hover { opacity: .7; }
+code { font-family: var(--font-mono); font-size: .9em; background: var(--bg2); padding: 1px 5px; border-radius: 4px; }
+.stack { display: grid; gap: 16px; }
+.hero { padding-block: 96px 0; display: grid; gap: 28px; }
+.wordmark { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; color: var(--ink); }
+.logo { width: 20px; height: 22px; color: var(--ink); flex: none; }
+.band { background: var(--bg2); border-radius: 20px; padding: 32px; margin-top: 32px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 32px; }
+.cols > * { min-width: 0; }
+ul.plain { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+ol.steps { padding-left: 22px; margin: 0; display: grid; gap: 8px; }
+.pill { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 500; background: var(--secondary); white-space: nowrap; }
+.pill.ok { background: var(--success-subtle); color: var(--success); }
+
+/* PR cards */
+.prs { display: grid; gap: 16px; margin-top: 32px; }
+.pr { background: var(--bg2); border-radius: 20px; padding: 28px 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px 48px; }
+.pr > * { min-width: 0; }
+.pr header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px 20px; }
+.pr header h3 { margin: 0; }
+.pr header .meta { margin-left: auto; }
+.pr .branch { font-family: var(--font-mono); font-size: 14px; color: var(--ink2); }
+.pr p, .pr li { font-size: 16px; }
+.pr h4 { margin-bottom: 8px; color: var(--ink2); font-weight: 500; font-size: 14px; }
+.timeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 32px; }
+.timeline div { background: var(--bg2); border-radius: 12px; padding: 14px 16px; font-size: 15px; display: grid; gap: 4px; }
+.timeline b { font-weight: 600; }
+.timeline .meta { font-size: 13px; }
+
+/* ---- App fragments: Talyx components ---- */
+.shot { margin-top: 24px; }
+.shot .cap { font-size: 15px; color: var(--ink2); margin-top: 12px; }
+.frame { overflow-x: auto; border-radius: 16px; background: var(--bg2); padding: 8px; }
+[data-ui] { font-family: var(--font-sans); font-size: 13px; line-height: 20px; color: var(--foreground); background: var(--background); border: 1px solid var(--border); border-radius: 12px; min-width: 980px; height: 640px; display: grid; grid-template-columns: 240px 1fr; overflow: hidden; box-shadow: var(--shadow-card); }
+[data-ui] * { box-sizing: border-box; }
+/* AppShell sidebar: w-[240px] border-r border-border/60; title row h-11 pl-[92px] (traffic lights) */
+.sb { background: var(--sidebar); border-right: 1px solid var(--sidebar-border); display: flex; flex-direction: column; min-height: 0; }
+.sb-title { height: 44px; flex: none; display: flex; align-items: center; gap: 10px; padding-left: 12px; padding-right: 8px; margin-bottom: 8px; }
+.lights { display: flex; gap: 8px; margin-right: 10px; }
+.lights i { width: 12px; height: 12px; border-radius: 999px; background: var(--border); display: block; }
+.sb-title .name { font-size: 13px; font-weight: 600; }
+.sb-title .tag { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted-foreground); }
+.sb-title .logo { width: 18px; height: 18px; }
+.sb-title .collapse { margin-left: auto; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 6px; color: var(--muted-foreground); }
+.sb-body { padding: 0 8px; display: flex; flex-direction: column; gap: 2px; min-height: 0; overflow: hidden; }
+.tally { display: flex; gap: 4px; padding: 0 8px 8px; font-size: 11px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; }
+.tally b { color: var(--foreground); font-weight: 500; }
+.tally .need { color: var(--brand); font-weight: 500; }
+.pins { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; padding: 0 0 8px; }
+.pin { display: grid; justify-items: center; gap: 6px; padding: 10px 4px 8px; border-radius: 6px; font-size: 12px; color: var(--muted-foreground); }
+.pin.sel { background: var(--accent); color: var(--foreground); }
+.pin span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.av { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; font-weight: 600; font-size: 11px; color: oklch(0.145 0.004 285); flex: none; }
+.av.lg { width: 44px; height: 44px; border-radius: 10px; font-size: 16px; }
+.av.xl { width: 64px; height: 64px; border-radius: 14px; font-size: 22px; }
+.av.circle { border-radius: 999px; }
+.av.tri { clip-path: polygon(50% 4%, 100% 100%, 0 100%); border-radius: 0; }
+.av.hex { clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); border-radius: 0; }
+.av.group { position: relative; background: var(--secondary); }
+.av.group i { position: absolute; width: 13px; height: 13px; border-radius: 4px; border: 2px solid var(--sidebar); }
+[data-block] { background: none !important; border-radius: 0; clip-path: none; overflow: visible; }
+[data-block] svg { display: block; }
+.namepill [data-block] { width: 20px; height: 22px; }
+.av.xl[data-block] { width: 64px; height: 72px; }
+.av.lg[data-block] { width: 44px; height: 50px; }
+.grp { display: flex; justify-content: space-between; align-items: center; color: var(--muted-foreground); font-size: 11px; padding: 10px 8px 2px; }
+.grp.sub { padding-left: 16px; }
+/* SidebarNav row: h-8 rounded-md px-2 text-[13px]; active bg-accent text-foreground */
+.row { display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px; color: var(--muted-foreground); }
+.row.two { height: 44px; }
+.row.sel { background: var(--accent); color: var(--foreground); }
+.row.nest { margin-left: 8px; }
+.row .name { color: var(--foreground); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .name.unread { font-weight: 600; }
+.row .sub { font-size: 11px; color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; line-height: 16px; }
+.row .t { font-size: 11px; color: var(--muted-foreground); text-align: right; display: block; line-height: 16px; }
+.row .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--brand); margin: 5px 0 0 auto; }
+/* SidebarFooter: size-9 rounded-md icon buttons */
+.sb-foot { margin-top: auto; display: flex; gap: 4px; padding: 8px; align-items: center; }
+.sb-foot i { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 6px; color: var(--muted-foreground); font-style: normal; }
+.sb-foot i svg { width: 18px; height: 18px; }
+.sb-foot .ver { margin-left: auto; font-size: 11px; color: var(--muted-foreground); padding-right: 4px; }
+/* page header: h-11 border-b border-border/60 px-4, h1 13px semibold */
+.main { position: relative; display: grid; grid-template-rows: 44px 1fr auto; min-width: 0; }
+.ph { display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); padding: 0 16px; }
+.namepill { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px 0 6px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+.namepill:hover, .namepill.open { background: var(--accent); }
+.namepill .av { width: 20px; height: 20px; font-size: 9px; border-radius: 5px; }
+.namepill .chev { color: var(--muted-foreground); font-weight: 400; }
+.thread { padding: 16px 32px; display: grid; gap: 12px; align-content: end; overflow: hidden; }
+.msg { max-width: 60%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 20px; }
+.msg.me { justify-self: end; background: var(--primary); color: var(--primary-foreground); }
+.msg.bot { justify-self: start; background: var(--muted); }
+.msg.bot .who { font-size: 11px; color: var(--muted-foreground); margin-bottom: 2px; }
+.msg ul { margin: 6px 0 0; padding-left: 18px; }
+.msg .tool { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted-foreground); margin-top: 8px; }
+/* Card: rounded-xl border bg-card shadow */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-card); }
+.card-q { justify-self: start; max-width: 60%; padding: 16px; display: grid; gap: 10px; }
+.card-q .opts { display: grid; gap: 6px; }
+.card-q .opt { height: 32px; display: flex; align-items: center; padding: 0 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--background); }
+.card-q .opt.on { border-color: var(--ring); box-shadow: 0 0 0 3px var(--accent); }
+.card-q .acts { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+/* Button: h-9 rounded-md px-4 text-sm font-medium; sm h-8 px-3; outline/ghost/link */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 6px; font-size: 14px; font-weight: 500; background: var(--primary); color: var(--primary-foreground); white-space: nowrap; }
+.btn.sm { height: 32px; padding: 0 12px; font-size: 13px; }
+.btn.xs { height: 24px; padding: 0 8px; font-size: 12px; }
+.btn.outline { background: var(--background); color: var(--foreground); border: 1px solid var(--border); box-shadow: 0 1px 2px rgb(0 0 0 / .05); }
+.btn.ghost { background: transparent; color: var(--foreground); }
+.btn.link { background: transparent; color: var(--foreground); text-decoration: underline; text-underline-offset: 4px; padding: 0 6px; }
+.btn.icon { width: 32px; padding: 0; }
+.btn svg { width: 16px; height: 16px; }
+/* Composer: rounded-xl border bg-card */
+.composer { margin: 8px 32px 16px; height: 48px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-card); display: flex; align-items: center; gap: 6px; padding: 0 8px 0 12px; color: var(--muted-foreground); }
+.composer .plus { width: 24px; display: grid; place-items: center; }
+.composer .ph2 { flex: 1; font-size: 13px; }
+.composer .chip { height: 28px; padding: 0 8px; border-radius: 6px; font-size: 12px; color: var(--muted-foreground); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.composer .mic { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 6px; color: var(--muted-foreground); }
+.composer .send { width: 32px; height: 32px; border-radius: 6px; background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; }
+/* Dialog: rounded-xl border bg-card p-6 shadow-lg gap-4 */
+.dlg { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; box-shadow: var(--shadow-lg); display: grid; gap: 16px; }
+.dlg .ttl { font-size: 16px; font-weight: 600; line-height: 1; }
+.dlg .desc { font-size: 13px; color: var(--muted-foreground); }
+[data-ui].with-panel { grid-template-columns: 240px 1fr 340px; }
+.panel { border-radius: 0; box-shadow: none; border: 0; border-left: 1px solid var(--border); align-content: start; overflow: hidden; gap: 10px; padding: 20px; min-width: 0; }
+.panel .av.xl { width: 48px; height: 48px; border-radius: 12px; font-size: 18px; }
+.panel .switch-row { padding: 4px 0; }
+.panel .hero { padding: 0; display: grid; justify-items: center; gap: 6px; text-align: center; }
+.panel .hero .ttl { font-size: 15px; font-weight: 600; line-height: 1.2; }
+.tabs { display: flex; gap: 2px; padding: 3px; border-radius: 8px; background: var(--muted); }
+.tabs span { flex: 1; text-align: center; height: 28px; line-height: 28px; font-size: 13px; color: var(--muted-foreground); border-radius: 6px; }
+.tabs span.on { color: var(--foreground); background: var(--background); box-shadow: 0 1px 2px rgb(0 0 0 / .06); font-weight: 500; }
+/* Input: rounded-md border border-border bg-background px-2.5 py-1.5 text-sm */
+.field { display: grid; gap: 6px; font-size: 13px; }
+.field label { font-weight: 500; }
+.field .in { height: 34px; border: 1px solid var(--border); border-radius: 6px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; background: var(--background); color: var(--foreground); font-size: 13px; }
+.field .in .ch { color: var(--muted-foreground); }
+/* Settings switch: h-6 w-11 rounded-full; on bg-foreground, off bg-secondary; knob h-5 w-5 bg-background */
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; font-size: 13px; }
+.switch-row small { display: block; color: var(--muted-foreground); font-size: 11px; line-height: 16px; }
+.sw { width: 44px; height: 24px; border-radius: 999px; background: var(--secondary); position: relative; flex: none; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 999px; background: var(--background); box-shadow: 0 1px 2px rgb(0 0 0 / .1); }
+.sw.on { background: var(--foreground); }
+.sw.on::after { left: 22px; }
+.acts-r { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
+.overlay { position: absolute; inset: 0; background: rgb(0 0 0 / .4); display: grid; place-items: center; }
+.overlay .dlg { width: 420px; }
+.shapes { display: flex; gap: 8px; align-items: center; }
+.shapes .av { width: 32px; height: 32px; }
+.shapes .av.on { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* Settings page */
+.settings { padding: 16px; display: grid; gap: 12px; align-content: start; overflow: hidden; }
+.settings .sec { padding: 20px 24px; display: grid; gap: 12px; }
+.settings .sec .ttl { font-weight: 600; font-size: 14px; line-height: 1; }
+.settings .sec .desc { font-size: 13px; color: var(--muted-foreground); }
+.kv { display: flex; justify-content: space-between; gap: 12px; height: 28px; align-items: center; font-size: 13px; }
+.kv span:first-child { color: var(--muted-foreground); }
+.empty { grid-column: 1 / -1; display: grid; place-items: center; text-align: center; gap: 12px; padding: 40px; }
+.empty .ttl { font-size: 18px; font-weight: 600; }
+.empty p { color: var(--muted-foreground); font-size: 13px; }
+.empty .cmd { font-family: var(--font-mono); background: var(--muted); padding: 8px 14px; border-radius: 6px; font-size: 12px; color: var(--foreground); }
+
+pre.mermaid { background: var(--bg2); border-radius: 16px; padding: 20px; overflow-x: auto; margin: 24px 0 0; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; margin-top: 24px; }
+th { text-align: left; font-weight: 500; color: var(--ink2); font-size: 13px; padding: 8px 12px 8px 0; }
+td { padding: 10px 12px 10px 0; border-top: 1px solid var(--rule); vertical-align: top; }
+td:first-child { font-weight: 500; white-space: nowrap; }
+.tablewrap { overflow-x: auto; }
+@media (max-width: 760px) {
+  .pr { grid-template-columns: 1fr; }
+  h2 { margin-top: 80px; }
+  .band { padding: 24px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<!-- TalyxLogo.tsx, verbatim: src/renderer/src/shared/ui/TalyxLogo.tsx -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <mask id="talyx-mask">
+      <path d="M129.548 5.11161C133.612 7.3486 137.587 9.73009 141.56 12.1233C147.323 15.594 153.154 18.9446 158.986 22.2991C160.085 22.9328 161.184 23.5664 162.316 24.2193C168.018 27.5067 173.724 30.7862 179.435 34.0569C198.895 45.2138 198.895 45.2138 207.861 50.7366C208.482 51.1141 209.104 51.4915 209.744 51.8804C215.916 55.743 222.309 61.1665 224.148 68.5047C224.529 70.987 224.685 73.3126 224.702 75.8216C224.711 76.7396 224.719 77.6576 224.728 78.6034C224.735 80.0957 224.735 80.0957 224.741 81.6182C224.754 83.2045 224.754 83.2045 224.766 84.8229C224.791 88.3189 224.807 91.8148 224.822 95.3108C224.827 96.5073 224.832 97.7039 224.838 98.9366C224.865 105.27 224.884 111.603 224.898 117.937C224.912 123.169 224.94 128.402 224.98 133.635C225.03 139.962 225.055 146.29 225.062 152.618C225.068 155.024 225.084 157.43 225.108 159.836C225.139 163.21 225.139 166.583 225.132 169.958C225.148 170.943 225.165 171.928 225.182 172.942C225.112 180.76 223.014 187.363 217.625 193.191C213.186 197.329 208.147 200.373 202.861 203.299C201.629 203.997 201.629 203.997 200.373 204.708C198.639 205.69 196.903 206.668 195.165 207.642C190.924 210.024 186.707 212.445 182.486 214.862C180.725 215.867 178.965 216.872 177.205 217.877C154.354 230.922 154.354 230.922 131.777 244.432C123.061 249.735 114.804 252.445 104.548 250.112C96.7562 247.053 89.6525 242.488 82.5484 238.112C81.2401 237.328 79.9303 236.546 78.6187 235.768C76.8675 234.726 75.1196 233.679 73.3802 232.618C67.6819 229.142 61.8678 225.88 56.0484 222.612C48.9939 218.647 41.9721 214.651 35.0682 210.428C31.6255 208.33 28.1483 206.318 24.6226 204.362C23.7708 203.884 22.9191 203.407 22.0415 202.915C20.3896 201.992 18.7318 201.079 17.0669 200.179C8.60287 195.424 4.57805 190.243 1.3787 181.099C0.0819432 176.433 -0.0104016 172.001 0.0307995 167.183C0.0237903 166.153 0.016781 165.122 0.0095593 164.06C-0.00789297 160.689 0.00355517 157.319 0.0171277 153.948C0.0144295 151.586 0.0105444 149.224 0.00553098 146.862C-0.000346436 141.928 0.00814401 136.995 0.0268933 132.061C0.0497064 125.752 0.0365406 119.443 0.0126111 113.134C-0.00187281 108.263 0.00276298 103.392 0.0131146 98.5207C0.0157734 96.1947 0.0125421 93.8688 0.00319639 91.5429C-0.00701438 88.2886 0.00859513 85.0353 0.0307995 81.781C0.0227026 80.8302 0.0146057 79.8793 0.00626341 78.8996C0.120499 69.8169 3.2163 62.6522 9.40141 56.0144C13.6016 52.2918 18.4564 49.728 23.3609 47.0491C25.1044 46.0705 26.8479 45.0919 28.5906 44.1119C30.3886 43.1031 32.1901 42.1008 33.9922 41.0994C39.5492 38.0035 45.0451 34.8016 50.5484 31.6116C52.6965 30.3715 54.845 29.132 56.9937 27.8929C58.0639 27.2754 59.1342 26.6579 60.2369 26.0218C63.0848 24.379 65.9329 22.7367 68.7812 21.0946C70.5318 20.0854 72.2823 19.0761 74.0328 18.0667C76.2123 16.8099 78.392 15.5534 80.5718 14.2972C81.5721 13.7203 82.5724 13.1434 83.6031 12.5491C84.5798 11.9871 85.5566 11.425 86.563 10.846C88.6369 9.64113 90.7021 8.42126 92.7603 7.18974C93.8067 6.56583 94.8531 5.94192 95.9312 5.29911C96.8659 4.73579 97.8007 4.17247 98.7637 3.59208C109.78 -2.26469 118.839 -0.386833 129.548 5.11161Z" fill="white"/>
+      <path d="M27.4771 86C31.2684 87.4788 34.714 89.175 38.2466 91.2031C39.3703 91.8465 40.4941 92.4899 41.6519 93.1528C42.8645 93.8517 44.0771 94.5508 45.2896 95.25C46.5502 95.974 47.8109 96.6978 49.0718 97.4214C58.9211 103.08 68.7425 108.787 78.5396 114.535C82.7306 116.991 86.9413 119.409 91.1646 121.809C92.8115 122.751 92.8115 122.751 94.4917 123.712C96.5945 124.915 98.7017 126.11 100.814 127.295C101.76 127.839 102.706 128.382 103.68 128.941C104.512 129.413 105.344 129.884 106.201 130.369C109.429 132.682 112.091 134.885 112.837 138.973C112.97 141.42 112.972 143.838 112.931 146.288C112.932 147.216 112.932 148.143 112.933 149.098C112.93 152.156 112.899 155.212 112.868 158.27C112.86 160.392 112.855 162.515 112.851 164.638C112.835 170.219 112.796 175.8 112.752 181.382C112.711 187.079 112.693 192.777 112.672 198.475C112.629 209.65 112.561 220.825 112.477 232C110.592 231.068 108.709 230.133 106.826 229.197C105.252 228.417 105.252 228.417 103.647 227.621C98.7264 225.105 93.9808 222.315 89.2271 219.5C87.1216 218.263 85.0162 217.026 82.9106 215.789C81.8457 215.162 80.7808 214.534 79.6836 213.888C75.5586 211.459 71.4273 209.042 67.2935 206.629C65.2988 205.464 63.3053 204.298 61.313 203.129C56.3876 200.247 51.4429 197.413 46.4419 194.664C44.9988 193.864 44.9988 193.864 43.5266 193.047C41.7158 192.046 39.8986 191.057 38.074 190.082C36.8581 189.407 36.8581 189.407 35.6177 188.719C34.9116 188.337 34.2055 187.954 33.478 187.561C30.2316 185.029 27.8474 182.101 27.1159 177.951C26.986 175.522 26.9822 173.122 27.0229 170.69C27.0224 169.772 27.0218 168.855 27.0212 167.909C27.024 164.889 27.055 161.871 27.0864 158.852C27.0939 156.753 27.0996 154.654 27.1036 152.555C27.1188 147.041 27.1581 141.527 27.2024 136.013C27.2434 130.383 27.2616 124.752 27.2817 119.121C27.3246 108.081 27.3928 97.0403 27.4771 86Z" fill="black"/>
+      <path d="M66 51C81.575 59.4955 97.1332 68.0348 112.388 77.0962C117.827 80.3237 123.302 83.4838 128.786 86.6343C146.255 96.6726 146.255 96.6726 153.062 100.812C154.023 101.396 154.983 101.98 155.973 102.582C158 104 158 104 159 106C159.092 107.419 159.122 108.843 159.12 110.265C159.122 111.607 159.122 111.607 159.124 112.976C159.119 114.452 159.119 114.452 159.114 115.958C159.114 116.992 159.114 118.026 159.114 119.091C159.113 122.522 159.105 125.952 159.098 129.383C159.096 131.757 159.094 134.13 159.093 136.504C159.09 142.761 159.08 149.018 159.069 155.275C159.058 161.656 159.054 168.037 159.049 174.418C159.038 186.945 159.021 199.473 159 212C154.612 210.596 150.956 208.961 147.016 206.559C145.916 205.893 144.816 205.227 143.684 204.541C142.539 203.84 141.394 203.139 140.25 202.438C139.09 201.732 137.93 201.027 136.77 200.322C134.653 199.037 132.539 197.75 130.427 196.459C128.103 195.019 128.103 195.019 126 194C125.999 193.243 125.997 192.486 125.996 191.707C125.978 184.542 125.936 177.379 125.868 170.215C125.834 166.533 125.809 162.851 125.804 159.168C125.8 155.608 125.771 152.049 125.727 148.489C125.707 146.484 125.713 144.478 125.719 142.473C125.58 133.71 124.244 127.539 118.172 121.045C112.954 116.02 106.644 112.724 100.312 109.312C98.1011 108.099 95.8901 106.884 93.6797 105.668C92.0163 104.758 92.0163 104.758 90.3193 103.83C85.1592 100.985 80.0472 98.0586 74.9375 95.125C71.9881 93.4338 69.0387 91.7425 66 90C66 77.13 66 64.26 66 51Z" fill="black"/>
+      <path d="M113 18C128.575 26.4955 144.133 35.0348 159.388 44.0962C164.827 47.3237 170.302 50.4838 175.786 53.6343C193.255 63.6726 193.255 63.6726 200.062 67.8125C201.023 68.3964 201.983 68.9804 202.973 69.582C205 71 205 71 206 73C206.092 74.4192 206.122 75.8426 206.12 77.2647C206.122 78.6067 206.122 78.6067 206.124 79.9757C206.119 81.4517 206.119 81.4517 206.114 82.9575C206.114 83.9917 206.114 85.0259 206.114 86.0914C206.113 89.5219 206.105 92.9523 206.098 96.3828C206.096 98.7565 206.094 101.13 206.093 103.504C206.09 109.761 206.08 116.018 206.069 122.275C206.058 128.656 206.054 135.037 206.049 141.418C206.038 153.945 206.021 166.473 206 179C201.612 177.596 197.956 175.961 194.016 173.559C192.916 172.893 191.816 172.227 190.684 171.541C189.539 170.84 188.394 170.139 187.25 169.438C186.09 168.732 184.93 168.027 183.77 167.322C181.653 166.037 179.539 164.75 177.427 163.459C175.103 162.019 175.103 162.019 173 161C172.999 160.243 172.997 159.486 172.996 158.707C172.978 151.542 172.936 144.379 172.868 137.215C172.834 133.533 172.809 129.851 172.804 126.168C172.8 122.608 172.771 119.049 172.727 115.489C172.707 113.484 172.713 111.478 172.719 109.473C172.58 100.71 171.244 94.5393 165.172 88.0448C159.954 83.0195 153.644 79.724 147.312 76.3125C145.101 75.0986 142.89 73.8837 140.68 72.668C139.016 71.758 139.016 71.758 137.319 70.8296C132.159 67.9854 127.047 65.0586 121.938 62.125C118.988 60.4338 116.039 58.7425 113 57C113 44.13 113 31.26 113 18Z" fill="black"/>
+    </mask>
+    <symbol id="talyx-cuts" viewBox="0 0 226 251"><path d="M27.4771 86C31.2684 87.4788 34.714 89.175 38.2466 91.2031C39.3703 91.8465 40.4941 92.4899 41.6519 93.1528C42.8645 93.8517 44.0771 94.5508 45.2896 95.25C46.5502 95.974 47.8109 96.6978 49.0718 97.4214C58.9211 103.08 68.7425 108.787 78.5396 114.535C82.7306 116.991 86.9413 119.409 91.1646 121.809C92.8115 122.751 92.8115 122.751 94.4917 123.712C96.5945 124.915 98.7017 126.11 100.814 127.295C101.76 127.839 102.706 128.382 103.68 128.941C104.512 129.413 105.344 129.884 106.201 130.369C109.429 132.682 112.091 134.885 112.837 138.973C112.97 141.42 112.972 143.838 112.931 146.288C112.932 147.216 112.932 148.143 112.933 149.098C112.93 152.156 112.899 155.212 112.868 158.27C112.86 160.392 112.855 162.515 112.851 164.638C112.835 170.219 112.796 175.8 112.752 181.382C112.711 187.079 112.693 192.777 112.672 198.475C112.629 209.65 112.561 220.825 112.477 232C110.592 231.068 108.709 230.133 106.826 229.197C105.252 228.417 105.252 228.417 103.647 227.621C98.7264 225.105 93.9808 222.315 89.2271 219.5C87.1216 218.263 85.0162 217.026 82.9106 215.789C81.8457 215.162 80.7808 214.534 79.6836 213.888C75.5586 211.459 71.4273 209.042 67.2935 206.629C65.2988 205.464 63.3053 204.298 61.313 203.129C56.3876 200.247 51.4429 197.413 46.4419 194.664C44.9988 193.864 44.9988 193.864 43.5266 193.047C41.7158 192.046 39.8986 191.057 38.074 190.082C36.8581 189.407 36.8581 189.407 35.6177 188.719C34.9116 188.337 34.2055 187.954 33.478 187.561C30.2316 185.029 27.8474 182.101 27.1159 177.951C26.986 175.522 26.9822 173.122 27.0229 170.69C27.0224 169.772 27.0218 168.855 27.0212 167.909C27.024 164.889 27.055 161.871 27.0864 158.852C27.0939 156.753 27.0996 154.654 27.1036 152.555C27.1188 147.041 27.1581 141.527 27.2024 136.013C27.2434 130.383 27.2616 124.752 27.2817 119.121C27.3246 108.081 27.3928 97.0403 27.4771 86Z"/><path d="M66 51C81.575 59.4955 97.1332 68.0348 112.388 77.0962C117.827 80.3237 123.302 83.4838 128.786 86.6343C146.255 96.6726 146.255 96.6726 153.062 100.812C154.023 101.396 154.983 101.98 155.973 102.582C158 104 158 104 159 106C159.092 107.419 159.122 108.843 159.12 110.265C159.122 111.607 159.122 111.607 159.124 112.976C159.119 114.452 159.119 114.452 159.114 115.958C159.114 116.992 159.114 118.026 159.114 119.091C159.113 122.522 159.105 125.952 159.098 129.383C159.096 131.757 159.094 134.13 159.093 136.504C159.09 142.761 159.08 149.018 159.069 155.275C159.058 161.656 159.054 168.037 159.049 174.418C159.038 186.945 159.021 199.473 159 212C154.612 210.596 150.956 208.961 147.016 206.559C145.916 205.893 144.816 205.227 143.684 204.541C142.539 203.84 141.394 203.139 140.25 202.438C139.09 201.732 137.93 201.027 136.77 200.322C134.653 199.037 132.539 197.75 130.427 196.459C128.103 195.019 128.103 195.019 126 194C125.999 193.243 125.997 192.486 125.996 191.707C125.978 184.542 125.936 177.379 125.868 170.215C125.834 166.533 125.809 162.851 125.804 159.168C125.8 155.608 125.771 152.049 125.727 148.489C125.707 146.484 125.713 144.478 125.719 142.473C125.58 133.71 124.244 127.539 118.172 121.045C112.954 116.02 106.644 112.724 100.312 109.312C98.1011 108.099 95.8901 106.884 93.6797 105.668C92.0163 104.758 92.0163 104.758 90.3193 103.83C85.1592 100.985 80.0472 98.0586 74.9375 95.125C71.9881 93.4338 69.0387 91.7425 66 90C66 77.13 66 64.26 66 51Z"/><path d="M113 18C128.575 26.4955 144.133 35.0348 159.388 44.0962C164.827 47.3237 170.302 50.4838 175.786 53.6343C193.255 63.6726 193.255 63.6726 200.062 67.8125C201.023 68.3964 201.983 68.9804 202.973 69.582C205 71 205 71 206 73C206.092 74.4192 206.122 75.8426 206.12 77.2647C206.122 78.6067 206.122 78.6067 206.124 79.9757C206.119 81.4517 206.119 81.4517 206.114 82.9575C206.114 83.9917 206.114 85.0259 206.114 86.0914C206.113 89.5219 206.105 92.9523 206.098 96.3828C206.096 98.7565 206.094 101.13 206.093 103.504C206.09 109.761 206.08 116.018 206.069 122.275C206.058 128.656 206.054 135.037 206.049 141.418C206.038 153.945 206.021 166.473 206 179C201.612 177.596 197.956 175.961 194.016 173.559C192.916 172.893 191.816 172.227 190.684 171.541C189.539 170.84 188.394 170.139 187.25 169.438C186.09 168.732 184.93 168.027 183.77 167.322C181.653 166.037 179.539 164.75 177.427 163.459C175.103 162.019 175.103 162.019 173 161C172.999 160.243 172.997 159.486 172.996 158.707C172.978 151.542 172.936 144.379 172.868 137.215C172.834 133.533 172.809 129.851 172.804 126.168C172.8 122.608 172.771 119.049 172.727 115.489C172.707 113.484 172.713 111.478 172.719 109.473C172.58 100.71 171.244 94.5393 165.172 88.0448C159.954 83.0195 153.644 79.724 147.312 76.3125C145.101 75.0986 142.89 73.8837 140.68 72.668C139.016 71.758 139.016 71.758 137.319 70.8296C132.159 67.9854 127.047 65.0586 121.938 62.125C118.988 60.4338 116.039 58.7425 113 57C113 44.13 113 31.26 113 18Z"/></symbol>
+    <symbol id="talyx-logo" viewBox="0 0 226 251"><rect width="226" height="251" fill="currentColor" mask="url(#talyx-mask)"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="m21 21-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-chevd" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-chevr" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-chevl" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 3v18" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 17l.8 2.2L22 20l-2.2.8L19 23l-.8-2.2L16 20l2.2-.8zM5 2l.6 1.6L7 4l-1.4.6L5 6l-.6-1.4L3 4l1.4-.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+<main>
+<section class="hero">
+  <span class="wordmark"><svg class="logo" aria-hidden="true"><use href="#talyx-logo"/></svg>Talyx</span>
+  <h1>Talyx becomes the place to tally agents.</h1>
+  <p class="lead">One app: a roster of bots on the left, one chat on the right, Talyx as the manager bot. Built from the bots view of the old desktop app, restyled to Talyx, on a stock engine. This page is the plan: twelve pull requests, the screens, the flows, and the website update.</p>
+  <p class="meta">Owner Petar Stoev · design approved 4 November 2026 · source of truth <code>docs/superpowers/specs/2026-11-04-talyx-agents-pivot-design.md</code> in <code>talyx-app</code></p>
+</section>
+
+<h2>What ships</h2>
+<div class="band cols">
+  <div class="stack">
+    <h4>Keep</h4>
+    <ul class="plain">
+      <li>Bots as engine profiles, pinned tiles and project folders</li>
+      <li>One chat per bot; clarify and approval cards</li>
+      <li>The manager bot delegates to other bots through the engine tool <code>message_agent</code></li>
+      <li>Group rooms hosted by the gateway, with today's history (6 rooms in the engine's <code>state.db</code>)</li>
+      <li>Routines (cron), SOUL, model and reasoning level, dictation</li>
+      <li>Providers exactly as today: the engine's <code>config.yaml</code> (your custom router on <code>127.0.0.1:20128</code> with its 9 models), keys, OAuth logins. Untouched by the pivot; a Providers settings page lets you add more</li>
+      <li>The composer behaviour: <code>+</code>, model chip, reasoning level, mic, chevron</li>
+    </ul>
+  </div>
+  <div class="stack">
+    <h4>Drop</h4>
+    <ul class="plain">
+      <li>All of today's Talyx: sorting, watch folders, history, hotkey overlay, voice models, MCP server, Claude SDKs</li>
+      <li>Old desktop chrome: sessions list, command center, palette, starmap, capabilities browser, plugins, panes, updates, pets</li>
+      <li>The <code>@assistant-ui</code> transcript stack (24k lines); Talyx writes a small transcript of its own</li>
+      <li>Voice conversation mode, seven locale bundles, the cross-connection relay, the legacy desktop-run group mode</li>
+      <li>The old avatars; Talyx draws its own flat set</li>
+    </ul>
+  </div>
+  <div class="stack">
+    <h4>Settled</h4>
+    <ul class="plain">
+      <li>Same repo, same name, version 1.0.0</li>
+      <li>Builds for macOS, Windows and Linux, none of them signed or notarized; the download page says so and how to open them</li>
+      <li>Stack stays: Electron 44, React 19, Tailwind 4, shadcn, Zustand, electron-vite</li>
+      <li>Engine client vendored from tag <code>v0.22.5</code>, the installed release</li>
+      <li>Local gateway only in 1.0; remote machines are a later PR</li>
+      <li>English UI</li>
+      <li>Folders stored in the default profile's <code>ui_meta</code>, so every machine sees one layout</li>
+      <li>The engine's upstream name never appears in the app, the code or this plan: it is "the engine" (<code>shared/engine/</code>, <code>EngineStatus</code>, <code>talyx-engine</code>). Its real name lives only in <code>engine.ts</code>, the README and the install script</li>
+      <li>The manager bot (profile <code>default</code>) is called Talyx and wears the logo</li>
+    </ul>
+  </div>
+</div>
+
+<h2>The pull requests</h2>
+<p class="lead">In merge order. Each PR is small enough to review in one sitting and leaves <code>main</code> buildable. Sizes are working days for one person with an agent.</p>
+<div class="timeline">
+  <div><b>1 Clear the deck</b><span class="meta">1 day</span></div>
+  <div><b>2 Engine bridge</b><span class="meta">3 days</span></div>
+  <div><b>3 Roster</b><span class="meta">3 days</span></div>
+  <div><b>4 Chat</b><span class="meta">5 days</span></div>
+  <div><b>5 Bot details</b><span class="meta">3 days</span></div>
+  <div><b>6 Group rooms</b><span class="meta">3 days</span></div>
+  <div><b>7 Providers</b><span class="meta">3 days</span></div>
+  <div><b>8 Avatars</b><span class="meta">3 days</span></div>
+  <div><b>9 Look</b><span class="meta">3 days</span></div>
+  <div><b>10 Ship 1.0</b><span class="meta">2 days</span></div>
+  <div><b>11 Website</b><span class="meta">2 days</span></div>
+  <div><b>12 Remote</b><span class="meta">later</span></div>
+</div>
+
+<div class="prs">
+
+<article class="pr">
+  <header><h3>PR 1 · Clear the deck</h3><span class="branch">chore/pivot-remove-organizer</span><span class="meta">1 day</span></header>
+  <div>
+    <h4>Goal</h4>
+    <p>Delete everything Talyx did before the pivot, so every later PR adds to an empty, building app. The old app is kept on the branch <code>legacy/file-organizer</code> and the tag <code>v0.11.0-legacy</code> (both pushed, 4 November 2026); the README links them.</p>
+    <h4>Steps</h4>
+    <ol class="steps">
+      <li>Remove <code>src/main/domain/*</code>, <code>src/main/mcp/</code>, <code>src/main/infrastructure/{agent,ai-providers,brains,assistant,voice,workers}</code> and their IPC handlers.</li>
+      <li>Remove <code>src/renderer/assistant/</code>, <code>src/renderer/src/features/*</code>, the pages <code>sort watch history search ask</code>, the widgets <code>tour welcome</code>.</li>
+      <li>Drop SQLite tables, migrations and <code>better-sqlite3</code>; settings stay a JSON file.</li>
+      <li>Remove the dependencies: <code>@anthropic-ai/*</code>, <code>@huggingface/*</code>, <code>@modelcontextprotocol/sdk</code>, <code>onnxruntime</code>, <code>pdf-parse</code>, <code>mammoth</code>, <code>xlsx</code>, <code>exifr</code>, <code>music-metadata</code>, <code>mailparser</code>, <code>chokidar</code>, <code>cheerio</code>, <code>phonemizer</code>, <code>thinking-orbs</code>.</li>
+      <li>Keep <code>AppShell</code> as an empty shell with one page, "Agents", that says "Nothing here yet".</li>
+      <li>Rewrite <code>CLAUDE.md</code> and <code>README.md</code> for the new purpose, with a "Before the pivot" note pointing at <code>legacy/file-organizer</code>; bump to <code>1.0.0-alpha.1</code>.</li>
+    </ol>
+  </div>
+  <div>
+    <h4>Done when</h4>
+    <ul class="plain">
+      <li><code>npm run build</code> and <code>npm test</code> pass with the old tests removed</li>
+      <li>The macOS DMG opens to the empty shell</li>
+      <li><code>package.json</code> has no dependency the new app does not use</li>
+    </ul>
+    <h4>Watch out</h4>
+    <p>Delete in one PR, not gradually. Dormant code is the anti-goal.</p>
+  </div>
+</article>
+
+<article class="pr">
+  <header><h3>PR 2 · Engine bridge</h3><span class="branch">feat/engine-bridge</span><span class="meta">3 days</span></header>
+  <div>
+    <h4>Goal</h4>
+    <p>Talk to the stock engine gateway from Talyx and prove one text round-trip with the default profile. No UI beyond a debug page.</p>
+    <h4>Steps</h4>
+    <ol class="steps">
+      <li>Main process: <code>infrastructure/engine/engine.ts</code> wraps the engine CLI (<code>--version</code>, <code>gateway ensure --json</code> per profile, ported from the old <code>local-gateway.ts</code>) behind an <code>Engine</code> interface. The upstream name lives only in that file, the README and <code>scripts/talyx-engine</code>. Never own or kill the gateway.</li>
+      <li>Port the ticket minting (<code>mintLocalGatewayTicket</code>) through the profile's control socket; per-profile routing for the sockets.</li>
+      <li>Vendor into <code>src/renderer/src/shared/engine/</code> from tag <code>v0.22.5</code>: <code>canonical-protocol.ts</code>, <code>client.ts</code>, <code>profiles.ts</code>, <code>sessions.ts</code>, <code>cron.ts</code>, <code>models.ts</code>, <code>config.ts</code>, and the <code>host.*</code> calls the bots UI uses, as one plain module.</li>
+      <li>Move the protocol tests that still apply (<code>canonical-protocol.test.ts</code>, <code>canonical-profile-route.test.ts</code>, clarify lifecycle).</li>
+      <li>Debug page: pick a profile, send "ping", print the raw session events. Reconnect and replay must work.</li>
+      <li>First-run state: engine missing shows the install line and a Retry button (screen 6). <code>scripts/talyx-engine install</code> installs the pinned engine release with <code>pip</code>.</li>
+    </ol>
+  </div>
+  <div>
+    <h4>Done when</h4>
+    <ul class="plain">
+      <li>A message to <code>default</code> returns a streamed reply through the vendored client</li>
+      <li>Quit and relaunch: the app attaches to the running gateway, no second process</li>
+      <li>README pins engine 0.22.5 and says how to re-sync the vendored folder</li>
+    </ul>
+    <h4>Watch out</h4>
+    <p>The gateway listens on loopback and admits sockets by one-use tickets. Do not add a URL field; that is PR 12.</p>
+  </div>
+</article>
+
+<article class="pr">
+  <header><h3>PR 3 · Roster</h3><span class="branch">feat/roster</span><span class="meta">3 days</span></header>
+  <div>
+    <h4>Goal</h4>
+    <p>The left side of screen 1: the tally line, pinned tiles, project folders, bot rows with last-message preview, group rows. Selecting a bot opens its chat area (empty until PR 4).</p>
+    <h4>Steps</h4>
+    <ol class="steps">
+      <li>Move <code>data.ts</code>, <code>types.ts</code>, <code>pinned-bots.ts</code>, <code>user-sections.ts</code>, <code>routing.ts</code>, <code>recent-session.ts</code>, <code>hidden-bots.ts</code> into <code>features/bots/</code>; drop the localStorage mirror.</li>
+      <li>Folders: new <code>ui_meta['talyx-folders']</code> on the default profile (same shape as <code>bot-sections-v1</code>); rebuild from <code>sectionId</code> on first run so today's folders appear.</li>
+      <li>Widgets: <code>Roster</code>, <code>PinnedGrid</code> (3 large up to 3 pins, 4 small after), <code>FolderGroup</code> (collapse, drag-to-nest, reorder, count on the right), <code>BotRow</code> (two lines, time in words), <code>GroupRow</code> (stacked avatars, "5 bots").</li>
+      <li>The tally line under the wordmark: agents · waiting on you · working, computed from <code>profiles.list</code> and the unread state.</li>
+      <li>Row menu: pin, move to folder, hide, edit profile (opens PR 5's panel), delete.</li>
+    </ol>
+  </div>
+  <div>
+    <h4>Done when</h4>
+    <ul class="plain">
+      <li>All 11 profiles and 2 rooms show in the folders they have today</li>
+      <li>Pin, nest and reorder survive a relaunch and show on a second machine's gateway state</li>
+      <li>Tests: folders, pins and previews drive the use cases, not the DOM</li>
+    </ul>
+    <h4>Watch out</h4>
+    <p>A pinned bot leaves its folder; folder counts drop.</p>
+  </div>
+</article>
+
+<article class="pr">
+  <header><h3>PR 4 · Chat</h3><span class="branch">feat/chat</span><span class="meta">5 days · the largest</span></header>
+  <div>
+    <h4>Goal</h4>
+    <p>The right side of screen 1: name pill, transcript, clarify and approval cards, the composer with dictation.</p>
+    <h4>Steps</h4>
+    <ol class="steps">
+      <li>Write <code>features/chat/transcript</code> on the session events: user and bot bubbles, markdown with <code>react-markdown</code> and <code>remark-gfm</code>, tool-call lines ("Ran terminal · 2 s"), images, a streaming cursor, a scroll-to-bottom button.</li>
+      <li>Clarify card with pager dots and Back/Next; approval card with Deny/Approve; both answered through the canonical protocol (reference: <code>components/assistant-ui/</code> in the old desktop app).</li>
+      <li>Move the composer from <code>app/chat/composer/</code>: text guard, attachments, model chip, reasoning level, <code>+</code> menu; strip tabs, panes and preview handling.</li>
+      <li>Dictation: move <code>use-mic-recorder.ts</code>; main process grants microphone permission; audio goes to <code>/api/audio/transcribe-stream</code>.</li>
+      <li>Empty chat state: avatar, name, "Say something to get started."</li>
+      <li>Unread: mark a bot when a reply lands while it is not selected; feeds the roster dot and the tally.</li>
+    </ol>
+  </div>
+  <div>
+    <h4>Done when</h4>
+    <ul class="plain">
+      <li>A full manager-bot conversation renders, including a clarify card answered from the UI</li>
+      <li>Talyx delegates to Agro Ops CFO and the brief shows in the manager chat without the app doing anything</li>
+      <li>Rewind, reconnect and replay keep the transcript consistent</li>
+    </ul>
+    <h4>Watch out</h4>
+    <p>Not in 1.0: reasoning blocks, media players, inter-agent collapse. Say so in the PR.</p>
+  </div>
+</article>
+
+<article class="pr">
+  <header><h3>PR 5 · Bot details and create</h3><span class="branch">feat/bot-details</span><span class="meta">3 days</span></header>
+  <div>
+    <h4>Goal</h4>
+    <p>Screen 2: the panel from the name pill with Details (routines inside), Look and Soul. Screen 3: the create-bot dialog.</p>
+    <h4>Steps</h4>
+    <ol class="steps">
+      <li>Move <code>bot-details-panel.tsx</code>, <code>bot-details-routines.tsx</code>, <code>details-panel-state.ts</code>, <code>profile-config.tsx</code>, <code>soul.ts</code>, <code>cron.tsx</code>, <code>model-picker.tsx</code>; remove the Capabilities tab and <code>skills-hub</code>, <code>mcp-setup</code>.</li>
+      <li>Details: title, description, provider, model, routines list with switches and "New routine"; Cancel/Save.</li>
+      <li>Look: the new avatar picker (shape, colour, "Match the name"); writes <code>ui_meta</code> (the existing bots key).</li>
+      <li>Soul: SOUL.md editor through <code>/api/profiles/.../soul</code>.</li>
+      <li>Create dialog: name, folder, model, a first avatar; "Edit profile" in a row menu opens the panel.</li>
+    </ol>
+  </div>
+  <div>
+    <h4>Done when</h4>
+    <ul class="plain">
+      <li>A routine toggled here fires from the gateway with the app closed</li>
+      <li>A new bot appears in its folder and answers a message</li>
+      <li>Save applies model and SOUL; Cancel discards</li>
+    </ul>
+  </div>
+</article>
+
+<article class="pr">
+  <header><h3>PR 6 · Group rooms</h3><span class="branch">feat/group-rooms</span><span class="meta">3 days</span></header>
+  <div>
+    <h4>Goal</h4>
+    <p>Screen 4: open a hosted room, read its history, send to it, see who is talking. Backend only; no desktop-run rounds.</p>
+    <h4>Steps</h4>
+    <ol class="steps">
+      <li>Move <code>canonical-groups.ts</code>, <code>canonical-group-workspace.tsx</code>, <code>-history</code>, <code>-send.ts</code>, <code>-activity</code>, <code>-header</code>, <code>-attachments</code>, <code>-row</code>; delete <code>group-rounds</code>, <code>group-turns</code>, <code>group-chat*</code>, <code>group-pin</code>, <code>relay*</code>.</li>
+      <li>Room rows in the roster come from <code>groups.list</code>; their folder and pin go into <code>talyx-folders</code>.</li>
+      <li>Transcript reuses PR 4's components with a sender name on each bot bubble.</li>
+      <li>Create room: name, members; delete room with a confirmation naming it.</li>
+    </ol>
+  </div>
+  <div>
+    <h4>Done when</h4>
+    <ul class="plain">
+      <li>"AgroOps Team Group Chat" opens with its 5 bots and the history it has today</li>
+      <li>A message sent here is answered by the members with the app closed afterwards</li>
+    </ul>
+  </div>
+</article>
+
+<article class="pr">
+  <header><h3>PR 7 · Providers and models</h3><span class="branch">feat/providers</span><span class="meta">3 days</span></header>
+  <div>
+    <h4>Goal</h4>
+    <p>Add and edit model providers in Talyx the way the old desktop app did, so the router setup (one custom endpoint, 9 models) and any future provider are managed in the app, never by hand in YAML.</p>
+    <h4>Steps</h4>
+    <ol class="steps">
+      <li>Vendor the config endpoints from <code>api/config.ts</code>: env credentials (<code>getEnvVars</code>, <code>setEnvVar</code>, <code>revealEnvVar</code>, <code>validateProviderCredential</code>), custom endpoints (<code>getCustomEndpoints</code>, <code>saveCustomEndpoint</code>, <code>validateCustomEndpoint</code>, <code>activateCustomEndpoint</code>), OAuth providers (<code>listOAuthProviders</code>, <code>startOAuthLogin</code>, <code>pollOAuthSession</code>), global model (<code>getGlobalModelOptions</code>, <code>setGlobalModel</code>).</li>
+      <li>Move <code>providers-settings.tsx</code>, <code>custom-endpoints-settings.tsx</code>, <code>env-credentials.tsx</code>, <code>credential-key-ui.tsx</code>, <code>model-settings.tsx</code>, <code>model-select.tsx</code>, <code>fallback-models-field.tsx</code> (about 3.8k lines) into <code>features/providers/</code>; restyle to Talyx Card sections.</li>
+      <li>Settings gets a Providers section: connected providers with status, "Add provider" (API key, OAuth, or custom OpenAI-compatible endpoint with base URL and key), default model and fallback list.</li>
+      <li>The per-bot model picker (PR 5) reads the same model list, so the router's 9 models appear for every bot.</li>
+    </ol>
+  </div>
+  <div>
+    <h4>Done when</h4>
+    <ul class="plain">
+      <li>The existing router shows as the active custom endpoint with its 9 models, without editing <code>config.yaml</code></li>
+      <li>Adding an API-key provider and an OAuth provider works end to end and survives a relaunch</li>
+      <li>A bot switched to a router model answers through it</li>
+    </ul>
+    <h4>Watch out</h4>
+    <p>Keys never render in full; reveal is explicit, as in the old app. Not moved: local model download and hardware pages.</p>
+  </div>
+</article>
+
+<article class="pr">
+  <header><h3>PR 8 · Avatars: Blocks</h3><span class="branch">feat/avatars</span><span class="meta">3 days</span></header>
+  <div>
+    <h4>Goal</h4>
+    <p>Reference: <a href="#avatars">screen 7, Avatars</a> below, rendered by the same SVG code. Every bot is a block in its own hue, drawn from the Talyx mark: an isometric block in three flat tones of one hue, no gradients. Shape × hue is the identity; a small face on the front face carries the state. Folders stack them and a group room is a pile of its members. Rendered in code, so it is crisp at 24, 44 and 64px and reacts to state.</p>
+    <h4>Steps</h4>
+    <ol class="steps">
+      <li><code>shared/ui/BlockAvatar.tsx</code>: an SVG voxel renderer. Input: shape (6 named voxel sets: cube, tall, slab, stair, twin, tower), hue (12 picks, 30° apart), size, optional initial, state. Faces are the hue at three lightness steps (top 0.90, left 0.70, right 0.52 in oklch); offline drops chroma to 0.</li>
+      <li>Face: straight strokes only, no curves. Eyes are two short ticks, the mouth one segment, in the hue's darkest tone, on the front face, drawn only at 40px and above (24px rows show the plain block). An expression is an angle: <b>idle</b> vertical ticks, flat line; <b>working</b> ticks tilted 35° toward the work, short line, plus a slow 1.6 s bob; <b>waiting on you</b> one tick plus a brow at 62°, an open angle for the mouth, plus the violet dot; <b>offline</b> ticks lying flat, chroma 0. The ticks rotate between states (200 ms), they never swap shapes. <b>Selected</b> changes nothing on the avatar, the row takes <code>bg-accent</code>.</li>
+      <li>Motion, all CSS and SVG, transform and opacity only, off under reduced motion. No three.js: the roster draws 11+ avatars at once and WebGL canvases would cost a context each, blur at 24px and add about 600 kB for shapes that are six polygons. Where things move: <b>roster row 24px</b> nothing on the block, the dot fades in; <b>pinned tile 44px</b> blink every 4-6 s, working bob, hover lifts 2px, state change rotates the ticks; <b>name pill</b> nothing; <b>details hero 64px</b> blink, turns a few degrees toward the cursor by re-projecting the isometric angle (one number on pointer move, 200 ms ease), working bob; <b>thread</b> the sender's 24px block bobs next to "typing"; <b>group pile</b> the speaking member bobs, the others stay still; <b>Look preview</b> crossfades a shape or hue change and turns once.</li>
+      <li>Group avatar: up to three member blocks side by side at 22-26px, one row; the name pill uses the same at 20px.</li>
+      <li>Talyx (the default bot, the manager) is the logo as a block in black and white: the mark's silhouette in three greys (top #e9e9ee, front #2a2a30, side #141418), the logo's stripes in mid grey, and the same tick face in white. No hue: it is the one bot without a colour, which is how you tell the manager from the team.</li>
+      <li>Identity data: <code>ui_meta</code> keeps <code>shape</code> and <code>color</code> as today; new values are the shape name and the hue index. Old values (a blobatar id, an hsl string) map once: hue from the hsl, shape from a hash of the id. Bots with no values get "Match the name": a hash of the name picks shape and hue, written back through <code>profiles.configure</code>.</li>
+      <li>Look tab: a row of the 6 shapes, the 12-hue strip, "Match the name", a live 64px preview. No initials, no upload in 1.0. Faces on by default; one flag turns them off.</li>
+      <li>Export: a 1024px PNG of the block for the profile asset, so the engine's other surfaces show the same avatar.</li>
+    </ol>
+  </div>
+  <div>
+    <h4>Done when</h4>
+    <ul class="plain">
+      <li>All 11 bots render as blocks with no two alike; the manager shows the logo</li>
+      <li>Working, waiting and offline states show in the roster and the pinned grid</li>
+      <li>Changing shape or hue in Look updates every size at once and survives a relaunch</li>
+      <li>Tests: hash-to-shape is stable per name; the voxel renderer draws every shape without overlap errors</li>
+    </ul>
+    <h4>Fallback</h4>
+    <p>If blocks read as too playful after a day of use: Tiles, a rounded square in a pale tint with the initial in the same hue's ink. Same data, one renderer swapped.</p>
+  </div>
+</article>
+
+<article class="pr">
+  <header><h3>PR 9 · The Talyx look</h3><span class="branch">design/talyx-look</span><span class="meta">3 days</span></header>
+  <div>
+    <h4>Goal</h4>
+    <p>Everything moved from the old desktop app reads as Talyx: Geist, one ink, tone-step surfaces, pills, no hairlines or gradients.</p>
+    <h4>Steps</h4>
+    <ol class="steps">
+      <li>Replace the old component kit (<code>Button</code>, <code>Input</code>, <code>ConfirmDialog</code>, <code>RowButton</code>, <code>Tip</code>) with shadcn versions; Codicon icons become lucide.</li>
+      <li>Apply <code>theme.css</code> tokens; brand violet only on live marks (unread dot, "waiting on you").</li>
+            <li>Dark theme pass; keyboard focus on every control; 390px check of the folded sidebar.</li>
+    </ol>
+  </div>
+  <div>
+    <h4>Done when</h4>
+    <ul class="plain">
+      <li>No old-desktop component or icon set remains in the dependency list</li>
+      <li>Screens match this page's mockups within reason</li>
+    </ul>
+  </div>
+</article>
+
+<article class="pr">
+  <header><h3>PR 10 · Ship 1.0</h3><span class="branch">release/1.0.0</span><span class="meta">2 days</span></header>
+  <div>
+    <h4>Steps</h4>
+    <ol class="steps">
+      <li>Settings page (screen 5): engine status and version, theme, launch at login; one save model.</li>
+      <li>Version <code>1.0.0</code>; macOS DMG, Windows installer and Linux AppImage/deb from electron-builder (<code>npm run build:mac</code>, <code>build:win</code>, <code>build:linux</code>) and <code>scripts/release.sh</code>. Nothing is signed: no Apple account, no Windows certificate. Release notes carry the open-anyway steps for each OS.</li>
+      <li><code>engine.ts</code> finds the engine on each OS (PATH, then the per-OS install location) and <code>talyx-engine install</code> works in a Windows and a Linux shell.</li>
+      <li>Install next to the old desktop build, use both for one day, then retire the old build and archive its fork.</li>
+      <li>Release notes name what is not in 1.0 (remote, reasoning blocks, voice mode, Bulgarian).</li>
+    </ol>
+  </div>
+  <div>
+    <h4>Done when</h4>
+    <ul class="plain">
+      <li>Petar runs his day in Talyx 1.0 without opening the old desktop build</li>
+    </ul>
+  </div>
+</article>
+
+<article class="pr">
+  <header><h3>PR 11 · Website</h3><span class="branch">feat/website-agents</span><span class="meta">2 days</span></header>
+  <div>
+    <h4>Goal</h4>
+    <p>talyx.app says what Talyx is now. Builds on the site as it is on <code>main</code>.</p>
+    <h4>Steps</h4>
+    <ol class="steps">
+      <li>Headline and lead rewritten for the pivot; the four-step explainer becomes: add a bot, talk to it, let Talyx delegate, read the brief.</li>
+      <li>Replace the approval-card sample with the roster-and-chat fragment from this page, rebuilt in the site's kit with <code>data-ui</code>.</li>
+      <li>New previews in <code>public/previews/</code> from the real 1.0 app on the Mac wallpaper, plus one Windows and one Linux shot; the sort preview goes.</li>
+      <li>Retire the sorting, watch-folder and "0 bytes leave your Mac" claims; new truthful ledger: what leaves the Mac is what the bots send to their model providers.</li>
+      <li>Requirements block: macOS 13+, Windows 10+ or a current Linux; the engine (<code>talyx-engine install</code>, Python 3.11+); a model key. One line that builds are unsigned, with the open-anyway steps per OS.</li>
+      <li>Mega-menu entries updated; the unlisted <code>/design</code> page (if it is re-added) shows the new app fragment.</li>
+    </ol>
+  </div>
+  <div>
+    <h4>Done when</h4>
+    <ul class="plain">
+      <li>No sentence on the site describes file sorting</li>
+      <li>Download links point at the 1.0 builds for all three platforms</li>
+    </ul>
+  </div>
+</article>
+
+<article class="pr">
+  <header><h3>PR 12 · Remote machines</h3><span class="branch">feat/remote-gateway</span><span class="meta">later, about a week</span></header>
+  <div>
+    <h4>Goal</h4>
+    <p>Use Talyx on one machine against bots on another over Tailscale. Decided after 1.0 is in daily use.</p>
+    <h4>Options</h4>
+    <ul class="plain">
+      <li>SSH route, as the old desktop app does: the app opens an SSH tunnel and mints tickets on the far side. No backend config.</li>
+      <li>Engine peers: register the other machine's gateway as a peer so the manager bot can message its bots; the app stays local.</li>
+    </ul>
+  </div>
+  <div>
+    <h4>Not before</h4>
+    <p>Daily use shows which machine runs which bots. Pick the option that matches, in its own design note.</p>
+  </div>
+</article>
+
+</div>
+
+<h2>The screens</h2>
+<p class="lead">Mockups built from Talyx's own parts: the tokens in <code>theme.css</code>, the AppShell sidebar, shadcn Button, Dialog and Card, the settings switch, Geist, the logo from <code>TalyxLogo.tsx</code>. Names and messages are Petar's real bots and a real conversation; previews and times are samples.</p>
+
+<div class="shot">
+  <h3>1 · Roster and chat</h3>
+  <div class="frame">
+  <div data-ui aria-label="Mockup: the main screen with the roster and a chat with Talyx, the manager bot">
+    <aside class="sb">
+      <div class="sb-title"><span class="lights"><i></i><i></i><i></i></span><svg class="logo"><use href="#talyx-logo"/></svg><span class="name">Talyx</span><span class="tag">1.0</span><span class="collapse"><svg width="18" height="18"><use href="#i-panel"/></svg></span></div>
+      <div class="sb-body">
+        <div class="tally"><span><b>11</b> agents</span><span>·</span><span class="need">2 waiting on you</span><span>·</span><span><b>1</b> working</span></div>
+        <div class="pins">
+          <div class="pin sel"><span class="av lg" data-block="cube:230:44"></span><span>T3 Tots</span></div>
+          <div class="pin"><span class="av lg" data-block="talyx:285:44"></span><span>Talyx</span></div>
+        </div>
+        <div class="grp"><span>AgroOps Team</span><span>11</span></div>
+        <div class="grp sub"><span>Team</span><span>5</span></div>
+        <div class="row two nest"><span class="av" data-block="stair:340:24"></span><span><span class="name unread">Agro Ops CFO</span><span class="sub">Не разбрах „test". Посочи файла.</span></span><span><span class="t">3h</span><span class="dot"></span></span></div>
+        <div class="row two nest"><span class="av" data-block="tall:140:24"></span><span><span class="name">Agro Ops Sales</span><span class="sub">Офертата за Коопа е готова.</span></span><span class="t">4h</span></div>
+        <div class="row two nest"><span class="av" data-block="tower:50:24"></span><span><span class="name">Agro Ops CTO</span><span class="sub">Working: migrating the API</span></span><span class="t">1d</span></div>
+        <div class="row two nest"><span class="av" data-block="twin:200:24"></span><span><span class="name">Agro Ops Product Lead</span><span class="sub">Roadmap draft v3</span></span><span class="t">1d</span></div>
+        <div class="row two nest"><span class="av" data-block="group:0:24"></span><span><span class="name">AgroOps Team Group Chat</span><span class="sub">5 bots</span></span><span class="t"></span></div>
+        <div class="grp sub"><span>Clients</span><span>6</span></div>
+        <div class="row two nest"><span class="av" data-block="slab:80:24"></span><span><span class="name unread">agro-ops-client-coop</span><span class="sub">Три въпроса за доставката</span></span><span><span class="t">1h</span><span class="dot"></span></span></div>
+        <div class="row two nest"><span class="av" data-block="twin:170:24"></span><span><span class="name">agro-ops-client-small</span><span class="sub">Благодаря, ще тествам.</span></span><span class="t">6h</span></div>
+        <div class="row two nest"><span class="av" data-block="cube:260:24"></span><span><span class="name">agro-ops-client-agronomist</span><span class="sub">Прати ми снимките.</span></span><span class="t">6h</span></div>
+      </div>
+      <div class="sb-foot"><i><svg><use href="#i-search"/></svg></i><i><svg><use href="#i-plus"/></svg></i><i><svg><use href="#i-settings"/></svg></i><span class="ver">Engine 0.22.5</span></div>
+    </aside>
+    <section class="main">
+      <div class="ph"><span class="namepill"><span class="av" data-block="talyx:285:20"></span>Talyx<svg class="chev" width="14" height="14"><use href="#i-chevr"/></svg></span></div>
+      <div class="thread">
+        <div class="msg me">Има ли как да получаваш известия когато пристигне писмо?</div>
+        <div class="msg bot"><div class="who">Talyx</div>Да. Resend може да подава събитие за ново писмо към HTTPS адрес, който събужда Talyx.<ul><li>Проверка на подписа на Resend.</li><li>Само известяване, без автоматични отговори.</li></ul>Да проверя наличното на Mac-а?</div>
+        <div class="msg me">не прави нищо не ни трябва</div>
+        <div class="msg bot"><div class="who">Talyx</div>Оставяме webhook известията за по-късно. Нищо не променям. Resend MCP остава свързан.<div class="tool">↳ Asked Agro Ops CFO · replied 2 min ago</div></div>
+        <div class="card card-q"><b>Which quarter should the CFO summarise?</b><div class="opts"><div class="opt on">Q3 2026</div><div class="opt">Q4 2026 so far</div><div class="opt">Both</div></div><div class="acts"><span class="desc" style="margin-right:auto;font-size:12px;color:var(--muted-foreground)">1 of 2</span><span class="btn sm outline">Back</span><span class="btn sm">Next</span></div></div>
+      </div>
+      <div class="composer"><span class="plus"><svg width="16" height="16"><use href="#i-plus"/></svg></span><span class="ph2">Adjust or continue</span><span class="chip">Team Manager <svg width="12" height="12"><use href="#i-chevd"/></svg></span><span class="chip">Med <svg width="12" height="12"><use href="#i-chevd"/></svg></span><span class="mic"><svg width="16" height="16"><use href="#i-mic"/></svg></span><span class="send"><svg width="16" height="16"><use href="#i-up"/></svg></span></div>
+    </section>
+  </div>
+  </div>
+  <p class="cap">The question this screen answers: which agent needs me? The tally line and the two violet dots say it before anything is read. Sidebar is the AppShell one (240px, title row with the window buttons, logo, footer icon buttons). Rows are SidebarNav rows (32px, 44px for two lines, active takes <code>bg-accent</code>). Talyx (the manager bot) delegating to the CFO is one tool line under the bubble.</p>
+</div>
+
+<div class="shot">
+  <h3>2 · Bot details from the name pill</h3>
+  <div class="frame">
+  <div class="with-panel" data-ui aria-label="Mockup: the details panel for Agro Ops CFO with the Details tab open">
+    <aside class="sb">
+      <div class="sb-title"><span class="lights"><i></i><i></i><i></i></span><svg class="logo"><use href="#talyx-logo"/></svg><span class="name">Talyx</span><span class="tag">1.0</span><span class="collapse"><svg width="18" height="18"><use href="#i-panel"/></svg></span></div>
+      <div class="sb-body">
+        <div class="tally"><span><b>11</b> agents</span><span>·</span><span class="need">1 waiting on you</span><span>·</span><span><b>1</b> working</span></div>
+        <div class="pins">
+          <div class="pin"><span class="av lg" data-block="cube:230:44"></span><span>T3 Tots</span></div>
+          <div class="pin"><span class="av lg" data-block="talyx:285:44"></span><span>Talyx</span></div>
+        </div>
+        <div class="grp"><span>AgroOps Team</span><span>11</span></div>
+        <div class="grp sub"><span>Team</span><span>5</span></div>
+        <div class="row two nest sel"><span class="av" data-block="stair:340:24"></span><span><span class="name">Agro Ops CFO</span><span class="sub">Не разбрах „test". Посочи файла.</span></span><span class="t">3h</span></div>
+        <div class="row two nest"><span class="av" data-block="tall:140:24"></span><span><span class="name">Agro Ops Sales</span><span class="sub">Офертата за Коопа е готова.</span></span><span class="t">4h</span></div>
+        <div class="row two nest"><span class="av" data-block="tower:50:24"></span><span><span class="name">Agro Ops CTO</span><span class="sub">Working: migrating the API</span></span><span class="t">1d</span></div>
+        <div class="row two nest"><span class="av" data-block="twin:200:24"></span><span><span class="name">Agro Ops Product Lead</span><span class="sub">Roadmap draft v3</span></span><span class="t">1d</span></div>
+        <div class="grp sub"><span>Clients</span><span>6</span></div>
+        <div class="row two nest"><span class="av" data-block="slab:80:24"></span><span><span class="name unread">agro-ops-client-coop</span><span class="sub">Три въпроса за доставката</span></span><span><span class="t">1h</span><span class="dot"></span></span></div>
+        <div class="row two nest"><span class="av" data-block="twin:170:24"></span><span><span class="name">agro-ops-client-small</span><span class="sub">Благодаря, ще тествам.</span></span><span class="t">6h</span></div>
+      </div>
+      <div class="sb-foot"><i><svg><use href="#i-search"/></svg></i><i><svg><use href="#i-plus"/></svg></i><i><svg><use href="#i-settings"/></svg></i><span class="ver">Engine 0.22.5</span></div>
+    </aside>
+    <section class="main">
+      <div class="ph"><span class="namepill open"><span class="av" data-block="stair:340:20"></span>Agro Ops CFO<svg class="chev" width="14" height="14"><use href="#i-chevl"/></svg></span></div>
+      <div class="thread">
+        <div class="msg me">Направи ми обобщение за Q3.</div>
+        <div class="msg bot"><div class="who">Agro Ops CFO</div>Не разбрах „test". Посочи файла с приходите и ще сметна маржа.</div>
+      </div>
+      <div class="composer"><span class="plus"><svg width="16" height="16"><use href="#i-plus"/></svg></span><span class="ph2">Message Agro Ops CFO</span><span class="chip">Claude Opus <svg width="12" height="12"><use href="#i-chevd"/></svg></span><span class="chip">High <svg width="12" height="12"><use href="#i-chevd"/></svg></span><span class="mic"><svg width="16" height="16"><use href="#i-mic"/></svg></span><span class="send"><svg width="16" height="16"><use href="#i-up"/></svg></span></div>
+      </section>
+    <aside class="dlg panel">
+        <div class="hero"><span class="av xl" data-block="stair:340:64"></span><span class="ttl">Agro Ops CFO</span><span class="desc">Finance for AgroOps · Claude Opus 5.5 · High</span></div>
+        <div class="tabs"><span class="on">Details</span><span>Look</span><span>Soul</span></div>
+        <div class="field"><label>Title</label><div class="in">Agro Ops CFO</div></div>
+        <div class="field"><label>Description</label><div class="in">Margins, cash plan, invoices for AgroOps</div></div>
+        <div class="field"><label>Model</label><div class="in">Anthropic · Claude Opus 5.5 <svg class="ch" width="14" height="14"><use href="#i-chevd"/></svg></div></div>
+        <div class="field"><label>Routines</label>
+          <div class="switch-row"><span>Monday cash position<small>Mondays 08:00 · posts to this chat</small></span><span class="sw on"></span></div>
+          <div class="switch-row"><span>Invoice chase<small>Daily 17:00 · overdue only</small></span><span class="sw"></span></div>
+          <span class="btn sm outline" style="justify-self:start"><svg><use href="#i-plus"/></svg>New routine</span>
+        </div>
+        <div class="acts-r"><span class="btn sm ghost">Cancel</span><span class="btn sm">Save</span></div>
+      </aside>
+  </div>
+  </div>
+  <p class="cap">The panel is a third column (340px) that pushes the chat narrower; it never covers the thread. Same surface as a Card, split by one border. Tabs are a segmented control; fields are Talyx inputs; routines use the settings switch (<code>h-6 w-11</code>, on = <code>bg-foreground</code>). Save applies model, title and description; routines apply when toggled.</p>
+</div>
+
+<div class="shot">
+  <h3>3 · Create a bot</h3>
+  <div class="frame">
+  <div data-ui aria-label="Mockup: the create-bot dialog" style="height:480px">
+    <aside class="sb" style="opacity:.6">
+      <div class="sb-title"><span class="lights"><i></i><i></i><i></i></span><svg class="logo"><use href="#talyx-logo"/></svg><span class="name">Talyx</span><span class="tag">1.0</span></div>
+      <div class="sb-body">
+        <div class="tally"><span><b>11</b> agents</span><span>·</span><span class="need">1 waiting on you</span></div>
+        <div class="grp"><span>AgroOps Team</span><span>11</span></div>
+        <div class="row two nest"><span class="av" data-block="stair:340:24"></span><span><span class="name">Agro Ops CFO</span><span class="sub">Не разбрах „test".</span></span><span class="t">3h</span></div>
+        <div class="row two nest"><span class="av" data-block="tall:140:24"></span><span><span class="name">Agro Ops Sales</span><span class="sub">Офертата е готова.</span></span><span class="t">4h</span></div>
+      </div>
+    </aside>
+    <section class="main">
+      <div class="overlay"><div class="dlg">
+        <span class="ttl">New bot</span>
+        <span class="desc">A new bot in your folders. SOUL and routines come after, from the panel.</span>
+        <div class="field"><label>Name</label><div class="in">Agro Ops Legal</div></div>
+        <div class="field"><label>Folder</label><div class="in">AgroOps Team / Team <svg class="ch" width="14" height="14"><use href="#i-chevd"/></svg></div></div>
+        <div class="field"><label>Model</label><div class="in">Anthropic · Claude Sonnet 5.5 <svg class="ch" width="14" height="14"><use href="#i-chevd"/></svg></div></div>
+        <div class="field"><label>Look</label><div class="shapes"><span class="av on" data-block="cube:230:32"></span><span class="av" data-block="tall:230:32"></span><span class="av" data-block="stair:230:32"></span><span class="av" data-block="tower:230:32"></span><span class="btn sm link">Match the name</span></div></div>
+        <div class="acts-r"><span class="btn outline">Cancel</span><span class="btn">Create bot</span></div>
+      </div></div>
+    </section>
+  </div>
+  </div>
+  <p class="cap">The shadcn Dialog as Talyx ships it. Four fields; the profile is created through <code>/api/profiles</code>.</p>
+</div>
+
+<div class="shot">
+  <h3>4 · Group room</h3>
+  <div class="frame">
+  <div data-ui aria-label="Mockup: the AgroOps Team group room">
+    <aside class="sb">
+      <div class="sb-title"><span class="lights"><i></i><i></i><i></i></span><svg class="logo"><use href="#talyx-logo"/></svg><span class="name">Talyx</span><span class="tag">1.0</span><span class="collapse"><svg width="18" height="18"><use href="#i-panel"/></svg></span></div>
+      <div class="sb-body">
+        <div class="tally"><span><b>11</b> agents</span><span>·</span><span class="need">1 waiting on you</span><span>·</span><span><b>3</b> working</span></div>
+        <div class="pins">
+          <div class="pin"><span class="av lg" data-block="cube:230:44"></span><span>T3 Tots</span></div>
+          <div class="pin"><span class="av lg" data-block="talyx:285:44"></span><span>Talyx</span></div>
+        </div>
+        <div class="grp"><span>AgroOps Team</span><span>11</span></div>
+        <div class="grp sub"><span>Team</span><span>5</span></div>
+        <div class="row two nest"><span class="av" data-block="stair:340:24"></span><span><span class="name">Agro Ops CFO</span><span class="sub">In Team Group Chat</span></span><span class="t">now</span></div>
+        <div class="row two nest"><span class="av" data-block="tall:140:24"></span><span><span class="name">Agro Ops Sales</span><span class="sub">In Team Group Chat</span></span><span class="t">now</span></div>
+        <div class="row two nest"><span class="av" data-block="tower:50:24"></span><span><span class="name">Agro Ops CTO</span><span class="sub">Working: migrating the API</span></span><span class="t">1d</span></div>
+        <div class="row two nest"><span class="av" data-block="twin:200:24"></span><span><span class="name">Agro Ops Product Lead</span><span class="sub">Roadmap draft v3</span></span><span class="t">1d</span></div>
+        <div class="row two nest sel"><span class="av" data-block="group:0:24"></span><span><span class="name">AgroOps Team Group Chat</span><span class="sub">5 bots · 2 typing</span></span><span class="t">now</span></div>
+        <div class="grp sub"><span>Clients</span><span>6</span></div>
+        <div class="row two nest"><span class="av" data-block="slab:80:24"></span><span><span class="name unread">agro-ops-client-coop</span><span class="sub">Три въпроса за доставката</span></span><span><span class="t">1h</span><span class="dot"></span></span></div>
+      </div>
+      <div class="sb-foot"><i><svg><use href="#i-search"/></svg></i><i><svg><use href="#i-plus"/></svg></i><i><svg><use href="#i-settings"/></svg></i><span class="ver">Engine 0.22.5</span></div>
+    </aside>
+    <section class="main">
+      <div class="ph"><span class="namepill"><span class="av" data-block="group:0:20"></span>AgroOps Team Group Chat<svg class="chev" width="14" height="14"><use href="#i-chevr"/></svg></span></div>
+      <div class="thread">
+        <div class="msg me">Да обсъдим дали минаваме на месечен абонамент за клиентите. Всеки да каже плюс и минус.</div>
+        <div class="msg bot"><div class="who">Agro Ops CFO</div>Плюс: предвидим кеш. Минус: при 14 клиента месечният приход пада 18% спрямо годишния аванс.</div>
+        <div class="msg bot"><div class="who">Agro Ops Sales</div>Коопите ще приемат месечен. Малките стопанства питат за него от пролетта.</div>
+        <div class="msg bot"><div class="who">Agro Ops Product Lead</div>Трябва ни план „пауза" за зимата, иначе churn през декември.</div>
+        <div class="msg bot"><div class="who">Talyx</div>Обобщение: месечен с опция за пауза, годишен остава с 15% отстъпка. CFO да сметне двата сценария до петък.<div class="tool">↳ Asked Agro Ops CFO · waiting</div></div>
+      </div>
+      <div class="composer"><span class="plus"><svg width="16" height="16"><use href="#i-plus"/></svg></span><span class="ph2">Message the room · @ to address one bot</span><span class="mic"><svg width="16" height="16"><use href="#i-mic"/></svg></span><span class="send"><svg width="16" height="16"><use href="#i-up"/></svg></span></div>
+    </section>
+  </div>
+  </div>
+  <p class="cap">The room is a gateway-hosted conversation; the app only shows it and sends. Each bot bubble names its sender. The composer loses the model chips: the room's members each use their own model.</p>
+</div>
+
+<div class="shot">
+  <h3>5 · Settings</h3>
+  <div class="frame">
+  <div data-ui aria-label="Mockup: the settings page" style="height:520px">
+    <aside class="sb" style="opacity:.6">
+      <div class="sb-title"><span class="lights"><i></i><i></i><i></i></span><svg class="logo"><use href="#talyx-logo"/></svg><span class="name">Talyx</span><span class="tag">1.0</span></div>
+      <div class="sb-body">
+        <div class="tally"><span><b>11</b> agents</span></div>
+        <div class="grp"><span>AgroOps Team</span><span>11</span></div>
+        <div class="row two nest"><span class="av" data-block="stair:340:24"></span><span><span class="name">Agro Ops CFO</span></span><span class="t">3h</span></div>
+      </div>
+      <div class="sb-foot"><i><svg><use href="#i-search"/></svg></i><i><svg><use href="#i-plus"/></svg></i><i style="background:var(--accent);color:var(--foreground)"><svg><use href="#i-settings"/></svg></i></div>
+    </aside>
+    <section class="main">
+      <div class="ph" style="justify-content:flex-start"><span style="font-size:13px;font-weight:600">Settings</span></div>
+      <div class="settings">
+        <div class="card sec"><span class="ttl">Engine</span><span class="desc">The engine every bot runs on. Talyx attaches to it on this machine; it never starts or stops it.</span>
+          <div class="kv"><span>Status</span><span class="pill ok">Attached</span></div><div class="kv"><span>Version</span><span>0.22.5 (bf0203a)</span></div><div class="kv"><span>Data</span><span>~/.talyx/engine</span></div><div class="kv"><span>Profiles served</span><span>11</span></div><div class="kv"><span>Last contact</span><span>09:41:12</span></div></div>
+        <div class="card sec"><span class="ttl">Appearance</span>
+          <div class="kv"><span>Theme</span><span class="btn xs outline">System <svg width="12" height="12"><use href="#i-chevd"/></svg></span></div>
+          <div class="switch-row" style="padding:0"><span>Open at login<small>Talyx starts hidden and attaches to the engine.</small></span><span class="sw on"></span></div></div>
+        <div class="card sec"><span class="ttl">Remote machines</span><span class="desc">Not in this version. Bots on another machine come in a later release.</span></div>
+      </div>
+    </section>
+  </div>
+  </div>
+  <p class="cap">Talyx's page header (44px, 13px semibold title) and Card sections, as the current settings page uses them. No Save button: every control saves itself. The Engine section is read-only facts; there is no gateway URL in 1.0.</p>
+</div>
+
+<div class="shot">
+  <h3>6 · First launch without the engine</h3>
+  <div class="frame">
+  <div data-ui aria-label="Mockup: first launch when the engine is not installed" style="height:360px;grid-template-columns:1fr">
+    <div class="empty">
+      <svg class="logo" style="width:40px;height:44px"><use href="#talyx-logo"/></svg>
+      <span class="ttl">Talyx needs its engine.</span>
+      <p>The engine runs your bots on this machine. One install, then come back.</p>
+      <span class="cmd">talyx-engine install</span>
+      <div style="display:flex;gap:8px;align-items:center"><span class="btn">Check again</span><span class="btn outline">What the engine does</span></div>
+    </div>
+  </div>
+  </div>
+  <p class="cap">Talyx's empty state: the logo, one sentence, the command, a primary and an outline button. Once the engine answers, the roster loads.</p>
+</div>
+
+<div class="shot" id="avatars">
+  <h3>7 · Avatars: Blocks (reference for PR 8)</h3>
+  <p class="cap" style="margin:8px 0 16px">Every bot is an isometric block drawn from the Talyx mark: one of 8 voxel shapes in one of 12 hues, three flat tones per hue, no gradients. A face of straight strokes (two tick eyes, one segment mouth) carries the state at 40px and above; an expression is an angle. All rendered live below by the same SVG code the app will use.</p>
+  <div class="frame" style="padding:20px">
+    <div class="av-sheet">
+      <h4>Six shapes</h4>
+      <div class="av-row" id="av-shapes"></div>
+      <h4>Twelve hues, three tones each</h4>
+      <div class="av-row" id="av-hues"></div>
+      <h4>States and sizes</h4>
+      <div class="av-row" id="av-states"></div>
+      <div class="av-two">
+        <div class="card av-card"><h4>In the roster</h4><div class="av-rows" id="av-roster"></div></div>
+        <div class="card av-card"><h4>Look tab</h4><div class="av-pick" id="av-pick"></div><div class="av-huestrip" id="av-pickhues"></div><div style="display:flex;gap:8px;align-items:center"><span class="btn sm outline">Match the name</span><span class="av-note">hash of the name picks shape and hue</span></div><div class="av-note" style="margin-top:10px">Fallback if blocks feel too playful: Tiles, a rounded square in a pale tint with the initial in the hue's ink. Same data, renderer swapped.</div></div>
+      </div>
+      <h4>Where things move</h4>
+      <div class="tablewrap"><table class="av-table">
+        <tr><th>Place</th><th>What moves</th><th>How</th></tr>
+        <tr><td>Roster row, 24px</td><td>Nothing on the block; the violet dot fades in; row fill on select</td><td>CSS opacity, 150 ms</td></tr>
+        <tr><td>Pinned tile, 44px</td><td>Blink every 4–6 s; working bob; hover lifts 2px; a state change rotates the ticks</td><td>CSS keyframes on SVG groups, transform only</td></tr>
+        <tr><td>Name pill, 20px</td><td>Nothing</td><td></td></tr>
+        <tr><td>Details hero, 64px</td><td>Blink; turns a few degrees toward the cursor; working bob</td><td>Re-project the isometric angle on pointer move, 200 ms ease</td></tr>
+        <tr><td>Thread, typing</td><td>The sender's 24px block bobs next to "typing"</td><td>Same bob keyframe</td></tr>
+        <tr><td>Group pile</td><td>The speaking member bobs; the others stay still</td><td>Class from the room's activity event</td></tr>
+        <tr><td>Look preview</td><td>Shape or hue change crossfades; the preview turns once</td><td>Opacity 150 ms; one rotate keyframe</td></tr>
+      </table></div>
+      <p class="av-note" style="margin-top:12px">No three.js: the roster draws 11+ avatars at once, a WebGL canvas each would cost a GPU context, blur at 24px and add about 600 kB for six polygons. Everything above is SVG and CSS transforms, switched off under reduced motion.</p>
+    </div>
+  </div>
+  <p class="cap">Decided 4 November 2026: faces on by default (one flag turns them off), no initials, six shapes (<code>corner</code> and <code>pile</code> dropped as the busiest two).</p>
+</div>
+<style>
+.av-sheet h4 { font-size: 14px; font-weight: 600; margin: 18px 0 10px; }
+.av-sheet h4:first-child { margin-top: 0; }
+.av-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-end; }
+.av-cell { display: grid; justify-items: center; gap: 6px; font-size: 11px; color: var(--muted-foreground); text-align: center; }
+.av-cell b { color: var(--foreground); font-weight: 500; }
+.av-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 18px; }
+.av-card { padding: 14px; }
+.av-card h4 { margin-top: 0; }
+.av-rows { display: grid; gap: 2px; }
+.av-r { display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; align-items: center; height: 44px; padding: 0 8px; border-radius: 6px; font-size: 13px; }
+.av-r.sel { background: var(--accent); }
+.av-r small { display: block; font-size: 11px; color: var(--muted-foreground); }
+.av-r .t { font-size: 11px; color: var(--muted-foreground); }
+.av-wrap { position: relative; display: inline-block; }
+.av-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); position: absolute; right: -2px; top: -2px; border: 2px solid var(--card); }
+.av-r .av-dot { position: static; width: 6px; height: 6px; border: 0; margin: 4px 0 0 auto; display: block; }
+.av-pick { display: flex; gap: 6px; flex-wrap: wrap; }
+.av-pick span { padding: 4px; border-radius: 8px; }
+.av-pick span.on { background: var(--accent); }
+.av-huestrip { display: flex; gap: 6px; margin: 12px 0; flex-wrap: wrap; }
+.av-huestrip i { width: 22px; height: 22px; border-radius: 6px; display: block; }
+.av-huestrip i.on { outline: 2px solid var(--foreground); outline-offset: 2px; }
+.av-note { font-size: 12px; color: var(--muted-foreground); }
+.av-table { font-size: 13px; margin-top: 0; }
+.av-table th { font-size: 12px; }
+@keyframes av-bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-3px) } }
+.av-working svg { animation: av-bob 1.6s ease-in-out infinite; }
+@keyframes av-blink { 0%,92%,100% { transform: scaleY(1) } 96% { transform: scaleY(0.1) } }
+.av-eyes { transform-origin: center; transform-box: fill-box; animation: av-blink 5s infinite; }
+@media (prefers-reduced-motion: reduce) { .av-working svg, .av-eyes { animation: none; } }
+@media (max-width: 760px) { .av-two { grid-template-columns: 1fr; } }
+</style>
+<script>
+(function(){
+const SHAPES={cube:[[0,0,0]],tall:[[0,0,0],[0,0,1]],slab:[[0,0,0],[1,0,0]],stair:[[0,0,0],[1,0,0],[1,0,1]],twin:[[0,0,0],[0,1,0]],tower:[[0,0,0],[0,0,1],[0,0,2]]};
+const HUES=[20,50,80,110,140,170,200,230,260,285,310,340];
+function tones(h,grey){const c=grey?0:1;return{top:`oklch(0.90 ${0.07*c} ${h})`,left:`oklch(0.70 ${0.13*c} ${h})`,right:`oklch(0.52 ${0.13*c} ${h})`,ink:`oklch(0.30 ${0.10*c} ${h})`}}
+function block(shape,h,size,opt){opt=opt||{};const cubes=SHAPES[shape];const t=tones(h,opt.grey);const proj=(x,y,zz)=>[(x-y),(x+y)*0.5-zz];let minx=1e9,maxx=-1e9,miny=1e9,maxy=-1e9;const faces=[];let fq=null;
+const sorted=cubes.slice().sort((a,b)=>(a[0]+a[1]+a[2])-(b[0]+b[1]+b[2]));const my=Math.max.apply(null,sorted.map(c=>c[1]));const fc=sorted.filter(c=>c[1]===my).sort((a,b)=>(b[2]-a[2])||(a[0]-b[0]))[0];
+sorted.forEach(([x,y,zz])=>{const P=(dx,dy,dz)=>proj(x+dx,y+dy,zz+dz);const top=[P(0,0,1),P(1,0,1),P(1,1,1),P(0,1,1)];const left=[P(0,1,0),P(1,1,0),P(1,1,1),P(0,1,1)];const right=[P(1,0,0),P(1,1,0),P(1,1,1),P(1,0,1)];faces.push([top,t.top],[left,t.left],[right,t.right]);if(x===fc[0]&&y===fc[1]&&zz===fc[2])fq=left;top.concat(left,right).forEach(([px,py])=>{minx=Math.min(minx,px);maxx=Math.max(maxx,px);miny=Math.min(miny,py);maxy=Math.max(maxy,py)})});
+const bw=maxx-minx,bh=maxy-miny,s=size/Math.max(bw,bh)*0.92;const ox=(size-bw*s)/2-minx*s,oy=(size-bh*s)/2-miny*s;const X=p=>(p[0]*s+ox),Y=p=>(p[1]*s+oy);
+let svg=`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true">`;faces.forEach(([f,fill])=>{svg+=`<polygon points="${f.map(p=>`${X(p).toFixed(1)},${Y(p).toFixed(1)}`).join(' ')}" fill="${fill}"/>`});
+if(opt.face&&size>=40&&fq){const [a,b,c,d]=fq;const lerp=(p,q,k)=>[p[0]+(q[0]-p[0])*k,p[1]+(q[1]-p[1])*k];const at=(u,v)=>{const lo=lerp(a,b,u),hi=lerp(d,c,u);return lerp(lo,hi,v)};
+ const L=s*0.16,w=Math.max(1.2,s*0.05),ink=t.ink,st=opt.state||'idle';
+ const seg=(p,deg,len)=>{const r=deg*Math.PI/180,dx=Math.sin(r)*len/2,dy=Math.cos(r)*len/2;return `<line x1="${(X(p)-dx).toFixed(1)}" y1="${(Y(p)-dy).toFixed(1)}" x2="${(X(p)+dx).toFixed(1)}" y2="${(Y(p)+dy).toFixed(1)}" stroke="${ink}" stroke-width="${w.toFixed(1)}" stroke-linecap="square"/>`};
+ const e1=at(0.32,0.6),e2=at(0.68,0.6),m=at(0.5,0.3);const eyeAngle={idle:0,working:35,waiting:0,offline:90}[st];const eyeLen=st==='offline'?L*0.9:L;
+ svg+=`<g class="av-eyes">${seg(e1,eyeAngle,eyeLen)}${seg(e2,st==='waiting'?-25:eyeAngle,eyeLen)}</g>`;
+ if(st==='waiting'){svg+=seg(at(0.68,0.8),-62,L*1.1)}
+ const mouth={idle:seg(m,90,L*1.4),working:seg(m,90,L*0.8),waiting:`<polyline points="${X(at(0.42,0.34)).toFixed(1)},${Y(at(0.42,0.34)).toFixed(1)} ${X(at(0.5,0.22)).toFixed(1)},${Y(at(0.5,0.22)).toFixed(1)} ${X(at(0.58,0.34)).toFixed(1)},${Y(at(0.58,0.34)).toFixed(1)}" fill="none" stroke="${ink}" stroke-width="${w.toFixed(1)}" stroke-linejoin="miter"/>`,offline:seg(m,90,L*0.6)}[st];
+ svg+=mouth;}
+return svg+'</svg>'}
+const cell=(html,label,sub)=>`<div class="av-cell">${html}<b>${label}</b>${sub?`<span>${sub}</span>`:''}</div>`;
+const $=id=>document.getElementById(id);
+$('av-shapes').innerHTML=Object.keys(SHAPES).map((k,i)=>cell(block(k,HUES[i],56,{face:true}),k)).join('');
+$('av-hues').innerHTML=HUES.map(h=>cell(block('stair',h,40),h+'°')).join('');
+$('av-states').innerHTML=[
+ cell(block('tall',285,24),'24','row, no face'),
+ cell(`<span class="av-wrap">${block('tall',285,44,{face:true})}</span>`,'44 idle','ticks, flat line, blinks'),
+ cell(`<span class="av-wrap av-working">${block('tall',285,64,{face:true,state:'working'})}</span>`,'64 working','ticks at 35°, short line, bob'),
+ cell(`<span class="av-wrap">${block('tall',285,64,{face:true,state:'waiting'})}<span class="av-dot"></span></span>`,'64 waiting on you','brow at 62°, open angle, dot'),
+ cell(block('tall',285,64,{face:true,state:'offline',grey:true}),'64 offline','ticks flat, no chroma'),
+ cell(`<span style="display:inline-flex;align-items:flex-end;gap:2px">${block('cube',20,22)}${block('tall',140,26)}${block('slab',230,22)}</span>`,'group room','a pile of its members'),
+ cell(`<span class="av-wrap">${talyxBlock(64,{face:true})}</span>`,'Talyx','the default bot: the logo as a black-and-white block')
+].join('');
+const bots=[['Talyx','the default bot · black and white',null,285,true],['Agro Ops CFO','Не разбрах „test“.','stair',340,false,true],['Agro Ops Sales','Офертата е готова.','tall',140],['Agro Ops CTO','Working: migrating the API','tower',50],['Agro Ops Product Lead','Roadmap draft v3','twin',200],['agro-ops-client-coop','Три въпроса','slab',80,false,true]];
+$('av-roster').innerHTML=bots.map(([n,s,sh,h,sel,un],i)=>`<div class="av-r ${sel?'sel':''}">${sh?block(sh,h,24):talyxBlock(22)}<span><span style="font-weight:${un?600:400}">${n}</span><small>${s}</small></span><span><span class="t">${['now','3h','4h','1d','1d','1h'][i]}</span>${un?'<span class="av-dot"></span>':''}</span></div>`).join('');
+$('av-pick').innerHTML=Object.keys(SHAPES).map((k,i)=>`<span class="${i==3?'on':''}">${block(k,340,28)}</span>`).join('');
+$('av-pickhues').innerHTML=HUES.map(h=>`<i class="${h==340?'on':''}" style="background:oklch(0.70 0.13 ${h})"></i>`).join('');
+// The Talyx avatar: the logo silhouette as a black-and-white block (the default bot has no hue), stripes in grey, the same tick face in white.
+function talyxBlock(size,opt){opt=opt||{};const st=opt.state||'idle';
+ const top='#e9e9ee',left='#2a2a30',right='#141418',stripe='#7a7a84',ink='#ffffff';
+ const T=[[113,0],[226,63],[113,125],[0,63]],Lf=[[0,63],[113,125],[113,251],[0,188]],R=[[113,125],[226,63],[226,188],[113,251]];
+ const poly=(p,f)=>`<polygon points="${p.map(q=>q.join(',')).join(' ')}" fill="${f}"/>`;
+ let face='';
+ if(opt.face&&size>=40){const [a,b,c,d]=[[0,188],[113,251],[113,125],[0,63]];const lerp=(p,q,k)=>[p[0]+(q[0]-p[0])*k,p[1]+(q[1]-p[1])*k];const at=(u,v)=>{const lo=lerp(a,b,u),hi=lerp(d,c,u);return lerp(lo,hi,v)};
+  const L=34,w=13;const seg=(p,deg,len)=>{const r=deg*Math.PI/180,dx=Math.sin(r)*len/2,dy=Math.cos(r)*len/2;return `<line x1="${(p[0]-dx).toFixed(1)}" y1="${(p[1]-dy).toFixed(1)}" x2="${(p[0]+dx).toFixed(1)}" y2="${(p[1]+dy).toFixed(1)}" stroke="${ink}" stroke-width="${w}" stroke-linecap="square"/>`};
+  const e1=at(0.32,0.6),e2=at(0.66,0.6),m=at(0.49,0.33);const ea={idle:0,working:35,waiting:0,offline:90}[st];
+  face+=`<g class="av-eyes">${seg(e1,ea,L)}${seg(e2,st==='waiting'?-25:ea,L)}</g>`;
+  if(st==='waiting')face+=seg(at(0.66,0.8),-62,L*1.1);
+  face+={idle:seg(m,90,L*1.4),working:seg(m,90,L*0.8),waiting:`<polyline points="${at(0.41,0.37).join(',')} ${at(0.49,0.25).join(',')} ${at(0.57,0.37).join(',')}" fill="none" stroke="${ink}" stroke-width="${w}" stroke-linejoin="miter"/>`,offline:seg(m,90,L*0.6)}[st];}
+ return `<svg width="${size}" height="${Math.round(size*251/226)}" viewBox="0 0 226 251" aria-hidden="true">${poly(T,top)}${poly(Lf,left)}${poly(R,right)}<use href="#talyx-cuts" fill="${stripe}" width="226" height="251"/>${face}</svg>`}
+function groupBlocks(size){const s=Math.round(size*0.62);return `<span style="display:inline-flex;align-items:flex-end;width:${size}px;justify-content:center">${block('cube',20,s)}<span style="margin:0 -${Math.round(s*0.25)}px">${block('tall',140,Math.round(s*1.15))}</span>${block('slab',230,s)}</span>`}
+document.querySelectorAll('[data-block]').forEach(el=>{const [shape,hue,size,state]=el.dataset.block.split(':');const n=+size;el.innerHTML=shape==='talyx'?talyxBlock(n,{state:state||'idle',face:n>=40}):shape==='group'?groupBlocks(n):block(shape,+hue,n,{face:n>=40,state:state||'idle'});if(state==='working')el.classList.add('av-working')});
+
+})();
+</script>
+
+<h2>The flows</h2>
+<p class="lead">What happens between the app, the gateway and the bots. The app initiates and shows; the gateway does the work.</p>
+
+<h3>Launch and attach</h3>
+<pre class="mermaid">
+flowchart LR
+  A[Open Talyx] --> B{engine present?}
+  B -- missing --> C[Screen 6: install hint, Check again]
+  C --> B
+  B -- yes --> D[engine gateway ensure]
+  D --> E[Engine gateway on loopback, one per machine]
+  E --> F[Mint one-use ticket via control socket]
+  F --> G[Open websocket, profiles.list, groups.list]
+  G --> H[Screen 1: roster with the tally line]
+</pre>
+
+<h3>Ask Talyx, it asks a bot, you get the brief</h3>
+<pre class="mermaid">
+sequenceDiagram
+  participant P as Petar
+  participant T as Talyx app
+  participant G as Engine gateway
+  participant M as Talyx manager bot
+  participant C as Agro Ops CFO
+  P->>T: Summarise Q3 margins
+  T->>G: prompt.submit on the manager session
+  G->>M: run turn
+  M->>G: message_agent to agro-ops-cfo
+  G->>C: deliver to the CFO session
+  C-->>G: reply
+  G-->>M: CFO reply
+  M-->>G: brief for Petar
+  G-->>T: session events, streamed
+  T-->>P: brief in the manager chat with a tool line
+  Note over G,C: Works with the app closed. The app only renders.
+</pre>
+
+<h3>A clarify card</h3>
+<pre class="mermaid">
+flowchart LR
+  A[Bot needs a choice] --> B[Gateway: clarify event]
+  B --> C[Card in the thread: options, pager dots]
+  C --> D{Petar picks}
+  D --> E[clarify.respond via protocol]
+  E --> F[Bot continues]
+  B --> G[Roster: violet dot, tally 'waiting on you' +1]
+  D --> H[Dot clears]
+</pre>
+
+<h3>Group debate</h3>
+<pre class="mermaid">
+flowchart LR
+  A[Open AgroOps Team Group Chat] --> B[groups.history from state.db]
+  B --> C[Petar sends to the room]
+  C --> D[groups.send]
+  D --> E[HostedRoomService runs the members in turn]
+  E --> F[Each bot's reply as an event]
+  F --> G[Bubbles with sender names]
+  E --> H[Roster rows: 'In Team Group Chat']
+</pre>
+
+<h3>Create and edit a bot</h3>
+<pre class="mermaid">
+flowchart LR
+  A[+ in the roster] --> B[Create dialog: name, folder, model, look]
+  B --> C[POST /api/profiles]
+  C --> D[profiles.configure: ui_meta shape, colour, sectionId]
+  D --> E[Row appears in its folder]
+  E --> F[Name pill › opens the panel]
+  F --> G[Details: title, model, routines via cron.manage]
+  F --> H[Look: avatar picker]
+  F --> I[Soul: SOUL.md via /api/profiles/.../soul]
+  G --> J[Save]
+</pre>
+
+<h2>The website</h2>
+<p class="lead">PR 11. talyx.app keeps its design rules and its structure; the claims change.</p>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Section</th><th>Today</th><th>After the pivot</th></tr></thead>
+  <tbody>
+    <tr><td>Headline</td><td>Tell your Mac what to do.</td><td>Keep your agents in one place.</td></tr>
+    <tr><td>Lead</td><td>Talyx is a free Mac assistant.</td><td>Talyx is a free desktop app for your bots on Mac, Windows and Linux: one roster, one chat, a manager who briefs you.</td></tr>
+    <tr><td>Hero picture</td><td>Approval card on the wallpaper</td><td>Screen 1 fragment, rebuilt in the site's kit with <code>data-ui</code></td></tr>
+    <tr><td>Four steps</td><td>Describe, preview, approve, undo</td><td>Add a bot, talk to it, let Talyx delegate, read the brief</td></tr>
+    <tr><td>Feature sections</td><td>Smart Local sorting, watch folders, undo a batch, 35 abilities</td><td>Folders and pins, group rooms, routines, SOUL per bot, your own models and keys</td></tr>
+    <tr><td>Ledger</td><td>0 bytes leave your Mac, 136 file types</td><td>What leaves your machine: what each bot sends its model provider. Counts: bots, rooms, routines from the real app.</td></tr>
+    <tr><td>Requirements</td><td>macOS 13+</td><td>macOS 13+, Windows 10+, Linux; the engine (<code>talyx-engine install</code>); a model key; unsigned builds with open-anyway steps</td></tr>
+    <tr><td>Previews</td><td><code>public/previews/sort.jpg</code></td><td>Roster, details panel, group room from the 1.0 build, on the wallpaper</td></tr>
+    <tr><td>/design</td><td>Approval card as the sample UI</td><td>The roster-and-chat fragment as the sample UI</td></tr>
+    <tr><td>Mega menu</td><td>Sort, Watch, History, Ask</td><td>Agents, Rooms, Routines, Download</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Risks</h2>
+<div class="band cols">
+  <div class="stack"><h4>Protocol drift</h4><p>An engine upgrade can break the vendored client. Pin 0.22.5, keep the client in one folder, keep its tests. Upgrading is a re-sync against the new tag, done on purpose.</p></div>
+  <div class="stack"><h4>The transcript</h4><p>Written new, so fidelity starts low: text, tool lines, cards, images. Reasoning blocks and media come when needed. PR 4 is the one to watch for scope growth.</p></div>
+  <div class="stack"><h4>Two state libraries</h4><p>The moved roster code uses nanostores and react-query; Talyx uses Zustand. Accepted now; fold into Zustand if it starts to hurt.</p></div>
+</div>
+
+<p class="meta" style="margin-top:64px">Mockups use Talyx's theme.css tokens (light and dark), shadcn Button, Dialog and Card geometry, the AppShell sidebar and settings switch, Geist, and the logo from TalyxLogo.tsx. The avatar shapes are placeholders until PR 8 (Avatars). Sample content to confirm before it is reused anywhere: the last-message previews, times, routine names, the room debate and the Q3 clarify card.</p>
+</main>
