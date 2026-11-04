@@ -137,7 +137,6 @@ const en = {
   'routines.postToChat': 'Post to this chat',
   'routines.create': 'Create routine',
   'roster.label': 'Agent roster',
-  'roster.tally': '{agents} agents · {waiting} waiting on you · {working} working',
   'roster.loading': 'Loading agents…',
   'roster.retry': 'Retry',
   'roster.folders': 'Folders',

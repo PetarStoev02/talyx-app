@@ -70,9 +70,8 @@ export function Roster({
     <nav
       aria-label={t('roster.label')}
       aria-busy={state.loading || state.saving}
-      className="min-h-0 flex-1 overflow-y-auto px-3"
+      className="min-h-0 flex-1 overflow-y-auto px-3 pt-2"
     >
-      <TallyLine />
       {!dialogOpen && <ProblemBanner retry={reload} />}
       {state.loading && (
         <p role="status" className="p-2">
@@ -206,25 +205,6 @@ function FoldersHeader({
         />
       </span>
     </div>
-  )
-}
-
-// "Waiting on you" counts a bot that asked for input or has a reply the user has not opened.
-function TallyLine(): React.JSX.Element {
-  const t = useLanguage((s) => s.t)
-  const bots = useRoster((state) => state.snapshot.bots)
-  const activity = useRoster((state) => state.activity)
-  const unread = useRoster((state) => state.unread)
-  const visible = bots.filter((bot) => !bot.meta.hidden)
-  const waiting = visible.filter((bot) => activity[bot.name] === 'waiting' || unread[bot.name])
-  const working = visible.filter((bot) => activity[bot.name] === 'working')
-  return (
-    <p className="px-2 py-3 text-base">
-      {t('roster.tally')
-        .replace('{agents}', String(visible.length))
-        .replace('{waiting}', String(waiting.length))
-        .replace('{working}', String(working.length))}
-    </p>
   )
 }
 

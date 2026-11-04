@@ -7,7 +7,7 @@ import type { ApprovalChoice, ChatPrompt, ClarifyQuestion, Transcript } from './
 
 export type ChatActivity = 'idle' | 'working' | 'waiting'
 
-/** What one event or card did to a bot's chat, for the roster's dots and tally. */
+/** What one event or card did to a bot's chat, for the roster's dots and status lines. */
 export interface ChatUpdate {
   profile: string
   // A reply finished that this window had not seen yet.
