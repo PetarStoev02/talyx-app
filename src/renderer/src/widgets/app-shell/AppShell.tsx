@@ -20,7 +20,7 @@ export function AppShell({
   roster
 }: {
   children: React.ReactNode
-  roster?: React.ReactNode
+  roster: React.ReactNode | null
 }): React.JSX.Element {
   const collapsed = useShell((s) => s.sidebarCollapsed)
   const toggleSidebar = useShell((s) => s.toggleSidebar)

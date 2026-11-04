@@ -1,6 +1,12 @@
 import { z } from 'zod'
 import { metaPatch } from '@shared/engine/botMeta'
-import { FOLDERS_KEY, ROOM_FOLDERS_KEY, normalizeFolders, recoverFolders } from './roster'
+import {
+  FOLDERS_KEY,
+  ROOM_FOLDERS_KEY,
+  RosterError,
+  normalizeFolders,
+  recoverFolders
+} from './roster'
 import type { Bot, BotMeta, Folder, Room, RosterSnapshot } from './types'
 
 export interface RosterBackend {
@@ -53,6 +59,7 @@ const metaSchema = z
   .catch({})
 const roomFoldersSchema = z.record(z.string(), z.string().nullable())
 const profilesSchema = z.object({ profiles: z.array(profileSchema) })
+type ProfileRow = z.infer<typeof profileSchema>
 const roomsSchema = z.object({
   rooms: z.array(
     z.object({
@@ -134,8 +141,7 @@ async function updateMetadata(
 ): Promise<void> {
   for (let attempt = 0; attempt < 3; attempt++) {
     const bot = await readMetadata(backend, target.profile)
-    if (!bot.ui_meta_revisions)
-      throw new Error('This engine cannot safely save concurrent roster changes')
+    if (!bot.ui_meta_revisions) throw new RosterError('roster.errorUnsafeSave')
     const result = saveSchema.parse(
       await backend.request(
         target.profile,
@@ -147,9 +153,9 @@ async function updateMetadata(
       )
     )
     if (result.applied.ui_meta === true) return
-    if (!result.applied.ui_meta_conflicts) throw new Error(`The engine did not save ${target.key}`)
+    if (!result.applied.ui_meta_conflicts) throw new RosterError('roster.errorNotSaved')
   }
-  throw new Error('The roster changed on another client. Try again.')
+  throw new RosterError('roster.errorConflict')
 }
 
 async function readProfiles(backend: RosterBackend): Promise<Bot[]> {
@@ -163,12 +169,12 @@ async function readProfiles(backend: RosterBackend): Promise<Bot[]> {
 }
 
 // The CAS read needs only metadata and revisions, so it skips the session previews.
-async function readMetadata(backend: RosterBackend, profile: string): Promise<Bot> {
+async function readMetadata(backend: RosterBackend, profile: string): Promise<ProfileRow> {
   const { profiles } = profilesSchema.parse(
     await backend.request(profile, 'profiles.list', { include_sessions: false })
   )
   const bot = profiles.find((item) => item.name === profile)
-  if (!bot) throw new Error(`Profile ${profile} no longer exists`)
+  if (!bot) throw new RosterError('roster.errorProfileGone')
   return bot
 }
 
@@ -176,19 +182,17 @@ async function readRooms(request: RosterRequest): Promise<Room[]> {
   const rooms: Room[] = []
   let offset = 0
   for (;;) {
-    const page = roomsSchema.parse(
-      await request('default', 'groups.list', { profile: 'default', limit: 100, offset })
-    )
+    const page = roomsSchema.parse(await request('default', 'groups.list', { limit: 100, offset }))
     rooms.push(...page.rooms.filter((room) => !room.disbanded_at))
     if (page.next_offset === null) return rooms
-    if (page.next_offset <= offset) throw new Error('The engine returned an invalid room cursor')
+    if (page.next_offset <= offset) throw new RosterError('roster.errorRoomCursor')
     offset = page.next_offset
   }
 }
 
 function managerOf(bots: Bot[]): Bot {
   const manager = bots.find((bot) => bot.name === 'default')
-  if (!manager) throw new Error('The engine did not return the default profile')
+  if (!manager) throw new RosterError('roster.errorNoDefault')
   return manager
 }
 

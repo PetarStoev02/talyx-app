@@ -1,5 +1,5 @@
 import { useRoster } from '@features/bots/store'
-import { botMeta, botTitle } from '@features/bots/roster'
+import { botTitle } from '@features/bots/roster'
 import { BotAvatar } from '@widgets/roster'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
 import { useLanguage } from '@app/providers/useLanguage'
@@ -7,7 +7,7 @@ import { EngineGate } from '@widgets/engine-gate'
 
 export function AgentsPage(): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const { snapshot, selection, editingProfile } = useRoster()
+  const { snapshot, selection, editingProfile, editProfile } = useRoster()
   const bot = snapshot.bots.find((item) => selection?.kind === 'bot' && item.name === selection.id)
   const room = snapshot.rooms.find(
     (item) => selection?.kind === 'room' && item.room_id === selection.id
@@ -41,15 +41,12 @@ export function AgentsPage(): React.JSX.Element {
             aria-label={t('agents.details')}
             className="w-[340px] max-w-[50%] shrink-0 bg-secondary p-6"
           >
-            <button
-              className="mb-6 underline"
-              onClick={() => useRoster.setState({ editingProfile: null })}
-            >
+            <button className="mb-6 underline" onClick={() => editProfile(null)}>
               {t('agents.closeDetails')}
             </button>
             <h2 className="text-xl font-semibold">{botTitle(bot)}</h2>
             <p className="mt-3 text-base">
-              {botMeta(bot).description || bot.description || t('agents.noDescription')}
+              {bot.meta.description || bot.description || t('agents.noDescription')}
             </p>
             <p className="mt-6 text-base">{t('agents.editingSoon')}</p>
           </aside>

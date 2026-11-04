@@ -14,7 +14,7 @@ export interface SessionPreview {
 }
 
 export interface Bot {
-  meta?: BotMeta
+  meta: BotMeta
   name: string
   display_name?: string
   title?: string | null

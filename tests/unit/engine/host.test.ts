@@ -22,6 +22,19 @@ describe('engine host', () => {
     host.disconnect()
   })
 
+  it('should keep a call in flight when a second screen connects again', async () => {
+    let answer: (value: unknown) => void = () => undefined
+    installFakeEngineApi(() => new Promise((resolve) => (answer = resolve)))
+    const { host } = await import('@shared/engine/host')
+    await host.connect()
+    const pending = host.request('default', 'profiles.list', {})
+    await vi.waitFor(() => expect(answer).not.toBe(undefined))
+    await host.connect()
+    answer({ profiles: [] })
+    await expect(pending).resolves.toEqual({ profiles: [] })
+    host.disconnect()
+  })
+
   it('should redial after a dropped socket, replay the events it missed and resume its sessions', async () => {
     const { sent, opened, dropAll } = installFakeEngineApi((frame, socket) => {
       // Any call will do to make the fake stream one live frame of session `s`.

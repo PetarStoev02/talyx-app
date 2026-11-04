@@ -81,7 +81,7 @@ describe('roster actions', () => {
     await act(() => rosterActions(backend).nest('clients', 'team'))
     expect(roster().folders).toContainEqual({ id: 'clients', name: 'Clients', parentId: 'team' })
     await act(() => rosterActions(backend).nest('team', 'clients'))
-    expect(useRoster.getState().error).toMatch('cannot contain')
+    expect(useRoster.getState().error?.key).toBe('roster.errorFolderCycle')
     expect(roster().folders).toContainEqual({ id: 'team', name: 'Team' })
   })
   it('should swap a folder with its next sibling and ignore a move past the end', async () => {
@@ -101,15 +101,18 @@ describe('roster actions', () => {
     await act(() => rosterActions(backend).orderPin('planner', 'analyst'))
     expect(pinNames()).toEqual(['planner', 'analyst'])
   })
-  it('should add a folder, hide and restore a bot, and delete a profile', async () => {
-    const actions = rosterActions(backend)
-    await act(() => actions.addFolder('  Research  '))
+  it('should add a folder after the existing ones with its name trimmed', async () => {
+    await act(() => rosterActions(backend).addFolder('  Research  '))
     expect(roster().folders.map((folder) => folder.name)).toEqual(['Team', 'Clients', 'Research'])
-    await act(() => actions.hide(bot('support')))
+  })
+  it('should hide a bot from its folder and restore it', async () => {
+    await act(() => rosterActions(backend).hide(bot('support')))
     expect(folderBots(roster(), 'clients')).toEqual([])
-    await act(() => actions.hide(bot('support')))
+    await act(() => rosterActions(backend).hide(bot('support')))
     expect(folderBots(roster(), 'clients').map((item) => item.name)).toEqual(['support'])
-    await act(() => actions.deleteProfile(bot('support')))
+  })
+  it('should remove a deleted profile from the roster', async () => {
+    await act(() => rosterActions(backend).deleteProfile(bot('support')))
     expect(engine.deleted).toEqual(['support'])
     expect(roster().bots.map((item) => item.name)).not.toContain('support')
   })
@@ -130,7 +133,10 @@ describe('roster mutations', () => {
     await act(async () => {
       throw new Error('Engine offline')
     })
-    expect(useRoster.getState().error).toBe('Engine offline')
+    expect(useRoster.getState().error).toEqual({
+      key: 'roster.errorUnexpected',
+      detail: 'Engine offline'
+    })
     expect(roster().bots).toHaveLength(5)
   })
   it('should report a failed reload once', async () => {
@@ -138,7 +144,10 @@ describe('roster mutations', () => {
       throw new Error('Engine offline')
     }
     await act(() => Promise.resolve())
-    expect(useRoster.getState().error).toBe('Engine offline')
+    expect(useRoster.getState().error).toEqual({
+      key: 'roster.errorUnexpected',
+      detail: 'Engine offline'
+    })
   })
   it('should clear the selection of a bot hidden on another client', async () => {
     useRoster.getState().select({ kind: 'bot', id: 'support' })

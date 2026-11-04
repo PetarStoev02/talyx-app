@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { applySnapshot, runRosterMutation } from './actions'
 import { hasSharedLayout, publishRecoveredLayout, readRoster } from './data'
 import type { RosterBackend } from './data'
+import { problemOf } from './roster'
 import { useRoster } from './store'
 
 // `backend` must be a stable reference, or polling restarts on every render.
@@ -26,10 +27,7 @@ export function useRosterConnection(backend: RosterBackend): void {
         }
       } catch (error) {
         if (!disposed && revision === useRoster.getState().revision)
-          useRoster.setState({
-            loading: false,
-            error: error instanceof Error ? error.message : 'Could not load agents'
-          })
+          useRoster.setState({ loading: false, error: problemOf(error) })
       } finally {
         inFlight = false
       }

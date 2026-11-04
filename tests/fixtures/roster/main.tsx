@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client'
 import { Roster } from '../../../src/renderer/src/widgets/roster/Roster'
 import { AgentsPage } from '../../../src/renderer/src/pages/agents/AgentsPage'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
+import { useEngine } from '../../../src/renderer/src/app/providers/useEngine'
 import type { RosterRequest } from '../../../src/renderer/src/features/bots/data'
 import './fixture.css'
 
@@ -72,6 +73,18 @@ const backend = {
   botMetaKey: 'acme-bots',
   botGroupsMetaKey: 'acme-bots-groups'
 }
+// The agents page waits for an attached engine; this page has no engine, so it says it has one.
+useEngine.setState({
+  status: {
+    state: 'attached',
+    version: 'fixture',
+    commit: null,
+    home: '',
+    stale: false,
+    botMetaKey: 'acme-bots',
+    botGroupsMetaKey: 'acme-bots-groups'
+  }
+})
 useRoster.getState().setActivity('researcher', 'working')
 useRoster.getState().setActivity('analyst', 'waiting')
 useRoster.getState().markUnread('writer')

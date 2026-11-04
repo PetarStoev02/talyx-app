@@ -3,6 +3,7 @@ import {
   botPreview,
   botTitle,
   folderBots,
+  folderCount,
   moveFolder,
   normalizeFolders,
   pinnedBots,
@@ -40,6 +41,23 @@ describe('roster layout', () => {
       pinnedBots([bot('hidden', { pinned: true, hidden: true }), recent, next, first])
     ).toEqual([first, next, recent])
   })
+  it('should count a folder with its subfolders and leave pinned bots out', () => {
+    const nested: RosterSnapshot = {
+      ...snapshot([
+        bot('a', { sectionId: 'team' }),
+        bot('b', { sectionId: 'sub' }),
+        bot('c', { sectionId: 'sub', pinned: true }),
+        bot('d')
+      ]),
+      folders: [
+        { id: 'team', name: 'Team' },
+        { id: 'sub', name: 'Sub', parentId: 'team' }
+      ]
+    }
+    expect(folderCount(nested, 'team')).toBe(2)
+    expect(folderCount(nested, 'sub')).toBe(1)
+    expect(folderCount(nested, null)).toBe(1)
+  })
   it('should put orphaned membership in Unassigned without showing hidden bots', () => {
     const orphan = bot('orphan', { sectionId: 'missing' })
     expect(folderBots(snapshot([orphan, bot('hidden', { hidden: true })]), null)).toEqual([orphan])
@@ -73,7 +91,7 @@ describe('roster layout', () => {
       { id: 'a', name: 'A' },
       { id: 'b', name: 'B', parentId: 'a' }
     ]
-    expect(() => moveFolder(folders, 'a', 'b')).toThrow('cannot contain')
+    expect(() => moveFolder(folders, 'a', 'b')).toThrow('roster.errorFolderCycle')
     expect(moveFolder(folders, 'b', null)).toEqual([
       { id: 'a', name: 'A' },
       { id: 'b', name: 'B' }

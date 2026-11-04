@@ -1,24 +1,39 @@
 import type { TranslationKey } from '@shared/lib/i18n'
-import type { Bot, BotMeta, Folder, RosterSnapshot } from './types'
+import type { Bot, Folder, RosterSnapshot } from './types'
 
 export const FOLDERS_KEY = 'talyx-folders'
 export const ROOM_FOLDERS_KEY = 'talyx-room-folders'
 
-export function botMeta(bot: Bot): BotMeta {
-  return bot.meta ?? {}
+// Thrown for a roster problem the user can act on; `key` is its message in i18n.ts.
+export class RosterError extends Error {
+  constructor(readonly key: TranslationKey) {
+    super(key)
+    this.name = 'RosterError'
+  }
+}
+
+export interface RosterProblem {
+  key: TranslationKey
+  detail: string | null
+}
+
+export function problemOf(error: unknown): RosterProblem {
+  return error instanceof RosterError
+    ? { key: error.key, detail: null }
+    : { key: 'roster.errorUnexpected', detail: error instanceof Error ? error.message : null }
 }
 
 export function botTitle(bot: Bot): string {
   return bot.name === 'default'
     ? 'Talyx'
-    : botMeta(bot).title || bot.title || bot.display_name || bot.name
+    : bot.meta.title || bot.title || bot.display_name || bot.name
 }
 
 export function botPreview(bot: Bot): string {
   return (
     bot.canonical_session?.preview?.trim() ||
     bot.last_session?.preview?.trim() ||
-    botMeta(bot).description ||
+    bot.meta.description ||
     bot.description ||
     ''
   )
@@ -53,9 +68,9 @@ function ago(
 
 export function pinnedBots(bots: Bot[]): Bot[] {
   return bots
-    .filter((bot) => botMeta(bot).pinned && !botMeta(bot).hidden)
+    .filter((bot) => bot.meta.pinned && !bot.meta.hidden)
     .sort((a, b) => {
-      const order = (botMeta(a).pinnedOrder ?? Infinity) - (botMeta(b).pinnedOrder ?? Infinity)
+      const order = (a.meta.pinnedOrder ?? Infinity) - (b.meta.pinnedOrder ?? Infinity)
       return (
         (Number.isNaN(order) ? 0 : order) ||
         botActivityTime(b) - botActivityTime(a) ||
@@ -67,10 +82,18 @@ export function pinnedBots(bots: Bot[]): Bot[] {
 export function folderBots(snapshot: RosterSnapshot, folderId: string | null): Bot[] {
   const ids = new Set(snapshot.folders.map((folder) => folder.id))
   return snapshot.bots.filter((bot) => {
-    const meta = botMeta(bot)
+    const meta = bot.meta
     const sectionId = meta.sectionId && ids.has(meta.sectionId) ? meta.sectionId : null
     return !meta.hidden && !meta.pinned && sectionId === folderId
   })
+}
+
+// A folder counts the bots in it and in its subfolders; Unassigned counts only its own.
+export function folderCount(snapshot: RosterSnapshot, folderId: string | null): number {
+  if (folderId === null) return folderBots(snapshot, null).length
+  return snapshot.folders
+    .filter((folder) => isWithin(snapshot.folders, folder.id, folderId))
+    .reduce((total, folder) => total + folderBots(snapshot, folder.id).length, 0)
 }
 
 export function isWithin(folders: Folder[], id: string, ancestorId: string): boolean {
@@ -112,19 +135,19 @@ export function normalizeFolders(value: unknown): Folder[] {
 export function recoverFolders(bots: Bot[]): Folder[] {
   return normalizeFolders(
     bots.map((bot) => {
-      const meta = botMeta(bot)
+      const meta = bot.meta
       return { id: meta.sectionId, name: meta.sectionName || meta.sectionId }
     })
   )
 }
 
 export function moveFolder(folders: Folder[], id: string, parentId: string | null): Folder[] {
-  if (!folders.some((folder) => folder.id === id)) throw new Error('Folder no longer exists')
+  if (!folders.some((folder) => folder.id === id)) throw new RosterError('roster.errorFolderGone')
   if (
     parentId &&
     (!folders.some((folder) => folder.id === parentId) || isWithin(folders, parentId, id))
   )
-    throw new Error('A folder cannot contain itself or its parent')
+    throw new RosterError('roster.errorFolderCycle')
   return folders.map((folder) =>
     folder.id === id ? { id, name: folder.name, ...(parentId ? { parentId } : {}) } : folder
   )

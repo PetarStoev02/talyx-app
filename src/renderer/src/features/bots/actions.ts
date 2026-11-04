@@ -1,6 +1,7 @@
 import { readRoster, saveBotMeta, saveFolders, saveRoomFolders } from './data'
 import type { RosterBackend } from './data'
-import { botMeta, moveFolder, pinnedBots, reorder } from './roster'
+import { moveFolder, pinnedBots, problemOf, reorder } from './roster'
+import type { RosterProblem } from './roster'
 import { useRoster } from './store'
 import type { Bot, Folder, RosterSnapshot } from './types'
 
@@ -25,7 +26,7 @@ export function applySnapshot(snapshot: RosterSnapshot): void {
   const { selection } = useRoster.getState()
   const exists =
     selection?.kind === 'bot'
-      ? snapshot.bots.some((bot) => bot.name === selection.id && !botMeta(bot).hidden)
+      ? snapshot.bots.some((bot) => bot.name === selection.id && !bot.meta.hidden)
       : snapshot.rooms.some((room) => room.room_id === selection?.id)
   useRoster.setState({
     snapshot,
@@ -41,11 +42,17 @@ export function rosterActions(backend: RosterBackend): RosterActions {
     saveFolders(backend, update, snapshot().folders)
   return {
     pin: (bot) =>
-      saveBotMeta(backend, bot.name, {
-        pinned: !botMeta(bot).pinned,
-        pinnedOrder:
-          Math.max(-1, ...snapshot().bots.map((item) => botMeta(item).pinnedOrder ?? -1)) + 1
-      }),
+      saveBotMeta(
+        backend,
+        bot.name,
+        bot.meta.pinned
+          ? { pinned: false }
+          : {
+              pinned: true,
+              pinnedOrder:
+                Math.max(-1, ...snapshot().bots.map((item) => item.meta.pinnedOrder ?? -1)) + 1
+            }
+      ),
     moveBot: (bot, folderId) =>
       saveBotMeta(backend, bot.name, {
         pinned: false,
@@ -75,7 +82,7 @@ export function rosterActions(backend: RosterBackend): RosterActions {
     orderPin: (from, to) => orderPin(backend, snapshot().bots, { from, to }),
     addFolder: (name) =>
       saveLayout((value) => [...value, { id: crypto.randomUUID(), name: name.trim() }]),
-    hide: (bot) => saveBotMeta(backend, bot.name, { hidden: !botMeta(bot).hidden }),
+    hide: (bot) => saveBotMeta(backend, bot.name, { hidden: !bot.meta.hidden }),
     deleteProfile: (bot) => backend.deleteProfile(bot.name)
   }
 }
@@ -99,20 +106,17 @@ export function runRosterMutation(
 }
 
 async function mutate(backend: RosterBackend, operation: () => Promise<void>): Promise<void> {
-  let failure: string | null = null
+  let failure: RosterProblem | null = null
   try {
     await operation()
   } catch (error) {
-    failure = error instanceof Error ? error.message : 'Could not save roster'
+    failure = problemOf(error)
   }
   try {
     await refreshRoster(backend)
-  } catch (refreshError) {
-    const message = refreshError instanceof Error ? refreshError.message : 'Engine unreachable'
-    useRoster.setState({
-      loading: false,
-      error: failure ? `${failure}. Refresh also failed: ${message}` : message
-    })
+  } catch (error) {
+    // The operation's own failure is the one the user can act on.
+    useRoster.setState({ loading: false, error: failure ?? problemOf(error) })
     return
   }
   if (failure) useRoster.setState({ error: failure })
@@ -131,8 +135,8 @@ async function orderPin(
   const next = pins.filter((bot) => bot.name !== move.from)
   next.splice(target, 0, source)
   for (const [pinnedOrder, bot] of next.entries()) {
-    if (!botMeta(bot).pinned) await saveBotMeta(backend, bot.name, { pinned: true, pinnedOrder })
-    else if (botMeta(bot).pinnedOrder !== pinnedOrder)
+    if (!bot.meta.pinned) await saveBotMeta(backend, bot.name, { pinned: true, pinnedOrder })
+    else if (bot.meta.pinnedOrder !== pinnedOrder)
       await saveBotMeta(backend, bot.name, { pinnedOrder })
   }
 }

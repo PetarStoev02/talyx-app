@@ -3,6 +3,7 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot } from '@features/bots/types'
+import type { RosterProblem } from '@features/bots/roster'
 import { Button } from '@shared/ui/button'
 import {
   Dialog,
@@ -54,9 +55,9 @@ export function NewFolderDialog({
             />
           </label>
           {error && (
-            <p role="alert" className="text-base">
-              {error}
-            </p>
+            <div role="alert">
+              <ProblemMessage problem={error} />
+            </div>
           )}
           <div className="flex gap-2">
             <Button
@@ -103,9 +104,9 @@ export function DeleteProfileDialog({
         </DialogTitle>
         <DialogDescription>{t('roster.deleteWarning')}</DialogDescription>
         {error && (
-          <p role="alert" className="text-base">
-            {error}
-          </p>
+          <div role="alert">
+            <ProblemMessage problem={error} />
+          </div>
         )}
         <div className="flex gap-2">
           <Button
@@ -124,5 +125,15 @@ export function DeleteProfileDialog({
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+export function ProblemMessage({ problem }: { problem: RosterProblem }): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  return (
+    <p className="text-base">
+      {t(problem.key)}
+      {problem.detail && <span className="block text-sm">{problem.detail}</span>}
+    </p>
   )
 }

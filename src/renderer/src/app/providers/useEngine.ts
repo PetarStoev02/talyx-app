@@ -10,7 +10,7 @@ interface EngineState {
 }
 
 /** Engine presence and attachment, as main reports it; the gateway socket opens once attached. */
-export const useEngine = create<EngineState>((set, get) => {
+export const useEngine = create<EngineState>((set) => {
   const settle = async (next: Promise<EngineStatus>): Promise<void> => {
     set({ checking: true })
     try {
@@ -26,8 +26,7 @@ export const useEngine = create<EngineState>((set, get) => {
   return {
     status: null,
     checking: false,
-    // Two callers on one mount must not connect twice: a second connect drops in-flight calls.
-    check: () => (get().checking ? Promise.resolve() : settle(host.status())),
+    check: () => settle(host.status()),
     pickPath: () => settle(host.pickEnginePath())
   }
 })

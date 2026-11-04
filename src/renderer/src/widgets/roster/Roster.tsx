@@ -4,12 +4,12 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { useRosterConnection } from '@features/bots/useRosterConnection'
 import type { RosterBackend } from '@features/bots/data'
 import { rosterActions, runRosterMutation } from '@features/bots/actions'
-import { botMeta, botTitle, pinnedBots } from '@features/bots/roster'
+import { botTitle, pinnedBots } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot, Room } from '@features/bots/types'
 import { BotRow } from './BotRow'
 import { FolderGroup } from './FolderGroup'
-import { DeleteProfileDialog, NewFolderDialog } from './RosterDialogs'
+import { DeleteProfileDialog, NewFolderDialog, ProblemMessage } from './RosterDialogs'
 import { rosterControls } from './rosterControls'
 import type { MenuAction } from './RosterMenu'
 
@@ -45,7 +45,7 @@ export function Roster({
     run,
     selectBot,
     setDeleting: (bot) => {
-      useRoster.setState({ error: null })
+      state.clearError()
       setDeleting(bot)
     },
     t
@@ -57,14 +57,7 @@ export function Roster({
       className="min-h-0 flex-1 overflow-y-auto px-3"
     >
       <TallyLine />
-      {state.error && !deleting && !newFolder && (
-        <div role="alert" className="rounded-xl bg-secondary p-3 text-base">
-          <p>{state.error}</p>
-          <button className="mt-2 underline" onClick={reload}>
-            {t('roster.retry')}
-          </button>
-        </div>
-      )}
+      {!deleting && !newFolder && <ProblemBanner retry={reload} />}
       {state.loading && (
         <p role="status" className="p-2">
           {t('roster.loading')}
@@ -75,30 +68,13 @@ export function Roster({
         selectBot={selectBot}
         orderPin={(from, to) => run(() => actions.orderPin(from, to))}
       />
-      <div className="mt-4 flex items-center justify-between px-2">
-        <span className="text-base font-medium">{t('roster.folders')}</span>
-        <span className="flex gap-1">
-          <button
-            aria-label={t('roster.refresh')}
-            disabled={state.saving}
-            onClick={reload}
-            className="rounded-full p-2 hover:bg-accent"
-          >
-            <RefreshCw size={16} />
-          </button>
-          <button
-            aria-label={t('roster.newFolder')}
-            disabled={state.saving}
-            onClick={() => {
-              useRoster.setState({ error: null })
-              setNewFolder(true)
-            }}
-            className="rounded-full p-2 hover:bg-accent"
-          >
-            <Plus size={18} />
-          </button>
-        </span>
-      </div>
+      <FoldersHeader
+        reload={reload}
+        newFolder={() => {
+          state.clearError()
+          setNewFolder(true)
+        }}
+      />
       {[...state.snapshot.folders.filter((folder) => !folder.parentId), null].map((folder) => (
         <FolderGroup
           key={folder?.id ?? 'unassigned'}
@@ -137,13 +113,61 @@ export function Roster({
   )
 }
 
+function ProblemBanner({ retry }: { retry: () => void }): React.JSX.Element | null {
+  const t = useLanguage((s) => s.t)
+  const error = useRoster((state) => state.error)
+  if (!error) return null
+  return (
+    <div role="alert" className="rounded-xl bg-secondary p-3 text-base">
+      <ProblemMessage problem={error} />
+      <button className="mt-2 underline" onClick={retry}>
+        {t('roster.retry')}
+      </button>
+    </div>
+  )
+}
+
+function FoldersHeader({
+  reload,
+  newFolder
+}: {
+  reload: () => void
+  newFolder: () => void
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const saving = useRoster((state) => state.saving)
+  return (
+    <div className="mt-4 flex items-center justify-between px-2">
+      <span className="text-base font-medium">{t('roster.folders')}</span>
+      <span className="flex gap-1">
+        <button
+          aria-label={t('roster.refresh')}
+          disabled={saving}
+          onClick={reload}
+          className="rounded-full p-2 hover:bg-accent"
+        >
+          <RefreshCw size={16} />
+        </button>
+        <button
+          aria-label={t('roster.newFolder')}
+          disabled={saving}
+          onClick={newFolder}
+          className="rounded-full p-2 hover:bg-accent"
+        >
+          <Plus size={18} />
+        </button>
+      </span>
+    </div>
+  )
+}
+
 // "Waiting on you" counts a bot that asked for input or has a reply the user has not opened.
 function TallyLine(): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const bots = useRoster((state) => state.snapshot.bots)
   const activity = useRoster((state) => state.activity)
   const unread = useRoster((state) => state.unread)
-  const visible = bots.filter((bot) => !botMeta(bot).hidden)
+  const visible = bots.filter((bot) => !bot.meta.hidden)
   const waiting = visible.filter((bot) => activity[bot.name] === 'waiting' || unread[bot.name])
   const working = visible.filter((bot) => activity[bot.name] === 'working')
   return (
@@ -193,7 +217,7 @@ function HiddenAgents({ restore }: { restore: (bot: Bot) => void }): React.JSX.E
   const t = useLanguage((s) => s.t)
   const bots = useRoster((state) => state.snapshot.bots)
   const saving = useRoster((state) => state.saving)
-  const hidden = bots.filter((bot) => botMeta(bot).hidden)
+  const hidden = bots.filter((bot) => bot.meta.hidden)
   if (hidden.length === 0) return null
   return (
     <details className="p-2">

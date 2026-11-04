@@ -71,7 +71,7 @@ describe('shared roster persistence', () => {
         ? Promise.resolve({ applied: { ui_meta: false } })
         : engine.request(profile, method, params)
     await expect(saveBotMeta(backendFor({ request }), 'analyst', { hidden: true })).rejects.toThrow(
-      'did not save'
+      'roster.errorNotSaved'
     )
     expect(engine.metadata.analyst[BOT_META_KEY]).not.toHaveProperty('hidden')
   })
@@ -84,7 +84,7 @@ describe('shared roster persistence', () => {
       method === 'groups.list'
         ? Promise.resolve({ rooms: [], next_offset: 0 })
         : engine.request(profile, method, params)
-    await expect(readRoster(backendFor({ request }))).rejects.toThrow('invalid room cursor')
+    await expect(readRoster(backendFor({ request }))).rejects.toThrow('roster.errorRoomCursor')
   })
   it('should keep the roster and the valid fields when another client wrote a bad field', async () => {
     const engine = engineDouble({

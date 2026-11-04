@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { folderBots, isWithin } from '@features/bots/roster'
+import { folderBots, folderCount } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { Bot, Folder, Room } from '@features/bots/types'
@@ -32,12 +32,6 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
     return (snapshot.folders.some((item) => item.id === assigned) ? assigned : null) === id
   })
   const children = snapshot.folders.filter((item) => item.parentId === id)
-  const descendants = folder
-    ? snapshot.folders.filter((item) => isWithin(snapshot.folders, item.id, folder.id))
-    : []
-  const count = folder
-    ? descendants.reduce((total, item) => total + folderBots(snapshot, item.id).length, 0)
-    : bots.length
   return (
     <section
       aria-label={folder?.name ?? t('roster.unassigned')}
@@ -54,36 +48,12 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
         if (!saving) dropOnFolder(event.dataTransfer.getData(ROSTER_DRAG), id)
       }}
     >
-      <div
-        className="flex items-center"
-        draggable={!!folder && !saving}
-        onDragStart={(event) => {
-          if (folder) {
-            event.stopPropagation()
-            event.dataTransfer.setData(
-              ROSTER_DRAG,
-              JSON.stringify({ kind: 'folder', id: folder.id })
-            )
-          }
-        }}
-      >
-        <button
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-full px-2 py-2 text-left text-base font-medium hover:bg-accent"
-          aria-expanded={!collapsed}
-          onClick={() => setCollapsed(!collapsed)}
-        >
-          {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-          <span className="truncate">{folder?.name ?? t('roster.unassigned')}</span>
-          <span className="ml-auto tabular-nums">{count}</span>
-        </button>
-        {folder && (
-          <RosterMenu
-            label={t('roster.folderActionsFor').replace('{name}', folder.name)}
-            actions={folderActions(folder)}
-            disabled={saving}
-          />
-        )}
-      </div>
+      <FolderHeader
+        folder={folder}
+        collapsed={collapsed}
+        toggle={() => setCollapsed(!collapsed)}
+        folderActions={folderActions}
+      />
       {!collapsed && (
         <div className="space-y-1">
           {bots.map((bot) => (
@@ -114,6 +84,51 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
         </div>
       )}
     </section>
+  )
+}
+
+function FolderHeader({
+  folder,
+  collapsed,
+  toggle,
+  folderActions
+}: {
+  folder: Folder | null
+  collapsed: boolean
+  toggle: () => void
+  folderActions: (folder: Folder) => MenuAction[]
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const snapshot = useRoster((state) => state.snapshot)
+  const saving = useRoster((state) => state.saving)
+  return (
+    <div
+      className="flex items-center"
+      draggable={!!folder && !saving}
+      onDragStart={(event) => {
+        if (folder) {
+          event.stopPropagation()
+          event.dataTransfer.setData(ROSTER_DRAG, JSON.stringify({ kind: 'folder', id: folder.id }))
+        }
+      }}
+    >
+      <button
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-full px-2 py-2 text-left text-base font-medium hover:bg-accent"
+        aria-expanded={!collapsed}
+        onClick={toggle}
+      >
+        {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+        <span className="truncate">{folder?.name ?? t('roster.unassigned')}</span>
+        <span className="ml-auto tabular-nums">{folderCount(snapshot, folder?.id ?? null)}</span>
+      </button>
+      {folder && (
+        <RosterMenu
+          label={t('roster.folderActionsFor').replace('{name}', folder.name)}
+          actions={folderActions(folder)}
+          disabled={saving}
+        />
+      )}
+    </div>
   )
 }
 
@@ -152,7 +167,12 @@ function RoomRow({
           {room.members.slice(0, 3).map((member) => (
             <span key={member.profile} className="rounded-full bg-sidebar">
               <BotAvatar
-                bot={bots.find((bot) => bot.name === member.profile) ?? { name: member.profile }}
+                bot={
+                  bots.find((bot) => bot.name === member.profile) ?? {
+                    name: member.profile,
+                    meta: {}
+                  }
+                }
               />
             </span>
           ))}

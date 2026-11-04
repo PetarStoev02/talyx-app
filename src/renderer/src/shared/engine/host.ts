@@ -67,6 +67,9 @@ export const host = {
   /** Open the shared socket and keep it open: a drop redials with backoff and replays the gap. */
   connect(): Promise<void> {
     wanted = true
+    // The client counts every connect as a new connection, which fails calls still in flight.
+    const { connectionState } = gateway
+    if (connectionState === 'open' || connectionState === 'connecting') return Promise.resolve()
     return gateway.connect(engineDialUrl())
   },
 

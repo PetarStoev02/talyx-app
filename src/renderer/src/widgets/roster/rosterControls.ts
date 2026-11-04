@@ -1,4 +1,4 @@
-import { botMeta, isWithin, pinnedBots } from '@features/bots/roster'
+import { isWithin, pinnedBots } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { RosterActions } from '@features/bots/actions'
 import type { Bot, Folder } from '@features/bots/types'
@@ -32,77 +32,88 @@ interface ControlsOptions {
   t: (key: TranslationKey) => string
 }
 
-export function rosterControls({ actions, run, selectBot, setDeleting, t }: ControlsOptions): {
+export function rosterControls(options: ControlsOptions): {
   botActions: (bot: Bot) => MenuAction[]
   folderActions: (folder: Folder) => MenuAction[]
   dropOnFolder: (data: string, folderId: string | null) => void
 } {
-  const snapshot = (): ReturnType<typeof useRoster.getState>['snapshot'] =>
-    useRoster.getState().snapshot
-  const botActions = (bot: Bot): MenuAction[] => {
-    const sectionId = botMeta(bot).sectionId ?? null
-    return [
-      {
-        label: botMeta(bot).pinned ? t('roster.unpin') : t('roster.pin'),
-        onSelect: () => run(() => actions.pin(bot))
-      },
-      ...pinOrderActions(bot, { actions, run, t }),
-      ...[{ id: null, name: t('roster.unassigned') }, ...snapshot().folders]
-        .filter((folder) => folder.id !== sectionId)
-        .map((folder) => ({
-          label: t('roster.moveTo').replace('{name}', folder.name),
-          onSelect: () => run(() => actions.moveBot(bot, folder.id))
-        })),
-      {
-        label: t('roster.editProfile'),
-        onSelect: () => {
-          selectBot(bot)
-          useRoster.setState({ editingProfile: bot.name })
-        }
-      },
-      { label: t('roster.hide'), onSelect: () => run(() => actions.hide(bot)) },
-      {
-        label: t('roster.deleteProfile'),
-        disabled: bot.name === 'default',
-        onSelect: () => setDeleting(bot)
-      }
-    ]
+  return {
+    botActions: (bot) => botActions(bot, options),
+    folderActions: (folder) => folderActions(folder, options),
+    dropOnFolder: (data, folderId) => dropOnFolder(readRosterDrag(data), folderId, options)
   }
-  const folderActions = (folder: Folder): MenuAction[] => [
+}
+
+function botActions(bot: Bot, options: ControlsOptions): MenuAction[] {
+  const { actions, run, selectBot, setDeleting, t } = options
+  const { folders } = useRoster.getState().snapshot
+  // A section that no longer exists shows in Unassigned, so it counts as Unassigned here too.
+  const current = folders.some((folder) => folder.id === bot.meta.sectionId)
+    ? bot.meta.sectionId
+    : null
+  return [
+    {
+      label: bot.meta.pinned ? t('roster.unpin') : t('roster.pin'),
+      onSelect: () => run(() => actions.pin(bot))
+    },
+    ...pinOrderActions(bot, options),
+    ...[{ id: null, name: t('roster.unassigned') }, ...folders]
+      .filter((folder) => folder.id !== current)
+      .map((folder) => ({
+        label: t('roster.moveTo').replace('{name}', folder.name),
+        onSelect: () => run(() => actions.moveBot(bot, folder.id))
+      })),
+    {
+      label: t('roster.editProfile'),
+      onSelect: () => {
+        selectBot(bot)
+        useRoster.getState().editProfile(bot.name)
+      }
+    },
+    { label: t('roster.hide'), onSelect: () => run(() => actions.hide(bot)) },
+    {
+      label: t('roster.deleteProfile'),
+      disabled: bot.name === 'default',
+      onSelect: () => setDeleting(bot)
+    }
+  ]
+}
+
+function folderActions(folder: Folder, { actions, run, t }: ControlsOptions): MenuAction[] {
+  const { folders } = useRoster.getState().snapshot
+  return [
     { label: t('roster.moveUp'), onSelect: () => run(() => actions.orderFolder(folder.id, -1)) },
     { label: t('roster.moveDown'), onSelect: () => run(() => actions.orderFolder(folder.id, 1)) },
-    { label: t('roster.moveToTop'), onSelect: () => run(() => actions.nest(folder.id, null)) },
-    ...snapshot()
-      .folders.filter((item) => !isWithin(snapshot().folders, item.id, folder.id))
+    ...(folder.parentId
+      ? [{ label: t('roster.moveToTop'), onSelect: () => run(() => actions.nest(folder.id, null)) }]
+      : []),
+    ...folders
+      .filter((item) => item.id !== folder.parentId && !isWithin(folders, item.id, folder.id))
       .map((item) => ({
         label: t('roster.nestIn').replace('{name}', item.name),
         onSelect: () => run(() => actions.nest(folder.id, item.id))
       }))
   ]
-  const dropOnFolder = (data: string, folderId: string | null): void => {
-    const item = readRosterDrag(data)
-    if (!item) return
-    if (item.kind === 'folder') {
-      // Releasing a folder inside itself or a descendant is a no-op, not an error.
-      if (!folderId || !isWithin(snapshot().folders, folderId, item.id))
-        run(() => actions.nest(item.id, folderId))
-      return
-    }
-    if (item.kind === 'room') {
-      if (snapshot().rooms.some((room) => room.room_id === item.id))
-        run(() => actions.moveRoom(item.id, folderId))
-      return
-    }
-    const bot = snapshot().bots.find((bot) => bot.name === item.id)
-    if (bot) run(() => actions.moveBot(bot, folderId))
-  }
-  return { botActions, folderActions, dropOnFolder }
 }
 
-function pinOrderActions(
-  bot: Bot,
-  { actions, run, t }: Pick<ControlsOptions, 'actions' | 'run' | 't'>
-): MenuAction[] {
+function dropOnFolder(
+  item: RosterDragItem | null,
+  folderId: string | null,
+  { actions, run }: ControlsOptions
+): void {
+  const snapshot = useRoster.getState().snapshot
+  if (item?.kind === 'folder') {
+    // Releasing a folder inside itself or a descendant is a no-op, not an error.
+    if (!folderId || !isWithin(snapshot.folders, folderId, item.id))
+      run(() => actions.nest(item.id, folderId))
+  }
+  if (item?.kind === 'room' && snapshot.rooms.some((room) => room.room_id === item.id))
+    run(() => actions.moveRoom(item.id, folderId))
+  const bot = item?.kind === 'bot' && snapshot.bots.find((bot) => bot.name === item.id)
+  if (bot) run(() => actions.moveBot(bot, folderId))
+}
+
+function pinOrderActions(bot: Bot, { actions, run, t }: ControlsOptions): MenuAction[] {
   const pins = pinnedBots(useRoster.getState().snapshot.bots)
   const index = pins.findIndex((item) => item.name === bot.name)
   if (index < 0) return []

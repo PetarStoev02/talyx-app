@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { RosterProblem } from './roster'
 import type { BotActivity, RosterSnapshot, Selection } from './types'
 
 interface RosterState {
@@ -10,8 +11,10 @@ interface RosterState {
   revision: number
   loading: boolean
   saving: boolean
-  error: string | null
+  error: RosterProblem | null
   select: (selection: Selection) => void
+  editProfile: (profile: string | null) => void
+  clearError: () => void
   setActivity: (profile: string, activity: BotActivity) => void
   markUnread: (profile: string) => void
 }
@@ -32,6 +35,8 @@ export const useRoster = create<RosterState>((set) => ({
       editingProfile: null,
       unread: selection?.kind === 'bot' ? { ...state.unread, [selection.id]: false } : state.unread
     })),
+  editProfile: (profile) => set({ editingProfile: profile }),
+  clearError: () => set({ error: null }),
   setActivity: (profile, activity) =>
     set((state) => ({ activity: { ...state.activity, [profile]: activity } })),
   markUnread: (profile) =>

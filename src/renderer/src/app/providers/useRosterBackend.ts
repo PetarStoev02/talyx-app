@@ -27,17 +27,23 @@ export function useRosterBackend(): RosterBackend | null {
   )
 
   return useMemo(
-    () =>
-      opened && botMetaKey && botGroupsMetaKey
-        ? {
-            request: (profile, method, params) => host.request(profile, method, params),
-            deleteProfile: async (profile) => {
-              await host.deleteProfile(profile)
-            },
-            botMetaKey,
-            botGroupsMetaKey
-          }
-        : null,
+    () => (opened ? rosterBackendFor({ botMetaKey, botGroupsMetaKey }) : null),
     [opened, botMetaKey, botGroupsMetaKey]
   )
+}
+
+export function rosterBackendFor(keys: {
+  botMetaKey: string | null
+  botGroupsMetaKey: string | null
+}): RosterBackend | null {
+  const { botMetaKey, botGroupsMetaKey } = keys
+  if (!botMetaKey || !botGroupsMetaKey) return null
+  return {
+    request: (profile, method, params) => host.request(profile, method, params),
+    deleteProfile: async (profile) => {
+      await host.deleteProfile(profile)
+    },
+    botMetaKey,
+    botGroupsMetaKey
+  }
 }
