@@ -31,7 +31,7 @@ beforeEach(() => {
 const newBot = (patch: Partial<NewBot> = {}): NewBot => ({
   name: 'Agro Ops Legal',
   folder: TEAM,
-  model: { provider: 'custom', model: 'team-worker' },
+  model: { provider: 'custom', model: 'paid-model' },
   ...patch
 })
 
@@ -61,7 +61,7 @@ describe('creating a bot', () => {
     it('should create the profile with its own SOUL and model', async () => {
       expect(await createBot(backend, newBot(), ['default', 'analyst'])).toBe('agro-ops-legal')
       expect(engine.created).toEqual([
-        { name: 'agro-ops-legal', soul: SOUL, model: 'team-worker', provider: 'custom' }
+        { name: 'agro-ops-legal', soul: SOUL, model: 'paid-model', provider: 'custom' }
       ])
     })
 

@@ -38,7 +38,7 @@ describe('bot details', () => {
       expect(await loadDetails(backend, 'analyst')).toEqual({
         description: 'Numbers',
         soul: '# Analyst',
-        model: { provider: 'custom', model: 'team-manager' }
+        model: { provider: 'custom', model: '9-route-provider' }
       })
     })
 
@@ -105,7 +105,10 @@ describe('bot details', () => {
         model: { provider: 'custom', model: 'big' }
       })
       expect(engine.profiles.analyst.soul).toBe('# Bigger')
-      expect(engine.profiles.analyst.model).toEqual({ provider: 'custom', model: 'team-manager' })
+      expect(engine.profiles.analyst.model).toEqual({
+        provider: 'custom',
+        model: '9-route-provider'
+      })
     })
 
     it('should still ask when the engine reports the waiting model as not applied', async () => {
@@ -131,11 +134,11 @@ describe('bot details', () => {
       const before = await opening('analyst')
       const confirm = await saveDetails(backend, bot('analyst'), {
         opening: before,
-        draft: { ...before, model: { provider: 'custom', model: 'team-worker' } }
+        draft: { ...before, model: { provider: 'custom', model: 'paid-model' } }
       })
       expect(confirm).toBeNull()
       expect(engine.configured).toEqual([
-        { name: 'analyst', model: 'team-worker', provider: 'custom' }
+        { name: 'analyst', model: 'paid-model', provider: 'custom' }
       ])
     })
 
