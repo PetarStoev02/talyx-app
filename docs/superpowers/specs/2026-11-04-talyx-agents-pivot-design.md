@@ -111,6 +111,11 @@ Petar is the main user of Talyx. He will use it more after the pivot than before
 6. **Group chats use backend hosted rooms only** (`groups.*` RPCs, `HostedRoomService`). The
    legacy desktop-run group mode (`group-rounds.ts`, `group-turns.ts`, localStorage room log)
    is not ported. History: all of Petar's rooms are already hosted rooms, nothing to migrate.
+   Built in PR 6 (Petar's decisions, 2026-11-04): the engine pushes no room events, so an open
+   room polls `groups.state` and `groups.log` every 2 s; who is answering shows in the open room
+   only; a pinned room leads its folder (`talyx-room-pins` in the default profile's `ui_meta`);
+   member approvals, Retry and Discard are answered in the room; rooms take images only. Talyx's
+   handle in a room Talyx creates is `talyx`.
 7. **Folders are stored in the backend**, in the default profile's `ui_meta` (my call: key
    `talyx-folders`, same shape as today's `bot-sections-v1` record), so every machine sees the
    same layout. Bot membership stays in each bot's `ui_meta['talyx-bots'].sectionId` as today.
@@ -183,8 +188,9 @@ Petar is the main user of Talyx. He will use it more after the pivot than before
     Windows and a Linux shell. The old "macOS only" line in `CLAUDE.md` and the README goes.
 20. **Providers are kept and editable in the app** (Petar's decision). Today's setup is one
     custom OpenAI-compatible endpoint (`provider: custom`, `base_url:
-    http://127.0.0.1:20128/v1`, a Docker-hosted router serving 9 models, default model
-    `team-manager`) in the engine's `config.yaml`. The pivot never touches that file. A
+    http://127.0.0.1:20128/v1`, a Docker-hosted router, default model `9-route-provider`, one
+    combo that falls back across providers when one hits its quota or fails, so the model that
+    answers can change per request) in the engine's `config.yaml`. The pivot never touches that file. A
     Providers settings page, moved from the old app's `providers-settings.tsx`,
     `custom-endpoints-settings.tsx`, `env-credentials.tsx`, `model-settings.tsx` (about 3.8k
     lines) over the `api/config.ts` endpoints (env credentials, custom endpoints, OAuth
