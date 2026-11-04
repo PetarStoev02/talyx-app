@@ -83,12 +83,16 @@ export function rosterActions(backend: RosterBackend): RosterActions {
         sectionId: folderId,
         sectionName: snapshot().folders.find((folder) => folder.id === folderId)?.name ?? null
       }),
-    moveRoom: (roomId, folderId) =>
-      saveRoomFolders(
+    // Moving a pinned room puts it in the folder, as moving a pinned bot does.
+    moveRoom: async (roomId, folderId) => {
+      await saveRoomFolders(
         backend,
         (roomFolders) => ({ ...roomFolders, [roomId]: folderId }),
         snapshot().roomFolders
-      ),
+      )
+      if (snapshot().roomPins.includes(roomId))
+        await saveRoomPins(backend, (pins) => pins.filter((id) => id !== roomId))
+    },
     pinRoom: (room) =>
       saveRoomPins(backend, (pins) =>
         pins.includes(room.room_id)

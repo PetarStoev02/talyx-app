@@ -117,6 +117,14 @@ describe('group rooms in the roster', () => {
       expect(pinnedRooms(snapshot())).toEqual([])
     })
 
+    it('should unpin a pinned room that is moved to a folder, as it does a bot', async () => {
+      await act(() => rosterActions(backend).pinRoom(room('review')))
+      await act(() => rosterActions(backend).moveRoom('review', 'team'))
+      expect(pinnedRooms(snapshot())).toEqual([])
+      expect(engine.metadata.default['talyx-room-pins']).toEqual([])
+      expect(roomIds('team')).toEqual(['review'])
+    })
+
     it('should keep pinned rooms in the order they were pinned', async () => {
       await act(() => rosterActions(backend).pinRoom(room('review')))
       await act(() => rosterActions(backend).pinRoom(room('standup')))

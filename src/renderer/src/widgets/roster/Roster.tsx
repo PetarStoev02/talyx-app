@@ -227,6 +227,7 @@ function PinnedGrid({
   const pins = pinnedBots(snapshot.bots)
   const rooms = pinnedRooms(snapshot)
   const large = pins.length + rooms.length <= 3
+  // A full row of 3 or 4 tiles with the gap-2 (0.5rem) between them; change both together.
   const tile = large ? 'calc((100% - 1rem) / 3)' : 'calc((100% - 1.5rem) / 4)'
   return (
     <div
