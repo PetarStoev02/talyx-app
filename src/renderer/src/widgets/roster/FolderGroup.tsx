@@ -29,6 +29,17 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
   const id = folder?.id ?? null
   const bots = folderBots(snapshot, id)
   const rooms = folderRooms(snapshot, id)
+  // "Pin to top" puts a room above everything in its folder, bots included.
+  const pinnedRooms = rooms.filter((room) => snapshot.roomPins.includes(room.room_id))
+  const otherRooms = rooms.filter((room) => !snapshot.roomPins.includes(room.room_id))
+  const roomRow = (room: Room): React.JSX.Element => (
+    <RoomRow
+      key={room.room_id}
+      room={room}
+      actions={props.roomActions(room)}
+      onSelect={() => selectRoom(room)}
+    />
+  )
   const children = snapshot.folders.filter((item) => item.parentId === id)
   return (
     <section
@@ -54,6 +65,7 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
       />
       {!collapsed && (
         <div className="space-y-1">
+          {pinnedRooms.map(roomRow)}
           {bots.map((bot) => (
             <BotRow
               key={bot.name}
@@ -62,14 +74,7 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
               onSelect={() => selectBot(bot)}
             />
           ))}
-          {rooms.map((room) => (
-            <RoomRow
-              key={room.room_id}
-              room={room}
-              actions={props.roomActions(room)}
-              onSelect={() => selectRoom(room)}
-            />
-          ))}
+          {otherRooms.map(roomRow)}
           {children.map((child) => (
             <div className="pl-3" key={child.id}>
               <FolderGroup {...props} folder={child} />
