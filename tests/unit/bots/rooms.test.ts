@@ -129,7 +129,11 @@ describe('group rooms in the roster', () => {
       await act(() => rosterActions(backend).moveRoom('review', 'team'))
       await act(() => rosterActions(backend).pinRoom(room('standup')))
       useRoster.getState().select({ kind: 'room', id: 'standup' })
-      await act(() => rosterActions(backend).deleteRoom(room('standup')))
+      const standup = room('standup')
+      await act(async () => {
+        await rosterActions(backend).deleteRoom(standup)
+        await rosterActions(backend).forgetRoom(standup)
+      })
       expect(engine.rooms.map((item) => item.room_id)).toEqual(['review'])
       expect(snapshot().rooms.map((item) => item.room_id)).toEqual(['review'])
       expect(engine.metadata.default['talyx-room-folders']).toEqual({ review: 'team' })

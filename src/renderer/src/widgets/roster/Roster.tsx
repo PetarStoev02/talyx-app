@@ -132,7 +132,9 @@ export function Roster({
         onDelete={(room) =>
           run(async () => {
             await actions.deleteRoom(room)
+            // The room is gone; a failed layout cleanup shows on the roster, not in this dialog.
             setDeletingRoom(null)
+            await actions.forgetRoom(room)
           })
         }
       />

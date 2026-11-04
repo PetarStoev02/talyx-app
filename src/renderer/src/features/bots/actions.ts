@@ -11,6 +11,8 @@ export interface RosterActions {
   moveRoom: (roomId: string, folderId: string | null) => Promise<void>
   pinRoom: (room: Room) => Promise<void>
   deleteRoom: (room: Room) => Promise<void>
+  /** Drop a deleted room's folder and pin from the shared layout. */
+  forgetRoom: (room: Room) => Promise<void>
   nest: (id: string, parentId: string | null) => Promise<void>
   orderFolder: (id: string, direction: number) => Promise<void>
   orderPin: (from: string, to: string) => Promise<void>
@@ -26,6 +28,8 @@ export async function refreshRoster(backend: RosterBackend): Promise<void> {
 // A bot hidden or deleted on another client must not stay selected. A chat that moved since the
 // last snapshot got a reply, including from sessions this window never opened (bot deliveries).
 // A room whose log grew past what was last read has new messages.
+// ponytail: the log also counts rows the transcript hides (settled turns, finished rounds), so a
+// room left just before those land can show a dot with nothing new; count only messages if it bites.
 export function applySnapshot(snapshot: RosterSnapshot): void {
   const { selection, seen, roomSeen, markUnread, markRoomUnread } = useRoster.getState()
   const nextSeen: Record<string, number> = {}
@@ -96,7 +100,8 @@ export function rosterActions(backend: RosterBackend): RosterActions {
         room_id: room.room_id,
         cancel_id: crypto.randomUUID()
       })
-      // The room is gone either way; its place in the shared layout goes with it.
+    },
+    forgetRoom: async (room) => {
       const { roomFolders, roomPins } = snapshot()
       if (room.room_id in roomFolders)
         await saveRoomFolders(

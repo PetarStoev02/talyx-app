@@ -19,6 +19,9 @@ export interface RoomDouble {
   failNext: (method: string, message: string) => void
   // The next send lands in the log, but its answer is lost on the way back.
   loseNextAnswer: () => void
+  // The next call to `method` is answered now but delivered only when the returned release runs,
+  // as a reply already on its way when something else changes the room.
+  holdNext: (method: string) => () => void
 }
 
 export const ROOM = 'team-room'
@@ -30,9 +33,18 @@ export function roomDouble(events: RoomEvent[] = []): RoomDouble {
   const calls: ChatCall[] = []
   const failures = new Map<string, string>()
   const stored: RoomDouble['stored'] = []
+  const holds = new Map<string, Promise<void>>()
   let lostAnswer = false
   const double: RoomDouble = {
-    backend: { request: async (profile, method, params) => answer(profile, method, params) },
+    backend: {
+      request: async (profile, method, params) => {
+        const result = answer(profile, method, params)
+        const hold = holds.get(method)
+        holds.delete(method)
+        await hold
+        return result
+      }
+    },
     calls,
     events,
     driver: { working: false, member_activity: [], pending_actions: [] },
@@ -42,6 +54,11 @@ export function roomDouble(events: RoomEvent[] = []): RoomDouble {
     failNext: (method, message) => failures.set(method, message),
     loseNextAnswer: () => {
       lostAnswer = true
+    },
+    holdNext: (method) => {
+      let release = (): void => undefined
+      holds.set(method, new Promise((resolve) => (release = resolve)))
+      return release
     }
   }
 
@@ -95,13 +112,17 @@ export function roomDouble(events: RoomEvent[] = []): RoomDouble {
       case 'groups.discard':
         if (double.driver) double.driver.pending_actions = []
         return { task: {} }
-      case 'groups.attachment.upload':
-        stored.push({
-          name: String(params.name),
-          mime: String(params.mime),
+      case 'groups.attachment.upload': {
+        // The engine trims the name and lower-cases the type; a send must name the stored file.
+        const file = {
+          name: String(params.name).trim(),
+          mime: String(params.mime).toLowerCase(),
           data_base64: String(params.data_base64)
-        })
-        return { attachment_id: `file-${stored.length}`, name: params.name, mime: params.mime }
+        }
+        stored.push(file)
+        const size = atob(file.data_base64).length
+        return { attachment_id: `file-${stored.length}`, kind: params.kind, ...file, size }
+      }
       case 'groups.attachment.download': {
         const file = stored[Number(String(params.attachment_id).replace('file-', '')) - 1]
         if (!file) throw new Error('Attachment not found')

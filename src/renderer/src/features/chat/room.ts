@@ -24,7 +24,7 @@ export interface RoomActions {
   settle: (roomId: string, task: RoomTask) => Promise<void>
   uploadImage: (
     roomId: string,
-    image: { dataUrl: string; name: string; mime: string; size: number }
+    image: { dataUrl: string; name: string; mime: string }
   ) => Promise<RoomAttachment>
   image: (roomId: string, file: { eventId: string; attachmentId: string }) => Promise<string>
 }
@@ -80,7 +80,8 @@ export function roomActions(backend: RoomBackend): RoomActions {
       phases: phasesOf(driver),
       tasks: tasksOf(driver),
       loading: false,
-      error: null
+      // A failed send keeps its reason until it is sent again.
+      error: current?.failedSend ? current.error : null
     })
   }
 
@@ -108,6 +109,12 @@ export function roomActions(backend: RoomBackend): RoomActions {
     return started
   }
 
+  // After a change, a read already on its way asked before it and would miss it: wait it out.
+  async function readAfterChange(roomId: string): Promise<void> {
+    await reads.get(roomId)
+    await refresh(roomId)
+  }
+
   return {
     refresh,
 
@@ -128,13 +135,13 @@ export function roomActions(backend: RoomBackend): RoomActions {
         update(roomId, { failedSend: { eventId, draft: key }, error: messageOf(error) })
         return false
       }
-      await refresh(roomId)
+      await readAfterChange(roomId)
       return true
     },
 
     stop: guarded(async (roomId) => {
       await call('groups.stop', { room_id: roomId, cancel_id: crypto.randomUUID() })
-      await refresh(roomId)
+      await readAfterChange(roomId)
     }),
 
     approve: guarded(async (roomId, task: RoomTask, choice: 'once' | 'deny') => {
@@ -146,7 +153,7 @@ export function roomActions(backend: RoomBackend): RoomActions {
         request_id: task.request_id,
         choice
       })
-      await refresh(roomId)
+      await readAfterChange(roomId)
     }),
 
     settle: guarded(async (roomId, task: RoomTask) => {
@@ -156,10 +163,10 @@ export function roomActions(backend: RoomBackend): RoomActions {
         task_id: task.task_id,
         execution_generation: task.execution_generation
       })
-      await refresh(roomId)
+      await readAfterChange(roomId)
     }),
 
-    uploadImage: async (roomId, { dataUrl, name, mime, size }) => {
+    uploadImage: async (roomId, { dataUrl, name, mime }) => {
       const stored = await call<RoomAttachment>('groups.attachment.upload', {
         room_id: roomId,
         upload_id: crypto.randomUUID(),
@@ -168,7 +175,14 @@ export function roomActions(backend: RoomBackend): RoomActions {
         mime,
         data_base64: dataUrl.slice(dataUrl.indexOf(',') + 1)
       })
-      return { attachment_id: stored.attachment_id, kind: 'image', name, mime, size }
+      // The engine stores a normalized name and type; the send must name the file as stored.
+      return {
+        attachment_id: stored.attachment_id,
+        kind: stored.kind,
+        name: stored.name,
+        mime: stored.mime,
+        size: stored.size
+      }
     },
 
     image: async (roomId, { eventId, attachmentId }) => {

@@ -6,6 +6,7 @@ import { useEngine } from '@app/providers/useEngine'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
+import { senderProfile } from '@features/chat/transcript'
 import type { ChatItem } from '@features/chat/types'
 
 // Links open in the browser through the window-open guard, never inside the app.
@@ -65,7 +66,7 @@ function Sender({ sender }: { sender: { name: string; profile: string } }): Reac
   const managerHandle = useEngine((s) =>
     s.status?.state === 'attached' ? s.status.managerHandle : null
   )
-  const profile = sender.profile === managerHandle ? 'default' : sender.profile
+  const profile = senderProfile(sender.profile, managerHandle)
   const bot = useRoster((state) => state.snapshot.bots.find((item) => item.name === profile))
   return (
     <p className="flex items-center gap-2 text-sm font-medium">

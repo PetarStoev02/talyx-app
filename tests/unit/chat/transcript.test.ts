@@ -4,6 +4,7 @@ import {
   applyEvent,
   fromHistory,
   needsRebuild,
+  senderProfile,
   settlePrompt
 } from '../../../src/renderer/src/features/chat/transcript'
 import type { ChatPrompt, Transcript } from '../../../src/renderer/src/features/chat/types'
@@ -125,6 +126,13 @@ describe('chat transcript', () => {
         error: null,
         sender: { name: 'Agro Ops CFO', profile: 'agro-ops-cfo' }
       })
+    })
+
+    it("should read a delivery from Talyx's handle as Talyx's own profile", () => {
+      expect(senderProfile('acme', 'acme')).toBe('default')
+      expect(senderProfile('agro-ops-cfo', 'acme')).toBe('agro-ops-cfo')
+      // Before the engine reports its handle, a sender stays as written.
+      expect(senderProfile('acme', null)).toBe('acme')
     })
 
     it('should show engine notices as one quiet line', () => {

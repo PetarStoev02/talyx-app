@@ -33,6 +33,14 @@ export function fromHistory(
   return { sessionId, items, prompts: [], running, lastSeq: 0, epoch: null }
 }
 
+/**
+ * The profile behind a sender. A delivery names its sender by @handle, which is the profile's name
+ * except for Talyx: the engine gives the default profile its own name as handle.
+ */
+export function senderProfile(handle: string, managerHandle: string | null): string {
+  return handle === managerHandle ? 'default' : handle
+}
+
 export function applyEvent(transcript: Transcript, event: GatewayEvent): Transcript {
   const epoch = event.replay_epoch ?? event.replayEpoch
   if (epoch && epoch !== transcript.epoch)

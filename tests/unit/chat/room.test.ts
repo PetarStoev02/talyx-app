@@ -141,6 +141,26 @@ describe('group room', () => {
       expect(view()).toMatchObject({ failedSend: null, error: null })
     })
 
+    it('should keep why a send failed while the room keeps reading', async () => {
+      engine.failNext('groups.send', 'Room is full')
+      await actions.send(ROOM, { text: 'Go monthly?', attachments: [] })
+      await actions.refresh(ROOM)
+      expect(view().error).toBe('Room is full')
+    })
+
+    it('should show a sent message even when a read was already on its way', async () => {
+      await actions.refresh(ROOM)
+      const release = engine.holdNext('groups.state')
+      const polling = actions.refresh(ROOM)
+      const sending = actions.send(ROOM, { text: 'Go monthly?', attachments: [] })
+      release()
+      await Promise.all([polling, sending])
+      expect(view().events.at(-1)).toMatchObject({
+        kind: 'message.user',
+        payload: { text: 'Go monthly?' }
+      })
+    })
+
     it('should post a changed draft after a failure as a new message', async () => {
       engine.failNext('groups.send', 'Socket closed')
       await actions.send(ROOM, { text: 'Go monthly?', attachments: [] })
@@ -152,9 +172,8 @@ describe('group room', () => {
     it('should upload an image for the next message and read it back', async () => {
       const attachment = await actions.uploadImage(ROOM, {
         dataUrl: 'data:image/png;base64,aGVsbG8=',
-        name: 'chart.png',
-        mime: 'image/png',
-        size: 5
+        name: ' chart.png ',
+        mime: 'IMAGE/PNG'
       })
       expect(attachment).toEqual({
         attachment_id: 'file-1',

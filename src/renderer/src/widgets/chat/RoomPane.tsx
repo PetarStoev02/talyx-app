@@ -75,10 +75,9 @@ export function RoomPane({
       const stored = await actions.uploadImage(roomId, {
         dataUrl,
         name: file.name,
-        mime: file.type,
-        size: file.size
+        mime: file.type
       })
-      return { id: stored.attachment_id, name: file.name, mime: file.type, size: file.size }
+      return { id: stored.attachment_id, name: stored.name, mime: stored.mime, size: stored.size }
     },
     transcribe,
     stop: () => void actions.stop(roomId)
@@ -148,9 +147,13 @@ function activityLine(
       .filter(([, value]) => value === phase)
       .map(([member]) => nameOf(member))
   const working = named('working')
-  if (working.length) return t('rooms.working').replace('{names}', working.join(', '))
   const queued = named('queued')
-  return queued.length ? t('rooms.queued').replace('{names}', queued.join(', ')) : ''
+  return [
+    working.length ? t('rooms.working').replace('{names}', working.join(', ')) : '',
+    queued.length ? t('rooms.queued').replace('{names}', queued.join(', ')) : ''
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 /** A member's turn that waits on you: an approval card, or a stalled turn to retry or discard. */
