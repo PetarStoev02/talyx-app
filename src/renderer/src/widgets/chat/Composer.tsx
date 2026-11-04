@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react'
 import { DropdownMenu } from 'radix-ui'
-import { ArrowUp, ChevronDown, Plus, Square, X } from 'lucide-react'
+import { ArrowUp, ChevronDown, LoaderCircle, Mic, Plus, Square, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { ChatActions, ChatImage } from '@features/chat/chat'
 import type { ChatState } from '@features/chat/store'
+import { dataUrlOf, useDictation } from '@features/chat/useDictation'
+import { cn } from '@shared/lib/utils'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
 import type { TranslationKey } from '@shared/lib/i18n'
 
@@ -32,6 +34,11 @@ export function Composer({
   const picker = useRef<HTMLInputElement>(null)
   const running = chat.transcript?.running === true
   const { profile } = chat
+  const dictation = useDictation(
+    (audio) => actions.transcribe(profile, audio),
+    (words) => setText((current) => (current.trim() ? `${current}\n${words}` : words)),
+    (error) => toast.error(error instanceof Error ? error.message : String(error))
+  )
 
   async function send(): Promise<void> {
     if (running || (!text.trim() && !images.length)) return
@@ -135,6 +142,30 @@ export function Composer({
           <ModelMenu chat={chat} actions={actions} />
           <ReasoningMenu chat={chat} actions={actions} />
           <span className="ml-auto" />
+          <button
+            type="button"
+            aria-label={
+              dictation.state === 'recording'
+                ? t('chat.dictating')
+                : dictation.state === 'transcribing'
+                  ? t('chat.transcribing')
+                  : t('chat.dictate')
+            }
+            aria-pressed={dictation.state === 'recording'}
+            disabled={dictation.state === 'transcribing'}
+            onClick={dictation.toggle}
+            className={cn(
+              'rounded-full p-2 hover:bg-accent',
+              dictation.state === 'recording' &&
+                'bg-primary text-primary-foreground hover:bg-primary'
+            )}
+          >
+            {dictation.state === 'transcribing' ? (
+              <LoaderCircle size={18} className="animate-spin" />
+            ) : (
+              <Mic size={18} />
+            )}
+          </button>
           {running ? (
             <button
               type="button"
@@ -275,13 +306,4 @@ function MenuItem({
       {label}
     </DropdownMenu.CheckboxItem>
   )
-}
-
-function dataUrlOf(file: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(reader.error ?? new Error('read failed'))
-    reader.readAsDataURL(file)
-  })
 }
