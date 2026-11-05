@@ -1,9 +1,10 @@
 /**
  * A `window.api` good enough to render the real renderer in a browser tab.
  *
- * Only settings have a fixture; every other call falls through to the proxy
- * below and answers `undefined`, so a new IPC channel in the app degrades to a
- * quiet no-op here rather than a crash in the landing page.
+ * Settings, the engine status and the update state have fixtures; every other
+ * call falls through to the proxy below and answers `undefined`, so a new IPC
+ * channel in the app degrades to a quiet no-op here rather than a crash in the
+ * landing page.
  */
 
 import { EXPECTED_ENGINE_VERSION } from '../../../src/shared/engine'
