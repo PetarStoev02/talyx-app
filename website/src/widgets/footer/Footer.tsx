@@ -1,11 +1,11 @@
 import { Link } from '@tanstack/react-router'
-import { DOWNLOADS, ISSUES_URL, REPO_URL, SECURITY_REPORT_URL } from '../../shared/data/release'
+import { ISSUES_URL, SECURITY_REPORT_URL } from '../../shared/data/release'
 import { NAV_GROUPS, type NavGroup } from '../../shared/data/navigation'
 import { NavAnchor } from '../../shared/ui/NavAnchor'
 import { ThemeSwitcher } from '../../features/theme/ThemeSwitcher'
 import { useTheme } from '../../features/theme/useTheme'
 
-const [product, resources] = NAV_GROUPS
+const [product, resources, download] = NAV_GROUPS
 
 const COLUMNS: NavGroup[] = [
   product,
@@ -17,16 +17,7 @@ const COLUMNS: NavGroup[] = [
       { label: 'Report a security issue', href: SECURITY_REPORT_URL }
     ]
   },
-  {
-    title: 'Download',
-    links: [
-      { label: 'macOS, Apple Silicon', href: DOWNLOADS.appleSilicon },
-      { label: 'macOS, Intel', href: DOWNLOADS.intel },
-      { label: 'Linux, AppImage', href: DOWNLOADS.appImage },
-      { label: 'Linux, deb', href: DOWNLOADS.deb },
-      { label: 'Source on GitHub', href: REPO_URL }
-    ]
-  }
+  download
 ]
 
 const LINK_CLASS =

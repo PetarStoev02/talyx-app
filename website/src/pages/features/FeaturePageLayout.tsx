@@ -45,8 +45,13 @@ export function FeaturePageLayout({
 }: FeaturePageLayoutProps) {
   useDocumentTitle(title)
 
-  const related = features.filter((f) => f.slug !== slug).slice(0, RELATED_COUNT)
   const { preview } = featureBySlug(slug)
+  const at = features.findIndex((f) => f.slug === slug)
+  // The features after this one, wrapping, so each page points somewhere different.
+  const related = Array.from(
+    { length: RELATED_COUNT },
+    (_, n) => features[(at + n + 1) % features.length]
+  )
 
   return (
     <>
@@ -63,7 +68,7 @@ export function FeaturePageLayout({
 
 function HowItWorks({ heading, steps }: { heading: string; steps: FeaturePoint[] }) {
   return (
-    <section className={`${GUTTER} grid gap-12 py-32 md:grid-cols-12 md:py-48`}>
+    <section className={`${GUTTER} grid gap-12 py-20 md:grid-cols-12 md:py-28`}>
       <div className="md:sticky md:top-32 md:col-span-4 md:self-start">
         <SectionHeading>{heading}</SectionHeading>
       </div>
@@ -86,7 +91,7 @@ function HowItWorks({ heading, steps }: { heading: string; steps: FeaturePoint[]
 
 function Benefits({ heading, benefits }: { heading: string; benefits: FeaturePoint[] }) {
   return (
-    <section className={`${GUTTER} py-32 md:py-48`}>
+    <section className={`${GUTTER} py-20 md:py-28`}>
       <SectionHeading>{heading}</SectionHeading>
       <ul className="mt-16 grid gap-x-16 gap-y-14 md:mt-24 md:grid-cols-2 md:gap-y-20">
         {benefits.map((benefit, i) => (
@@ -102,7 +107,7 @@ function Benefits({ heading, benefits }: { heading: string; benefits: FeaturePoi
 
 function MoreFeatures({ related }: { related: FeatureNav[] }) {
   return (
-    <section className={`${GUTTER} py-32 md:py-48`}>
+    <section className={`${GUTTER} py-20 md:py-28`}>
       <SectionHeading>More of Talyx</SectionHeading>
       <ul className="mt-16 space-y-20 md:mt-24 md:space-y-32">
         {related.map((f) => (

@@ -5,7 +5,11 @@ import type { NavLink } from '../data/navigation'
 export function NavAnchor({ link, className }: { link: NavLink; className: string }) {
   if ('href' in link)
     return (
-      <a href={link.href} className={className}>
+      <a
+        href={link.href}
+        className={className}
+        {...(link.asset ? { 'data-cta': 'download', 'data-asset': link.asset } : {})}
+      >
         {link.label}
       </a>
     )

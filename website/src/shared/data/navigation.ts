@@ -1,3 +1,5 @@
+import { ASSETS, DOWNLOADS, REPO_URL } from './release'
+
 /** Every feature page the header's menus and the footer link to. */
 export interface FeatureNav {
   slug: string
@@ -11,25 +13,25 @@ export const features: FeatureNav[] = [
   {
     slug: 'roster',
     title: 'Roster',
-    shortDescription: 'Every bot in one list, with pins, folders and unread marks.',
+    shortDescription: 'Every bot in one list, with pins, folders and what each one is doing.',
     preview: '/previews/chat.jpg'
   },
   {
     slug: 'manager',
-    title: 'The manager bot',
-    shortDescription: 'Talyx delegates to your other bots and briefs you on the result.',
+    title: 'Talyx, the manager',
+    shortDescription: 'Ask Talyx and it hands the work to the right bot, then briefs you.',
     preview: '/previews/chat.jpg'
   },
   {
     slug: 'rooms',
     title: 'Group rooms',
-    shortDescription: 'Several bots in one chat, with approvals when they ask.',
+    shortDescription: 'Two to six bots in one conversation, hosted by the engine.',
     preview: '/previews/room.jpg'
   },
   {
     slug: 'routines',
     title: 'Routines',
-    shortDescription: 'Jobs a bot runs on a schedule, managed from its details panel.',
+    shortDescription: 'Jobs a bot runs on a schedule, even with Talyx closed.',
     preview: '/previews/details.jpg'
   },
   {
@@ -41,7 +43,7 @@ export const features: FeatureNav[] = [
   {
     slug: 'models-and-keys',
     title: 'Models and keys',
-    shortDescription: 'Add API keys, sign in with an account, or point at a custom endpoint.',
+    shortDescription: 'Use your own API keys, account sign-ins or custom endpoints.',
     preview: '/previews/details.jpg'
   },
   {
@@ -62,7 +64,7 @@ export const resources = [
 export type NavLink =
   | { label: string; to: '/features/$slug'; params: { slug: string } }
   | { label: string; to: (typeof resources)[number]['to'] }
-  | { label: string; href: string }
+  | { label: string; href: string; /** The installer file, for download links. */ asset?: string }
 
 export interface NavGroup {
   title: string
@@ -82,6 +84,16 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Resources',
     links: resources.map(({ to, title }) => ({ label: title, to }))
+  },
+  {
+    title: 'Download',
+    links: [
+      { label: 'macOS, Apple Silicon', href: DOWNLOADS.appleSilicon, asset: ASSETS.appleSilicon },
+      { label: 'macOS, Intel', href: DOWNLOADS.intel, asset: ASSETS.intel },
+      { label: 'Linux, AppImage', href: DOWNLOADS.appImage, asset: ASSETS.appImage },
+      { label: 'Linux, deb', href: DOWNLOADS.deb, asset: ASSETS.deb },
+      { label: 'Source on GitHub', href: REPO_URL }
+    ]
   }
 ]
 

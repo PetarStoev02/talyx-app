@@ -1,14 +1,30 @@
 import { Link, useParams } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
-import { features } from '../../shared/data/navigation'
 import { PageHero, STEP } from '../../shared/ui/page'
-import { FeaturePageLayout } from './FeaturePageLayout'
+import { BotDetailsPage } from './pages/BotDetailsPage'
+import { ManagerPage } from './pages/ManagerPage'
+import { ModelsAndKeysPage } from './pages/ModelsAndKeysPage'
+import { PrivacyPage } from './pages/PrivacyPage'
+import { RoomsPage } from './pages/RoomsPage'
+import { RosterPage } from './pages/RosterPage'
+import { RoutinesPage } from './pages/RoutinesPage'
+
+// Static imports: this module is already its own lazy route chunk, and the pages are small.
+const featurePages: Record<string, () => React.JSX.Element> = {
+  roster: RosterPage,
+  manager: ManagerPage,
+  rooms: RoomsPage,
+  routines: RoutinesPage,
+  'bot-details': BotDetailsPage,
+  'models-and-keys': ModelsAndKeysPage,
+  privacy: PrivacyPage
+}
 
 export function FeaturePage() {
   const { slug } = useParams({ from: '/features/$slug' })
-  const feature = features.find((f) => f.slug === slug)
+  const Page = featurePages[slug]
 
-  if (!feature) {
+  if (!Page) {
     return (
       <PageHero title="Feature not found" lead="There is no Talyx feature at this address.">
         <Link
@@ -23,13 +39,5 @@ export function FeaturePage() {
     )
   }
 
-  return (
-    <FeaturePageLayout
-      slug={feature.slug}
-      title={feature.title}
-      lead={feature.shortDescription}
-      steps={[]}
-      benefits={[]}
-    />
-  )
+  return <Page />
 }
