@@ -19,7 +19,7 @@ export function ManagerPage() {
         },
         {
           title: 'You read the brief.',
-          description: 'Talyx collects the replies and sums them up for you in a few lines.'
+          description: 'Talyx collects the replies and sums them up for you.'
         }
       ]}
       benefitsHeading="How it fits in"

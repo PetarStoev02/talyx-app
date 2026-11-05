@@ -101,7 +101,7 @@ const featureMeta: Record<FeatureSlug, Pick<PageMeta, 'title' | 'description'>> 
   manager: {
     title: 'Manager Bot: Talyx | Hands Out the Work, Then Briefs You',
     description:
-      'Ask Talyx for something and it passes the work to the bot that fits, reads the reply and sums it up for you in a few lines.'
+      'Ask Talyx for something and it passes the work to the bot that fits, reads the reply and sums it up for you.'
   },
   rooms: {
     title: 'Group Rooms: Talyx | Two to Six Bots in One Chat',

@@ -15,7 +15,7 @@ const STAGES = [
   },
   {
     line: 'Read the brief.',
-    note: 'Talyx collects the replies and sums them up for you in a few lines.'
+    note: 'Talyx collects the replies and sums them up for you.'
   }
 ]
 
