@@ -8,16 +8,22 @@ export const LastSelectionSchema = z.object({
   id: z.string().min(1).max(200)
 })
 
+export const ThemeSchema = z.enum(['light', 'dark', 'system'])
+export type Theme = z.infer<typeof ThemeSchema>
+
 export const UserSettingsPartialSchema = z
   .object({
     lastSelection: LastSelectionSchema.nullable(),
-    theme: z.enum(['light', 'dark', 'system']),
+    theme: ThemeSchema,
+    setupDone: z.boolean(),
+    launchAtLogin: z.boolean(),
     sidebarWidth: z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)
   })
   .partial()
 
 /** Talyx runs this file, so it is never set through `settings:set` (page code could name any
- *  binary): only the native file chooser behind `engine:pick-path` writes it. */
+ *  binary): only the native file chooser behind `engine:pick-path` and `engine:use-installed`
+ *  (the user bin's engine, no argument) write it. */
 export const EnginePathSchema = z.string().refine(isAbsolute, 'enginePath must be an absolute path')
 
 /** A renderer failure for the log file; capped so a page cannot flood it. */

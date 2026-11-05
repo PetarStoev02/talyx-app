@@ -1,19 +1,24 @@
 /**
  * A `window.api` good enough to render the real renderer in a browser tab.
  *
- * Only settings have a fixture; every other call falls through to the proxy
- * below and answers `undefined`, so a new IPC channel in the app degrades to a
- * quiet no-op here rather than a crash in the landing page.
+ * Settings, the engine status and the update state have fixtures; every other
+ * call falls through to the proxy below and answers `undefined`, so a new IPC
+ * channel in the app degrades to a quiet no-op here rather than a crash in the
+ * landing page.
  */
+
+import { EXPECTED_ENGINE_VERSION } from '../../../src/shared/engine'
 
 const noop = (): (() => void) => () => {}
 
 const SETTINGS = { theme: 'system', sidebarCollapsed: false }
 
-// The landing page has no engine; it shows the attached shell. The keys are placeholders.
+// The landing page has no engine; it shows the attached shell on the expected version (so no
+// update notice). The keys are placeholders.
 const ENGINE_STATUS = {
   state: 'attached',
-  version: '0.22.5',
+  version: EXPECTED_ENGINE_VERSION,
+  path: '/demo/talyx-engine',
   commit: null,
   home: '/demo',
   stale: false,
@@ -23,6 +28,8 @@ const ENGINE_STATUS = {
 
 const fixtures: Record<string, unknown> = {
   getEngineStatus: () => Promise.resolve({ ...ENGINE_STATUS }),
+  // The footer reads the update state on mount; the demo never has an update.
+  getUpdateState: () => Promise.resolve({ kind: 'none' }),
   getSettings: () => Promise.resolve({ ...SETTINGS }),
   setSettings: (partial: Record<string, unknown>) => {
     Object.assign(SETTINGS, partial)

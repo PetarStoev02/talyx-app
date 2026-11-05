@@ -8,6 +8,7 @@ import {
   engineCandidates,
   EngineHttpError,
   EngineRouteError,
+  resolveOnPath,
   type EngineDeps
 } from '../../../src/main/infrastructure/engine/engine'
 import {
@@ -22,6 +23,9 @@ import { engineWire, parseEngineVersion } from '../../../src/shared/engine'
 const VERSION_LINE =
   'Acme Agent v1.2.3 (2026.9.24) · stable · local abcdef1234ab\nInstall directory: /x'
 const HOME = '/home/u/.acme'
+// Where the made-up PATH holds the engine command.
+const PATH_ENV = '/usr/bin:/opt/acme/bin'
+const ON_PATH = '/opt/acme/bin/talyx-engine'
 
 function endpointFixture(overrides: Partial<GatewayEndpoint> = {}): GatewayEndpoint {
   return {
@@ -70,6 +74,8 @@ function engineWith(overrides: Partial<EngineDeps> & { ensure?: () => CliResult 
     mintTicket: async () => 'ticket-1',
     platform: 'darwin',
     home: '/home/u',
+    pathEnv: PATH_ENV,
+    isExecutable: (path) => path === ON_PATH,
     ...overrides
   })
   return { engine, run }
@@ -90,7 +96,9 @@ describe('engine command', () => {
     })
     expect(await engineWith({ run }).engine.status()).toEqual({
       state: 'error',
-      message: 'spawn EACCES'
+      message: 'spawn EACCES',
+      version: null,
+      reason: null
     })
   })
 
@@ -118,6 +126,40 @@ describe('engine command', () => {
       'ensure',
       '--json'
     ])
+  })
+})
+
+describe('which engine runs', () => {
+  const executable = (paths: string[]) => (path: string) => paths.includes(path)
+
+  it('should find the command in a later PATH entry', () => {
+    expect(resolveOnPath('talyx-engine', '/usr/bin:/opt/acme/bin', executable([ON_PATH]))).toBe(
+      ON_PATH
+    )
+  })
+
+  it('should find nothing when no PATH entry holds the command', () => {
+    expect(resolveOnPath('talyx-engine', '/usr/bin:/bin', executable([ON_PATH]))).toBeNull()
+  })
+
+  it('should skip a file that is not executable, and relative or empty entries', () => {
+    const isExecutable = vi.fn((path: string) => path === '/b/talyx-engine')
+    expect(resolveOnPath('talyx-engine', '::bin:/a:/b', isExecutable)).toBe('/b/talyx-engine')
+    expect(isExecutable.mock.calls.map(([path]) => path)).toEqual([
+      '/a/talyx-engine',
+      '/b/talyx-engine'
+    ])
+  })
+
+  it('should report a PATH hit as its absolute file, and run that file', async () => {
+    const { engine, run } = engineWith()
+    expect(await engine.status()).toMatchObject({ state: 'attached', path: ON_PATH })
+    expect(run).toHaveBeenLastCalledWith(ON_PATH, expect.arrayContaining(['ensure']))
+  })
+
+  it('should report the chosen file as the engine that runs', async () => {
+    const status = await engineWith({ enginePath: () => '/chosen/engine' }).engine.status()
+    expect(status).toMatchObject({ state: 'attached', path: '/chosen/engine' })
   })
 })
 
@@ -153,7 +195,9 @@ describe('engine status', () => {
     const { engine, run } = engineWith({ platform: 'win32' })
     expect(await engine.status()).toEqual({
       state: 'error',
-      message: 'Talyx cannot attach to the engine on Windows yet'
+      message: 'Talyx cannot attach to the engine on Windows yet',
+      version: null,
+      reason: null
     })
     expect(run).not.toHaveBeenCalled()
   })
@@ -168,12 +212,38 @@ describe('engine status', () => {
     })
   })
 
+  it('should report the version of an engine whose attach fails', async () => {
+    const run = vi.fn(
+      async (_command: string, args: string[]): Promise<CliResult> =>
+        args[0] === '--version'
+          ? { code: 0, stdout: 'Acme Agent v0.21.0 (2026.1.1) · stable', stderr: '' }
+          : { code: 1, stdout: '', stderr: '' }
+    )
+    expect(await engineWith({ run }).engine.status()).toEqual({
+      state: 'error',
+      message: expect.any(String),
+      version: '0.21.0',
+      reason: null
+    })
+  })
+
+  it('should report no version when the version line cannot be parsed', async () => {
+    const run = vi.fn(async (): Promise<CliResult> => ({ code: 0, stdout: '???', stderr: '' }))
+    expect(await engineWith({ run }).engine.status()).toEqual({
+      state: 'error',
+      message: expect.any(String),
+      version: null,
+      reason: null
+    })
+  })
+
   it('should attach to the gateway ensure reports and pass the metadata keys on', async () => {
     expect(await engineWith().engine.status()).toEqual({
       state: 'attached',
       version: '1.2.3',
       commit: 'abcdef1',
       home: HOME,
+      path: ON_PATH,
       stale: false,
       botMetaKey: 'acme-bots',
       botGroupsMetaKey: 'acme-bots-groups',
@@ -188,13 +258,29 @@ describe('engine status', () => {
     expect(status).toMatchObject({ state: 'attached', stale: true })
   })
 
+  it('should refuse a non-loopback origin as an invalid endpoint, not a protocol problem', async () => {
+    const status = await engineWith({
+      ensure: () => ensureOutput(endpointFixture({ api_origin: 'http://10.0.0.2:4567' }))
+    }).engine.status()
+    expect(status).toEqual({
+      state: 'error',
+      message: 'Invalid local gateway endpoint',
+      version: '1.2.3',
+      reason: null
+    })
+  })
+
   it.each([
-    ['a non-loopback origin', endpointFixture({ api_origin: 'http://10.0.0.2:4567' })],
     ['no session authority', endpointFixture({ capabilities: [] })],
     ['another runtime protocol', endpointFixture({ runtime_protocol: 2 })]
-  ])('should refuse an endpoint with %s', async (_case, endpoint) => {
+  ])('should name a protocol mismatch for an endpoint with %s', async (_case, endpoint) => {
     const status = await engineWith({ ensure: () => ensureOutput(endpoint) }).engine.status()
-    expect(status).toEqual({ state: 'error', message: 'Invalid local gateway endpoint' })
+    expect(status).toEqual({
+      state: 'error',
+      message: expect.stringContaining('another gateway protocol'),
+      version: '1.2.3',
+      reason: 'protocol'
+    })
   })
 
   it('should explain an ensure that printed nothing with its last stderr line', async () => {

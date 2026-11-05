@@ -1,14 +1,19 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
 import log from 'electron-log'
 import { join } from 'path'
-import { pathToFileURL } from 'url'
 import { optimizer, is } from './lib/electronUtils'
+import { setProductionMenu } from './lib/appMenu'
 import { installWebContentsGuard } from './infrastructure/security/webContentsGuard'
+import { APP_ROOT, registerAppScheme, serveRenderer } from './infrastructure/security/appProtocol'
 import { registerSettingsIpc } from './infrastructure/ipc/settings.ipc'
+import { cancelInstall, registerSetupIpc } from './infrastructure/ipc/setup.ipc'
 import { registerLogIpc } from './infrastructure/ipc/log.ipc'
 import { closeEngineSockets, registerEngineIpc } from './infrastructure/ipc/engine.ipc'
-import { checkForUpdate } from './infrastructure/updater/releaseCheck'
+import { registerUpdaterIpc, updates } from './infrastructure/ipc/updater.ipc'
+import { fetchLatestRelease } from './infrastructure/updater/releaseCheck'
 import { settingsStore } from './infrastructure/storage/SettingsStore'
+import { syncLaunchAtLogin, systemLoginItemDeps } from './infrastructure/system/loginItem'
+import { ThemeSchema, validateInput, type Theme } from './infrastructure/ipc/validation'
 import { DevBridge } from './infrastructure/bridge/DevBridge'
 import icon from '../../resources/talyx-icon.png?asset'
 
@@ -22,7 +27,18 @@ const WINDOW_SHOW_TIMEOUT_MS = 8_000
 const isMac = process.platform === 'darwin'
 const rendererUrl = is.dev ? process.env['ELECTRON_RENDERER_URL'] : undefined
 
+// A dev run must never be mistaken for the installed app: it gets its own name and a night-sky
+// icon (build/ is not packaged). userData is pinned first, so both runs share one settings.json.
+const DEV_NAME = 'Talyx Dev'
+if (is.dev) {
+  app.setPath('userData', app.getPath('userData'))
+  app.setName(DEV_NAME)
+}
+const appIcon = is.dev ? join(app.getAppPath(), 'build/talyx-icon-dev.png') : icon
+
 let mainWindow: BrowserWindow | null = null
+
+registerAppScheme()
 
 // Browser dev bridge: lets a plain browser tab at localhost:5173 drive the app in dev
 const devBridge = rendererUrl ? new DevBridge(Number(new URL(rendererUrl).port)) : null
@@ -32,18 +48,20 @@ function registerIpc(): void {
   devBridge?.installTap(ipcMain)
   registerSettingsIpc()
   registerEngineIpc()
+  registerSetupIpc()
   registerLogIpc()
-  ipcMain.handle('theme:set-native', (_event, theme: unknown) => syncNativeTheme(theme))
+  registerUpdaterIpc()
+  ipcMain.handle('theme:set-native', (_event, theme: unknown) =>
+    syncNativeTheme(validateInput(ThemeSchema, theme))
+  )
   devBridge
     ?.start(Number(process.env['TALYX_BRIDGE_PORT'] ?? 5175))
     .catch((error: unknown) => log.error('[DevBridge] Could not start', error))
 }
 
 /** Keep native chrome (menus, dialogs, scrollbars) in the same appearance as the app theme. */
-function syncNativeTheme(theme: unknown): void {
-  if (theme === 'light' || theme === 'dark' || theme === 'system') {
-    nativeTheme.themeSource = theme
-  }
+function syncNativeTheme(theme: Theme): void {
+  nativeTheme.themeSource = theme
 }
 
 /** The theme's ground (--background in theme.css), so a resize never flashes another colour. */
@@ -55,7 +73,7 @@ function groundColor(): string {
 function loadPage(win: BrowserWindow, page: 'index' | 'splash'): void {
   const loading = rendererUrl
     ? win.loadURL(page === 'index' ? rendererUrl : `${rendererUrl}/splash.html`)
-    : win.loadFile(join(__dirname, `../renderer/${page}.html`))
+    : win.loadURL(`${APP_ROOT}${page}.html`)
   loading.catch((error: unknown) => log.warn(`[Main] ${page} page did not load`, error))
 }
 
@@ -98,6 +116,7 @@ function createWindow(): BrowserWindow {
     height: 800,
     minWidth: 600,
     minHeight: 500,
+    title: app.name,
     show: false,
     autoHideMenuBar: true,
     frame: false,
@@ -105,7 +124,7 @@ function createWindow(): BrowserWindow {
     // Centered on the 56px title row (h-14 in AppShell and PageHeader).
     trafficLightPosition: { x: 16, y: 22 },
     backgroundColor: groundColor(),
-    icon,
+    icon: appIcon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -114,6 +133,8 @@ function createWindow(): BrowserWindow {
     }
   })
   watchWindowFailures(win)
+  // The page's <title> would otherwise rename the window back to Talyx.
+  if (is.dev) win.on('page-title-updated', (event) => event.preventDefault())
   loadPage(win, 'index')
   return win
 }
@@ -191,12 +212,27 @@ function bringMainWindowForward(): void {
   mainWindow.focus()
 }
 
-/** Tells the user about a newer release; Talyx is unsigned and installs nothing itself. */
+/** Feeds the newest release to the update button; a failed check keeps what it shows. */
 function scheduleUpdateChecks(): void {
   if (is.dev) return
-  const check = (): void => void checkForUpdate(mainWindow)
-  setTimeout(check, STARTUP_UPDATE_CHECK_DELAY_MS)
-  setInterval(check, UPDATE_CHECK_INTERVAL_MS)
+  const check = async (): Promise<void> => {
+    const result = await fetchLatestRelease(fetch, app.getVersion())
+    if (result.kind === 'available') updates.found(result.release)
+    else if (result.kind === 'up-to-date') updates.found(null)
+  }
+  setTimeout(() => void check(), STARTUP_UPDATE_CHECK_DELAY_MS)
+  setInterval(() => void check(), UPDATE_CHECK_INTERVAL_MS)
+}
+
+/** The OS is the truth: a login item removed in System Settings must show as off in Talyx. */
+async function adoptLoginItemState(): Promise<void> {
+  if (is.dev) return
+  try {
+    const enabled = await syncLaunchAtLogin(systemLoginItemDeps())
+    if (enabled !== settingsStore.store.launchAtLogin) settingsStore.set({ launchAtLogin: enabled })
+  } catch (error) {
+    log.warn('[Main] Could not read the launch-at-login state', error)
+  }
 }
 
 // Logged rather than left to Electron's default dialog, which would stop at the first one.
@@ -212,11 +248,10 @@ app
       return
     }
 
-    installWebContentsGuard(
-      rendererUrl
-        ? `${new URL(rendererUrl).origin}/`
-        : `${pathToFileURL(join(__dirname, '../renderer')).href}/`
-    )
+    installWebContentsGuard(rendererUrl ? `${new URL(rendererUrl).origin}/` : APP_ROOT)
+    if (!rendererUrl) serveRenderer(join(__dirname, '../renderer'))
+    if (!is.dev) setProductionMenu(process.platform)
+    if (is.dev) app.dock?.setIcon(appIcon)
 
     app.on('browser-window-created', (_, window) =>
       optimizer.watchWindowShortcuts(window, { zoom: true })
@@ -237,6 +272,7 @@ app
       if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setBackgroundColor(groundColor())
     })
     syncNativeTheme(settingsStore.store.theme)
+    await adoptLoginItemState()
     showMainWindow(splash)
     scheduleUpdateChecks()
 
@@ -257,7 +293,11 @@ app
   })
 
 // Only Talyx's sockets close; the engine gateway outlives the app and is never stopped here.
-app.on('before-quit', closeEngineSockets)
+app.on('before-quit', () => {
+  closeEngineSockets()
+  cancelInstall()
+  updates.cancel()
+})
 
 app.on('window-all-closed', () => {
   if (!isMac) app.quit()

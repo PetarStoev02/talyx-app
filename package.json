@@ -1,11 +1,12 @@
 {
   "name": "talyx",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0",
   "description": "Tally your agents: one roster, one chat, a manager who briefs you",
   "license": "MIT",
   "engines": {
     "node": ">=22.12.0"
   },
+  "author": "Petar Stoev <66165404+PetarStoev02@users.noreply.github.com>",
   "homepage": "https://talyx.app",
   "repository": {
     "type": "git",
@@ -28,9 +29,11 @@
     "build": "npm run typecheck && electron-vite build",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:mac": "electron-vite build && electron-builder --mac --publish never",
+    "build:linux": "electron-vite build && electron-builder --linux --x64 --publish never",
     "release": "bash scripts/release.sh",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:smoke": "vitest run --config vitest.smoke.config.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.1",
@@ -45,7 +48,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
-    "zod": "^4.3.6",
+    "zod": "^4.6.7",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
@@ -56,7 +59,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
-    "electron": "^44.7.0",
+    "electron": "^44.10.2",
     "electron-builder": "^26.0.12",
     "electron-vite": "^5.0.0",
     "eslint": "^9.39.1",

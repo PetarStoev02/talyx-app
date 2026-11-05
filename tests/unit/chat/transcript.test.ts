@@ -192,6 +192,56 @@ describe('chat transcript', () => {
       expect(transcript.items[0]).toMatchObject({ text: 'Hi' })
     })
 
+    describe('stamped turns (engine 0.22.7)', () => {
+      const TURN = 'turn-1'
+      const start = (seq: number, turnId = TURN): GatewayEvent =>
+        event('message.start', { turn_id: turnId }, seq)
+      const delta = (text: string, offset: number, seq: number, turnId = TURN): GatewayEvent =>
+        event('message.delta', { text, turn_id: turnId, segment: 0, offset }, seq)
+      const streamed = (): Transcript =>
+        replay(empty(), start(1), delta('Hel', 0, 2), delta('lo', 3, 3))
+
+      it('should add no text when a reconnect replays the turn under new seqs', () => {
+        const transcript = replay(streamed(), start(4), delta('Hel', 0, 5), delta('lo', 3, 6))
+        expect(transcript.items).toHaveLength(1)
+        expect(transcript.items[0]).toMatchObject({ kind: 'bot', text: 'Hello', streaming: true })
+      })
+
+      it('should replace the segment a superseded attempt streams again', () => {
+        const transcript = applyEvent(streamed(), delta('Hello there', 0, 4))
+        expect(transcript.items).toHaveLength(1)
+        expect(transcript.items[0]).toMatchObject({ text: 'Hello there' })
+      })
+
+      it('should keep only the unseen tail of an overlapping chunk', () => {
+        const transcript = applyEvent(streamed(), delta('lo!', 3, 4))
+        expect(transcript.items[0]).toMatchObject({ text: 'Hello!' })
+      })
+
+      it('should stream the next turn as a new reply', () => {
+        const transcript = replay(
+          streamed(),
+          event('message.complete', { text: 'Hello' }, 4),
+          start(5, 'turn-2'),
+          delta('Again', 0, 6, 'turn-2')
+        )
+        expect(transcript.items.map((item) => ('text' in item ? item.text : ''))).toEqual([
+          'Hello',
+          'Again'
+        ])
+      })
+
+      it('should append every unstamped delta with a new seq, as older engines send them', () => {
+        const transcript = replay(
+          empty(),
+          event('message.start', {}, 1),
+          event('message.delta', { text: 'Hi' }, 2),
+          event('message.delta', { text: 'Hi' }, 3)
+        )
+        expect(transcript.items[0]).toMatchObject({ text: 'HiHi' })
+      })
+    })
+
     it('should show a failed turn as an error on the reply', () => {
       const transcript = replay(
         empty(),

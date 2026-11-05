@@ -57,6 +57,11 @@ export class DevBridge {
   private sseClients = new Set<ServerResponse>()
   private server: Server | null = null
   private bridgePort = 0
+  /** One stand-in for every browser tab, so the sockets a tab opens stay its own to use. */
+  private readonly sender = {
+    send: (channel: string, ...args: unknown[]): void => this.broadcast(channel, ...args),
+    isDestroyed: (): boolean => false
+  }
 
   constructor(private readonly rendererPort: number) {}
 
@@ -86,14 +91,8 @@ export class DevBridge {
   ): Promise<{ ok: boolean; result?: unknown; error?: string }> {
     const handler = this.handlers.get(channel)
     if (!handler) return { ok: false, error: `No ipcMain handler registered for "${channel}"` }
-    const fakeEvent = {
-      sender: {
-        send: (ch: string, ...a: unknown[]) => this.broadcast(ch, ...a),
-        isDestroyed: () => false
-      }
-    }
     try {
-      const result = await handler(fakeEvent, ...args)
+      const result = await handler({ sender: this.sender }, ...args)
       return { ok: true, result }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) }

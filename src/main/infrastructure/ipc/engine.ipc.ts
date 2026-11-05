@@ -1,7 +1,9 @@
+import { existsSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { BrowserWindow, dialog, ipcMain } from 'electron'
 import log from 'electron-log'
 import type { EngineStatus } from '../../../shared/engine'
-import { createEngine } from '../engine/engine'
+import { createEngine, userBinEngine } from '../engine/engine'
 import { EngineSockets, type SocketEventSink } from '../engine/engineSockets'
 import { settingsStore } from '../storage/SettingsStore'
 import {
@@ -49,6 +51,15 @@ export function registerEngineIpc(): void {
     return loggedStatus()
   })
 
+  // The file the install steps link, chosen explicitly: an older copy earlier on PATH must not win.
+  // It takes no argument, so a page can only point Talyx at this one file.
+  ipcMain.handle('engine:use-installed', async (): Promise<EngineStatus> => {
+    const installed = userBinEngine(process.platform, homedir())
+    if (!existsSync(installed)) throw new Error('No installed engine found')
+    settingsStore.set({ enginePath: installed })
+    return loggedStatus()
+  })
+
   ipcMain.handle('engine:http', (_event, raw: unknown) =>
     engine.http(validateInput(EngineHttpRequestSchema, raw))
   )
@@ -58,26 +69,47 @@ export function registerEngineIpc(): void {
     async (event, rawId: unknown, rawProfile: unknown): Promise<void> => {
       const id = validateInput(EngineSocketIdSchema, rawId)
       const sender = event.sender as Sender
-      await sockets.open(id, validateInput(ProfileNameSchema, rawProfile), senderSink(sender))
-      ownedBy(sender).add(id)
+      const profile = validateInput(ProfileNameSchema, rawProfile)
+      // Owned from the start, so a close sent while it opens still reaches it. A reused id is
+      // refused by open and stays with the page that already had it.
+      const owned = ownedBy(sender)
+      const fresh = !owned.has(id)
+      owned.add(id)
+      await sockets.open(id, profile, senderSink(sender)).catch((error: unknown) => {
+        if (fresh) owned.delete(id)
+        throw error
+      })
     }
   )
 
-  ipcMain.handle('engine:socket-send', (_event, rawId: unknown, rawText: unknown) =>
+  ipcMain.handle('engine:socket-send', (event, rawId: unknown, rawText: unknown) =>
     sockets.send(
-      validateInput(EngineSocketIdSchema, rawId),
+      ownSocket(event.sender as Sender, rawId),
       validateInput(EngineSocketTextSchema, rawText)
     )
   )
 
-  ipcMain.handle('engine:socket-close', (_event, rawId: unknown) =>
-    sockets.close(validateInput(EngineSocketIdSchema, rawId))
-  )
+  // Closing a socket that already closed (or was never this page's) is a no-op, as before.
+  ipcMain.handle('engine:socket-close', (event, rawId: unknown) => {
+    const id = validateInput(EngineSocketIdSchema, rawId)
+    if (owns(event.sender as Sender, id)) sockets.close(id)
+  })
 }
 
 /** Close every socket Talyx opened; the gateway itself keeps running (it is never ours). */
 export function closeEngineSockets(): void {
   sockets.closeAll()
+}
+
+/** A page reaches only the sockets it opened, never another window's. */
+function ownSocket(sender: Sender, rawId: unknown): string {
+  const id = validateInput(EngineSocketIdSchema, rawId)
+  if (!owns(sender, id)) throw new Error('Engine socket is not open')
+  return id
+}
+
+function owns(sender: Sender, id: string): boolean {
+  return ownedSockets.get(sender)?.has(id) ?? false
 }
 
 /** The page's socket ids; a reload or a closed window leaves no page to read them, so they close. */

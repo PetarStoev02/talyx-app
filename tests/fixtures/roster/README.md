@@ -55,6 +55,57 @@ anything else fails with Retry; qwen-oauth: an external command with Copy and Ch
 custom endpoint (Check fills the first served model), the default model, and that every model picker
 lists only an endpoint's saved models.
 
+Setup (`fixtureSetup.ts`): `?setup=<mode>` opens the first-run flow at Welcome against a scripted
+install (fake `echo` commands, one output line every 300 ms) and the providers and roster doubles
+above; its Done opens the fixture on Talyx's chat. No `?setup` keeps the fixture as it is.
+
+| Mode        | The engine step shows                                                          |
+| ----------- | ------------------------------------------------------------------------------ |
+| `missing`   | The install commands; Install runs them, then the engine is ready (0.22.7)     |
+| `offline`   | "Talyx could not get the install steps." with Try again and Choose file        |
+| `mismatch`  | The same screen with the hash-mismatch sentence                                |
+| `fail`      | The install stops in command 2 (exit 1): Try again, Show the commands, Copy    |
+| `old`       | Engine 0.21.0 is older: Update runs the install, Continue anyway moves on      |
+| `old-after` | No setup; the footer's update button offers the engine update (0.22.5), below  |
+| `windows`   | Windows' attach error; Install the engine shows the Windows sentence and link  |
+| `protocol`  | Engine 0.22.9 on another protocol: Get the latest Talyx opens the release page |
+
+`old-after` is an older engine after setup: the footer's update button (see Update button below)
+carries "Engine 0.22.7 ready to install" (you have 0.22.5); its Install the engine button opens the
+Agents page's install flow, which ends on ready with the restart hint (Copy; Try again clears it), and the
+button is gone. Add `&stuck=1` to `old` or
+`old-after` and the install leaves the older engine running: "Talyx still runs the engine at
+/usr/local/bin/talyx-engine, which is 0.21.0." (0.22.5 in `old-after`). Use the newly installed
+engine (or Choose file) then finds the expected engine in the user bin.
+
+Update button (`fixtureUpdates.ts`): the sidebar footer is the app's own, so its update button takes the
+refresh button's place while an update is pending. `?update=<mode>` scripts what main reports; no
+`?update` leaves the refresh button. The fake release is 1.0.1, published 3 hours ago, with two
+highlights and 9 changes. A download advances every 200 ms (about 2 s) to ready; Open the installer and
+Open the release page only show a toast.
+
+| Mode          | The footer shows                                                                |
+| ------------- | ------------------------------------------------------------------------------- |
+| `talyx`       | Available: Download; the ring fills, then "ready" with Open the installer       |
+| `downloading` | A download already running (progress ring, Cancel back to available)            |
+| `ready`       | Ready: Open the installer                                                       |
+| `failed`      | A checksum failure: Try again (fails again) and Open the release page           |
+| `nodownload`  | Available with no installer for this computer: only Open the release page       |
+| `engine`      | The engine item only (0.22.5 below the pin); its action runs the engine install |
+| `both`        | The engine item above the Talyx item, one button                                |
+
+Check hover and click to open and pin the popover, Escape, the ring and percent while downloading,
+Cancel, and the engine action landing on the Agents page's install flow; in light and dark, keyboard
+only.
+
+Check Copy and Copy all, Install, Cancel (back to the commands), Try again, Choose file (it always
+"finds" engine 0.22.7), Continue, the provider step (Continue once the router is read, Skip), Make
+bot and Skip, and that Done lands on Talyx's chat; in light and dark, keyboard only.
+
+`?nudge` starts with no provider: Talyx's chat (no other bot's) shows "Add a model provider so bots
+can answer." above the composer, its Open Settings opens Settings, and once the Providers section
+reads the router the line is gone when you go back.
+
 Use the engine integration for final acceptance; this fixture does not prove gateway access.
 
 Room model: Team discussion starts on mixed models (Analyst runs on `paid-model`), so its model

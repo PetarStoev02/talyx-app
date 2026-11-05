@@ -1,6 +1,6 @@
 import type { GatewayEvent } from '@shared/engine/shared'
 import type { SessionMessage } from '@shared/engine/types'
-import type { ChatItem, ChatPrompt, Transcript } from './types'
+import type { ChatItem, ChatPrompt, StreamCursor, Transcript } from './types'
 
 // A message another bot delivered: `Message from 🤖 <name> (@<handle>): <text>`.
 const DELIVERY = /^Message from 🤖 (.+?) \(@([^\s)]+)\):\s*([\s\S]*)$/
@@ -22,6 +22,8 @@ const IMAGE_NOTE = /\[Image attached: ([^\]]+)\]/g
 type Payload = Record<string, unknown>
 type ToolItem = Extract<ChatItem, { kind: 'tool' }>
 type BotItem = Extract<ChatItem, { kind: 'bot' }>
+// Where a stamped delta's text sits in its turn's reply.
+type StreamPosition = { turnId: string; segment: number; offset: number }
 
 export function fromHistory(
   sessionId: string,
@@ -30,7 +32,7 @@ export function fromHistory(
 ): Transcript {
   const calls = toolCalls(messages)
   const items = messages.flatMap((message) => historyItem(message, calls))
-  return { sessionId, items, prompts: [], running, lastSeq: 0, epoch: null }
+  return { sessionId, items, prompts: [], running, lastSeq: 0, epoch: null, stream: null }
 }
 
 /**
@@ -52,10 +54,10 @@ export function applyEvent(transcript: Transcript, event: GatewayEvent): Transcr
   const payload = (event.payload ?? {}) as Payload
   switch (event.type) {
     case 'message.start':
-      return { ...withStreamingReply(transcript, String(event.seq ?? '')), running: true }
+      return startReply(transcript, payload, String(event.seq ?? ''))
     case 'message.delta':
       return typeof payload.text === 'string' && payload.text
-        ? appendText(transcript, payload.text, String(event.seq ?? ''))
+        ? streamText(transcript, payload, payload.text, String(event.seq ?? ''))
         : transcript
     case 'message.complete':
       return completeReply(transcript, payload, String(event.seq ?? ''))
@@ -222,6 +224,57 @@ function updateReply(transcript: Transcript, change: (reply: BotItem) => BotItem
   const items = [...transcript.items]
   items[index] = change(items[index] as BotItem)
   return { ...transcript, items }
+}
+
+function startReply(transcript: Transcript, payload: Payload, id: string): Transcript {
+  const turnId = typeof payload.turn_id === 'string' && payload.turn_id ? payload.turn_id : null
+  // A re-sent start of the turn already applied is not a new turn: a fresh reply would take its
+  // re-sent text as a second copy.
+  if (turnId && transcript.stream?.turnId === turnId) return transcript
+  return {
+    ...withStreamingReply(transcript, id),
+    running: true,
+    stream: turnId ? { turnId, segment: 0, end: 0 } : null
+  }
+}
+
+// A stamped delta adds only the text past what its segment already applied; an unstamped one
+// (older engines) appends, deduped by seq alone.
+function streamText(
+  transcript: Transcript,
+  payload: Payload,
+  text: string,
+  id: string
+): Transcript {
+  const position = streamPosition(payload)
+  if (!position) return appendText(transcript, text, id)
+  const { stream, unseen } = admitDelta(transcript.stream, position, text)
+  const next = { ...transcript, stream }
+  return unseen ? appendText(next, unseen, id) : next
+}
+
+function streamPosition(payload: Payload): StreamPosition | null {
+  const count = (value: unknown): number | null =>
+    typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null
+  const segment = count(payload.segment)
+  if (typeof payload.turn_id !== 'string' || !payload.turn_id || segment === null) return null
+  return { turnId: payload.turn_id, segment, offset: count(payload.offset) ?? 0 }
+}
+
+// The engine desktop app's rule (segment-identity.ts): a later segment or another turn starts
+// fresh, an earlier segment or an applied range is a re-send, an overlap keeps its unseen tail and
+// a gap (frames lost) applies whole.
+function admitDelta(
+  stream: StreamCursor | null,
+  position: StreamPosition,
+  text: string
+): { stream: StreamCursor; unseen: string } {
+  const { turnId, segment, offset } = position
+  const end = offset + text.length
+  if (!stream || stream.turnId !== turnId || segment > stream.segment)
+    return { stream: { turnId, segment, end }, unseen: text }
+  if (segment < stream.segment || end <= stream.end) return { stream, unseen: '' }
+  return { stream: { ...stream, end }, unseen: text.slice(Math.max(0, stream.end - offset)) }
 }
 
 function appendText(transcript: Transcript, text: string, id: string): Transcript {

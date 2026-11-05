@@ -14,15 +14,25 @@ function installedEngineName(): string | null {
 
 const name = installedEngineName()
 
-// The rule: the engine's upstream name appears nowhere in this repo, so not in git history
-// either. This test never writes it: it asks the engine, then searches the working tree.
+// The rule: the engine's upstream name appears nowhere in this repo except the README's one
+// credit line, so not in git history either. This test never writes it: it asks the engine, then searches the working tree.
 describe.skipIf(!name)('engine name', () => {
   it('should appear in no tracked or new file', () => {
     let hits = ''
     try {
       hits = execFileSync(
         'git',
-        ['grep', '-il', '--untracked', '--fixed-strings', name!, '--', '.', ':!package-lock.json'],
+        [
+          'grep',
+          '-il',
+          '--untracked',
+          '--fixed-strings',
+          name!,
+          '--',
+          '.',
+          ':!package-lock.json',
+          ':!README.md'
+        ],
         { encoding: 'utf8' }
       )
     } catch {

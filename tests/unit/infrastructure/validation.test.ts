@@ -28,6 +28,24 @@ describe('UserSettingsPartialSchema', () => {
     expect(() => validateInput(UserSettingsPartialSchema, { sidebarWidth })).toThrow()
   })
 
+  it('should accept a finished setup', () => {
+    expect(validateInput(UserSettingsPartialSchema, { setupDone: true })).toEqual({
+      setupDone: true
+    })
+  })
+
+  it('should reject a setup flag that is not a boolean', () => {
+    expect(() => validateInput(UserSettingsPartialSchema, { setupDone: 'yes' })).toThrow()
+  })
+
+  it.each([true, false])('should accept launch at login %s', (launchAtLogin) => {
+    expect(validateInput(UserSettingsPartialSchema, { launchAtLogin })).toEqual({ launchAtLogin })
+  })
+
+  it('should reject a launch-at-login flag that is not a boolean', () => {
+    expect(() => validateInput(UserSettingsPartialSchema, { launchAtLogin: 'yes' })).toThrow()
+  })
+
   it('should drop settings this version does not have', () => {
     expect(validateInput(UserSettingsPartialSchema, { voiceEnabled: true })).toEqual({})
   })

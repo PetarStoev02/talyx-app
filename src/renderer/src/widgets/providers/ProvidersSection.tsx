@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import {
@@ -48,10 +48,13 @@ type Removal =
  */
 export function ProvidersSection({
   backend,
-  chat
+  chat,
+  onOverview
 }: {
   backend: ProvidersBackend
   chat: ModelLists | null
+  /** Told each overview that loads, e.g. so setup knows whether a provider exists. */
+  onOverview: ((overview: ProvidersOverview) => void) | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const [overview, setOverview] = useState<ProvidersOverview | null>(null)
@@ -63,6 +66,11 @@ export function ProvidersSection({
   const [revealed, setRevealed] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const arrival = useArrival(!overview && !problem)
+  // The latest callback, read at load time, so a new one each render does not reload the list.
+  const reportOverview = useRef(onOverview)
+  useLayoutEffect(() => {
+    reportOverview.current = onOverview
+  })
 
   const load = useCallback(
     (): Promise<void> =>
@@ -70,6 +78,7 @@ export function ProvidersSection({
         (next) => {
           setOverview(next)
           setProblem(null)
+          reportOverview.current?.(next)
           // A revealed value may be stale now, and every model menu must load the new list.
           setRevealed({})
           chat?.forgetModels()

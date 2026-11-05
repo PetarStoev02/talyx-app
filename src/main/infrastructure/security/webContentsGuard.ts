@@ -3,8 +3,9 @@ import { app, session, shell } from 'electron'
 
 /** Only web and mail links leave the app; a file:// or custom-scheme link from model text would launch what it points at. */
 const EXTERNAL_SCHEMES = new Set(['https:', 'http:', 'mailto:'])
-/** Permissions Talyx's own pages may use: the microphone, for dictation in the composer. */
-const APP_PERMISSIONS = new Set(['media'])
+/** Permissions Talyx's own pages may use: the microphone, for dictation in the composer, and
+ *  writing to the clipboard, for the Copy buttons. */
+const APP_PERMISSIONS = new Set(['media', 'clipboard-sanitized-write'])
 
 export function isSafeExternalUrl(url: string): boolean {
   try {
@@ -31,6 +32,18 @@ export function isAllowedPermission(
   return APP_PERMISSIONS.has(permission) && audioOnly && isAppUrl(details.requestingUrl, appRoot)
 }
 
+/** A check names one media type, or `unknown` when it asks about devices in general; only a
+ *  video check is refused here, and capturing still goes through the request handler. */
+export function checkedRequest(
+  origin: string,
+  details: { requestingUrl?: string; mediaType?: string }
+): { requestingUrl: string; mediaTypes: string[] } {
+  return {
+    requestingUrl: details.requestingUrl ?? `${origin}/`,
+    mediaTypes: [details.mediaType === 'video' ? 'video' : 'audio']
+  }
+}
+
 /**
  * Every window Talyx creates — main, splash, and anything a link tries
  * to open — follows the same rules: no new Electron windows (web links go to the
@@ -41,6 +54,10 @@ export function isAllowedPermission(
 export function installWebContentsGuard(appRoot: string): void {
   session.defaultSession.setPermissionRequestHandler((_contents, permission, callback, details) =>
     callback(isAllowedPermission(permission, details, appRoot))
+  )
+  // Checks (a permission's status, without a prompt) are otherwise granted by default.
+  session.defaultSession.setPermissionCheckHandler((_contents, permission, origin, details) =>
+    isAllowedPermission(permission, checkedRequest(origin, details), appRoot)
   )
   app.on('web-contents-created', (_event, contents) => {
     contents.setWindowOpenHandler(({ url }) => {

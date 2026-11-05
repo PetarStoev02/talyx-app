@@ -1,8 +1,9 @@
-// Ported from the engine desktop app's electron/local-gateway.ts (tag v0.22.5): attach to the
+// Ported from the engine desktop app's electron/local-gateway.ts (tag v0.22.7): attach to the
 // per-host gateway with `gateway ensure --json` and mint one-use tickets through the profile's
 // control socket. Logic is kept as upstream wrote it, with these cuts (see README, Engine):
 // - no stale-owner restart: Talyx never owns, restarts or kills the gateway, it attaches as-is;
-// - no renderer dial bookkeeping: main opens the socket itself (engineSockets.ts);
+// - no renderer dial bookkeeping (nor its voice-socket dial paths): main opens the socket itself
+//   (engineSockets.ts);
 // - only the direct `<home>/gateway.sock` control socket; the long-path fallback directory and
 //   Windows minting (the engine's Python bridge) are not supported yet.
 import { spawn } from 'node:child_process'
@@ -133,6 +134,15 @@ export function readEnsureResult(result: CliResult): EnsureResult {
   }
 }
 
+/** The gateway speaks another runtime protocol than this client; says nothing about the endpoint. */
+// Talyx: split out of the invalid-endpoint error so the app can name a protocol mismatch.
+export class EngineProtocolError extends Error {
+  constructor() {
+    super('The engine speaks another gateway protocol than this version of Talyx')
+    this.name = 'EngineProtocolError'
+  }
+}
+
 /** Loopback-only, bare-origin, session-authority endpoint or throw. */
 export function assertLocalGatewayEndpoint(endpoint: GatewayEndpoint | undefined): void {
   const origin = endpoint ? safeUrl(endpoint.api_origin) : null
@@ -147,13 +157,18 @@ export function assertLocalGatewayEndpoint(endpoint: GatewayEndpoint | undefined
     origin.search ||
     origin.hash ||
     !origin.port ||
-    endpoint.runtime_protocol !== 1 ||
     !endpoint.instance_id ||
-    !endpoint.profile_id ||
+    !endpoint.profile_id
+  ) {
+    throw new Error('Invalid local gateway endpoint')
+  }
+  // Talyx: checked after the origin, so a foreign origin is never reported as a protocol problem.
+  if (
+    endpoint.runtime_protocol !== 1 ||
     !Array.isArray(endpoint.capabilities) ||
     !endpoint.capabilities.includes('session-authority-v1')
   ) {
-    throw new Error('Invalid local gateway endpoint')
+    throw new EngineProtocolError()
   }
 }
 

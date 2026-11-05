@@ -10,7 +10,7 @@ Thanks for wanting to help. Bug reports, ideas and pull requests are all welcome
 
 ## Set up
 
-You need Node 22.12 or newer (Node 24 matches the Electron runtime). Talyx targets macOS 13 or newer, Windows and Linux.
+You need Node 22.12 or newer (Node 24 matches the Electron runtime). Talyx 1.0 runs on macOS 13 or newer and Linux (x64). Windows comes once the engine runs there.
 
 ```bash
 npm ci

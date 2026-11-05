@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
+import { useNavigation } from '@app/providers/useNavigation'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import { botChatId, botTitle } from '@features/bots/roster'
 import type { RosterBackend } from '@features/bots/data'
+import { MANAGER } from '@features/bots/details'
 import type { Bot } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
 import { useChat } from '@features/chat/store'
+import { useSetup } from '@features/setup/store'
 import type { ChatItem } from '@features/chat/types'
 import { useRefocus } from '@shared/hooks/useRefocus'
 import type { TranslationKey } from '@shared/lib/i18n'
@@ -16,6 +19,7 @@ import type { ComposerTarget } from './Composer'
 import { ChatIntro } from './ChatIntro'
 import type { Starter } from './ChatIntro'
 import { ChatSkeleton } from './ChatSkeleton'
+import { Button } from '@shared/ui/button'
 import { Reveal } from '@shared/ui/Reveal'
 import { useArrival } from '@shared/hooks/useStayMounted'
 import { cn } from '@shared/lib/utils'
@@ -34,6 +38,9 @@ export function ChatPane({
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const chat = useChat((state) => state.chats[bot.name])
+  // Unknown (null) stays quiet: only a provider list read as empty asks for one.
+  const noProvider = useSetup((s) => s.hasProvider === false) && bot.name === MANAGER
+  const navigate = useNavigation((s) => s.navigate)
   const title = botTitle(bot)
   const chatId = botChatId(bot)
   const composer = useRef<HTMLTextAreaElement>(null)
@@ -138,6 +145,18 @@ export function ChatPane({
       <p className="sr-only" role="status">
         {announced && t(announced).replace('{name}', title)}
       </p>
+      {noProvider && (
+        <p className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-x-3 gap-y-2 px-6 pb-2 text-base">
+          {t('chat.noProvider')}
+          <Button
+            variant="secondary"
+            className="bg-secondary hover:bg-foreground/10"
+            onClick={() => navigate('settings')}
+          >
+            {t('chat.openSettings')}
+          </Button>
+        </p>
+      )}
       <Composer target={target} inputRef={composer} seed={seed}>
         <ChatChips chat={chat} actions={actions} />
       </Composer>

@@ -16,6 +16,8 @@ interface EngineState {
   lostAt: number | null
   check: () => Promise<void>
   pickPath: () => Promise<void>
+  /** Run the engine the install linked in the user bin; rejects when nothing is installed there. */
+  useInstalled: () => Promise<void>
 }
 
 /** Engine presence and attachment, as main reports it; the gateway socket opens once attached. */
@@ -29,7 +31,14 @@ export const useEngine = create<EngineState>((set) => {
       if (status.state === 'attached')
         host.connect().catch((error: unknown) => reportError('engine', error))
     } catch (err) {
-      set({ status: { state: 'error', message: err instanceof Error ? err.message : String(err) } })
+      set({
+        status: {
+          state: 'error',
+          message: err instanceof Error ? err.message : String(err),
+          version: null,
+          reason: null
+        }
+      })
     } finally {
       set({ checking: false })
     }
@@ -42,7 +51,13 @@ export const useEngine = create<EngineState>((set) => {
     everConnected: false,
     lostAt: null,
     check: () => settle(host.status()),
-    pickPath: () => settle(host.pickEnginePath())
+    pickPath: () => settle(host.pickEnginePath()),
+    useInstalled: async () => {
+      // A missing install is the caller's to say, not an engine status: the status stays as it was.
+      set({ checking: true })
+      const status = await host.useInstalledEngine().finally(() => set({ checking: false }))
+      await settle(Promise.resolve(status))
+    }
   }
 })
 

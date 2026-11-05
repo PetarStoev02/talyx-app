@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useEngine } from '@app/providers/useEngine'
 import { useLanguage } from '@app/providers/useLanguage'
+import { useSetupBackend } from '@app/providers/useSetupBackend'
+import { InstallEngine } from '@features/setup/InstallEngine'
+import { linkClass } from '@features/setup/screenStyles'
+import { useUpdates } from '@features/updates/store'
 import { host } from '@shared/engine/host'
 import { useElapsed } from '@shared/hooks/useElapsed'
 import { reportError } from '@shared/lib/report'
@@ -22,6 +26,13 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
   const check = useEngine((s) => s.check)
   const pickPath = useEngine((s) => s.pickPath)
   const everConnected = useEngine((s) => s.everConnected)
+  const setup = useSetupBackend()
+  // Install the engine: the setup's engine screens, until their Continue (or Continue anyway) or a
+  // cancelled install. An attach error shows them too: their error screen links the install. The
+  // footer's update button asks for them when the engine is older than this Talyx needs.
+  const installing = useUpdates((s) => s.engineInstallRequested)
+  const requestEngineInstall = useUpdates((s) => s.requestEngineInstall)
+  const clearEngineInstall = useUpdates((s) => s.clearEngineInstall)
   // The first open is given a grace period, restarted by each Try again.
   const [waitStart, setWaitStart] = useState(() => Date.now())
   const waitedLong = useElapsed(waitStart, FIRST_CONNECT_GRACE_MS)
@@ -30,9 +41,21 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
     if (!useEngine.getState().status) void check()
   }, [check])
 
+  if (installing || status?.state === 'error')
+    return (
+      <div className="scroll-y-stable flex h-full flex-1 flex-col items-center px-6 py-8">
+        <div className="my-auto flex w-full flex-col items-center">
+          <InstallEngine
+            backend={setup}
+            onReady={clearEngineInstall}
+            onCancel={clearEngineInstall}
+          />
+        </div>
+      </div>
+    )
   if (status?.state === 'attached') {
     // Once open, a drop is a reconnect the banner shows (ConnectionBanner), not a gate.
-    if (everConnected) return <>{children}</>
+    if (everConnected) return <div className="flex h-full min-h-0 flex-1 flex-col">{children}</div>
     if (!waitedLong) return <Checking label={t('engine.connecting')} />
     return (
       <div className={centered} role="alert">
@@ -56,26 +79,16 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
   return (
     <div className={centered}>
       <TalyxLogo size={40} className="text-foreground" />
-      <h2 className="text-xl font-semibold text-foreground">
-        {status.state === 'missing' ? t('engine.missingTitle') : t('engine.errorTitle')}
-      </h2>
-      {status.state === 'missing' ? (
-        <p className="max-w-md text-base text-foreground">{t('engine.missingBody')}</p>
-      ) : (
-        <div className="max-w-md">
-          <p className="text-base text-foreground">{t('engine.errorNext')}</p>
-          <p className="text-sm text-muted-foreground wrap-anywhere">{status.message}</p>
-        </div>
-      )}
+      <h2 className="text-xl font-semibold text-foreground">{t('engine.missingTitle')}</h2>
+      <p className="max-w-md text-base text-foreground">{t('engine.missingBody')}</p>
       <div className="flex flex-wrap items-center justify-center gap-4">
-        <Button className="px-5" disabled={checking} onClick={() => void check()}>
-          {t('action.tryAgain')}
+        <Button className="px-5" disabled={checking} onClick={requestEngineInstall}>
+          {t('setup.installEngine')}
         </Button>
-        <button
-          className="text-base text-foreground underline underline-offset-4 hover:decoration-2 disabled:opacity-50"
-          disabled={checking}
-          onClick={() => void pickPath()}
-        >
+        <button className={linkClass} disabled={checking} onClick={() => void check()}>
+          {t('action.tryAgain')}
+        </button>
+        <button className={linkClass} disabled={checking} onClick={() => void pickPath()}>
           {t('engine.chooseFile')}
         </button>
       </div>

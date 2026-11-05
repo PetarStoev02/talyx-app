@@ -30,8 +30,8 @@ export interface ModelConfirm {
   model: ModelChoice
 }
 
-// The manager's profile; its avatar is the logo, so it never gets an exported image.
-const MANAGER = 'default'
+/** Talyx's own profile, the manager. Its avatar is the logo, so it never gets an exported image. */
+export const MANAGER = 'default'
 
 const describeSchema = z.object({
   description: z.string().catch(''),

@@ -36,6 +36,7 @@ const newBot = (patch: Partial<NewBot> = {}): NewBot => ({
   folder: TEAM,
   model: { provider: 'custom', model: 'paid-model' },
   look: LOOK,
+  purpose: null,
   ...patch
 })
 
@@ -67,6 +68,16 @@ describe('creating a bot', () => {
       expect(engine.created).toEqual([
         { name: 'agro-ops-legal', soul: SOUL, model: 'paid-model', provider: 'custom' }
       ])
+    })
+
+    it('should write what the bot does into its SOUL', async () => {
+      await createBot(backend, newBot({ purpose: 'Finds sources and sums them up' }), [])
+      expect(engine.created[0].soul).toBe(`${SOUL}\n\nWhat you do: Finds sources and sums them up`)
+    })
+
+    it('should leave the SOUL alone when the purpose is blank', async () => {
+      await createBot(backend, newBot({ purpose: '  ' }), [])
+      expect(engine.created[0].soul).toBe(SOUL)
     })
 
     it('should leave the model to the engine when none is picked', async () => {

@@ -45,3 +45,9 @@ docs/superpowers/
 
 # design-taste-frontend skill screenshots and reports
 .taste-skill/
+
+# Engine install commands (name the engine; uploaded by a release, never committed)
+/engine-install.json
+
+# Release highlights for the update button (written by hand before a release)
+/release-highlights.md

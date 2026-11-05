@@ -7,6 +7,8 @@ export interface JsonRpcFrame {
   params: Record<string, unknown>
 }
 
+const GATEWAY_READY = { type: 'gateway.ready', payload: {} }
+
 /** Answers one client frame with a result, or `undefined` for no reply. */
 export type FakeGateway = (
   frame: JsonRpcFrame,
@@ -16,8 +18,13 @@ export type FakeGateway = (
 /**
  * A stand-in for main's engine:socket-* channels on `window.api`: frames the renderer sends go to
  * `gateway`, and its answers come back as socket frames, the way main relays a real gateway.
+ * `capabilities` answers `client.capabilities`; null answers it as an unknown method (an older
+ * engine).
  */
-export function installFakeEngineApi(gateway: FakeGateway): {
+export function installFakeEngineApi(
+  gateway: FakeGateway,
+  capabilities: Record<string, unknown> | null = { server_requests: [] }
+): {
   sent: JsonRpcFrame[]
   opened: string[]
   dropAll: () => void
@@ -34,11 +41,18 @@ export function installFakeEngineApi(gateway: FakeGateway): {
     openEngineSocket: async (id: string, profile: string) => {
       open.add(id)
       opened.push(profile)
+      // A gateway greets every connection; the client advertises its capabilities on it.
+      setTimeout(() => emit(id, { jsonrpc: '2.0', method: 'event', params: GATEWAY_READY }))
     },
     sendEngineSocket: async (id: string, text: string) => {
       const frame = JSON.parse(text) as JsonRpcFrame
       if (frame.method === 'client.capabilities') {
-        emit(id, { jsonrpc: '2.0', id: frame.id, result: { server_requests: [] } })
+        emit(
+          id,
+          capabilities
+            ? { jsonrpc: '2.0', id: frame.id, result: capabilities }
+            : { jsonrpc: '2.0', id: frame.id, error: { code: -32601, message: 'unknown method' } }
+        )
         return
       }
       sent.push(frame)

@@ -3,12 +3,13 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('electron', () => ({ app: {}, session: {}, shell: {} }))
 
 import {
+  checkedRequest,
   isAllowedPermission,
   isAppUrl,
   isSafeExternalUrl
 } from '../../../src/main/infrastructure/security/webContentsGuard'
 
-const PACKAGED = 'file:///Applications/Talyx.app/Contents/Resources/app.asar/out/renderer/'
+const PACKAGED = 'app://talyx/'
 const DEV = 'http://localhost:5173/'
 
 describe('isSafeExternalUrl', () => {
@@ -31,6 +32,7 @@ describe('isAppUrl', () => {
     [`${PACKAGED}index.html`, PACKAGED, true],
     [`${PACKAGED}splash.html#x`, PACKAGED, true],
     ['file:///Users/v/Downloads/evil.html', PACKAGED, false],
+    ['app://talyx.evil/index.html', PACKAGED, false],
     [`${DEV}splash.html`, DEV, true],
     ['http://localhost:51730/', DEV, false],
     ['https://evil.example/', DEV, false]
@@ -60,7 +62,17 @@ describe('isAllowedPermission', () => {
     ).toBe(false)
   })
 
-  it.each(['clipboard-sanitized-write', 'notifications'])(
+  it('should allow writing to the clipboard for the Copy buttons', () => {
+    expect(
+      isAllowedPermission(
+        'clipboard-sanitized-write',
+        { requestingUrl: `${PACKAGED}index.html` },
+        PACKAGED
+      )
+    ).toBe(true)
+  })
+
+  it.each(['clipboard-read', 'notifications'])(
     'should refuse %s while no feature of the app needs it',
     (permission) => {
       expect(
@@ -79,5 +91,22 @@ describe('isAllowedPermission', () => {
     expect(
       isAllowedPermission('geolocation', { requestingUrl: `${PACKAGED}index.html` }, PACKAGED)
     ).toBe(false)
+  })
+})
+
+describe('checkedRequest', () => {
+  it.each([
+    ['audio', true],
+    ['unknown', true],
+    [undefined, true],
+    ['video', false]
+  ])('should judge a %s microphone check from the app as %s', (mediaType, expected) => {
+    const request = checkedRequest('app://talyx', { mediaType })
+    expect(isAllowedPermission('media', request, PACKAGED)).toBe(expected)
+  })
+
+  it('should judge a check by its origin when it names no page', () => {
+    const request = checkedRequest('https://evil.example', {})
+    expect(isAllowedPermission('clipboard-sanitized-write', request, PACKAGED)).toBe(false)
   })
 })

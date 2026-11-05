@@ -23,18 +23,58 @@ export interface EngineWire {
 
 export type EngineStatus =
   | { state: 'missing'; enginePath: string | null }
-  | { state: 'error'; message: string }
+  /**
+   * `version` is what `--version` reported when the engine ran but could not attach; `reason` is
+   * 'protocol' when the gateway speaks another protocol than this Talyx.
+   */
+  | { state: 'error'; message: string; version: string | null; reason: 'protocol' | null }
   | {
       state: 'attached'
       version: string
       commit: string | null
       home: string
+      /** The absolute executable Talyx resolved and runs (a PATH hit as its full path). */
+      path: string
       /** The gateway runs other code than the engine CLI (it outlived an update). */
       stale: boolean
       botMetaKey: string
       botGroupsMetaKey: string
       managerHandle: string
     }
+
+/**
+ * The engine release this Talyx is tested with, and the oldest it runs on: an older engine gets the
+ * Update offer, a newer one a "newer than tested" note.
+ */
+export const EXPECTED_ENGINE_VERSION = '0.22.7'
+
+export type EngineVersionFit = 'older' | 'same' | 'newer' | 'unknown'
+
+const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/
+
+/** How a found engine version compares with the expected one, number by number (0.22.10 > 0.22.7). */
+export function engineVersionFit(
+  found: string | null,
+  expected: string = EXPECTED_ENGINE_VERSION
+): EngineVersionFit {
+  const foundParts = found === null ? null : SEMVER.exec(found)
+  const expectedParts = SEMVER.exec(expected)
+  if (!foundParts || !expectedParts) return 'unknown'
+  for (let i = 1; i <= 3; i++) {
+    const difference = Number(foundParts[i]) - Number(expectedParts[i])
+    if (difference !== 0) return difference < 0 ? 'older' : 'newer'
+  }
+  return 'same'
+}
+
+/**
+ * Attached and not older than this Talyx needs: the setup's engine step is done, and the footer
+ * offers no engine update. An unreadable version counts: the engine runs, so no one is sent to
+ * reinstall.
+ */
+export function isEngineCurrent(engine: EngineStatus): boolean {
+  return engine.state === 'attached' && engineVersionFit(engine.version) !== 'older'
+}
 
 export class UnrecognizedEngineError extends Error {
   constructor(versionLine: string) {
