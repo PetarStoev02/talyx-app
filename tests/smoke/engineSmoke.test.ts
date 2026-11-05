@@ -10,6 +10,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import {
   createEngine,
+  EngineHttpError,
   userBinEngine,
   type Engine
 } from '../../src/main/infrastructure/engine/engine'
@@ -373,7 +374,9 @@ async function rest(engine: Engine, request: EngineHttpRequest): Promise<unknown
   try {
     return await engine.http(request)
   } catch (error) {
-    throw new SmokeFailure(`${request.method ?? 'GET'} ${request.path}: ${safeDetail(error)}`)
+    const call = `${request.method ?? 'GET'} ${request.path}`
+    const status = error instanceof EngineHttpError ? ` HTTP ${error.status}` : ''
+    throw new SmokeFailure(`${call}:${status} ${safeDetail(error)}`)
   }
 }
 
