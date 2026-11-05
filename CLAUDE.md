@@ -18,7 +18,8 @@ dictation), the details panel from the name pill (title, description, model, rou
 the create-bot dialog from the roster's `+`, group rooms hosted by the engine (history, send, who
 is answering, approvals, create, pin, delete), "Talyx needs its engine" when the engine is
 missing, an Engine (debug) page that sends "ping" and prints raw session events, and Settings
-(providers: API keys, account sign-ins and custom endpoints, Talyx's default model; appearance).
+(providers: API keys, account sign-ins and custom endpoints, Talyx's default model; the engine:
+where it is, check again, choose its file; launch at login; appearance).
 
 - **Version:** 1.0.0
 - **Stack:** Electron 44 + React 19 + TypeScript 5.9 + TailwindCSS 4
@@ -85,7 +86,9 @@ releasing; no engine name), then GitHub's generated notes. It needs the secret
 
 `npm run release` (`scripts/release.sh`) is the local path, macOS DMGs only. Before it, write the
 gitignored `release-highlights.md` at the repo root: 1-3 lines `- **Lead.** Text.`. The script puts
-them under `## Highlights` above GitHub's generated notes; the update button shows them. Without the file the script warns and the release has no highlights.
+them under `## Highlights`, then `docs/release-notes/<version>.md`, then GitHub's generated
+notes, the same body as the workflow; the update button shows the highlights. Without the file
+the script warns and the release has no highlights.
 
 `npm run release` needs `engine-install.json` (the engine install steps the app fetches from the
 release) at the repo root. It is gitignored, and its SHA-256 must equal `ENGINE_INSTALL_SHA256` in
@@ -138,6 +141,8 @@ src/renderer/src/
 ├── widgets/          # AppShell, Roster (sidebar bots and rooms, create dialogs), Chat (transcript,
 │                     # cards, composer, RoomPane), BotDetails (the details panel and routines),
 │                     # Providers (the settings sections, add-provider dialog, sign-in),
+│                     # settings-engine (Settings: the engine's state and path),
+│                     # settings-startup (Settings: launch at login),
 │                     # Setup (the first-run flow: welcome, engine, provider, bot steps)
 ├── features/         # bots (roster data, folders, pins, unread, details, routines, create, rooms),
 │                     # chat (transcript, use cases, hosted rooms polled over `groups.*`),

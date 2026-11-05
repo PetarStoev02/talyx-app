@@ -1,6 +1,6 @@
 # Talyx
 
-Talyx is a desktop app to tally your AI agents: a roster of bots on the left, one chat on the right, and a manager bot that hands work to the other bots and briefs you. The bots run on an agent engine you install yourself; Talyx is the window onto them. It runs on macOS and Linux.
+Talyx is a desktop app to tally your AI agents: a roster of bots on the left, one chat on the right, and a manager bot that hands work to the other bots and briefs you. The bots run on an agent engine that Talyx's first-run setup installs for you; Talyx is the window onto them. It runs on macOS and Linux.
 
 ## Status
 
@@ -15,7 +15,7 @@ Until version 0.11.0 Talyx was a file organizer and a hotkey assistant for macOS
 Builds come from the [GitHub releases](https://github.com/PetarStoev02/talyx-app/releases). None of them is signed or notarized: there is no Apple developer account. Your system warns you the first time you open each new version.
 
 - **macOS 13 or newer.** Open the DMG and drag Talyx to Applications. Open Talyx and dismiss the warning. Then go to System Settings → Privacy & Security, scroll down and click **Open Anyway**; macOS asks for your password. Or run once in Terminal: `xattr -dr com.apple.quarantine /Applications/Talyx.app`
-- **Linux (x64).** Download `Talyx-x86_64.AppImage`, make it executable (`chmod +x`) and run it, or install `Talyx-amd64.deb` with `sudo apt install ./Talyx-amd64.deb`. A Windows build is not available yet; build from source.
+- **Linux (x64).** Download `Talyx-x86_64.AppImage`, make it executable (`chmod +x`) and run it, or install `Talyx-amd64.deb` with `sudo apt install ./Talyx-amd64.deb`. There is no Windows build yet: it comes once the engine runs there.
 
 Talyx checks GitHub for a newer release. When you click Download, it fetches the installer for your computer and the release's `SHA256SUMS`, checks the installer against it, and opens it for you to run. It never installs anything itself. A download made by Talyx has no quarantine attribute, so macOS's **Open Anyway** step is not needed for in-app updates; the SHA-256 check is the integrity guarantee.
 
@@ -26,7 +26,7 @@ Talyx runs its bots on the engine, a separate agent backend that Talyx's setup s
 - The engine's command must be reachable as `talyx-engine`: on your `PATH`, in `~/.local/bin/talyx-engine` (on Windows, `%USERPROFILE%\.local\bin\talyx-engine.exe`), or picked with **Choose file** on the first-run screen. The setup screen installs the engine and links it as `talyx-engine`.
 - Talyx attaches to the engine's gateway on this machine with `talyx-engine gateway ensure --json`. The gateway runs on its own and outlives Talyx: quitting Talyx never stops it, and the next launch attaches to the same process.
 - Talyx reads every path and port from the engine's own output; it never assumes where the engine keeps its data.
-- Windows cannot attach yet: minting a gateway ticket there goes through the engine's own runtime, which comes with the 1.0 release work.
+- Windows cannot attach yet: minting a gateway ticket there goes through the engine's own runtime, so a Windows build comes once the engine runs there.
 
 ### Re-syncing the vendored client
 
@@ -64,7 +64,7 @@ Releases are built by the **Release** workflow on GitHub Actions: Actions → Re
 
 ## Privacy
 
-Talyx has no server, no account and no telemetry. Today the only network calls are the update check against GitHub and, when you click Download, the installer and its `SHA256SUMS` from the GitHub release. Once Talyx talks to the engine, what your bots send to their model providers is between the engine and those providers; Talyx itself sends nothing anywhere else. Third-party components are listed in [CREDITS.md](CREDITS.md).
+Talyx has no server, no account and no telemetry. The only network calls Talyx makes itself are three to GitHub: the update check; the installer and its `SHA256SUMS` from the release, when you click Download; and, at first-run setup, the release's `engine-install.json`, the steps that install the engine. What your bots send to their model providers is between the engine and those providers; Talyx itself sends nothing anywhere else. Third-party components are listed in [CREDITS.md](CREDITS.md).
 
 ## Contributing
 
