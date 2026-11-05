@@ -15,9 +15,11 @@ export function useAutoUpdater(): ReleaseInfo | null {
   const [release, setRelease] = useState<ReleaseInfo | null>(null)
 
   useEffect(() => {
-    return updaterApi.onUpdateAvailable((info) => {
-      if (announced.current) return
+    // Stopgap until the update button replaces this hook.
+    return updaterApi.onState((state) => {
+      if (announced.current || state.kind !== 'available') return
       announced.current = true
+      const info = { version: state.release.version, url: state.release.url }
       setRelease(info)
       toast(t('updater.available').replace('{version}', info.version), {
         id: 'update-available',

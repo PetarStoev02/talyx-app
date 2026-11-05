@@ -178,5 +178,15 @@ describe('fetchLatestRelease', () => {
       expect(r.summary.highlights).toEqual([])
       expect(r.summary.changes).toBe(0)
     })
+
+    it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])(
+      'should drop an asset whose size is %s',
+      async (size) => {
+        const { release: r } = await found(
+          release([{ ...asset('Talyx-arm64.dmg'), size }, asset('SHA256SUMS')])
+        )
+        expect(r.asset).toBeNull()
+      }
+    )
   })
 })

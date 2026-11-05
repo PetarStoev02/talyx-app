@@ -9,7 +9,8 @@ import { registerSettingsIpc } from './infrastructure/ipc/settings.ipc'
 import { cancelInstall, registerSetupIpc } from './infrastructure/ipc/setup.ipc'
 import { registerLogIpc } from './infrastructure/ipc/log.ipc'
 import { closeEngineSockets, registerEngineIpc } from './infrastructure/ipc/engine.ipc'
-import { checkForUpdate } from './infrastructure/updater/releaseCheck'
+import { registerUpdaterIpc, updates } from './infrastructure/ipc/updater.ipc'
+import { fetchLatestRelease } from './infrastructure/updater/releaseCheck'
 import { settingsStore } from './infrastructure/storage/SettingsStore'
 import { ThemeSchema, validateInput, type Theme } from './infrastructure/ipc/validation'
 import { DevBridge } from './infrastructure/bridge/DevBridge'
@@ -48,6 +49,7 @@ function registerIpc(): void {
   registerEngineIpc()
   registerSetupIpc()
   registerLogIpc()
+  registerUpdaterIpc()
   ipcMain.handle('theme:set-native', (_event, theme: unknown) =>
     syncNativeTheme(validateInput(ThemeSchema, theme))
   )
@@ -209,12 +211,16 @@ function bringMainWindowForward(): void {
   mainWindow.focus()
 }
 
-/** Tells the user about a newer release; Talyx is unsigned and installs nothing itself. */
+/** Feeds the newest release to the update button; a failed check keeps what it shows. */
 function scheduleUpdateChecks(): void {
   if (is.dev) return
-  const check = (): void => void checkForUpdate(mainWindow)
-  setTimeout(check, STARTUP_UPDATE_CHECK_DELAY_MS)
-  setInterval(check, UPDATE_CHECK_INTERVAL_MS)
+  const check = async (): Promise<void> => {
+    const result = await fetchLatestRelease(fetch, app.getVersion())
+    if (result.kind === 'available') updates.found(result.release)
+    else if (result.kind === 'up-to-date') updates.found(null)
+  }
+  setTimeout(() => void check(), STARTUP_UPDATE_CHECK_DELAY_MS)
+  setInterval(() => void check(), UPDATE_CHECK_INTERVAL_MS)
 }
 
 // Logged rather than left to Electron's default dialog, which would stop at the first one.
@@ -277,6 +283,7 @@ app
 app.on('before-quit', () => {
   closeEngineSockets()
   cancelInstall()
+  updates.cancel()
 })
 
 app.on('window-all-closed', () => {

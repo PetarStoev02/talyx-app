@@ -33,6 +33,10 @@ describe('buildApi', () => {
     ['openEngineSocket', ['id-1', 'default'], 'engine:socket-open', ['id-1', 'default']],
     ['sendEngineSocket', ['id-1', '{}'], 'engine:socket-send', ['id-1', '{}']],
     ['closeEngineSocket', ['id-1'], 'engine:socket-close', ['id-1']],
+    ['getUpdateState', [], 'updater:status', []],
+    ['downloadUpdate', [], 'updater:download', []],
+    ['cancelUpdate', [], 'updater:cancel', []],
+    ['openUpdateInstaller', [], 'updater:open-installer', []],
     [
       'logError',
       [{ scope: 'chat', message: 'boom' }],
@@ -49,18 +53,22 @@ describe('buildApi', () => {
   it('should expose only the settings, engine, setup, log and updater surface', () => {
     expect(Object.keys(buildApi(recordingTransport())).sort()).toEqual([
       'cancelInstall',
+      'cancelUpdate',
       'closeEngineSocket',
+      'downloadUpdate',
       'engineHttp',
       'getEngineStatus',
       'getInstallSteps',
       'getSettings',
+      'getUpdateState',
       'logError',
       'onEngineSocketClosed',
       'onEngineSocketFrame',
       'onInstallExit',
       'onInstallOutput',
-      'onUpdateAvailable',
+      'onUpdateState',
       'openEngineSocket',
+      'openUpdateInstaller',
       'pickEnginePath',
       'runInstall',
       'sendEngineSocket',
@@ -98,14 +106,14 @@ describe('buildApi', () => {
     ])
   })
 
-  it('should subscribe and unsubscribe the update announcement through the transport', () => {
+  it('should subscribe and unsubscribe the update state through the transport', () => {
     const transport = recordingTransport()
     const seen: unknown[] = []
-    const unsubscribe = buildApi(transport).onUpdateAvailable((info) => seen.push(info))
-    transport.listeners.get('updater:update-available')?.({ version: '1.0.0', url: 'u' })
-    expect(seen).toEqual([{ version: '1.0.0', url: 'u' }])
+    const unsubscribe = buildApi(transport).onUpdateState((state) => seen.push(state))
+    transport.listeners.get('updater:state')?.({ kind: 'none' })
+    expect(seen).toEqual([{ kind: 'none' }])
     unsubscribe()
-    expect(transport.listeners.has('updater:update-available')).toBe(false)
+    expect(transport.listeners.has('updater:state')).toBe(false)
   })
 
   it.each([

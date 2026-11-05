@@ -4,6 +4,7 @@
 
 import type { EngineHttpRequest } from './engine'
 import type { InstallExit } from './setup'
+import type { UpdateState } from './updater'
 
 export interface ApiTransport {
   invoke: (channel: string, ...args: unknown[]) => Promise<unknown>
@@ -61,11 +62,13 @@ export function buildApi(transport: ApiTransport) {
     // A renderer failure, written to Talyx's log file by main
     logError: (report: { scope: string; message: string }) => invoke('log:error', report),
 
-    // Updater
-    onUpdateAvailable: (callback: (info: { version: string; url: string }) => void) =>
-      transport.on('updater:update-available', (info) =>
-        callback(info as { version: string; url: string })
-      )
+    // Talyx update (main picks, downloads and verifies the release; the page only asks)
+    getUpdateState: () => invoke('updater:status'),
+    downloadUpdate: () => invoke('updater:download'),
+    cancelUpdate: () => invoke('updater:cancel'),
+    openUpdateInstaller: () => invoke('updater:open-installer'),
+    onUpdateState: (callback: (state: UpdateState) => void) =>
+      transport.on('updater:state', (state) => callback(state as UpdateState))
   }
 }
 

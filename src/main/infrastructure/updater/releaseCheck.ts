@@ -1,4 +1,3 @@
-import { app, type BrowserWindow } from 'electron'
 import log from 'electron-log'
 import type { Highlight, ReleaseSummary } from '../../../shared/updater'
 
@@ -32,12 +31,6 @@ export type ReleaseCheck =
 export interface InstallTarget {
   platform: NodeJS.Platform
   arch: string
-}
-
-export interface UpdateCheckResult {
-  status: 'available' | 'up-to-date' | 'failed'
-  version: string | null
-  url: string | null
 }
 
 interface Version {
@@ -95,7 +88,26 @@ const INSTALLER_EXTENSION: Partial<Record<NodeJS.Platform, string>> = {
   linux: '.appimage'
 }
 
-/** The installer for this computer, matched by extension; a Mac needs its exact architecture. */
+// The names a release file can use for each `process.arch` (electron-builder writes x86_64 and
+// amd64 for x64 on Linux).
+const ARCH_NAMES: Record<string, string[]> = {
+  x64: ['x64', 'amd64', 'x86_64'],
+  arm64: ['arm64', 'aarch64'],
+  ia32: ['ia32'],
+  arm: ['armv7l']
+}
+const KNOWN_ARCH_NAMES = Object.values(ARCH_NAMES).flat()
+
+function namesArch(fileName: string, archNames: string[]): boolean {
+  const lower = fileName.toLowerCase()
+  return archNames.some((arch) => new RegExp(`(^|[^a-z0-9])${arch}([^a-z0-9]|$)`).test(lower))
+}
+
+/**
+ * The installer for this computer, matched by extension. A file naming this architecture wins; a
+ * Mac needs one. Elsewhere a single file naming no architecture will do. Anything else
+ * (another architecture only, or two candidates) is ambiguous: null.
+ */
 export function pickAsset(
   assets: ReleaseAsset[],
   platform: NodeJS.Platform,
@@ -104,9 +116,13 @@ export function pickAsset(
   const extension = INSTALLER_EXTENSION[platform]
   if (!extension) return null
   const matching = assets.filter((asset) => asset.name.toLowerCase().endsWith(extension))
-  const forArch = matching.find((asset) => asset.name.toLowerCase().includes(arch))
-  if (platform === 'darwin') return forArch ?? null
-  return forArch ?? matching[0] ?? null
+  const forArch = matching.filter((asset) => namesArch(asset.name, ARCH_NAMES[arch] ?? [arch]))
+  if (forArch.length > 0 || platform === 'darwin') return only(forArch)
+  return only(matching.filter((asset) => !namesArch(asset.name, KNOWN_ARCH_NAMES)))
+}
+
+function only(assets: ReleaseAsset[]): ReleaseAsset | null {
+  return assets.length === 1 ? assets[0] : null
 }
 
 function readAssets(raw: unknown): ReleaseAsset[] {
@@ -116,15 +132,15 @@ function readAssets(raw: unknown): ReleaseAsset[] {
     const name = item?.name
     const url = item?.browser_download_url
     const size = item?.size
-    if (typeof name !== 'string' || typeof url !== 'string' || typeof size !== 'number') continue
+    if (typeof name !== 'string' || typeof url !== 'string') continue
+    if (typeof size !== 'number' || !Number.isFinite(size) || size < 0) continue
     if (url.startsWith(RELEASE_ASSET_PREFIX)) assets.push({ name, url, size })
   }
   return assets
 }
 
 /**
- * Asks GitHub for the latest published release. Talyx is not signed, so it
- * cannot install updates itself; it only tells the user and opens the page.
+ * Asks GitHub for the latest published release newer than this Talyx.
  * Drafts and pre-releases are invisible to this endpoint.
  */
 export async function fetchLatestRelease(
@@ -178,12 +194,4 @@ export async function fetchLatestRelease(
     log.warn('Update check failed:', err instanceof Error ? err.message : String(err))
     return { kind: 'failed' }
   }
-}
-
-export async function checkForUpdate(win: BrowserWindow | null): Promise<UpdateCheckResult> {
-  const check = await fetchLatestRelease(fetch, app.getVersion())
-  if (check.kind !== 'available') return { status: check.kind, version: null, url: null }
-  const { version, url } = check.release.summary
-  if (win && !win.isDestroyed()) win.webContents.send('updater:update-available', { version, url })
-  return { status: 'available', version, url }
 }

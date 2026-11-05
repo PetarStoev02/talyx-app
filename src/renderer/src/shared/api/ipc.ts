@@ -4,6 +4,7 @@ import { t } from '@shared/lib/i18n'
 import { problemOf } from '@shared/lib/problem'
 import { reportError } from '@shared/lib/report'
 import type { InstallExit, InstallSteps } from '../../../../shared/setup'
+import type { UpdateState } from '../../../../shared/updater'
 
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system'
@@ -41,6 +42,9 @@ export const setupApi = {
 }
 
 export const updaterApi = {
-  onUpdateAvailable: (cb: (info: { version: string; url: string }) => void): (() => void) =>
-    window.api.onUpdateAvailable(cb)
+  state: (): Promise<UpdateState> => window.api.getUpdateState() as Promise<UpdateState>,
+  download: (): Promise<void> => window.api.downloadUpdate() as Promise<void>,
+  cancel: (): Promise<void> => window.api.cancelUpdate() as Promise<void>,
+  openInstaller: (): Promise<void> => window.api.openUpdateInstaller() as Promise<void>,
+  onState: (cb: (state: UpdateState) => void): (() => void) => window.api.onUpdateState(cb)
 }
