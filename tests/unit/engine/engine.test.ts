@@ -90,7 +90,8 @@ describe('engine command', () => {
     })
     expect(await engineWith({ run }).engine.status()).toEqual({
       state: 'error',
-      message: 'spawn EACCES'
+      message: 'spawn EACCES',
+      version: null
     })
   })
 
@@ -153,7 +154,8 @@ describe('engine status', () => {
     const { engine, run } = engineWith({ platform: 'win32' })
     expect(await engine.status()).toEqual({
       state: 'error',
-      message: 'Talyx cannot attach to the engine on Windows yet'
+      message: 'Talyx cannot attach to the engine on Windows yet',
+      version: null
     })
     expect(run).not.toHaveBeenCalled()
   })
@@ -165,6 +167,29 @@ describe('engine status', () => {
     expect(await engineWith({ run }).engine.status()).toEqual({
       state: 'missing',
       enginePath: null
+    })
+  })
+
+  it('should report the version of an engine whose attach fails', async () => {
+    const run = vi.fn(
+      async (_command: string, args: string[]): Promise<CliResult> =>
+        args[0] === '--version'
+          ? { code: 0, stdout: 'Acme Agent v0.21.0 (2026.1.1) · stable', stderr: '' }
+          : { code: 1, stdout: '', stderr: '' }
+    )
+    expect(await engineWith({ run }).engine.status()).toEqual({
+      state: 'error',
+      message: expect.any(String),
+      version: '0.21.0'
+    })
+  })
+
+  it('should report no version when the version line cannot be parsed', async () => {
+    const run = vi.fn(async (): Promise<CliResult> => ({ code: 0, stdout: '???', stderr: '' }))
+    expect(await engineWith({ run }).engine.status()).toEqual({
+      state: 'error',
+      message: expect.any(String),
+      version: null
     })
   })
 
@@ -194,7 +219,11 @@ describe('engine status', () => {
     ['another runtime protocol', endpointFixture({ runtime_protocol: 2 })]
   ])('should refuse an endpoint with %s', async (_case, endpoint) => {
     const status = await engineWith({ ensure: () => ensureOutput(endpoint) }).engine.status()
-    expect(status).toEqual({ state: 'error', message: 'Invalid local gateway endpoint' })
+    expect(status).toEqual({
+      state: 'error',
+      message: 'Invalid local gateway endpoint',
+      version: '1.2.3'
+    })
   })
 
   it('should explain an ensure that printed nothing with its last stderr line', async () => {

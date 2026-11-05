@@ -29,7 +29,13 @@ export const useEngine = create<EngineState>((set) => {
       if (status.state === 'attached')
         host.connect().catch((error: unknown) => reportError('engine', error))
     } catch (err) {
-      set({ status: { state: 'error', message: err instanceof Error ? err.message : String(err) } })
+      set({
+        status: {
+          state: 'error',
+          message: err instanceof Error ? err.message : String(err),
+          version: null
+        }
+      })
     } finally {
       set({ checking: false })
     }

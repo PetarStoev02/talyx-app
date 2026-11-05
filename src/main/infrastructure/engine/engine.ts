@@ -99,6 +99,8 @@ export function createEngine(deps: EngineDeps): Engine {
   const home = deps.home ?? homedir()
   let attached: Promise<{ command: string; version: EngineVersion; ensure: EnsureResult }> | null =
     null
+  // The version the last `status()` found, so an attach that fails after `--version` can say it.
+  let foundVersion: string | null = null
 
   async function resolveVersion(): Promise<{ command: string; version: EngineVersion }> {
     for (const command of engineCandidates(deps.enginePath(), platform, home)) {
@@ -109,7 +111,9 @@ export function createEngine(deps: EngineDeps): Engine {
         if (isNotFound(error)) continue
         throw error
       }
-      return { command, version: parseEngineVersion(result.stdout) }
+      const version = parseEngineVersion(result.stdout)
+      foundVersion = version.version
+      return { command, version }
     }
     throw new EngineMissingError()
   }
@@ -161,8 +165,10 @@ export function createEngine(deps: EngineDeps): Engine {
   return {
     async status(): Promise<EngineStatus> {
       // Windows mints tickets through the engine's own runtime, which Talyx does not drive yet.
-      if (platform === 'win32') return { state: 'error', message: WINDOWS_UNSUPPORTED }
+      if (platform === 'win32')
+        return { state: 'error', message: WINDOWS_UNSUPPORTED, version: null }
       attached = null
+      foundVersion = null
       try {
         const { version, ensure } = await attach()
         const wire = engineWire(version.name)
@@ -179,7 +185,11 @@ export function createEngine(deps: EngineDeps): Engine {
       } catch (error) {
         if (error instanceof EngineMissingError)
           return { state: 'missing', enginePath: deps.enginePath() }
-        return { state: 'error', message: error instanceof Error ? error.message : String(error) }
+        return {
+          state: 'error',
+          message: error instanceof Error ? error.message : String(error),
+          version: foundVersion
+        }
       }
     },
 
