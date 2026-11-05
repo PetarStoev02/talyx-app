@@ -54,19 +54,21 @@ const shipped: RoadmapItem[] = [
   {
     title: 'Updates you start',
     description:
-      'Talyx tells you when a new release is out. Click Download and it fetches the installer, checks it against the release’s SHA256SUMS and opens it.'
+      'Talyx tells you when a new release is out. Click Download and it fetches the installer, checks it against the release’s SHA256SUMS and opens it. A deb install updates from the release page.'
   }
 ]
 
 /** Not in 1.0, from the release notes. No dates: these are the gaps, not promises. */
 const next: RoadmapItem[] = [
+  // The platform rule in websiteClaims.test.ts allows this title only with this exact description.
   {
     title: 'Windows',
     description: 'It comes once the engine runs there.'
   },
   {
     title: 'Remote engines',
-    description: 'Talyx attaches only to an engine on the same computer for now.'
+    description:
+      'Talyx attaches only to an engine on the same computer, so it cannot reach bots on another one yet.'
   },
   {
     title: 'The model’s reasoning',
@@ -79,14 +81,6 @@ const next: RoadmapItem[] = [
   {
     title: 'Other languages',
     description: 'The app is in English only for now.'
-  }
-]
-
-const later: RoadmapItem[] = [
-  {
-    title: 'Remote machines',
-    description:
-      'Use Talyx on one computer with bots that run on another. How it works is decided once 1.0 has been in daily use.'
   }
 ]
 
@@ -130,10 +124,7 @@ function StatusSection({
 export function RoadmapPage() {
   return (
     <>
-      <PageHero
-        title="Roadmap"
-        lead="What Talyx 1.0 does today, what comes next and what comes after."
-      >
+      <PageHero title="Roadmap" lead="What Talyx 1.0 does today, and what comes next.">
         <AppScreenshot src="/previews/chat.jpg" alt="Talyx: the roster and a chat with Talyx" />
       </PageHero>
 
@@ -150,12 +141,7 @@ export function RoadmapPage() {
           ))}
         </ul>
       </StatusSection>
-      <StatusSection title="Next" lead="Not in 1.0. These come first." items={next} />
-      <StatusSection
-        title="Later"
-        lead="Further out, and shaped by how 1.0 gets used."
-        items={later}
-      />
+      <StatusSection title="Next" lead="Not in 1.0 yet, and no dates set." items={next} />
 
       <section className={`${GUTTER} grid gap-12 py-16 md:grid-cols-12 md:py-24`}>
         <div className="md:col-span-4">

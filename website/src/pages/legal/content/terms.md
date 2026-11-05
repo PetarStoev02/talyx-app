@@ -28,7 +28,7 @@ On macOS, the system blocks each downloaded version the first time you open it. 
 
 **Security note:** Talyx is not hardened or notarized, so software already running as you could change how it behaves. Keep that in mind before you add keys and sign-ins.
 
-Talyx checks GitHub for a newer release. When you click Download, it downloads the installer for your computer, checks it against the release's `SHA256SUMS` and opens it for you to run. It never installs an update by itself.
+Talyx checks GitHub for a newer release. When you click Download, it downloads the installer for your computer, checks it against the release's `SHA256SUMS` and opens it for you to run. It never installs an update by itself. A Linux deb install updates from the release page instead.
 
 ---
 

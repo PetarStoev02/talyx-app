@@ -8,7 +8,7 @@
 
 - Talyx has no server, no account and no telemetry. The app sends nothing about you to us.
 - Your bots run on the engine, on your computer. What a bot sends goes from the engine to the model provider you set up for it, under that provider's terms.
-- On the internet, Talyx itself reaches only GitHub: to check for a new release, to download an update when you click Download, and to fetch the engine's install steps.
+- On the internet, Talyx itself reaches only GitHub: to check for a new release, to download an update when you click Download (a deb install updates from the release page instead), and to fetch the engine's install steps. Those steps then download the engine.
 - This website counts page views and download clicks with PostHog, hosted in the EU, without cookies.
 
 ---
@@ -23,7 +23,7 @@ Nothing. Talyx has no server and no account. It collects no usage data and sends
 
 Talyx is a window onto the engine, a separate agent backend that runs your bots on your computer. Talyx talks to the engine over a local connection on your computer.
 
-- **What you send.** Your messages and the images you attach go from Talyx to the engine. When you dictate a message, Talyx sends the recording to the engine, which turns it into text.
+- **What you send.** Your messages and the images you attach go from Talyx to the engine. When you dictate a message, Talyx sends the recording to the engine, which turns it into text. The engine picks how: with a speech model on your computer, or with a cloud speech-to-text provider you have a key for. In the second case the recording leaves your computer and goes to that provider.
 - **Where it goes next.** The engine sends what a bot needs to answer to the model provider that bot uses: the provider of an API key you added, an account you signed in to, or a custom endpoint you set up. What happens there is governed by that provider's terms and privacy policy, not by this policy. Read them before you add a provider.
 - **Routines and rooms.** Routines run in the engine on their schedule, even while Talyx is closed. Group rooms are hosted by the engine. Both reach your providers the same way.
 - **What stays.** The engine keeps your bots and their chats on your computer. Talyx sends your chats nowhere else.
@@ -45,7 +45,7 @@ When you add an API key or a custom endpoint in Settings, Talyx passes it to the
 Every download the app makes itself comes from GitHub, from the releases of `PetarStoev02/talyx-app`. GitHub sees each request like any other web request.
 
 - **Release check.** Shortly after launch, and then once a day, Talyx asks GitHub whether a newer release exists.
-- **Update download.** When you click Download, Talyx downloads the installer for your computer and the release's `SHA256SUMS`. It checks the installer against `SHA256SUMS`, then opens it for you to run. Talyx never installs anything by itself.
+- **Update download.** When you click Download, Talyx downloads the installer for your computer and the release's `SHA256SUMS`. It checks the installer against `SHA256SUMS`, then opens it for you to run. Talyx never installs anything by itself. A Linux deb install downloads nothing: Talyx opens the release page instead.
 - **Engine install steps.** During first-run setup or an engine update, Talyx downloads the release's `engine-install.json` and checks it against a hash built into Talyx. The steps in it then download and install the engine.
 
 A link you click inside Talyx opens in your web browser.
@@ -79,7 +79,7 @@ Vercel hosts the site and keeps standard server logs of requests, like any web h
 
 ## 8. Your Rights
 
-Talyx holds no data about you, and the website's counts are anonymous, so we have nothing to access, correct or delete for you. Data you send to your model providers, GitHub or Vercel is governed by their policies. Exercise your rights (access, correction, deletion, restriction, portability) with them directly.
+Talyx holds no data about you, and the website's counts are anonymous, so we have nothing to access, correct or delete for you. Data you send to your model providers, GitHub, Vercel or PostHog is governed by their policies. Exercise your rights (access, correction, deletion, restriction, portability) with them directly.
 
 ---
 

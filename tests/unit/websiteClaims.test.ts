@@ -63,6 +63,14 @@ describe('website claims', () => {
     }
   )
 
+  it('should state the website analytics in the privacy policy exactly as the site does', () => {
+    const data = readFileSync('website/src/shared/data/privacy.ts', 'utf8')
+    const sentence = data.match(/SITE_ANALYTICS =\s*'([^']+)'/)?.[1]
+    expect(sentence).toBeDefined()
+    const policy = readFileSync('website/src/pages/legal/content/privacy.md', 'utf8')
+    expect(policy).toContain(sentence)
+  })
+
   it('should send every download to the GitHub release assets', () => {
     const release = readFileSync('website/src/shared/data/release.ts', 'utf8')
     expect(release).toContain('https://github.com/PetarStoev02/talyx-app')
