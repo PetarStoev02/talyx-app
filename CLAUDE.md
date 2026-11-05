@@ -34,9 +34,9 @@ missing, an Engine (debug) page that sends "ping" and prints raw session events,
   Each PR targets `pivot`; `pivot` merges into `main` only when 1.0 is in daily use.
 - The file organizer (0.11.0) is preserved on branch `legacy/file-organizer` and tag
   `v0.11.0-legacy`. Never modify them.
-- The engine's upstream project is never named anywhere in this repo: code, docs, specs,
-  commits or PR text. It is "the engine" (`shared/engine/`, `infrastructure/engine/`,
-  `EngineStatus`, `talyx-engine`); its CLI, paths and data keys are written as `talyx`.
+- The engine's upstream project is named in one place only: the small credit line at the end of the README, which
+  credits it. Everywhere else (code, other docs, specs, commits, PR text) it is never named. It
+  is "the engine" (`shared/engine/`, `infrastructure/engine/`, `EngineStatus`, `talyx-engine`); its CLI, paths and data keys are written as `talyx`.
   Strings the engine's wire protocol needs with the name in them (socket subprotocols, the
   ticket header, the `ui_meta` bot keys) are built at runtime by `engineWire()` in
   `src/shared/engine.ts` from the first word of `talyx-engine --version`. Never write them as

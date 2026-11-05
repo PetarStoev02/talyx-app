@@ -69,3 +69,5 @@ cd website && npm ci && npm run build
 ## License
 
 MIT, see [LICENSE](LICENSE). Third-party credits are in [CREDITS.md](CREDITS.md).
+
+<sub>The engine is [Hermes Agent](https://github.com/NousResearch/hermes-agent) by Nous Research (MIT), used as it ships.</sub>
