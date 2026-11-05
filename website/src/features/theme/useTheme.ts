@@ -5,9 +5,23 @@ export type Theme = 'system' | 'light' | 'dark'
 const STORAGE_KEY = 'talyx-theme'
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 
+// Storage can be blocked (privacy settings, sandboxed frames) and then throws on access; the
+// theme then follows the system, and a choice in the switcher is not remembered.
 function readStoredTheme(): Theme {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  return stored === 'light' || stored === 'dark' ? stored : 'system'
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    return stored === 'light' || stored === 'dark' ? stored : 'system'
+  } catch {
+    return 'system'
+  }
+}
+
+function storeTheme(theme: Theme): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, theme)
+  } catch {
+    // Blocked storage: the choice applies now but is not remembered.
+  }
 }
 
 function applyTheme(theme: Theme): void {
@@ -32,7 +46,7 @@ export function useTheme(): { theme: Theme; setTheme: (t: Theme) => void } {
 
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t)
-    localStorage.setItem(STORAGE_KEY, t)
+    storeTheme(t)
     applyTheme(t)
   }, [])
 

@@ -43,7 +43,12 @@
     <script>
       // Blocking script: apply theme before paint to prevent flash
       ;(function () {
-        var t = localStorage.getItem('talyx-theme')
+        var t = null
+        try {
+          t = localStorage.getItem('talyx-theme')
+        } catch (e) {
+          // Blocked storage throws; follow the system theme.
+        }
         var dark =
           t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
         document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
