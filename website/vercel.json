@@ -1,34 +1,111 @@
 {
   "redirects": [
-    { "source": "/pricing", "destination": "/", "permanent": true },
-    { "source": "/checkout", "destination": "/", "permanent": true },
-    { "source": "/checkout/:path*", "destination": "/", "permanent": true },
-    { "source": "/account", "destination": "/", "permanent": true },
-    { "source": "/admin", "destination": "/", "permanent": true },
     {
-      "source": "/features/custom-taxonomies",
-      "destination": "/features/ai-classification",
+      "source": "/pricing",
+      "destination": "/",
       "permanent": true
     },
-    { "source": "/features/cross-platform", "destination": "/#download", "permanent": true },
-    { "source": "/legal/refund", "destination": "/legal/terms", "permanent": true },
-    { "source": "/blog/why-we-built-talyx", "destination": "/blog", "permanent": true },
-    { "source": "/blog/organize-downloads-folder", "destination": "/blog", "permanent": true },
-    { "source": "/blog/best-file-organizers-2026", "destination": "/blog", "permanent": true },
-    { "source": "/blog/freelancer-file-organization", "destination": "/blog", "permanent": true },
-    { "source": "/blog/ai-file-organization-explained", "destination": "/blog", "permanent": true },
-    { "source": "/blog/local-ai-image-recognition", "destination": "/blog", "permanent": true },
     {
-      "source": "/blog/vision-credits-ai-image-recognition",
-      "destination": "/blog",
+      "source": "/checkout",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/checkout/:path*",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/account",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/admin",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/blog",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/blog/:path*",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/use-cases/:path*",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/features/ai-classification",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/features/watch-folders",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/features/smart-rename",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/features/sort-history",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/features/drag-and-drop",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/features/custom-taxonomies",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/features/assistant",
+      "destination": "/features/manager",
+      "permanent": true
+    },
+    {
+      "source": "/features/privacy-offline",
+      "destination": "/features/privacy",
+      "permanent": true
+    },
+    {
+      "source": "/features/cross-platform",
+      "destination": "/#download",
+      "permanent": true
+    },
+    {
+      "source": "/legal/refund",
+      "destination": "/legal/terms",
       "permanent": true
     }
   ],
   "headers": [
     {
       "source": "/design",
-      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
     }
   ],
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }

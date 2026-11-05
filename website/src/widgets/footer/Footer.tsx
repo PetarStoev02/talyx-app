@@ -5,11 +5,10 @@ import { NavAnchor } from '../../shared/ui/NavAnchor'
 import { ThemeSwitcher } from '../../features/theme/ThemeSwitcher'
 import { useTheme } from '../../features/theme/useTheme'
 
-const [product, useCases, resources] = NAV_GROUPS
+const [product, resources] = NAV_GROUPS
 
 const COLUMNS: NavGroup[] = [
   product,
-  useCases,
   {
     ...resources,
     links: [

@@ -7,11 +7,10 @@ import { NavAnchor } from '../../shared/ui/NavAnchor'
 import { REPO_URL } from '../../shared/data/release'
 import { CTA_LABEL } from '../../shared/data/offer'
 import { NAV_GROUPS, type NavGroup } from '../../shared/data/navigation'
-import { ProductPanel, ResourcesPanel, UseCasesPanel } from './MegaPanels'
+import { ProductPanel, ResourcesPanel } from './MegaPanels'
 
 const MENUS = [
   { id: 'product', label: 'Product', Panel: ProductPanel },
-  { id: 'use-cases', label: 'Use cases', Panel: UseCasesPanel },
   { id: 'resources', label: 'Resources', Panel: ResourcesPanel }
 ] as const
 
@@ -23,7 +22,7 @@ const CLOSE_DELAY_MS = 220
 
 const FAQ_HREF = '/#faq'
 
-/** Wordmark, three menus with previews, one action. */
+/** Wordmark, two menus with previews, one action. */
 export function Header() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const closeSheet = useCallback(() => setSheetOpen(false), [])
@@ -177,11 +176,10 @@ function HeaderActions({
   )
 }
 
-const [product, useCases, resources] = NAV_GROUPS
+const [product, resources] = NAV_GROUPS
 
 const SHEET_GROUPS: NavGroup[] = [
   product,
-  useCases,
   { ...resources, links: [...resources.links, { label: 'FAQ', href: FAQ_HREF }] }
 ]
 

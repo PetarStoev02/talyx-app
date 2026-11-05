@@ -16,14 +16,8 @@ import { NotFoundPage } from '../pages/not-found/NotFoundPage'
 // lazyRouteComponent, not React.lazy: the router awaits these in `router.load()`,
 // so the static prerender emits finished HTML instead of a Suspense placeholder
 // the browser has to fill in afterwards.
-const BlogPage = lazyRouteComponent(() => import('../pages/blog/BlogPage'), 'BlogPage')
-const BlogPostPage = lazyRouteComponent(() => import('../pages/blog/BlogPostPage'), 'BlogPostPage')
 const PressKitPage = lazyRouteComponent(() => import('../pages/press/PressKitPage'), 'PressKitPage')
 const FeaturePage = lazyRouteComponent(() => import('../pages/features/FeaturePage'), 'FeaturePage')
-const UseCasePage = lazyRouteComponent(
-  () => import('../pages/use-cases/UseCasePage'),
-  'UseCasePage'
-)
 const ContactPage = lazyRouteComponent(() => import('../pages/contact/ContactPage'), 'ContactPage')
 const RoadmapPage = lazyRouteComponent(() => import('../pages/roadmap/RoadmapPage'), 'RoadmapPage')
 const LegalPage = lazyRouteComponent(() => import('../pages/legal/LegalPage'), 'LegalPage')
@@ -40,28 +34,10 @@ const indexRoute = createRoute({
   component: LandingPage
 })
 
-const blogRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/blog',
-  component: BlogPage
-})
-
-const blogPostRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/blog/$slug',
-  component: BlogPostPage
-})
-
 const featureRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/features/$slug',
   component: FeaturePage
-})
-
-const useCaseRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/use-cases/$slug',
-  component: UseCasePage
 })
 
 const pressRoute = createRoute({
@@ -98,10 +74,7 @@ const designRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  blogRoute,
-  blogPostRoute,
   featureRoute,
-  useCaseRoute,
   pressRoute,
   contactRoute,
   roadmapRoute,

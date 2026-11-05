@@ -7,6 +7,7 @@ export interface PageMeta {
   jsonLd?: object[]
 }
 
+import { features } from './navigation'
 import { DOWNLOADS, REPO_URL } from './release'
 
 const BASE_URL = 'https://talyx.app'
@@ -90,31 +91,6 @@ const faqJsonLd = {
   }))
 }
 
-function blogArticle(headline: string, datePublished: string, description: string) {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline,
-    datePublished,
-    author: { '@type': 'Organization', name: 'Talyx' },
-    publisher: { '@type': 'Organization', name: 'Talyx', logo: `${BASE_URL}/talyx-logo.svg` },
-    description
-  }
-}
-
-function breadcrumb(items: { name: string; url: string }[]) {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: items.map((item, i) => ({
-      '@type': 'ListItem',
-      position: i + 1,
-      name: item.name,
-      item: item.url
-    }))
-  }
-}
-
 export const seoData: Record<string, PageMeta> = {
   '/': {
     title: 'Talyx: Tell your Mac what to do | Free and open source',
@@ -125,38 +101,6 @@ export const seoData: Record<string, PageMeta> = {
       'One shortcut, your own Claude, approval before anything changes. Free and open source.',
     canonical: '/',
     jsonLd: [orgJsonLd, softwareJsonLd, faqJsonLd]
-  },
-  '/blog': {
-    title: 'Blog: Talyx | Free, open-source Mac assistant',
-    description:
-      'News about Talyx, the free and open-source Mac assistant: the project, its own Claude-powered assistant, and what changes in each release.',
-    canonical: '/blog'
-  },
-  '/blog/talyx-is-now-free-and-open-source': {
-    title: 'Talyx is now free and open source | Talyx Blog',
-    description:
-      'Why Talyx is free and open source under the MIT licence from version 0.11, and what changes and what stays the same for you.',
-    canonical: '/blog/talyx-is-now-free-and-open-source',
-    jsonLd: [
-      blogArticle(
-        'Talyx is now free and open source',
-        '2026-10-12',
-        'Why Talyx is free and open source under the MIT licence, and what changes for you.'
-      )
-    ]
-  },
-  '/blog/meet-the-assistant': {
-    title: 'Meet the Assistant | Your Own Claude Runs Your Mac',
-    description:
-      'Talyx 0.9.0 adds a hotkey overlay where your own Claude plans what you ask, shows a card, and acts when you approve. Files, calendar, mail, music, code, and voice.',
-    canonical: '/blog/meet-the-assistant',
-    jsonLd: [
-      blogArticle(
-        'Meet the Assistant: Your Own Claude Runs Your Mac',
-        '2026-09-17',
-        'What the Talyx assistant does, how the approval gate works, and why it runs on your own Claude.'
-      )
-    ]
   },
   '/roadmap': {
     title: 'Roadmap: Talyx | What Is Shipped and What Is Next',
@@ -189,163 +133,14 @@ export const seoData: Record<string, PageMeta> = {
     canonical: '/press'
   },
 
-  // Features
-  '/features/ai-classification': {
-    title: 'AI Classification: Talyx | Smart Local or Your Claude',
-    description:
-      'Sort with Smart Local on this Mac (nothing sent), or Your Claude for the whole batch when connected. Talyx is the harness: you bring the brain. No Talyx-hosted classification downloads.',
-    canonical: '/features/ai-classification',
-    jsonLd: [
-      breadcrumb([
-        { name: 'Home', url: BASE_URL },
-        { name: 'Features', url: `${BASE_URL}/features/ai-classification` },
-        { name: 'AI Classification', url: `${BASE_URL}/features/ai-classification` }
-      ])
-    ]
-  },
-  '/features/assistant': {
-    title: 'The Assistant: Talyx | Your Own Claude Runs Your Mac',
-    description:
-      'Press Cmd+Shift+Space and say what you want: sort files, check your calendar, run a command, add a reminder. Your own Claude plans it, you approve any change, Talyx does it. Voice in and out.',
-    canonical: '/features/assistant',
-    jsonLd: [
-      breadcrumb([
-        { name: 'Home', url: BASE_URL },
-        { name: 'Features', url: `${BASE_URL}/features/ai-classification` },
-        { name: 'The Assistant', url: `${BASE_URL}/features/assistant` }
-      ])
-    ]
-  },
-  '/features/watch-folders': {
-    title: 'Watch Folders: Talyx | Auto-Sort Files as They Arrive',
-    description:
-      'Set up watch folders that automatically sort new files the moment they appear. Talyx monitors directories and classifies incoming files in real-time.',
-    canonical: '/features/watch-folders',
-    jsonLd: [
-      breadcrumb([
-        { name: 'Home', url: BASE_URL },
-        { name: 'Features', url: `${BASE_URL}/features/ai-classification` },
-        { name: 'Watch Folders', url: `${BASE_URL}/features/watch-folders` }
-      ])
-    ]
-  },
-  '/features/smart-rename': {
-    title: 'Smart Rename: Talyx | Harvard Naming',
-    description:
-      'AI-powered smart renaming following Harvard file naming conventions. Your own Claude reads your file content and suggests meaningful names. Turn scan_001.pdf into Tax-Return-2024-Q4.pdf automatically.',
-    canonical: '/features/smart-rename',
-    jsonLd: [
-      breadcrumb([
-        { name: 'Home', url: BASE_URL },
-        { name: 'Features', url: `${BASE_URL}/features/ai-classification` },
-        { name: 'Smart Rename', url: `${BASE_URL}/features/smart-rename` }
-      ])
-    ]
-  },
-  '/features/sort-history': {
-    title: 'Sort History & Undo: Talyx | Every Move, Reversible',
-    description:
-      'Every file sort in Talyx is logged with full history. Undo a whole sort batch; Talyx restores what it safely can and tells you what it left. Never lose track of your files.',
-    canonical: '/features/sort-history',
-    jsonLd: [
-      breadcrumb([
-        { name: 'Home', url: BASE_URL },
-        { name: 'Features', url: `${BASE_URL}/features/ai-classification` },
-        { name: 'Sort History', url: `${BASE_URL}/features/sort-history` }
-      ])
-    ]
-  },
-  '/features/drag-and-drop': {
-    title: 'Drag & Drop Sorting: Talyx | Drop a Folder, Sort in Seconds',
-    description:
-      'Simply drag and drop any folder onto Talyx to instantly classify and sort all files inside. The fastest way to organize files on your desktop.',
-    canonical: '/features/drag-and-drop',
-    jsonLd: [
-      breadcrumb([
-        { name: 'Home', url: BASE_URL },
-        { name: 'Features', url: `${BASE_URL}/features/ai-classification` },
-        { name: 'Drag & Drop', url: `${BASE_URL}/features/drag-and-drop` }
-      ])
-    ]
-  },
-  '/features/privacy-offline': {
-    title: 'Privacy & Offline: Talyx | Files Stay on Your Mac by Default',
-    description:
-      'Smart sorting classifies on your machine with zero network calls. Turn on Your Claude and only files that need reading are sent to your own Claude account, with currency amounts, dates and company names ending in a legal suffix masked first, best-effort.',
-    canonical: '/features/privacy-offline',
-    jsonLd: [
-      breadcrumb([
-        { name: 'Home', url: BASE_URL },
-        { name: 'Features', url: `${BASE_URL}/features/ai-classification` },
-        { name: 'Privacy & Offline', url: `${BASE_URL}/features/privacy-offline` }
-      ])
-    ]
-  },
-
-  // Use Cases
-  '/use-cases/knowledge-workers': {
-    title: 'File Organizer for Knowledge Workers | Talyx',
-    description:
-      'Organize your Downloads folder in seconds. Sorts on-device by default, with your own Claude as an optional upgrade. Free and open source.',
-    canonical: '/use-cases/knowledge-workers',
-    jsonLd: [
-      breadcrumb([
-        { name: 'Home', url: BASE_URL },
-        { name: 'Use Cases', url: `${BASE_URL}/use-cases/knowledge-workers` },
-        { name: 'Knowledge Workers', url: `${BASE_URL}/use-cases/knowledge-workers` }
-      ])
-    ]
-  },
-  '/use-cases/freelancers': {
-    title: 'File Organizer for Freelancers | Talyx',
-    description:
-      'Keep client files, project assets, and deliverables organized automatically. Smart Local sorts by file type on your Mac; grouping by client or project needs Your Claude, which reads what\u2019s inside.',
-    canonical: '/use-cases/freelancers',
-    jsonLd: [
-      breadcrumb([
-        { name: 'Home', url: BASE_URL },
-        { name: 'Use Cases', url: `${BASE_URL}/use-cases/knowledge-workers` },
-        { name: 'Freelancers & Creatives', url: `${BASE_URL}/use-cases/freelancers` }
-      ])
-    ]
-  },
-  '/use-cases/students': {
-    title: 'File Organizer for Students | Talyx',
-    description:
-      'Organize research papers, lecture notes, datasets, and assignments automatically. Smart Local sorts by file type on your Mac; sorting by course and topic needs Your Claude, which reads what\u2019s inside.',
-    canonical: '/use-cases/students',
-    jsonLd: [
-      breadcrumb([
-        { name: 'Home', url: BASE_URL },
-        { name: 'Use Cases', url: `${BASE_URL}/use-cases/knowledge-workers` },
-        { name: 'Students & Researchers', url: `${BASE_URL}/use-cases/students` }
-      ])
-    ]
-  },
-  '/use-cases/legal': {
-    title: 'Legal Document Organizer: Talyx | Sorts On-Device by Default',
-    description:
-      'Organize legal documents, contracts, and case files. Smart Local sorting classifies entirely on your machine, no file content leaving your device. Your Claude is a separate, optional mode. Perfect for law firms.',
-    canonical: '/use-cases/legal',
-    jsonLd: [
-      breadcrumb([
-        { name: 'Home', url: BASE_URL },
-        { name: 'Use Cases', url: `${BASE_URL}/use-cases/knowledge-workers` },
-        { name: 'Legal & Compliance', url: `${BASE_URL}/use-cases/legal` }
-      ])
-    ]
-  },
-  '/use-cases/medical': {
-    title: 'Medical File Organizer: Talyx | Sorts On-Device by Default',
-    description:
-      'Organize medical records, patient files, and healthcare documents. Smart Local sorting classifies entirely on your machine, no file content leaving your device. Your Claude is a separate, optional mode. Review your data policy before using it for patient records.',
-    canonical: '/use-cases/medical',
-    jsonLd: [
-      breadcrumb([
-        { name: 'Home', url: BASE_URL },
-        { name: 'Use Cases', url: `${BASE_URL}/use-cases/knowledge-workers` },
-        { name: 'Medical & Healthcare', url: `${BASE_URL}/use-cases/medical` }
-      ])
-    ]
-  }
+  ...Object.fromEntries(
+    features.map(({ slug, title, shortDescription }) => [
+      `/features/${slug}`,
+      {
+        title: `${title}: Talyx`,
+        description: shortDescription,
+        canonical: `/features/${slug}`
+      }
+    ])
+  )
 }

@@ -106,14 +106,6 @@ export function HeroSection() {
             >
               Source on GitHub
             </a>
-            {' · '}
-            <Link
-              to="/blog/$slug"
-              params={{ slug: 'talyx-is-now-free-and-open-source' }}
-              className="text-[var(--color-text-primary)] underline underline-offset-4"
-            >
-              Why it is free
-            </Link>
           </p>
         </div>
       </div>

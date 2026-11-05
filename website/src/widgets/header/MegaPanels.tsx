@@ -1,17 +1,8 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { features, resources, useCases } from '../../shared/data/navigation'
-import { posts } from '../../shared/data/posts'
-import { PRIVACY_LEDGER } from '../../shared/data/privacy'
-import { ApprovalFigure } from '../../shared/ui/ApprovalCard'
+import { features, resources } from '../../shared/data/navigation'
 import { Wallpaper } from '../../shared/ui/page'
 import { REPO_URL } from '../../shared/data/release'
-
-/** The panel has room for three one-clause facts: the first sentence of each, without the 2,000-character limit. */
-const MENU_LEDGER = [0, 1, 3].map((i) => {
-  const { figure, caption } = PRIVACY_LEDGER[i]
-  return { figure, caption: caption.split('.')[0] }
-})
 
 const ITEM =
   'block rounded-xl px-4 py-3 transition-colors duration-150 data-[active=true]:bg-[var(--color-bg-secondary)] focus-visible:bg-[var(--color-bg-secondary)] focus-visible:outline-none'
@@ -71,19 +62,12 @@ export function ProductPanel() {
               className="card-swap w-full rounded-xl"
             />
           ) : (
-            <dl
+            <div
               key={active.slug}
-              className="card-swap grid aspect-[1100/720] content-center gap-6 rounded-xl bg-[var(--color-bg)] p-10 text-[var(--color-text-primary)]"
+              className="card-swap grid aspect-[1100/720] content-center rounded-xl bg-[var(--color-bg)] p-10 text-[44px] leading-[1.02] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]"
             >
-              {MENU_LEDGER.map(({ figure, caption }) => (
-                <div key={caption} className="grid grid-cols-[4rem_1fr] items-baseline gap-4">
-                  <dt className="text-right text-[44px] leading-none font-semibold tabular-nums">
-                    {figure}
-                  </dt>
-                  <dd className="text-[17px]">{caption}</dd>
-                </div>
-              ))}
-            </dl>
+              {active.title}
+            </div>
           )}
           <figcaption className="mt-4 text-[15px] text-white">{active.shortDescription}</figcaption>
         </figure>
@@ -92,43 +76,7 @@ export function ProductPanel() {
   )
 }
 
-export function UseCasesPanel() {
-  const [active, setActive] = useState(useCases[0])
-
-  return (
-    <PanelGrid
-      list={useCases.map((useCase) => (
-        <li key={useCase.slug}>
-          <Link
-            to="/use-cases/$slug"
-            params={{ slug: useCase.slug }}
-            data-active={useCase.slug === active.slug}
-            onMouseEnter={() => setActive(useCase)}
-            onFocus={() => setActive(useCase)}
-            className={ITEM}
-          >
-            <ItemText title={useCase.title} description={useCase.shortDescription} />
-          </Link>
-        </li>
-      ))}
-      preview={
-        <ApprovalFigure
-          plan={active.plan}
-          className="aspect-[16/10] flex-col p-8"
-          caption={
-            <figcaption className="mt-5 text-[15px] text-white">
-              A card Talyx might show {active.title.toLowerCase()}. Nothing moves until you approve.
-            </figcaption>
-          }
-        />
-      }
-    />
-  )
-}
-
 export function ResourcesPanel() {
-  const latest = posts.find((post) => !post.draft)
-
   return (
     <PanelGrid
       list={
@@ -147,25 +95,7 @@ export function ResourcesPanel() {
           </li>
         </>
       }
-      preview={
-        latest ? (
-          <Link
-            to="/blog/$slug"
-            params={{ slug: latest.slug }}
-            className="group flex aspect-[16/10] flex-col justify-between rounded-2xl bg-[var(--color-text-primary)] p-10 text-[var(--color-bg)]"
-          >
-            <span className="text-[15px] opacity-75">Latest on the blog · {latest.readTime}</span>
-            <span>
-              <span className="block text-[44px] leading-[1.02] font-semibold tracking-[-0.03em] transition-transform duration-300 group-hover:-translate-y-1">
-                {latest.title}
-              </span>
-              <span className="mt-4 block max-w-[44ch] text-[17px] opacity-85">
-                {latest.excerpt}
-              </span>
-            </span>
-          </Link>
-        ) : null
-      }
+      preview={null}
     />
   )
 }

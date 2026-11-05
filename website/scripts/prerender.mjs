@@ -5,30 +5,6 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const distDir = join(__dirname, '..', 'dist')
 
-const routes = [
-  '/',
-  '/blog',
-  '/blog/talyx-is-now-free-and-open-source',
-  '/blog/meet-the-assistant',
-  '/press',
-  '/features/ai-classification',
-  '/features/watch-folders',
-  '/features/smart-rename',
-  '/features/sort-history',
-  '/features/drag-and-drop',
-  '/features/privacy-offline',
-  '/features/assistant',
-  '/use-cases/knowledge-workers',
-  '/use-cases/freelancers',
-  '/use-cases/students',
-  '/use-cases/legal',
-  '/use-cases/medical',
-  '/roadmap',
-  '/contact',
-  '/legal/terms',
-  '/legal/privacy'
-]
-
 const basepath = ''
 const baseUrl = 'https://talyx.app'
 
@@ -84,7 +60,7 @@ function replaceMeta(template, meta) {
 }
 
 async function prerender() {
-  const { render } = await import(join(distDir, 'server', 'entry-server.js'))
+  const { render, ROUTES: routes } = await import(join(distDir, 'server', 'entry-server.js'))
   const template = readFileSync(join(distDir, 'index.html'), 'utf-8')
 
   console.log('Pre-rendering static pages...\n')
@@ -112,12 +88,7 @@ async function prerender() {
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ...routes.map((route) => {
       const loc = route === '/' ? baseUrl : `${baseUrl}${route}`
-      const priority =
-        route === '/'
-          ? '1.0'
-          : route.startsWith('/features/') || route.startsWith('/use-cases/')
-            ? '0.7'
-            : '0.8'
+      const priority = route === '/' ? '1.0' : route.startsWith('/features/') ? '0.7' : '0.8'
       const changefreq = route === '/' ? 'weekly' : 'monthly'
       return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`
     }),

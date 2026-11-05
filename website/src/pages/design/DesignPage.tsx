@@ -1,10 +1,8 @@
 import { ArrowRight } from 'lucide-react'
 import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle'
 import { useNoIndex } from '../../shared/hooks/useNoIndex'
-import { ApprovalCard } from '../../shared/ui/ApprovalCard'
 import { APP_VERSION } from '../../shared/data/release'
 import { CTA_LABEL, DMG_SIZE_MB, MIN_MACOS } from '../../shared/data/offer'
-import { planFor } from '../../shared/data/plans'
 import {
   AppScreenshot,
   Body,
@@ -55,8 +53,6 @@ const RULES = [
   'One button shape: the full pill.',
   'Pictures are the real app, or the Mac wallpaper it runs on.'
 ]
-
-const SAMPLE_PLAN = planFor('sort my Downloads')
 
 /** The site's design system on one unlisted page. Not linked anywhere and not indexed. */
 export function DesignPage() {
@@ -159,12 +155,6 @@ export function DesignPage() {
         <div className="md:col-span-5">
           <SectionHeading>Pictures</SectionHeading>
           <div className="mt-8 space-y-6">
-            <ItemTitle>The approval card</ItemTitle>
-            <Body>
-              Rebuilt in HTML at true size and marked <code>data-ui</code>, so it keeps the
-              app&apos;s own divider. Used in the hero, the try-it section and the use-case
-              previews.
-            </Body>
             <ItemTitle>App screenshots</ItemTitle>
             <Body>
               Taken from the real app demo views into <code>public/previews/</code>, always shown on
@@ -173,7 +163,6 @@ export function DesignPage() {
           </div>
         </div>
         <div data-reveal className="space-y-8 md:col-span-7">
-          <ApprovalCard plan={SAMPLE_PLAN} />
           <AppScreenshot src="/previews/sort.jpg" alt="Talyx: the sort preview" />
         </div>
       </section>

@@ -1,6 +1,5 @@
 import { HeroSection } from './sections/HeroSection'
 import { HowItWorksSection } from './sections/HowItWorksSection'
-import { TryItSection } from './sections/TryItSection'
 import { FeaturesSection } from './sections/FeaturesSection'
 import { PrivacySection } from './sections/PrivacySection'
 import { FAQSection } from './sections/FAQSection'
@@ -13,7 +12,6 @@ export function LandingPage() {
     <>
       <HeroSection />
       <HowItWorksSection />
-      <TryItSection />
       <FeaturesSection />
       <PrivacySection />
       <FAQSection />

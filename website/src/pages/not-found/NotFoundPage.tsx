@@ -478,7 +478,6 @@ function ScatteredFilesAnimation() {
 }
 
 const ELSEWHERE = [
-  { to: '/blog', label: 'Read the blog' },
   { to: '/roadmap', label: 'See the roadmap' },
   { to: '/contact', label: 'Get in touch' }
 ] as const
