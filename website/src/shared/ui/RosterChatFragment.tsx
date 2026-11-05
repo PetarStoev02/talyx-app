@@ -105,7 +105,7 @@ export function RosterChatFragment({ className = '' }: { className?: string }) {
         <div className="mt-5 hidden sm:block">
           <p className="flex justify-between px-1 text-[13px] text-muted-foreground">
             <span>Team</span>
-            <span>3</span>
+            <span>{ROWS.length}</span>
           </p>
           <ul className="mt-1.5 space-y-0.5">
             {ROWS.map((row) => (

@@ -100,8 +100,8 @@ export function DownloadSection() {
         Builds are not signed. On a Mac, open Talyx once, then click Open Anyway in System Settings,
         Privacy &amp; Security, or run{' '}
         <code>xattr -dr com.apple.quarantine /Applications/Talyx.app</code>. On Linux, run{' '}
-        <code>chmod +x Talyx-x86_64.AppImage</code>, or install the deb with{' '}
-        <code>sudo apt install ./Talyx-amd64.deb</code>.
+        <code>chmod +x {ASSETS.appImage}</code>, or install the deb with{' '}
+        <code>sudo apt install ./{ASSETS.deb}</code>.
       </p>
     </section>
   )

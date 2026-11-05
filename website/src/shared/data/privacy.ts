@@ -9,9 +9,9 @@ export const PRIVACY_LEDGER = [
       'Talyx servers or accounts. There is nothing to sign up for, and the app collects no telemetry.'
   },
   {
-    figure: '3',
+    figure: '1',
     caption:
-      'things the app fetches on its own, all from GitHub: news of a newer release, the installer when you click Download, and the engine’s install steps during setup. Those steps then download the engine.'
+      'source for everything the app downloads itself: GitHub. That is a check for a newer release, an installer and its SHA256SUMS when you click Download, and the engine’s install steps during setup or an engine update. Those steps then download the engine.'
   },
   {
     figure: '2',

@@ -1,3 +1,4 @@
+import { ASSETS } from '../../../shared/data/release'
 import { SectionHeading, STEP, stagger } from '../../../shared/ui/page'
 
 /** How to open a build that is not signed: the same steps as the release notes. */
@@ -20,9 +21,9 @@ export function InstallSteps() {
           <code>xattr -dr com.apple.quarantine /Applications/Talyx.app</code>
         </li>
         <li>
-          On Linux, make the AppImage executable with <code>chmod +x Talyx-x86_64.AppImage</code>{' '}
-          and run it, or install the deb with <code>sudo apt install ./Talyx-amd64.deb</code>. Linux
-          shows no warning.
+          On Linux, make the AppImage executable with <code>chmod +x {ASSETS.appImage}</code> and
+          run it, or install the deb with <code>sudo apt install ./{ASSETS.deb}</code>. Linux shows
+          no warning.
         </li>
         <li>
           Setup then installs the engine, asks for a model provider and helps you make your first

@@ -36,14 +36,15 @@ window.__talyxBooted = true
 if (root.firstElementChild) {
   // The prerender ran after router.load(); hydrating before it would render no matches yet.
   // A failed load still hydrates, so the page stays interactive.
-  void router.load().finally(() =>
+  const hydrate = () => {
     hydrateRoot(
       root,
       <StrictMode>
         <RouterProvider router={router} />
       </StrictMode>
     )
-  )
+  }
+  void router.load().then(hydrate, hydrate)
 } else {
   createRoot(root).render(
     <StrictMode>
