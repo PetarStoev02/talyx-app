@@ -21,6 +21,7 @@ import {
 } from './RosterDialogs'
 import { rosterControls } from './rosterControls'
 import { useCreating } from './creating'
+import { Loading, Skeleton, SkeletonRows } from '@shared/ui/skeleton'
 import type { MenuAction } from './RosterMenu'
 
 // `backend` must be a stable reference (see useRosterConnection).
@@ -102,11 +103,7 @@ export function Roster({
       <div className="shrink-0 overflow-y-hidden px-3 pt-2 pb-3 [scrollbar-gutter:stable]">
         {/* A dialog or the details panel shows the roster's error itself; one place is enough. */}
         {!dialogOpen && !state.editingProfile && <ProblemBanner retry={reload} />}
-        {state.loading && (
-          <p role="status" className="p-2">
-            {t('roster.loading')}
-          </p>
-        )}
+        {state.loading && <RosterSkeleton label={t('roster.loading')} />}
         <PinnedGrid
           botActions={botActions}
           roomActions={roomActions}
@@ -116,18 +113,20 @@ export function Roster({
         />
       </div>
       <div className="scroll-y-stable min-h-0 flex-1 px-3 pb-3">
-        {[...state.snapshot.folders.filter((folder) => !folder.parentId), null].map((folder) => (
-          <FolderGroup
-            key={folder?.id ?? 'unassigned'}
-            folder={folder}
-            botActions={botActions}
-            folderActions={folderActions}
-            selectBot={selectBot}
-            selectRoom={selectRoom}
-            drops={drops}
-            roomActions={roomActions}
-          />
-        ))}
+        {/* Until the first read, the skeleton above stands in for the folders too. */}
+        {!state.loading &&
+          [...state.snapshot.folders.filter((folder) => !folder.parentId), null].map((folder) => (
+            <FolderGroup
+              key={folder?.id ?? 'unassigned'}
+              folder={folder}
+              botActions={botActions}
+              folderActions={folderActions}
+              selectBot={selectBot}
+              selectRoom={selectRoom}
+              drops={drops}
+              roomActions={roomActions}
+            />
+          ))}
         <HiddenAgents restore={(bot) => run(() => actions.hide(bot))} />
       </div>
       {creating === 'folder' && (
@@ -306,5 +305,21 @@ function HiddenAgents({ restore }: { restore: (bot: Bot) => void }): React.JSX.E
         </button>
       ))}
     </details>
+  )
+}
+
+// The roster on its way: two pinned tiles and a folder of rows.
+function RosterSkeleton({ label }: { label: string }): React.JSX.Element {
+  return (
+    <Loading label={label}>
+      <div className="flex justify-center gap-2">
+        <Skeleton className="h-36 w-[calc((100%-1rem)/3)] rounded-xl" />
+        <Skeleton className="h-36 w-[calc((100%-1rem)/3)] rounded-xl" />
+      </div>
+      <Skeleton className="mt-5 ml-2 h-3.5 w-24" />
+      <div className="mt-2 pl-6">
+        <SkeletonRows count={4} />
+      </div>
+    </Loading>
   )
 }

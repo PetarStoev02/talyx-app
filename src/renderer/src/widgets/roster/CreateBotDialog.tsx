@@ -20,6 +20,7 @@ import {
   DialogTitle
 } from '@shared/ui/dialog'
 import { Input, NativeSelect } from '@shared/ui/input'
+import { useCreating } from './creating'
 import { ModelField } from '@shared/ui/ModelPicker'
 
 // Mounted only while open, so the form starts empty each time and survives a failed create.
@@ -38,10 +39,13 @@ export function CreateBotDialog({
     (bot) => selection?.kind === 'bot' && bot.name === selection.id
   )
   const [name, setName] = useState('')
+  const inFolder = useCreating((state) => state.inFolder)
+  // The folder whose empty state opened this, else the open bot's folder, else Unassigned.
   const [folderId, setFolderId] = useState(
-    snapshot.folders.some((folder) => folder.id === selected?.meta.sectionId)
-      ? (selected?.meta.sectionId ?? '')
-      : ''
+    inFolder ??
+      (snapshot.folders.some((folder) => folder.id === selected?.meta.sectionId)
+        ? (selected?.meta.sectionId ?? '')
+        : '')
   )
   const [model, setModel] = useState<ModelChoice | null>(null)
   const taken = snapshot.bots.map((bot) => bot.name)

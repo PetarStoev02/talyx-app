@@ -22,6 +22,7 @@ import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { Input, NativeSelect, Textarea } from '@shared/ui/input'
+import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { Switch } from '@shared/ui/switch'
 
 type Translate = (key: TranslationKey) => string
@@ -108,9 +109,12 @@ export function RoutinesSection({
         <h3 id="routines-heading" className="text-xl font-semibold">
           {t('routines.title')}
         </h3>
-        <Button variant="ghost" onClick={() => setAdding(true)}>
-          {t('routines.new')}
-        </Button>
+        {/* With no routines yet, the empty state below carries the button. */}
+        {routines?.length !== 0 && (
+          <Button variant="ghost" onClick={() => setAdding(true)}>
+            {t('routines.new')}
+          </Button>
+        )}
       </div>
       {problem ? (
         <div role="alert">
@@ -123,11 +127,16 @@ export function RoutinesSection({
           </button>
         </div>
       ) : !routines ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          {t('routines.loading')}
-        </p>
+        <Loading label={t('routines.loading')} className="space-y-2">
+          <Skeleton className="h-16 w-full rounded-xl" />
+          <Skeleton className="h-16 w-full rounded-xl" />
+        </Loading>
       ) : routines.length === 0 ? (
-        <p className="text-base text-muted-foreground">{t('routines.empty')}</p>
+        <div className="flex flex-col items-start gap-2 rounded-xl bg-secondary p-4">
+          <p className="text-base">{t('routines.empty')}</p>
+          <p className="text-sm text-muted-foreground">{t('routines.newHint')}</p>
+          <Button onClick={() => setAdding(true)}>{t('routines.new')}</Button>
+        </div>
       ) : (
         <ul className="space-y-2">
           {routines.map((routine) => (

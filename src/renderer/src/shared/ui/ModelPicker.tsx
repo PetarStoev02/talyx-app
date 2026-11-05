@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { DropdownMenu } from 'radix-ui'
 import { ChevronDown } from 'lucide-react'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
+import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { CheckItem, menuContentClass, menuLabelClass } from '@shared/ui/menu'
 
 export interface ModelPick {
@@ -55,9 +56,12 @@ export function ModelPicker({
             </div>
           ) : (
             !providers && (
-              <p role="status" className="px-2.5 py-1.5 text-muted-foreground">
-                {labels.loading}
-              </p>
+              <Loading label={labels.loading} className="space-y-1 p-1">
+                <Skeleton className="mx-1.5 my-1 h-3 w-16" />
+                {[0, 1, 2, 3].map((line) => (
+                  <Skeleton key={line} className="mx-1.5 h-7" />
+                ))}
+              </Loading>
             )
           )}
           {providers?.map((provider) => (

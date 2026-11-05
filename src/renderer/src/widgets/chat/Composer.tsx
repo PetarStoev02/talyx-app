@@ -44,11 +44,14 @@ export interface ComposerTarget {
 export function Composer({
   target,
   inputRef,
+  seed = null,
   children
 }: {
   target: ComposerTarget
   // The text field, for a pane that hands focus back to it.
   inputRef?: React.Ref<HTMLTextAreaElement>
+  // Text a starter puts in the box; each new object replaces the draft.
+  seed?: { text: string } | null
   // Chips between the + and the mic, such as the bot chat's model and reasoning level.
   children?: React.ReactNode
 }): React.JSX.Element {
@@ -56,6 +59,12 @@ export function Composer({
   const [text, setText] = useState('')
   const [files, setFiles] = useState<ComposerFile[]>([])
   const [sending, setSending] = useState(false)
+  // A new seed replaces the draft once, while rendering (no effect round trip).
+  const [seenSeed, setSeenSeed] = useState(seed)
+  if (seed !== seenSeed) {
+    setSeenSeed(seed)
+    if (seed) setText(seed.text)
+  }
   const picker = useRef<HTMLInputElement>(null)
   // Until the engine starts the turn, a send in flight counts as running: no second send.
   const running = sending || target.running

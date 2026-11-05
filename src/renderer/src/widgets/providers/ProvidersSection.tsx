@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/u
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
 import { AddProviderDialog } from './AddProviderDialog'
 import { DefaultModelSection } from './DefaultModelSection'
+import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { failureText, reportSpread } from './feedback'
 
 const linkClass =
@@ -150,11 +151,16 @@ export function ProvidersSection({
             </button>
           </div>
         ) : !overview ? (
-          <p role="status" className="text-base text-muted-foreground">
-            {t('providers.loading')}
-          </p>
+          <Loading label={t('providers.loading')} className="space-y-2">
+            {[0, 1, 2].map((row) => (
+              <Skeleton key={row} className="h-16 w-full rounded-xl" />
+            ))}
+          </Loading>
         ) : empty ? (
-          <p className="text-base">{t('providers.empty')}</p>
+          <div className="flex flex-col items-start gap-3 rounded-xl bg-secondary p-4">
+            <p className="text-base">{t('providers.empty')}</p>
+            <Button onClick={() => setEditing('new')}>{t('providers.add')}</Button>
+          </div>
         ) : (
           <ul className="space-y-2">
             {overview.endpoints.map((endpoint) => (

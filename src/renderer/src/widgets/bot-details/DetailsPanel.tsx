@@ -25,6 +25,7 @@ import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { Input, Textarea } from '@shared/ui/input'
 import { ModelField } from '@shared/ui/ModelPicker'
+import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { RoutinesSection } from './RoutinesSection'
 
 type Tab = 'details' | 'look' | 'soul'
@@ -187,7 +188,14 @@ export function DetailsPanel({
               </button>
             </div>
           ) : !draft ? (
-            <p role="status">{t('details.loading')}</p>
+            <Loading label={t('details.loading')} className="space-y-5">
+              {[0, 1, 2].map((field) => (
+                <div key={field} className="space-y-2">
+                  <Skeleton className="h-3.5 w-20" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))}
+            </Loading>
           ) : tab === 'details' ? (
             <div className="space-y-4">
               {bot.name !== 'default' && (

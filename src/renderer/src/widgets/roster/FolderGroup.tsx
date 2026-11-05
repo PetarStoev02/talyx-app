@@ -14,6 +14,8 @@ import { RoomRow } from './RoomRow'
 import type { RosterDrops } from './rosterControls'
 import { ContextMenuArea } from '@shared/ui/menu'
 import type { MenuAction } from '@shared/ui/menu'
+import { Button } from '@shared/ui/button'
+import { useCreating } from './creating'
 import { RosterMenu } from './RosterMenu'
 
 export interface FolderGroupProps {
@@ -98,7 +100,22 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
             </div>
           ))}
           {items.length + children.length === 0 && (
-            <p className="px-3 py-2 text-base">{t('roster.emptyFolder')}</p>
+            <div className="flex items-center justify-between gap-2 px-3 py-1">
+              <p className="text-sm text-muted-foreground">{t('roster.emptyFolder')}</p>
+              {folder && (
+                <Button
+                  variant="ghost"
+                  className="h-8 px-3 text-sm"
+                  disabled={saving}
+                  onClick={() => {
+                    useRoster.getState().clearError()
+                    useCreating.getState().createBotIn(folder.id)
+                  }}
+                >
+                  {t('create.title')}
+                </Button>
+              )}
+            </div>
           )}
         </div>
       )}

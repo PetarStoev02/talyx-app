@@ -9,7 +9,7 @@ import { useRefocus } from '@shared/hooks/useRefocus'
 import { cn } from '@shared/lib/utils'
 import { useLanguage } from '@app/providers/useLanguage'
 import { EngineGate } from '@widgets/engine-gate'
-import { ChatPane, RoomPane } from '@widgets/chat'
+import { ChatPane, ChatSkeleton, RoomPane } from '@widgets/chat'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { answering, roomActions } from '@features/chat/room'
 import { useRooms } from '@features/chat/roomStore'
@@ -28,7 +28,9 @@ export function AgentsPage({
   roster: RosterBackend | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const { snapshot, selection, editingProfile, editProfile } = useRoster()
+  const { snapshot, selection, editingProfile, editProfile, loading } = useRoster()
+  // A chat opens by itself once the roster is in (useSelectionMemory); until then a placeholder.
+  const opening = loading || snapshot.bots.some((item) => !item.meta.hidden)
   const bot = snapshot.bots.find((item) => selection?.kind === 'bot' && item.name === selection.id)
   const room = snapshot.rooms.find(
     (item) => selection?.kind === 'room' && item.room_id === selection.id
@@ -93,14 +95,11 @@ export function AgentsPage({
           )}
           <ErrorBoundary key={bot?.name ?? room?.room_id ?? 'none'} scope="chat">
             {bot ? (
-              <ChatPane
-                key={bot.name}
-                bot={bot}
-                avatar={<BotAvatar bot={bot} place="tile" size={64} />}
-                actions={chat}
-              />
+              <ChatPane key={bot.name} bot={bot} roster={roster} actions={chat} />
             ) : room ? (
               <RoomPane key={room.room_id} room={room} actions={rooms} chat={chat} />
+            ) : opening ? (
+              <ChatSkeleton label={t('chat.loading')} />
             ) : (
               <div className="grid flex-1 place-content-center justify-items-center gap-4 px-8 text-center">
                 <TalyxLogo size={48} />

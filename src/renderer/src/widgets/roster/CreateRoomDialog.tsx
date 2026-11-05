@@ -19,6 +19,7 @@ import {
   DialogDescription,
   DialogTitle
 } from '@shared/ui/dialog'
+import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { Input, NativeSelect } from '@shared/ui/input'
 
 // Mounted only while open, so the form starts empty each time and survives a failed create.
@@ -110,9 +111,14 @@ export function CreateRoomDialog({
               </span>
             </legend>
             {seatable === null ? (
-              <p className="mt-2" role="status">
-                {t('rooms.membersLoading')}
-              </p>
+              <Loading
+                label={t('rooms.membersLoading')}
+                className="mt-2 space-y-1 rounded-lg bg-secondary p-2"
+              >
+                {[0, 1, 2, 3].map((line) => (
+                  <Skeleton key={line} className="h-7" />
+                ))}
+              </Loading>
             ) : (
               <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto rounded-lg bg-secondary p-2">
                 {candidates.map((bot) => {

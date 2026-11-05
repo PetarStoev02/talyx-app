@@ -4,6 +4,7 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { botTitle } from '@features/bots/roster'
+import { roomHandle } from '@features/bots/rooms'
 import { useRoster } from '@features/bots/store'
 import type { Bot, Room } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
@@ -22,6 +23,8 @@ import { ModelPicker } from '@shared/ui/ModelPicker'
 import { ApprovalCard } from './ApprovalCard'
 import { Chip, Composer } from './Composer'
 import type { ComposerTarget } from './Composer'
+import { ChatSkeleton } from './ChatSkeleton'
+import { Starters } from './ChatIntro'
 import { Transcript } from './Transcript'
 
 /** A hosted room: its log with who is answering below, then a composer with the room's model. */
@@ -43,6 +46,14 @@ export function RoomPane({
   const working = view?.working ?? false
   const memberKey = room.members.map((member) => member.profile).join(',')
   const composer = useRef<HTMLTextAreaElement>(null)
+  const [seed, setSeed] = useState<{ text: string } | null>(null)
+  const start = (text: string): void => {
+    setSeed({ text })
+    requestAnimationFrame(() => {
+      composer.current?.focus()
+      composer.current?.setSelectionRange(text.length, text.length)
+    })
+  }
   useRoomPolling(actions, roomId)
   // A settled card unmounts with focus on it; the composer is where the room goes on.
   useRefocus(composer, view?.tasks.length)
@@ -74,7 +85,7 @@ export function RoomPane({
   )
 
   if (!actions || !chat || !view || (view.loading && !view.events.length))
-    return <p className="m-auto text-base text-muted-foreground">{t('chat.loading')}</p>
+    return <ChatSkeleton label={t('chat.loading')} />
 
   const target: ComposerTarget = {
     placeholder: t('rooms.placeholder'),
@@ -118,10 +129,14 @@ export function RoomPane({
           ))}
         </Transcript>
       ) : (
-        <div className="grid flex-1 place-content-center justify-items-center gap-4 px-8 text-center">
-          <RoomAvatars room={room} bots={bots} size={44} />
+        <div className="grid flex-1 place-content-center justify-items-center gap-3 px-8 text-center">
+          <RoomAvatars room={room} bots={bots} cluster={64} />
           <h1 className="text-2xl font-semibold">{room.name}</h1>
-          <p className="max-w-sm text-base">{t('rooms.empty')}</p>
+          <p className="max-w-md text-base">
+            {listOf(room.members.map((member) => nameOf(member.member_id ?? member.profile)))}
+          </p>
+          <p className="max-w-md text-sm text-muted-foreground">{t('rooms.empty')}</p>
+          <Starters starters={roomStarters(room, t)} onStart={start} />
         </div>
       )}
       <p
@@ -164,7 +179,7 @@ export function RoomPane({
         </div>
       )}
       {view.live ? (
-        <Composer target={target} inputRef={composer}>
+        <Composer target={target} inputRef={composer} seed={seed}>
           <RoomModelMenu room={room} view={view} actions={actions} chat={chat} nameOf={nameOf} />
         </Composer>
       ) : (
@@ -304,4 +319,13 @@ function TaskCard({
       </div>
     </section>
   )
+}
+
+// Ways to start a room: ask one bot (the first that is not Talyx), or hear from every one.
+function roomStarters(room: Room, t: (key: TranslationKey) => string): string[] {
+  const first = room.members.find((member) => member.profile !== 'default') ?? room.members[0]
+  return [
+    ...(first ? [t('starter.roomAsk').replace('{handle}', roomHandle(first.profile))] : []),
+    t('starter.roomIntro')
+  ]
 }

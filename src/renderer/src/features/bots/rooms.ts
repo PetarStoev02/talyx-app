@@ -33,10 +33,15 @@ export async function createRoom(
     members: members.map((bot) => ({
       member_id: bot.name,
       profile: bot.name,
-      handle: bot.name === 'default' ? MANAGER_HANDLE : bot.name,
+      handle: roomHandle(bot.name),
       display_name: botTitle(bot),
       target: { kind: 'local', profile: bot.name }
     }))
   })
   return roomId
+}
+
+/** The handle a bot answers to when you @ it in a room Talyx made. */
+export function roomHandle(profile: string): string {
+  return profile === 'default' ? MANAGER_HANDLE : profile
 }

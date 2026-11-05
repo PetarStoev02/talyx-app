@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import { botChatId, botTitle } from '@features/bots/roster'
+import type { RosterBackend } from '@features/bots/data'
 import type { Bot } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
 import { useChat } from '@features/chat/store'
@@ -12,17 +13,19 @@ import { ApprovalCard } from './ApprovalCard'
 import { ClarifyCard } from './ClarifyCard'
 import { ChatChips, Composer } from './Composer'
 import type { ComposerTarget } from './Composer'
+import { ChatIntro } from './ChatIntro'
+import { ChatSkeleton } from './ChatSkeleton'
 import { Transcript } from './Transcript'
 
 /** A bot's chat: its transcript with any open cards below, then the composer. */
 export function ChatPane({
   bot,
-  avatar,
+  roster,
   actions
 }: {
   bot: Bot
-  // The bot's large avatar for the empty chat; the page draws it.
-  avatar: React.ReactNode
+  // Reads the bot's description and model for the intro before its first message.
+  roster: RosterBackend | null
   actions: ChatActions | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
@@ -30,6 +33,15 @@ export function ChatPane({
   const title = botTitle(bot)
   const chatId = botChatId(bot)
   const composer = useRef<HTMLTextAreaElement>(null)
+  const [seed, setSeed] = useState<{ text: string } | null>(null)
+  const start = (text: string): void => {
+    setSeed({ text })
+    // After the composer has the text: the cursor goes to its end, ready to finish the sentence.
+    requestAnimationFrame(() => {
+      composer.current?.focus()
+      composer.current?.setSelectionRange(text.length, text.length)
+    })
+  }
   // An answered card unmounts with focus on it; the composer is where the conversation goes on.
   useRefocus(composer, chat?.transcript?.prompts.length)
 
@@ -40,7 +52,7 @@ export function ChatPane({
   }, [actions, bot.name, chatId])
 
   if (!actions || !chat || (chat.loading && !chat.transcript))
-    return <p className="m-auto text-base text-muted-foreground">{t('chat.loading')}</p>
+    return <ChatSkeleton label={t('chat.loading')} />
 
   const items = chat.transcript?.items ?? []
   const prompts = chat.transcript?.prompts ?? []
@@ -84,11 +96,7 @@ export function ChatPane({
           ))}
         </Transcript>
       ) : (
-        <div className="grid flex-1 place-content-center justify-items-center gap-4 px-8 text-center">
-          {avatar}
-          <h1 className="text-2xl font-semibold">{title}</h1>
-          <p className="max-w-sm text-base">{t('chat.empty')}</p>
-        </div>
+        <ChatIntro bot={bot} roster={roster} onStart={start} />
       )}
       {chat.error && (
         <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
@@ -119,7 +127,7 @@ export function ChatPane({
       <p className="sr-only" role="status">
         {announced && t(announced).replace('{name}', title)}
       </p>
-      <Composer target={target} inputRef={composer}>
+      <Composer target={target} inputRef={composer} seed={seed}>
         <ChatChips chat={chat} actions={actions} />
       </Composer>
     </>
