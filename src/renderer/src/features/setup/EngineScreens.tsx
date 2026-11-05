@@ -93,18 +93,30 @@ export function StepsFailed({
   )
 }
 
-/** `recheck` is null where the screen already has its own Try again. */
+/**
+ * The gateway outlived an update. With the engine's resolved `path` the hint shows the exact
+ * command: an older copy earlier on PATH would otherwise be the one restarted. Without one (Talyx
+ * could not attach) it names the bare command. `recheck` is null where the screen has its own.
+ */
 function RestartHint({
-  command,
+  path,
   recheck
 }: {
-  command: string
+  path: string | null
   recheck: (() => void) | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
+  const command = path === null ? RESTART_COMMAND : restartCommand(path)
   return (
     <div className="flex max-w-md flex-col items-center gap-2 rounded-xl bg-warning-subtle px-4 py-3">
-      <p className="text-base text-foreground">{t('engine.stale')}</p>
+      <p className="text-base text-foreground">
+        {t(path === null ? 'engine.stale' : 'engine.staleRestartBelow')}
+      </p>
+      {path !== null && (
+        <code className="font-mono text-sm break-all whitespace-pre-wrap select-text">
+          {command}
+        </code>
+      )}
       <div className={`${rowClass} justify-center`}>
         <CopyButton text={command} label={t('providers.copy')} name={null} />
         {recheck && (
@@ -135,7 +147,7 @@ export function ProtocolMismatch({
     <div className={centeredPanelClass}>
       {logo}
       <ScreenTitle level={2}>{t('engine.protocolTitle')}</ScreenTitle>
-      {fit === 'same' && <RestartHint command={RESTART_COMMAND} recheck={null} />}
+      {fit === 'same' && <RestartHint path={null} recheck={null} />}
       <div className={`${rowClass} justify-center`}>
         {fit === 'newer' && (
           <Button
@@ -185,9 +197,7 @@ export function EngineReady({
         </p>
       </div>
       {screen.newer && <p className="text-base text-foreground">{t('setup.newer')}</p>}
-      {screen.stale && (
-        <RestartHint command={restartCommand(screen.path)} recheck={actions.recheck} />
-      )}
+      {screen.stale && <RestartHint path={screen.path} recheck={actions.recheck} />}
       <Button className="px-5" onClick={actions.continue}>
         {t('setup.continue')}
       </Button>

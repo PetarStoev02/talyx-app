@@ -29,6 +29,8 @@ const en = {
   'engine.debugWaiting': 'Events appear here.',
   'engine.stale':
     'The gateway runs older code than the engine. Run talyx-engine gateway restart when no bot is working.',
+  'engine.staleRestartBelow':
+    'The gateway runs older code than the engine. Restart it when no bot is working:',
   'engine.protocolTitle': "This engine and this version of Talyx don't speak the same protocol.",
   'engine.getLatest': 'Get the latest Talyx',
   'engine.olderNotice': 'Your engine ({version}) is older than this Talyx needs.',
