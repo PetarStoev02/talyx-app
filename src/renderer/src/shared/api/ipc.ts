@@ -3,11 +3,13 @@ import { toast } from 'sonner'
 import { t } from '@shared/lib/i18n'
 import { problemOf } from '@shared/lib/problem'
 import { reportError } from '@shared/lib/report'
+import type { InstallExit, InstallSteps } from '../../../../shared/setup'
 
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system'
   sidebarWidth: number
   lastSelection: { kind: 'bot' | 'room'; id: string } | null
+  setupDone: boolean
 }
 
 export const settingsApi = {
@@ -27,6 +29,15 @@ export const settingsApi = {
       })
     })
   }
+}
+
+export const setupApi = {
+  installSteps: (): Promise<InstallSteps> => window.api.getInstallSteps() as Promise<InstallSteps>,
+  runInstall: (): Promise<void> => window.api.runInstall() as Promise<void>,
+  cancelInstall: (): Promise<void> => window.api.cancelInstall() as Promise<void>,
+  onOutput: (cb: (index: number, text: string) => void): (() => void) =>
+    window.api.onInstallOutput(cb),
+  onExit: (cb: (exit: InstallExit) => void): (() => void) => window.api.onInstallExit(cb)
 }
 
 export const updaterApi = {

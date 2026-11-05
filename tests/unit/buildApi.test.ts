@@ -45,21 +45,40 @@ describe('buildApi', () => {
     expect(transport.calls).toEqual([{ channel, args: wireArgs }])
   })
 
-  it('should expose only the settings, engine, log and updater surface', () => {
+  it('should expose only the settings, engine, setup, log and updater surface', () => {
     expect(Object.keys(buildApi(recordingTransport())).sort()).toEqual([
+      'cancelInstall',
       'closeEngineSocket',
       'engineHttp',
       'getEngineStatus',
+      'getInstallSteps',
       'getSettings',
       'logError',
       'onEngineSocketClosed',
       'onEngineSocketFrame',
+      'onInstallExit',
+      'onInstallOutput',
       'onUpdateAvailable',
       'openEngineSocket',
       'pickEnginePath',
+      'runInstall',
       'sendEngineSocket',
       'setNativeTheme',
       'setSettings'
+    ])
+  })
+
+  it('should hand relayed install output and the exit to their listeners', () => {
+    const transport = recordingTransport()
+    const api = buildApi(transport)
+    const seen: unknown[] = []
+    api.onInstallOutput((index, text) => seen.push(['output', index, text]))
+    api.onInstallExit((exit) => seen.push(['exit', exit]))
+    transport.listeners.get('setup:install-output')?.(2, 'line')
+    transport.listeners.get('setup:install-exit')?.({ kind: 'ok' })
+    expect(seen).toEqual([
+      ['output', 2, 'line'],
+      ['exit', { kind: 'ok' }]
     ])
   })
 

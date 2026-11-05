@@ -6,6 +6,7 @@ import { setProductionMenu } from './lib/appMenu'
 import { installWebContentsGuard } from './infrastructure/security/webContentsGuard'
 import { APP_ROOT, registerAppScheme, serveRenderer } from './infrastructure/security/appProtocol'
 import { registerSettingsIpc } from './infrastructure/ipc/settings.ipc'
+import { cancelInstall, registerSetupIpc } from './infrastructure/ipc/setup.ipc'
 import { registerLogIpc } from './infrastructure/ipc/log.ipc'
 import { closeEngineSockets, registerEngineIpc } from './infrastructure/ipc/engine.ipc'
 import { checkForUpdate } from './infrastructure/updater/releaseCheck'
@@ -45,6 +46,7 @@ function registerIpc(): void {
   devBridge?.installTap(ipcMain)
   registerSettingsIpc()
   registerEngineIpc()
+  registerSetupIpc()
   registerLogIpc()
   ipcMain.handle('theme:set-native', (_event, theme: unknown) =>
     syncNativeTheme(validateInput(ThemeSchema, theme))
@@ -272,7 +274,10 @@ app
   })
 
 // Only Talyx's sockets close; the engine gateway outlives the app and is never stopped here.
-app.on('before-quit', closeEngineSockets)
+app.on('before-quit', () => {
+  closeEngineSockets()
+  cancelInstall()
+})
 
 app.on('window-all-closed', () => {
   if (!isMac) app.quit()

@@ -7,7 +7,8 @@ describe('migrateSettings', () => {
       theme: 'system',
       sidebarWidth: 320,
       enginePath: null,
-      lastSelection: null
+      lastSelection: null,
+      setupDone: false
     })
   })
 
@@ -24,7 +25,8 @@ describe('migrateSettings', () => {
       theme: 'dark',
       sidebarWidth: 320,
       enginePath: null,
-      lastSelection: null
+      lastSelection: null,
+      setupDone: false
     })
   })
 
@@ -35,6 +37,15 @@ describe('migrateSettings', () => {
     ['not a number', 'wide', 320]
   ])('should keep a saved sidebar width %s within bounds', (_case, sidebarWidth, expected) => {
     expect(migrateSettings({ sidebarWidth }).sidebarWidth).toBe(expected)
+  })
+
+  it.each([
+    ['saved as done', true, true],
+    ['missing', undefined, false],
+    ['a hand-edited string', 'yes', false],
+    ['a number', 1, false]
+  ])('should read setupDone %s', (_case, setupDone, expected) => {
+    expect(migrateSettings({ setupDone }).setupDone).toBe(expected)
   })
 
   it.each([

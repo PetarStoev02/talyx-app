@@ -12,13 +12,16 @@ export interface UserSettings {
   enginePath: string | null
   /** The bot or room open when Talyx last ran, opened again on launch; null on a first run. */
   lastSelection: { kind: 'bot' | 'room'; id: string } | null
+  /** True once the first-run setup has finished or been skipped; false shows it again. */
+  setupDone: boolean
 }
 
 const defaults: UserSettings = {
   theme: 'system',
   sidebarWidth: SIDEBAR_WIDTH.initial,
   enginePath: null,
-  lastSelection: null
+  lastSelection: null,
+  setupDone: false
 }
 
 function getSettingsPath(): string {
@@ -43,6 +46,7 @@ export function migrateSettings(raw: Record<string, unknown>): UserSettings {
   settings.sidebarWidth = clampSidebarWidth(settings.sidebarWidth)
   if (!LastSelectionSchema.nullable().safeParse(settings.lastSelection).success)
     settings.lastSelection = null
+  if (typeof settings.setupDone !== 'boolean') settings.setupDone = false
   return settings
 }
 

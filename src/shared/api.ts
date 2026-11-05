@@ -3,6 +3,7 @@
 // import 'electron': it compiles in both the node and web tsconfigs.
 
 import type { EngineHttpRequest } from './engine'
+import type { InstallExit } from './setup'
 
 export interface ApiTransport {
   invoke: (channel: string, ...args: unknown[]) => Promise<unknown>
@@ -44,6 +45,17 @@ export function buildApi(transport: ApiTransport) {
       transport.on('engine:socket-closed', (id, code, reason) =>
         callback(id as string, code as number, reason as string)
       ),
+
+    // Engine install (main runs only the pinned steps it loaded itself)
+    getInstallSteps: () => invoke('setup:install-steps'),
+    runInstall: () => invoke('setup:install-run'),
+    cancelInstall: () => invoke('setup:install-cancel'),
+    onInstallOutput: (callback: (index: number, text: string) => void) =>
+      transport.on('setup:install-output', (index, text) =>
+        callback(index as number, text as string)
+      ),
+    onInstallExit: (callback: (exit: InstallExit) => void) =>
+      transport.on('setup:install-exit', (exit) => callback(exit as InstallExit)),
 
     // A renderer failure, written to Talyx's log file by main
     logError: (report: { scope: string; message: string }) => invoke('log:error', report),

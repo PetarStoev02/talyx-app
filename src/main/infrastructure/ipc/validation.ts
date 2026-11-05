@@ -15,6 +15,7 @@ export const UserSettingsPartialSchema = z
   .object({
     lastSelection: LastSelectionSchema.nullable(),
     theme: ThemeSchema,
+    setupDone: z.boolean(),
     sidebarWidth: z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)
   })
   .partial()
