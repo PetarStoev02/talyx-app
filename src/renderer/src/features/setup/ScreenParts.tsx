@@ -33,12 +33,18 @@ export function ScreenTitle({
 }
 
 /** A wait with nothing to click: a spinner and what Talyx is doing. */
+/** A whole screen that only waits: its heading is for screen readers, the spinner for the eye. */
 export function Waiting({ label }: { label: string }): React.JSX.Element {
   return (
-    <p role="status" className="flex items-center gap-2 text-base text-foreground">
-      <Spinner />
-      {label}
-    </p>
+    <>
+      <div className="sr-only">
+        <ScreenTitle level={2}>{label}</ScreenTitle>
+      </div>
+      <p aria-hidden="true" className="flex items-center gap-2 text-base text-foreground">
+        <Spinner />
+        {label}
+      </p>
+    </>
   )
 }
 

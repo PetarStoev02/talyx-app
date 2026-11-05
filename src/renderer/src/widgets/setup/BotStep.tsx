@@ -3,7 +3,7 @@ import { CreateBotForm } from '@features/bots/CreateBotForm'
 import type { RosterBackend } from '@features/bots/data'
 import { useRosterConnection } from '@features/bots/useRosterConnection'
 import type { ModelLists } from '@features/chat/chat'
-import { ScreenTitle, Waiting } from '@features/setup/ScreenParts'
+import { ScreenTitle, Spinner } from '@features/setup/ScreenParts'
 import { linkClass, panelClass } from '@features/setup/screenStyles'
 
 /** Screen 9: the create-bot form, or straight on to Talyx. */
@@ -32,7 +32,10 @@ export function BotStep({
       ) : (
         // The roster needs the engine's socket, which opens shortly after attaching.
         <>
-          <Waiting label={t('engine.connecting')} />
+          <p role="status" className="flex items-center gap-2 text-base text-foreground">
+            <Spinner />
+            {t('engine.connecting')}
+          </p>
           {skip}
         </>
       )}

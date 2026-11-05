@@ -18,6 +18,7 @@ import { TooltipProvider } from '@shared/ui/tooltip'
 import { Roster, RosterAdd, RosterRefresh } from '@widgets/roster'
 import { ConnectionBanner, EngineSplash } from '@widgets/engine-gate'
 import { SetupFlow } from '@widgets/setup'
+import { ProvidersSection } from '@widgets/providers'
 import { useRoster } from '@features/bots/store'
 import { setupVisibility } from '@features/setup/steps'
 import { useSetup } from '@features/setup/store'
@@ -102,7 +103,12 @@ function App(): React.JSX.Element {
       />
       {inSetup ? (
         <SetupFlow
-          providers={providers}
+          providersForm={
+            providers &&
+            ((onOverview) => (
+              <ProvidersSection backend={providers} chat={chat} onOverview={onOverview} />
+            ))
+          }
           roster={rosterBackend}
           chat={chat}
           setup={setup}

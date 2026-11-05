@@ -2,13 +2,12 @@ import { useState } from 'react'
 import { useEngine } from '@app/providers/useEngine'
 import type { RosterBackend } from '@features/bots/data'
 import type { ModelLists } from '@features/chat/chat'
-import type { ProvidersBackend } from '@features/providers/providers'
 import type { SetupBackend } from '@features/setup/install'
 import { InstallEngine } from '@features/setup/InstallEngine'
 import { stepAfter, type SetupStep } from '@features/setup/steps'
 import { useSetup } from '@features/setup/store'
 import { BotStep } from './BotStep'
-import { ProviderStep } from './ProviderStep'
+import { ProviderStep, type ProvidersForm } from './ProviderStep'
 import { StepBar } from './StepBar'
 import { WelcomeScreen } from './WelcomeScreen'
 
@@ -17,13 +16,14 @@ const dragRegion = { WebkitAppRegion: 'drag' } as React.CSSProperties
 
 /** First-run setup: Welcome, then each step not already done, then `onDone` opens the app. */
 export function SetupFlow({
-  providers,
+  providersForm,
   roster,
   chat,
   setup,
   onDone
 }: {
-  providers: ProvidersBackend | null
+  /** The providers form from Settings (a widget this one may not import), filled in by the app. */
+  providersForm: ProvidersForm
   roster: RosterBackend | null
   chat: ModelLists | null
   setup: SetupBackend
@@ -58,7 +58,7 @@ export function SetupFlow({
               <InstallEngine backend={setup} onReady={() => next('engine')} />
             )}
             {screen === 'provider' && (
-              <ProviderStep providers={providers} chat={chat} onNext={() => next('provider')} />
+              <ProviderStep providersForm={providersForm} onNext={() => next('provider')} />
             )}
             {screen === 'bot' && <BotStep roster={roster} chat={chat} onNext={() => next('bot')} />}
           </div>
