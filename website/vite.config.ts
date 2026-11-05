@@ -32,6 +32,8 @@ function resolveRendererDepsFromWebsite(): Plugin {
 export default defineConfig(({ isSsrBuild }) => ({
   plugins: [resolveRendererDepsFromWebsite(), react(), tailwindcss()],
   base: '/',
+  // The prerendered footer and the hydrating client must print the same year.
+  define: { __BUILD_YEAR__: JSON.stringify(new Date().getFullYear()) },
   resolve: {
     alias: [
       // Both trees spell their own root `@/` and both have a `shared/`, so the

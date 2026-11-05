@@ -58,7 +58,7 @@ export function Footer() {
       </p>
 
       <div className="mt-8 flex flex-col gap-4 text-[14px] text-[var(--color-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
-        <p>&copy; {new Date().getFullYear()} Talyx · MIT licensed · Set in Geist</p>
+        <p>&copy; {__BUILD_YEAR__} Talyx · MIT licensed · Set in Geist</p>
         <div className="flex flex-wrap items-center gap-5">
           <Link
             to="/legal/$slug"
