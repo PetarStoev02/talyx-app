@@ -1,0 +1,163 @@
+name: Release
+
+# Builds the macOS and Linux installers and creates a DRAFT release; publishing stays a manual step.
+on:
+  workflow_dispatch:
+    inputs:
+      highlights:
+        description: 'Highlights for the update button, one per line: - **Lead.** Text. (optional)'
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+defaults:
+  run:
+    # -eo pipefail; never add -x: the install-file steps must not echo the secret.
+    shell: bash
+
+jobs:
+  mac:
+    name: macOS DMGs
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The app runs only the install steps pinned in the code; fail before the build if the
+      # secret does not match the pin.
+      - name: Write and check the engine install file
+        env:
+          ENGINE_INSTALL_JSON: ${{ secrets.ENGINE_INSTALL_JSON }}
+        run: source scripts/release-lib.sh && write_install_file_from_secret engine-install.json
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build:mac
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mac
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  linux:
+    name: Linux AppImage and deb
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Write and check the engine install file
+        env:
+          ENGINE_INSTALL_JSON: ${{ secrets.ENGINE_INSTALL_JSON }}
+        run: source scripts/release-lib.sh && write_install_file_from_secret engine-install.json
+
+      - name: Build
+        run: npm run build:linux
+
+      # Proves the shipped install file installs the engine on Linux and Talyx attaches to it.
+      # The suite prints only its summary, never the install file or the engine's name.
+      - name: Real-engine smoke test
+        run: TALYX_SMOKE_INSTALL_FILE=engine-install.json npm run test:smoke
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+          if-no-files-found: error
+
+  release:
+    name: Draft release
+    needs: [mac, linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: release
+          merge-multiple: true
+
+      # The app fetches the install file from the release, so it ships next to the installers.
+      - name: Add the engine install file
+        env:
+          ENGINE_INSTALL_JSON: ${{ secrets.ENGINE_INSTALL_JSON }}
+        run: source scripts/release-lib.sh && write_install_file_from_secret release/engine-install.json
+
+      # Bare file names, so users can run sha256sum -c SHA256SUMS --ignore-missing next to a download.
+      - name: Write SHA256SUMS
+        working-directory: release
+        run: sha256sum * > SHA256SUMS
+
+      # Highlights come through env, never inlined into the script, so the input cannot inject shell.
+      - name: Write the release notes
+        env:
+          HIGHLIGHTS: ${{ inputs.highlights }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          FIXED_NOTES="docs/release-notes/$VERSION.md"
+          if [ ! -f "$FIXED_NOTES" ]; then
+            echo "::error::$FIXED_NOTES is missing; write the release notes before releasing."
+            exit 1
+          fi
+          source scripts/release-lib.sh
+          : > notes.md
+          if [ -n "${HIGHLIGHTS//[[:space:]]/}" ]; then
+            printf '%s\n' "$HIGHLIGHTS" > highlights.md
+            release_notes_file highlights.md notes.md
+            echo >> notes.md
+          fi
+          cat "$FIXED_NOTES" >> notes.md
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      # --target pins the tag to the commit that was built, not the default branch's head.
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" \
+            --draft \
+            --target "$GITHUB_SHA" \
+            --title "Talyx $VERSION" \
+            --notes-file notes.md \
+            --generate-notes \
+            release/*
