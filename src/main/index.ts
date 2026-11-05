@@ -24,6 +24,15 @@ const WINDOW_SHOW_TIMEOUT_MS = 8_000
 const isMac = process.platform === 'darwin'
 const rendererUrl = is.dev ? process.env['ELECTRON_RENDERER_URL'] : undefined
 
+// A dev run must never be mistaken for the installed app: it gets its own name and a night-sky
+// icon (build/ is not packaged). userData is pinned first, so both runs share one settings.json.
+const DEV_NAME = 'Talyx Dev'
+if (is.dev) {
+  app.setPath('userData', app.getPath('userData'))
+  app.setName(DEV_NAME)
+}
+const appIcon = is.dev ? join(app.getAppPath(), 'build/talyx-icon-dev.png') : icon
+
 let mainWindow: BrowserWindow | null = null
 
 registerAppScheme()
@@ -102,6 +111,7 @@ function createWindow(): BrowserWindow {
     height: 800,
     minWidth: 600,
     minHeight: 500,
+    title: app.name,
     show: false,
     autoHideMenuBar: true,
     frame: false,
@@ -109,7 +119,7 @@ function createWindow(): BrowserWindow {
     // Centered on the 56px title row (h-14 in AppShell and PageHeader).
     trafficLightPosition: { x: 16, y: 22 },
     backgroundColor: groundColor(),
-    icon,
+    icon: appIcon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -118,6 +128,8 @@ function createWindow(): BrowserWindow {
     }
   })
   watchWindowFailures(win)
+  // The page's <title> would otherwise rename the window back to Talyx.
+  if (is.dev) win.on('page-title-updated', (event) => event.preventDefault())
   loadPage(win, 'index')
   return win
 }
@@ -219,6 +231,7 @@ app
     installWebContentsGuard(rendererUrl ? `${new URL(rendererUrl).origin}/` : APP_ROOT)
     if (!rendererUrl) serveRenderer(join(__dirname, '../renderer'))
     if (!is.dev) setProductionMenu(process.platform)
+    if (is.dev) app.dock?.setIcon(appIcon)
 
     app.on('browser-window-created', (_, window) =>
       optimizer.watchWindowShortcuts(window, { zoom: true })
