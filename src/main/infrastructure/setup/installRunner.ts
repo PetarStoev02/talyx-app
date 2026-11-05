@@ -21,7 +21,19 @@ export function loginShell(): string {
   return existsSync('/bin/bash') ? '/bin/bash' : '/bin/sh'
 }
 
-export function runInstall(commands: string[], sink: InstallOutputSink, shell: string): InstallRun {
+export interface InstallRunOptions {
+  /** The whole environment the commands see; nothing is inherited from this process. */
+  env: Record<string, string>
+  login: boolean
+}
+
+/** `options` null runs the commands in a login shell with this process's environment. */
+export function runInstall(
+  commands: string[],
+  sink: InstallOutputSink,
+  shell: string,
+  options: InstallRunOptions | null
+): InstallRun {
   let cancelled = false
   let current: ChildProcess | null = null
 
@@ -39,7 +51,8 @@ export function runInstall(commands: string[], sink: InstallOutputSink, shell: s
     return new Promise((resolve) => {
       // A login shell so the command sees the user's PATH; detached so the whole process group
       // can be killed on cancel; stdin closed so a command that prompts reads EOF instead of hanging.
-      const child = spawn(shell, ['-lc', command], {
+      const child = spawn(shell, [options?.login === false ? '-c' : '-lc', command], {
+        env: options?.env,
         detached: true,
         stdio: ['ignore', 'pipe', 'pipe']
       })

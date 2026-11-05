@@ -47,7 +47,8 @@ function startInstall(owner: Sender): void {
   const run = runInstall(
     readyCommands,
     (index, text) => emit(owner, 'setup:install-output', index, text),
-    loginShell()
+    loginShell(),
+    null
   )
   const started: RunningInstall = { owner, run }
   running = started

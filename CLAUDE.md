@@ -73,7 +73,8 @@ Electron 44 needs macOS 13 or newer.
 
 `npm run release` needs `engine-install.json` (the engine install steps the app fetches from the
 release) at the repo root. It is gitignored, and its SHA-256 must equal `ENGINE_INSTALL_SHA256` in
-`src/main/infrastructure/setup/installSteps.ts`; the script refuses to release otherwise. Changing
+`src/main/infrastructure/setup/installPin.ts`; the script also requires the file's `engineVersion` to equal
+`EXPECTED_ENGINE_VERSION` and exactly one commit hash in it, and refuses to release otherwise. Changing
 the commands means updating that pin in the same commit.
 
 During `npm run dev` the renderer is also usable in a plain browser at
@@ -94,7 +95,7 @@ src/main/
     ├── ipc/                    # settings.ipc.ts, engine.ipc.ts, setup.ipc.ts (the engine install),
     │                           # validation.ts (zod at the boundary)
     ├── security/               # webContentsGuard: no new windows, no navigation away
-    ├── setup/                  # installSteps.ts (the pinned install file), installRunner.ts (runs it)
+    ├── setup/                  # installPin.ts (the hash pin), installSteps.ts (loads the install file), installRunner.ts (runs it)
     ├── storage/SettingsStore.ts # settings.json in userData
     └── updater/releaseCheck.ts # GitHub latest-release check (announces, never installs)
 ```

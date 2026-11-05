@@ -113,7 +113,12 @@ describe('setup IPC', () => {
     controlledRun()
     await invoke('setup:install-steps', owner)
     await invoke('setup:install-run', owner)
-    expect(setup.runInstall).toHaveBeenCalledWith(['one', 'two'], expect.any(Function), '/bin/sh')
+    expect(setup.runInstall).toHaveBeenCalledWith(
+      ['one', 'two'],
+      expect.any(Function),
+      '/bin/sh',
+      null
+    )
   })
 
   it('should not run steps that were not ready', async () => {

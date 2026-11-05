@@ -3,15 +3,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   loginShell,
   runInstall,
-  type InstallRun
+  type InstallRun,
+  type InstallRunOptions
 } from '../../../src/main/infrastructure/setup/installRunner'
 
 const SH = '/bin/sh'
 const CANCEL_SLEEP = 'sleep 31.7'
 
-function collect(commands: string[]): { run: InstallRun; chunks: [number, string][] } {
+function collect(
+  commands: string[],
+  options: InstallRunOptions | null = null
+): { run: InstallRun; chunks: [number, string][] } {
   const chunks: [number, string][] = []
-  const run = runInstall(commands, (index, text) => chunks.push([index, text]), SH)
+  const run = runInstall(commands, (index, text) => chunks.push([index, text]), SH, options)
   return { run, chunks }
 }
 
@@ -77,6 +81,43 @@ describe('runInstall', () => {
     await run.done
     expect(chunks.map(([, text]) => text).join('')).toBe('ё\n')
   })
+})
+
+describe('runInstall options', () => {
+  const output = (chunks: [number, string][]): string => chunks.map(([, text]) => text).join('')
+
+  it('should run with only the given environment and no login shell', async () => {
+    const { run, chunks } = collect(['echo "$FOO-$HOME"'], {
+      env: { PATH: '/usr/bin:/bin', FOO: 'x' },
+      login: false
+    })
+
+    expect(await run.done).toEqual({ kind: 'ok' })
+    expect(output(chunks)).toBe('x-\n')
+  })
+
+  it('should inherit the environment when there are no options', async () => {
+    const { run, chunks } = collect(['echo "$HOME"'])
+
+    await run.done
+    expect(output(chunks)).toBe(`${process.env.HOME}\n`)
+  })
+
+  it.each([
+    [true, '-lc'],
+    [false, '-c']
+  ])(
+    'should start the shell as a login shell only when asked to (login: %s)',
+    async (login, flag) => {
+      const { run, chunks } = collect(['ps -o args= -p $$; true'], {
+        env: { PATH: '/bin:/usr/bin' },
+        login
+      })
+
+      await run.done
+      expect(output(chunks)).toMatch(new RegExp(`^/bin/sh ${flag} `, 'm'))
+    }
+  )
 })
 
 describe('loginShell', () => {

@@ -5,8 +5,8 @@ const electronApp = vi.hoisted(() => ({ isPackaged: true, getVersion: (): string
 vi.mock('electron', () => ({ app: electronApp }))
 vi.mock('electron-log', () => ({ default: { warn: vi.fn(), info: vi.fn(), error: vi.fn() } }))
 
+import { ENGINE_INSTALL_SHA256, sha256Hex } from '../../../src/main/infrastructure/setup/installPin'
 import {
-  ENGINE_INSTALL_SHA256,
   installStepsSource,
   loadInstallSteps,
   type InstallStepsSource
@@ -101,6 +101,14 @@ describe('loadInstallSteps', () => {
 describe('ENGINE_INSTALL_SHA256', () => {
   it('should pin a SHA-256', () => {
     expect(ENGINE_INSTALL_SHA256).toMatch(/^[0-9a-f]{64}$/)
+  })
+})
+
+describe('sha256Hex', () => {
+  it('should hash bytes to lowercase hex', () => {
+    expect(sha256Hex(new TextEncoder().encode('abc'))).toBe(
+      'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
+    )
   })
 })
 

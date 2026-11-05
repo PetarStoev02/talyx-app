@@ -1,15 +1,10 @@
-import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { app } from 'electron'
 import log from 'electron-log'
 import { z } from 'zod'
 import type { InstallSteps } from '../../../shared/setup'
-
-// SHA-256 of the engine install file attached to the release. Talyx refuses any other bytes, so a
-// hijacked release asset cannot make the app run commands the author did not approve.
-// prettier-ignore
-export const ENGINE_INSTALL_SHA256 = 'e6abf7a3eff1bcfaae44e0b1636d6dae334277fc903e6632a50d5dc8ebc451fb'
+import { ENGINE_INSTALL_SHA256, sha256Hex } from './installPin'
 
 const RELEASES = 'https://github.com/PetarStoev02/talyx-app/releases'
 const INSTALL_FILE = 'engine-install.json'
@@ -42,7 +37,7 @@ export async function loadInstallSteps(source: InstallStepsSource): Promise<Inst
     return { kind: 'unavailable', releaseUrl }
   }
 
-  if (createHash('sha256').update(bytes).digest('hex') !== source.expectedSha256) {
+  if (sha256Hex(bytes) !== source.expectedSha256) {
     log.warn('[Setup] Install file hash mismatch')
     return { kind: 'mismatch', releaseUrl }
   }
