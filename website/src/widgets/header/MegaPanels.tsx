@@ -1,18 +1,15 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { features, NAV_GROUPS, resources } from '../../shared/data/navigation'
+import { features, INSTALLER_LINKS, resources, type FeatureNav } from '../../shared/data/navigation'
+import { MIN_MACOS } from '../../shared/data/offer'
 import { PRIVACY_LEDGER } from '../../shared/data/privacy'
 import { APP_VERSION } from '../../shared/data/release'
 import { NavAnchor } from '../../shared/ui/NavAnchor'
 import { Wallpaper } from '../../shared/ui/page'
 
-/** The panel has room for three one-clause facts: the first sentence of each, where it fits. */
-const MENU_LEDGER = [0, 1, 3].map((i) => {
-  const { figure, caption } = PRIVACY_LEDGER[i]
-  return { figure, caption: caption.split('. ')[0] }
-})
-
-const INSTALLERS = NAV_GROUPS[2].links.filter((link) => 'asset' in link && link.asset)
+const MENU_LEDGER = PRIVACY_LEDGER.flatMap(({ figure, menuCaption }) =>
+  menuCaption ? [{ figure, caption: menuCaption }] : []
+)
 
 const ITEM =
   'block rounded-xl px-4 py-3 transition-colors duration-150 data-[active=true]:bg-[var(--color-bg-secondary)] focus-visible:bg-[var(--color-bg-secondary)] focus-visible:outline-none'
@@ -41,7 +38,7 @@ function PanelGrid({ list, preview }: { list: React.ReactNode; preview: React.Re
 }
 
 export function ProductPanel() {
-  const [active, setActive] = useState(features[0])
+  const [active, setActive] = useState<FeatureNav>(features[0])
 
   return (
     <PanelGrid
@@ -109,10 +106,10 @@ export function ResourcesPanel() {
             Download Talyx.
           </p>
           <p className="mt-4 text-[17px]">
-            Free and open source. Version {APP_VERSION}, for macOS 13 or newer and Linux x64.
+            Free and open source. Version {APP_VERSION}, for {MIN_MACOS} or newer and Linux x64.
           </p>
           <ul className="mt-8 grid grid-cols-2 gap-3">
-            {INSTALLERS.map((link) => (
+            {INSTALLER_LINKS.map((link) => (
               <li key={link.label}>
                 <NavAnchor
                   link={link}

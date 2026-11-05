@@ -9,7 +9,7 @@ export interface FeatureNav {
   preview: string | null
 }
 
-export const features: FeatureNav[] = [
+export const features = [
   {
     slug: 'roster',
     title: 'Roster',
@@ -52,7 +52,10 @@ export const features: FeatureNav[] = [
     shortDescription: 'No account, no server and no telemetry in the app.',
     preview: null
   }
-]
+] as const satisfies readonly FeatureNav[]
+
+/** The slugs of the feature pages; each one needs a page in featurePages.ts. */
+export type FeatureSlug = (typeof features)[number]['slug']
 
 export const resources = [
   { to: '/roadmap', title: 'Roadmap', shortDescription: 'What is shipped and what is next.' },
@@ -71,31 +74,33 @@ export interface NavGroup {
   links: NavLink[]
 }
 
-/** Every page, grouped the way the phone menu and the footer list them. */
-export const NAV_GROUPS: NavGroup[] = [
-  {
-    title: 'Product',
-    links: features.map(({ slug, title }) => ({
-      label: title,
-      to: '/features/$slug',
-      params: { slug }
-    }))
-  },
-  {
-    title: 'Resources',
-    links: resources.map(({ to, title }) => ({ label: title, to }))
-  },
-  {
-    title: 'Download',
-    links: [
-      { label: 'macOS, Apple Silicon', href: DOWNLOADS.appleSilicon, asset: ASSETS.appleSilicon },
-      { label: 'macOS, Intel', href: DOWNLOADS.intel, asset: ASSETS.intel },
-      { label: 'Linux, AppImage', href: DOWNLOADS.appImage, asset: ASSETS.appImage },
-      { label: 'Linux, deb', href: DOWNLOADS.deb, asset: ASSETS.deb },
-      { label: 'Source on GitHub', href: REPO_URL }
-    ]
-  }
+// The groups the phone menu and the footer list, in that order.
+export const PRODUCT_GROUP: NavGroup = {
+  title: 'Product',
+  links: features.map(({ slug, title }) => ({
+    label: title,
+    to: '/features/$slug',
+    params: { slug }
+  }))
+}
+
+export const RESOURCES_GROUP: NavGroup = {
+  title: 'Resources',
+  links: resources.map(({ to, title }) => ({ label: title, to }))
+}
+
+/** One link per installer file in the latest release. */
+export const INSTALLER_LINKS: NavLink[] = [
+  { label: 'macOS, Apple Silicon', href: DOWNLOADS.appleSilicon, asset: ASSETS.appleSilicon },
+  { label: 'macOS, Intel', href: DOWNLOADS.intel, asset: ASSETS.intel },
+  { label: 'Linux, AppImage', href: DOWNLOADS.appImage, asset: ASSETS.appImage },
+  { label: 'Linux, deb', href: DOWNLOADS.deb, asset: ASSETS.deb }
 ]
+
+export const DOWNLOAD_GROUP: NavGroup = {
+  title: 'Download',
+  links: [...INSTALLER_LINKS, { label: 'Source on GitHub', href: REPO_URL }]
+}
 
 /** A page asked for navigation data under a slug that navigation.ts does not list. */
 export class UnknownSlugError extends Error {

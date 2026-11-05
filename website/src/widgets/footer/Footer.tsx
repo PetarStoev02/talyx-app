@@ -1,23 +1,26 @@
 import { Link } from '@tanstack/react-router'
 import { ISSUES_URL, SECURITY_REPORT_URL } from '../../shared/data/release'
-import { NAV_GROUPS, type NavGroup } from '../../shared/data/navigation'
+import {
+  DOWNLOAD_GROUP,
+  PRODUCT_GROUP,
+  RESOURCES_GROUP,
+  type NavGroup
+} from '../../shared/data/navigation'
 import { NavAnchor } from '../../shared/ui/NavAnchor'
 import { ThemeSwitcher } from '../../features/theme/ThemeSwitcher'
 import { useTheme } from '../../features/theme/useTheme'
 
-const [product, resources, download] = NAV_GROUPS
-
 const COLUMNS: NavGroup[] = [
-  product,
+  PRODUCT_GROUP,
   {
-    ...resources,
+    ...RESOURCES_GROUP,
     links: [
-      ...resources.links,
+      ...RESOURCES_GROUP.links,
       { label: 'Issues on GitHub', href: ISSUES_URL },
       { label: 'Report a security issue', href: SECURITY_REPORT_URL }
     ]
   },
-  download
+  DOWNLOAD_GROUP
 ]
 
 const LINK_CLASS =

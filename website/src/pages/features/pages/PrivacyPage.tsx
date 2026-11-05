@@ -31,7 +31,7 @@ export function PrivacyPage() {
     <FeaturePageLayout
       slug="privacy"
       title="Where your chats go."
-      lead="Your chats pass from Talyx to the engine on your computer, and from there to the model provider each bot uses, under that provider’s terms. Talyx has no server, so they reach no one else."
+      lead="Your chats pass from Talyx to the engine on your computer, and from there to the model provider each bot uses, under that provider’s terms. Talyx has no server and sends your chats nowhere else."
       figure={<Ledger />}
       stepsHeading="Where it goes"
       steps={[
@@ -63,7 +63,8 @@ export function PrivacyPage() {
         },
         {
           title: 'No telemetry',
-          description: 'The app collects no usage data and sends no crash reports.'
+          description:
+            'The app collects no usage data and sends no crash reports. The engine has its own anonymous usage metrics. They are off by default, and Talyx never turns them on.'
         },
         {
           title: 'Open source',

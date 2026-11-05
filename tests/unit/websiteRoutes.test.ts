@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { ROUTES } from '../../website/src/shared/data/routes'
+import { features } from '../../website/src/shared/data/navigation'
+import { featurePages } from '../../website/src/pages/features/featurePages'
 
 interface Redirect {
   source: string
@@ -118,6 +120,14 @@ describe('website routes', () => {
         '/legal/terms',
         '/legal/privacy'
       ])
+    })
+
+    it('should have a page for every feature in the menu and no other', () => {
+      expect([...featurePages.keys()]).toEqual(features.map(({ slug }) => slug))
+    })
+
+    it('should find no page under a name every object inherits', () => {
+      expect(featurePages.get('constructor')).toBeUndefined()
     })
   })
 })

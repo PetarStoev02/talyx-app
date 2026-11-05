@@ -29,7 +29,7 @@ export function ModelsAndKeysPage() {
         {
           title: 'Set up once',
           description:
-            'Keys and endpoints you add go to every bot, and all of them share a sign-in. There is no per-bot setup.'
+            'Keys and endpoints you add go to every bot, and all of them share a sign-in. You add a provider once, not once per bot.'
         },
         {
           title: 'A model per bot, and per chat',

@@ -1,28 +1,11 @@
 import { Link, useParams } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
 import { PageHero, STEP } from '../../shared/ui/page'
-import { BotDetailsPage } from './pages/BotDetailsPage'
-import { ManagerPage } from './pages/ManagerPage'
-import { ModelsAndKeysPage } from './pages/ModelsAndKeysPage'
-import { PrivacyPage } from './pages/PrivacyPage'
-import { RoomsPage } from './pages/RoomsPage'
-import { RosterPage } from './pages/RosterPage'
-import { RoutinesPage } from './pages/RoutinesPage'
-
-// Static imports: this module is already its own lazy route chunk, and the pages are small.
-const featurePages: Record<string, () => React.JSX.Element> = {
-  roster: RosterPage,
-  manager: ManagerPage,
-  rooms: RoomsPage,
-  routines: RoutinesPage,
-  'bot-details': BotDetailsPage,
-  'models-and-keys': ModelsAndKeysPage,
-  privacy: PrivacyPage
-}
+import { featurePages } from './featurePages'
 
 export function FeaturePage() {
   const { slug } = useParams({ from: '/features/$slug' })
-  const Page = featurePages[slug]
+  const Page = featurePages.get(slug)
 
   if (!Page) {
     return (

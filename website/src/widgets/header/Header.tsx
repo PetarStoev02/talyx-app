@@ -6,7 +6,12 @@ import { GUTTER } from '../../shared/ui/page'
 import { NavAnchor } from '../../shared/ui/NavAnchor'
 import { REPO_URL } from '../../shared/data/release'
 import { CTA_LABEL } from '../../shared/data/offer'
-import { NAV_GROUPS, type NavGroup } from '../../shared/data/navigation'
+import {
+  DOWNLOAD_GROUP,
+  PRODUCT_GROUP,
+  RESOURCES_GROUP,
+  type NavGroup
+} from '../../shared/data/navigation'
 import { ProductPanel, ResourcesPanel } from './MegaPanels'
 
 const MENUS = [
@@ -176,12 +181,10 @@ function HeaderActions({
   )
 }
 
-const [product, resources, download] = NAV_GROUPS
-
 const SHEET_GROUPS: NavGroup[] = [
-  product,
-  { ...resources, links: [...resources.links, { label: 'FAQ', href: FAQ_HREF }] },
-  download
+  PRODUCT_GROUP,
+  { ...RESOURCES_GROUP, links: [...RESOURCES_GROUP.links, { label: 'FAQ', href: FAQ_HREF }] },
+  DOWNLOAD_GROUP
 ]
 
 const SHEET_LINK =
