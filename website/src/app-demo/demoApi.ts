@@ -6,14 +6,17 @@
  * quiet no-op here rather than a crash in the landing page.
  */
 
+import { EXPECTED_ENGINE_VERSION } from '../../../src/shared/engine'
+
 const noop = (): (() => void) => () => {}
 
 const SETTINGS = { theme: 'system', sidebarCollapsed: false }
 
-// The landing page has no engine; it shows the attached shell. The keys are placeholders.
+// The landing page has no engine; it shows the attached shell on the expected version (so no
+// update notice). The keys are placeholders.
 const ENGINE_STATUS = {
   state: 'attached',
-  version: '0.22.5',
+  version: EXPECTED_ENGINE_VERSION,
   commit: null,
   home: '/demo',
   stale: false,

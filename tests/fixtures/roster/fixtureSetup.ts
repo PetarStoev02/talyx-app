@@ -18,7 +18,7 @@ export type SetupMode = (typeof MODES)[number]
 const LINE_MS = 300
 const CHECK_MS = 600
 const OLD_VERSION = '0.21.0'
-// The owner's current Mac: one release below the pin.
+// An engine just below the pin, as after an app update.
 const OLD_AFTER_VERSION = '0.22.5'
 // An older copy earlier on PATH, and the one the install links in the user bin.
 const OLD_PATH = '/usr/local/bin/talyx-engine'

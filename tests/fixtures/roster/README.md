@@ -73,9 +73,9 @@ above; its Done opens the fixture on Talyx's chat. No `?setup` keeps the fixture
 `old-after` is an older engine after setup: "Your engine (0.22.5) is older than this Talyx needs."
 sits over the Agents page; Update the engine opens the Update flow, which ends on ready with the
 restart hint (Copy; Try again clears it), and the notice is gone. Add `&stuck=1` to `old` or
-`old-after` and the install leaves the older engine running (0.21.0 and 0.22.5 respectively): "Talyx
-still runs the engine at /usr/local/bin/talyx-engine, which is 0.21.0." Use the newly installed engine (or Choose file) then
-finds the expected engine in the user bin.
+`old-after` and the install leaves the older engine running: "Talyx still runs the engine at
+/usr/local/bin/talyx-engine, which is 0.21.0." (0.22.5 in `old-after`). Use the newly installed
+engine (or Choose file) then finds the expected engine in the user bin.
 
 Check Copy and Copy all, Install, Cancel (back to the commands), Try again, Choose file (it always
 "finds" engine 0.22.7), Continue, the provider step (Continue once the router is read, Skip), Make
