@@ -70,6 +70,11 @@ click Open Anyway in System Settings → Privacy & Security, or run
 
 Electron 44 needs macOS 13 or newer.
 
+`npm run release` needs `engine-install.json` (the engine install steps the app fetches from the
+release) at the repo root. It is gitignored, and its SHA-256 must equal `ENGINE_INSTALL_SHA256` in
+`src/main/infrastructure/setup/installSteps.ts`; the script refuses to release otherwise. Changing
+the commands means updating that pin in the same commit.
+
 During `npm run dev` the renderer is also usable in a plain browser at
 `http://localhost:5173` (dev bridge → real main process).
 
@@ -85,8 +90,10 @@ src/main/
     ├── bridge/DevBridge.ts     # Dev-only HTTP+SSE bridge for the browser renderer
     ├── engine/                 # engine.ts (Engine: CLI, attach, tickets, REST),
     │                           # gateway.ts (vendored attach + ticket mint), engineSockets.ts
-    ├── ipc/                    # settings.ipc.ts, engine.ipc.ts, validation.ts (zod at the boundary)
+    ├── ipc/                    # settings.ipc.ts, engine.ipc.ts, setup.ipc.ts (the engine install),
+    │                           # validation.ts (zod at the boundary)
     ├── security/               # webContentsGuard: no new windows, no navigation away
+    ├── setup/                  # installSteps.ts (the pinned install file), installRunner.ts (runs it)
     ├── storage/SettingsStore.ts # settings.json in userData
     └── updater/releaseCheck.ts # GitHub latest-release check (announces, never installs)
 ```
@@ -109,10 +116,12 @@ src/renderer/src/
 ├── pages/            # AgentsPage (the selected bot's chat or room, and details), SettingsPage
 ├── widgets/          # AppShell, Roster (sidebar bots and rooms, create dialogs), Chat (transcript,
 │                     # cards, composer, RoomPane), BotDetails (the details panel and routines),
-│                     # Providers (the settings sections, add-provider dialog, sign-in)
+│                     # Providers (the settings sections, add-provider dialog, sign-in),
+│                     # Setup (the first-run flow: welcome, engine, provider, bot steps)
 ├── features/         # bots (roster data, folders, pins, unread, details, routines, create, rooms),
 │                     # chat (transcript, use cases, hosted rooms polled over `groups.*`),
-│                     # providers (keys, endpoints and sign-ins over REST; writes go to every bot)
+│                     # providers (keys, endpoints and sign-ins over REST; writes go to every bot),
+│                     # setup (which step comes first, the engine install and its screens)
 └── shared/           # Reusable: ui/ (shadcn), hooks/, api/ (IPC wrappers), lib/,
                       # engine/ (vendored engine client; host.ts is the facade features use)
 ```
