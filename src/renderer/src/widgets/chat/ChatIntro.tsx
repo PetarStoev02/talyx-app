@@ -11,12 +11,23 @@ import { reportError } from '@shared/lib/report'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 
+/** A starter prompt: a whole question is sent at once; an open one fills the box to finish. */
+export interface Starter {
+  text: string
+  send: boolean
+}
+
 // What Talyx itself is for: asking about the other bots and handing them work.
-const MANAGER_STARTERS: TranslationKey[] = ['starter.working', 'starter.brief', 'starter.askBot']
+const MANAGER_STARTERS: Array<[TranslationKey, boolean]> = [
+  ['starter.working', true],
+  ['starter.brief', true],
+  ['starter.askBot', false]
+]
 
 /**
  * A chat with no messages yet: who the bot is (its description and model) and a few ways to
- * start. A starter fills the composer, never sends; a bot without a description offers to add one.
+ * start. A whole starter is sent on click; an open one ("Ask a bot to …") fills the composer. A
+ * bot without a description offers to add one.
  */
 export function ChatIntro({
   bot,
@@ -25,7 +36,7 @@ export function ChatIntro({
 }: {
   bot: Bot
   roster: RosterBackend | null
-  onStart: (text: string) => void
+  onStart: (starter: Starter) => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const [details, setDetails] = useState<ProfileDetails | null>(null)
@@ -44,11 +55,16 @@ export function ChatIntro({
   const description = (details?.description ?? bot.meta.description ?? bot.description ?? '').trim()
   const starters =
     bot.name === 'default'
-      ? MANAGER_STARTERS.map((key) => t(key))
+      ? MANAGER_STARTERS.map(([key, send]) => ({ text: t(key), send }))
       : [
-          t('starter.help'),
+          { text: t('starter.help'), send: true },
           ...(description
-            ? [t('starter.withDescription').replace('{description}', description)]
+            ? [
+                {
+                  text: t('starter.withDescription').replace('{description}', description),
+                  send: true
+                }
+              ]
             : [])
         ]
   return (
@@ -74,13 +90,13 @@ export function ChatIntro({
   )
 }
 
-/** Starter prompts as pills; each one fills the composer for the user to finish and send. */
+/** Starter prompts as pills (see Starter for what a click does). */
 export function Starters({
   starters,
   onStart
 }: {
-  starters: string[]
-  onStart: (text: string) => void
+  starters: Starter[]
+  onStart: (starter: Starter) => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   return (
@@ -89,13 +105,13 @@ export function Starters({
       className="mt-3 flex max-w-xl flex-wrap justify-center gap-2"
     >
       {starters.map((starter) => (
-        <li key={starter}>
+        <li key={starter.text}>
           <Button
             variant="secondary"
             className="h-auto min-h-9 bg-secondary whitespace-normal hover:bg-foreground/10"
             onClick={() => onStart(starter)}
           >
-            {starter}
+            {starter.text}
           </Button>
         </li>
       ))}

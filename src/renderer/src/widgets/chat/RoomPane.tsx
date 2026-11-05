@@ -25,6 +25,7 @@ import { Chip, Composer } from './Composer'
 import type { ComposerTarget } from './Composer'
 import { ChatSkeleton } from './ChatSkeleton'
 import { Starters } from './ChatIntro'
+import type { Starter } from './ChatIntro'
 import { Reveal } from '@shared/ui/Reveal'
 import { useArrival } from '@shared/hooks/useStayMounted'
 import { cn } from '@shared/lib/utils'
@@ -50,11 +51,12 @@ export function RoomPane({
   const memberKey = room.members.map((member) => member.profile).join(',')
   const composer = useRef<HTMLTextAreaElement>(null)
   const [seed, setSeed] = useState<{ text: string } | null>(null)
-  const start = (text: string): void => {
-    setSeed({ text })
+  const start = (starter: Starter): void => {
+    if (starter.send) return void actions?.send(roomId, { text: starter.text, attachments: [] })
+    setSeed({ text: starter.text })
     requestAnimationFrame(() => {
       composer.current?.focus()
-      composer.current?.setSelectionRange(text.length, text.length)
+      composer.current?.setSelectionRange(starter.text.length, starter.text.length)
     })
   }
   useRoomPolling(actions, roomId)
@@ -332,10 +334,12 @@ function TaskCard({
 }
 
 // Ways to start a room: ask one bot (the first that is not Talyx), or hear from every one.
-function roomStarters(room: Room, t: (key: TranslationKey) => string): string[] {
+function roomStarters(room: Room, t: (key: TranslationKey) => string): Starter[] {
   const first = room.members.find((member) => member.profile !== 'default') ?? room.members[0]
   return [
-    ...(first ? [t('starter.roomAsk').replace('{handle}', roomHandle(first.profile))] : []),
-    t('starter.roomIntro')
+    ...(first
+      ? [{ text: t('starter.roomAsk').replace('{handle}', roomHandle(first.profile)), send: false }]
+      : []),
+    { text: t('starter.roomIntro'), send: true }
   ]
 }

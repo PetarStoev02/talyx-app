@@ -14,6 +14,7 @@ import { ClarifyCard } from './ClarifyCard'
 import { ChatChips, Composer } from './Composer'
 import type { ComposerTarget } from './Composer'
 import { ChatIntro } from './ChatIntro'
+import type { Starter } from './ChatIntro'
 import { ChatSkeleton } from './ChatSkeleton'
 import { Reveal } from '@shared/ui/Reveal'
 import { useArrival } from '@shared/hooks/useStayMounted'
@@ -37,12 +38,13 @@ export function ChatPane({
   const chatId = botChatId(bot)
   const composer = useRef<HTMLTextAreaElement>(null)
   const [seed, setSeed] = useState<{ text: string } | null>(null)
-  const start = (text: string): void => {
-    setSeed({ text })
+  const start = (starter: Starter): void => {
+    if (starter.send) return void actions?.send(bot.name, { text: starter.text, images: [] })
+    setSeed({ text: starter.text })
     // After the composer has the text: the cursor goes to its end, ready to finish the sentence.
     requestAnimationFrame(() => {
       composer.current?.focus()
-      composer.current?.setSelectionRange(text.length, text.length)
+      composer.current?.setSelectionRange(starter.text.length, starter.text.length)
     })
   }
   // An answered card unmounts with focus on it; the composer is where the conversation goes on.
