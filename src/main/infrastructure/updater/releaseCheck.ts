@@ -125,6 +125,14 @@ function only(assets: ReleaseAsset[]): ReleaseAsset | null {
   return assets.length === 1 ? assets[0] : null
 }
 
+function normalisedHref(url: string): string | null {
+  try {
+    return new URL(url).href
+  } catch {
+    return null
+  }
+}
+
 function readAssets(raw: unknown): ReleaseAsset[] {
   if (!Array.isArray(raw)) return []
   const assets: ReleaseAsset[] = []
@@ -134,7 +142,9 @@ function readAssets(raw: unknown): ReleaseAsset[] {
     const size = item?.size
     if (typeof name !== 'string' || typeof url !== 'string') continue
     if (typeof size !== 'number' || !Number.isFinite(size) || size < 0) continue
-    if (url.startsWith(RELEASE_ASSET_PREFIX)) assets.push({ name, url, size })
+    // Compare the normalised URL, so a `../` segment cannot climb out of the repository.
+    const href = normalisedHref(url)
+    if (href?.startsWith(RELEASE_ASSET_PREFIX)) assets.push({ name, url: href, size })
   }
   return assets
 }

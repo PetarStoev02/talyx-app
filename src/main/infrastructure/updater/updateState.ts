@@ -32,7 +32,8 @@ export function next(state: UpdateState, event: UpdateEvent): UpdateState {
     case 'verified':
       return state.kind === 'downloading' ? { kind: 'ready', release: state.release } : state
     case 'failed':
-      if (state.kind !== 'downloading') return state
+      // A download fails while downloading; a verified installer fails when it cannot be opened.
+      if (state.kind !== 'downloading' && state.kind !== 'ready') return state
       return { kind: 'failed', release: state.release, reason: event.reason }
     case 'cancelled':
       return state.kind === 'downloading' ? { kind: 'available', release: state.release } : state
@@ -113,8 +114,17 @@ export function createUpdateStore(deps: UpdateStoreDeps): UpdateStore {
     },
 
     async openInstaller() {
-      if (state.kind !== 'ready' || !file) throw new Error('No verified download to open')
-      await deps.open(file)
+      if (state.kind !== 'ready' || !file)
+        throw new ReleaseDownloadError('other', 'No verified download to open')
+      try {
+        await deps.open(file)
+      } catch (error) {
+        // The file is gone or cannot be opened: offer Try again instead of a dead button.
+        log.warn('[Updater] The installer could not be opened')
+        file = null
+        apply({ kind: 'failed', reason: 'other' })
+        throw error
+      }
     }
   }
 }

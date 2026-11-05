@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, shell, type WebContents } from 'electron'
 import log from 'electron-log'
 import * as fs from 'fs/promises'
 import type { UpdateState } from '../../../shared/updater'
-import { downloadRelease } from '../updater/releaseDownload'
+import { downloadRelease, ReleaseDownloadError } from '../updater/releaseDownload'
 import { createUpdateStore } from '../updater/updateState'
 
 /** The Talyx update for every window; the release checks in index.ts feed it. */
@@ -27,7 +27,8 @@ export function registerUpdaterIpc(): void {
 // shown in its folder, since it is the app itself, not an installer).
 async function openInstaller(file: string): Promise<void> {
   if (process.platform === 'linux') return shell.showItemInFolder(file)
-  if (await shell.openPath(file)) throw new Error('The installer could not be opened')
+  if (await shell.openPath(file))
+    throw new ReleaseDownloadError('other', 'The installer could not be opened')
 }
 
 // Never throws: it runs inside download progress, where a throw would fail the download.

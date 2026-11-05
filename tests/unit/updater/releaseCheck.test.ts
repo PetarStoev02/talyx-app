@@ -128,6 +128,15 @@ describe('fetchLatestRelease', () => {
       return check
     }
 
+    it('should ignore an asset whose URL climbs out of the repository with dot segments', async () => {
+      const escape = `${DOWNLOAD}../../../../evil/repo/releases/download/Talyx-arm64.dmg`
+      const { release: r } = await found(
+        release([asset('Talyx-arm64.dmg', escape), asset('SHA256SUMS')])
+      )
+      expect(r.asset).toBeNull()
+      expect(r.summary.downloadable).toBe(false)
+    })
+
     it('should read the date, highlights, change count and the installer for this computer', async () => {
       const { release: r } = await found(
         release([asset('Talyx-arm64.dmg'), asset('Talyx-x64.dmg'), asset('SHA256SUMS')])

@@ -24,6 +24,8 @@ export interface DownloadDeps {
   /** The folder the installer is saved in (the OS downloads folder). */
   dir: string
   fs: Pick<typeof fsPromises, 'open' | 'rename' | 'rm'>
+  /** The largest installer accepted; defaults to MAX_DOWNLOAD_BYTES. */
+  maxBytes?: number
 }
 
 /**
@@ -39,7 +41,8 @@ export async function downloadRelease(
   const { asset, checksums } = found
   if (!asset || !checksums || basename(asset.name) !== asset.name)
     throw new ReleaseDownloadError('other', 'This release has no installer for this computer')
-  if (asset.size > MAX_DOWNLOAD_BYTES) throw tooLarge()
+  const maxBytes = deps.maxBytes ?? MAX_DOWNLOAD_BYTES
+  if (asset.size > maxBytes) throw tooLarge()
 
   const expected = expectedHash(await fetchText(deps.fetch, checksums.url, signal), asset.name)
   if (!expected)
@@ -75,7 +78,8 @@ async function save(
   const response = await network(() => deps.fetch(asset.url, { signal }))
   if (!response.ok || !response.body)
     throw new ReleaseDownloadError('network', `The download answered ${response.status}`)
-  if (Number(response.headers.get('content-length')) > MAX_DOWNLOAD_BYTES) {
+  const maxBytes = deps.maxBytes ?? MAX_DOWNLOAD_BYTES
+  if (Number(response.headers.get('content-length')) > maxBytes) {
     await response.body.cancel()
     throw tooLarge()
   }
@@ -90,10 +94,7 @@ async function save(
       const { done, value } = await network(() => reader.read())
       if (done) break
       received += value.byteLength
-      if (received > MAX_DOWNLOAD_BYTES) {
-        await reader.cancel()
-        throw tooLarge()
-      }
+      if (received > maxBytes) throw tooLarge()
       hash.update(value)
       await file.write(value)
       if (Date.now() - reported >= PROGRESS_INTERVAL_MS) {
@@ -101,6 +102,10 @@ async function save(
         onProgress(received, asset.size)
       }
     }
+  } catch (error) {
+    // Close the connection; the reader may already be errored, which is fine.
+    await reader.cancel().catch(() => undefined)
+    throw error
   } finally {
     await file.close()
   }

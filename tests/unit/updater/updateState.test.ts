@@ -100,7 +100,14 @@ describe('next', () => {
       { kind: 'failed', release: v1, reason: 'checksum' }
     ],
     ['downloading is cancelled', downloading, { kind: 'cancelled' }, available],
-    ['ready is cancelled', ready, { kind: 'cancelled' }, ready]
+    ['ready is cancelled', ready, { kind: 'cancelled' }, ready],
+    [
+      'ready fails to open',
+      ready,
+      { kind: 'failed', reason: 'other' },
+      { kind: 'failed', release: v1, reason: 'other' }
+    ],
+    ['available fails', available, { kind: 'failed', reason: 'other' }, available]
   ])('should move from %s', (_name, state, event, expected) => {
     expect(next(state, event)).toEqual(expected)
   })
@@ -145,6 +152,22 @@ describe('update store', () => {
     updates.found(found('1.0.0'))
     await expect(updates.openInstaller()).rejects.toThrow('No verified download')
     expect(open).not.toHaveBeenCalled()
+  })
+
+  it('should move to failed, and offer a retry, when the installer cannot be opened', async () => {
+    const { updates, published, download, open } = store()
+    open.mockRejectedValueOnce(new ReleaseDownloadError('other', 'gone'))
+    updates.found(found('1.0.0'))
+    await updates.startDownload()
+
+    await expect(updates.openInstaller()).rejects.toThrow('gone')
+    expect(updates.current()).toEqual({ kind: 'failed', release: v1, reason: 'other' })
+    expect(published.at(-1)).toEqual(updates.current())
+    await expect(updates.openInstaller()).rejects.toBeInstanceOf(ReleaseDownloadError)
+
+    await updates.startDownload()
+    expect(download).toHaveBeenCalledTimes(2)
+    expect(updates.current().kind).toBe('ready')
   })
 
   it('should fail with the download reason and log only the asset name and reason', async () => {

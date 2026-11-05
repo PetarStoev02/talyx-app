@@ -180,6 +180,62 @@ describe('downloadRelease', () => {
     expect(await fs.readdir(dir)).toEqual([])
   })
 
+  it('should stop and cancel the stream once the bytes received pass the cap', async () => {
+    const cancelled = vi.fn()
+    const fetchFn = vi.fn(async (url: string) =>
+      url === SUMS_URL
+        ? new Response(`${sha256(CONTENT)}  Talyx.dmg`)
+        : new Response(
+            new ReadableStream<Uint8Array>({
+              pull: (controller) => controller.enqueue(CHUNKS[0]),
+              cancel: cancelled
+            })
+          )
+    ) as unknown as typeof fetch
+    const reason = await failure(
+      downloadRelease(
+        release(),
+        { ...deps(fetchFn), maxBytes: CONTENT.length },
+        vi.fn(),
+        new AbortController().signal
+      )
+    )
+    expect(reason).toBe('too-large')
+    expect(cancelled).toHaveBeenCalledTimes(1)
+    expect(await fs.readdir(dir)).toEqual([])
+  })
+
+  it('should cancel the stream when saving fails', async () => {
+    const cancelled = vi.fn()
+    const fetchFn = vi.fn(async (url: string) =>
+      url === SUMS_URL
+        ? new Response(`${sha256(CONTENT)}  Talyx.dmg`)
+        : new Response(
+            new ReadableStream<Uint8Array>({
+              pull: (controller) => controller.enqueue(CHUNKS[0]),
+              cancel: cancelled
+            })
+          )
+    ) as unknown as typeof fetch
+    const failing = {
+      ...fs,
+      open: async () => ({
+        write: () => Promise.reject(new Error('disk full')),
+        close: async () => undefined
+      })
+    } as unknown as typeof fs
+    const reason = await failure(
+      downloadRelease(
+        release(),
+        { ...deps(fetchFn), fs: failing },
+        vi.fn(),
+        new AbortController().signal
+      )
+    )
+    expect(reason).toBe('other')
+    expect(cancelled).toHaveBeenCalledTimes(1)
+  })
+
   it('should fail with a network reason when the server answers an error', async () => {
     const reason = await failure(
       downloadRelease(
