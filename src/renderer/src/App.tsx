@@ -38,7 +38,8 @@ function App(): React.JSX.Element {
         position="bottom-right"
         closeButton
         theme={effectiveTheme}
-        toastOptions={{ className: 'border-0' }}
+        // Important: sonner's own border rule sits outside the CSS layers, so a layered utility loses.
+        toastOptions={{ className: 'border-0!' }}
       />
       <AppShell
         roster={
