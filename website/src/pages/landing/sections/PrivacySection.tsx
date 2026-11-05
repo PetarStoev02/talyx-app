@@ -46,15 +46,21 @@ export function PrivacySection() {
             </div>
           ))}
         </dl>
-        <p className="mt-16 max-w-[56ch] text-[var(--color-text-primary)]" style={STEP.body}>
-          {SITE_ANALYTICS} The app counts nothing. Every line above can be checked in the source.{' '}
-          <a
-            href={REPO_URL}
-            className="font-medium underline underline-offset-4 transition-opacity hover:opacity-70"
+        {/* On the ledger's grid, so the note starts on the captions' left edge. */}
+        <div className="mt-16 md:grid md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-6">
+          <p
+            className="max-w-[56ch] text-[var(--color-text-primary)] md:col-start-2"
+            style={STEP.body}
           >
-            Read the code on GitHub
-          </a>
-        </p>
+            {SITE_ANALYTICS} The app counts nothing. Every line above can be checked in the source.{' '}
+            <a
+              href={REPO_URL}
+              className="font-medium underline underline-offset-4 transition-opacity hover:opacity-70"
+            >
+              Read the code on GitHub
+            </a>
+          </p>
+        </div>
       </div>
     </section>
   )
