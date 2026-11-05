@@ -9,6 +9,30 @@
 
 set -e
 
+# The app runs only the install steps whose hash is pinned in the code, so a release must ship
+# exactly that file. The file is gitignored, so a fresh clone has none and cannot release.
+INSTALL_FILE=engine-install.json
+INSTALL_PIN_FILE=src/main/infrastructure/setup/installSteps.ts
+
+check_install_file() {
+  if [ ! -f "$INSTALL_FILE" ]; then
+    echo "✗ $INSTALL_FILE is missing at the repo root; the release cannot ship without it." >&2
+    return 1
+  fi
+  local pinned actual
+  pinned=$(grep -oE "ENGINE_INSTALL_SHA256 = '[0-9a-f]{64}'" "$INSTALL_PIN_FILE" | grep -oE '[0-9a-f]{64}' || true)
+  actual=$(shasum -a 256 "$INSTALL_FILE" | cut -d' ' -f1)
+  if [ -z "$pinned" ] || [ "$actual" != "$pinned" ]; then
+    echo "✗ $INSTALL_FILE does not match the hash pinned in $INSTALL_PIN_FILE." >&2
+    echo "  file:   $actual" >&2
+    echo "  pinned: ${pinned:-none}" >&2
+    echo "  If the file changed on purpose, review it and update the pin in the same commit." >&2
+    return 1
+  fi
+}
+
+check_install_file
+
 # Every uploaded file must come from this build; electron-builder never cleans dist/.
 rm -rf dist
 
@@ -19,8 +43,10 @@ echo "→ Building macOS (ARM64 + x64)..."
 npm run build:mac
 
 # Unsigned builds carry no proof of origin; the checksums let a user check a download against
-# the release page (shasum -a 256 -c SHA256SUMS --ignore-missing).
-(cd dist && shasum -a 256 *.dmg > SHA256SUMS)
+# the release page (shasum -a 256 -c SHA256SUMS --ignore-missing). The install file is listed
+# too: the app fetches it from this release, so its checksum is part of what users verify.
+cp "$INSTALL_FILE" dist/
+(cd dist && shasum -a 256 *.dmg "$INSTALL_FILE" > SHA256SUMS)
 
 echo ""
 ls -lh dist/*.dmg
@@ -33,7 +59,7 @@ gh release create "v$VERSION" \
   --draft \
   --title "Talyx $VERSION" \
   --generate-notes \
-  dist/*.dmg dist/SHA256SUMS
+  dist/*.dmg "dist/$INSTALL_FILE" dist/SHA256SUMS
 echo "✅ Draft created. Review it, then publish: gh release edit v$VERSION --repo PetarStoev02/talyx-app --draft=false"
 echo "   Every download is blocked on first open: users try to open it, dismiss the warning, then click"
 echo "   Open Anyway in System Settings > Privacy & Security, or: xattr -dr com.apple.quarantine /Applications/Talyx.app"
