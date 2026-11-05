@@ -25,8 +25,9 @@ const RETIRED = [
   /railway|talyxapp-production/i,
   /\bstripe\b/i,
   /upgrade to pro/i,
-  // Windows is said exactly one way while there is no build.
-  /\bwindows\b(?! comes later\.)/i,
+  // Windows is said one way while there is no build, plus the roadmap's item, worded as the
+  // release notes word it.
+  /\bwindows\b(?! comes later\.)(?!',\s+description: 'It comes once the engine runs there\.')/i,
   /built-in AI|local AI|on-device AI/i,
   /refund/i,
   /(?<!not |or )notari[sz]ed/i,

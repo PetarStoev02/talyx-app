@@ -1,4 +1,6 @@
-import { ISSUES_URL, REPO_URL } from '../../shared/data/release'
+import { features } from '../../shared/data/navigation'
+import { MIN_MACOS } from '../../shared/data/offer'
+import { APP_VERSION, ISSUES_URL, REPO_URL } from '../../shared/data/release'
 import {
   AppScreenshot,
   Body,
@@ -12,12 +14,17 @@ import {
 import { DownloadSection } from '../../widgets/download/DownloadSection'
 
 const FACTS = [
-  { label: 'Founded', value: '2026' },
-  { label: 'Category', value: 'Productivity / File Management' },
-  { label: 'Platform', value: 'macOS' },
-  { label: 'Licence', value: 'Free and open source (MIT)' },
-  { label: 'AI', value: 'Sorts on-device by default; Your Claude optional' },
-  { label: 'Tech', value: 'Electron, React, TypeScript, MCP' }
+  { label: 'Version', value: APP_VERSION },
+  { label: 'Category', value: 'Desktop app for AI agents' },
+  {
+    label: 'Platforms',
+    value: `${MIN_MACOS} or newer (Apple Silicon and Intel) and Linux x64. Windows comes later.`
+  },
+  { label: 'Price', value: 'Free, with no account' },
+  { label: 'Licence', value: 'Open source (MIT)' },
+  { label: 'Runs on', value: 'The engine, an agent backend that first-run setup installs' },
+  { label: 'Models', value: 'Your own: API keys, account sign-ins or custom endpoints' },
+  { label: 'Built with', value: 'Electron, React, TypeScript' }
 ]
 
 const SCREENSHOTS = [
@@ -27,40 +34,20 @@ const SCREENSHOTS = [
 ]
 
 const BOILERPLATE = [
-  { title: 'Tagline', text: 'Your AI. Your files. Organized.' },
+  { title: 'Tagline', text: 'Your bots, in one place.' },
   {
     title: 'Short description, 50 words',
-    text: 'Talyx is a macOS desktop app that sorts your files by type and metadata on your Mac, with no cloud, no API keys, and no setup. Your own Claude is an optional upgrade that sorts by what’s inside, suggests renames, and powers the hotkey assistant. Free and open source (MIT).'
+    text: 'Talyx is a free, open-source desktop app for your AI bots, on macOS and Linux. A roster lists every bot and one chat talks to each. Talyx, the manager bot, hands work to the other bots and briefs you. The bots run on the engine, which Talyx installs during setup.'
   },
   {
     title: 'Long description, about 90 words',
-    text: 'Talyx brings AI-powered file organization to your desktop. Drop a folder and Smart sorting classifies every file (documents, images, videos, spreadsheets) into logical categories on-device, by default, with no cloud APIs or subscriptions. Turn on Your Claude to have the whole batch sorted with a semantic understanding of names, metadata and extracted text. Set up watch folders to auto-sort incoming files, let Your Claude suggest meaningful names based on their contents, and undo any operation with a single click. Talyx is free and open source under the MIT licence.'
+    text: 'Talyx is a desktop app to tally your AI agents. The roster on the left lists every bot, with pins, folders, unread marks and what each bot is doing. The chat on the right talks to the selected bot, with approvals and questions as cards. Talyx, the manager bot, hands work to the other bots and briefs you. Group rooms let several bots answer in one conversation. The bots run on the engine, which first-run setup installs. Talyx is free and open source under the MIT licence, for macOS and Linux.'
   }
 ]
 
 const ASSETS = [
   { label: 'Logo (SVG)', description: 'Vector logo for web and print', href: '/talyx-logo.svg' },
   { label: 'App icon (PNG)', description: '512x512 app icon', href: '/talyx-icon-512.png' }
-]
-
-const HIGHLIGHTS = [
-  {
-    title: 'Smart sorting by default',
-    text: 'Classifies files on your device with no cloud APIs and no setup required; Your Claude is an optional upgrade.'
-  },
-  {
-    title: 'The assistant',
-    text: 'Cmd+Shift+Space anywhere; calendar, reminders, notes, mail, music, system toggles, files and code, each shown on a card before it runs; voice in and out, processed on-device.'
-  },
-  {
-    title: 'Bring your own Claude',
-    text: 'Runs on your Anthropic API key or your signed-in Claude Code subscription; no Talyx account, no markup.'
-  },
-  {
-    title: 'Privacy-first',
-    text: 'Smart sorting, the default, classifies locally with no file content leaving your machine. Turning on Your Claude sends the whole sort batch to your own Claude account: file names, metadata and the first 2,000 characters of extracted text, with currency amounts, dates and company names ending in a legal suffix masked, best-effort.'
-  },
-  { title: 'Native macOS app', text: 'Built for Apple Silicon and Intel.' }
 ]
 
 const linkClass =
@@ -83,37 +70,33 @@ export function PressKitPage() {
     <>
       <PageHero
         title="Press kit"
-        lead="Everything you need to write about Talyx. Brand assets, product details, and key facts."
-      />
+        lead="Facts, screenshots, descriptions and logos for writing about Talyx 1.0."
+      >
+        <AppScreenshot src="/previews/chat.jpg" alt="Talyx: the roster and a chat with Talyx" />
+      </PageHero>
 
       <PressSection title="About Talyx">
         <div data-reveal className="space-y-6">
           <Body>
-            Talyx is a personal AI assistant for the Mac. Press a shortcut, say what you want in
-            your own words, and your own Claude (an Anthropic API key or the Claude Code you already
-            have) plans the steps and acts after you approve. File sorting is one of its abilities.
-            It uses Smart sorting by default, classifying on your device from file names and
-            metadata, with no cloud APIs and no setup; Your Claude is an optional upgrade.
+            Talyx is a free desktop app for your AI bots, on macOS and Linux. A roster of bots sits
+            on the left and one chat on the right. Talyx, the manager bot, hands work to the other
+            bots and briefs you.
           </Body>
           <Body>
-            Built for people drowning in messy Downloads folders and scattered documents, Talyx
-            leverages the AI you already use to understand file contents and organize them into
-            logical categories. It supports smart file renaming, watch folders for automatic
-            sorting, and undo for whole sort batches.
+            The bots run on the engine, a separate agent backend on your computer that Talyx
+            installs during first-run setup. Each bot uses the models you choose, through your own
+            API keys, account sign-ins or custom endpoints. Talyx has no account, no server and no
+            telemetry.
           </Body>
         </div>
         <ul className="mt-16 grid gap-x-10 gap-y-10 sm:grid-cols-2">
-          {HIGHLIGHTS.map(({ title, text }, i) => (
-            <li key={title} data-reveal style={stagger(i)}>
+          {features.map(({ slug, title, shortDescription }, i) => (
+            <li key={slug} data-reveal style={stagger(i % 4)}>
               <ItemTitle>{title}</ItemTitle>
-              <Body className="mt-3">{text}</Body>
+              <Body className="mt-3">{shortDescription}</Body>
             </li>
           ))}
         </ul>
-        <Body className="mt-16">
-          Talyx is available for macOS. It is free and open source under the MIT licence, with the
-          source on GitHub.
-        </Body>
       </PressSection>
 
       <PressSection title="Key facts">
@@ -142,7 +125,12 @@ export function PressKitPage() {
       <PressSection title="Screenshots">
         <ul className="grid gap-10 sm:grid-cols-2">
           {SCREENSHOTS.map(({ src, caption }, i) => (
-            <li key={src} data-reveal style={stagger(i)}>
+            <li
+              key={src}
+              data-reveal
+              style={stagger(i)}
+              className={i === 0 ? 'sm:col-span-2' : undefined}
+            >
               <AppScreenshot src={src} alt={`Talyx: ${caption}`} />
               <p className="mt-4" style={STEP.body}>
                 <a href={src} download className={linkClass}>
@@ -177,8 +165,8 @@ export function PressKitPage() {
           ))}
         </ul>
         <Body className="mt-12">
-          Please do not alter, rotate, or recolor the Talyx logo. Use the logo on light or dark
-          backgrounds as provided.
+          Use the logo as provided, on a light or dark background. Do not alter, rotate or recolour
+          it.
         </Body>
       </PressSection>
 

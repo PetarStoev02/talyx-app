@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { hydrateRoot, createRoot } from 'react-dom/client'
 import { RouterProvider } from '@tanstack/react-router'
 import { router } from './app/router'
+import { ROUTES } from './shared/data/routes'
 import './app/styles.css'
 
 declare global {
@@ -33,7 +34,11 @@ console.log(
 const root = document.getElementById('root')!
 window.__talyxBooted = true
 
-if (root.firstElementChild) {
+// Pages that are not prerendered (/design, a 404) are served the landing page's HTML, which would
+// not hydrate; they render fresh instead.
+const path = location.pathname.replace(/\/+$/, '') || '/'
+
+if (root.firstElementChild && ROUTES.includes(path)) {
   // The prerender ran after router.load(); hydrating before it would render no matches yet.
   // A failed load still hydrates, so the page stays interactive.
   const hydrate = () => {
@@ -46,6 +51,7 @@ if (root.firstElementChild) {
   }
   void router.load().then(hydrate, hydrate)
 } else {
+  root.replaceChildren()
   createRoot(root).render(
     <StrictMode>
       <RouterProvider router={router} />
