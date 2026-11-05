@@ -16,160 +16,78 @@ interface RoadmapItem {
   description: string
 }
 
-const completed: RoadmapItem[] = [
+/** What 1.0 ships, from docs/release-notes/1.0.0.md. */
+const shipped: RoadmapItem[] = [
   {
-    title: 'Open source',
-    description: 'Free under the MIT licence, with the source on GitHub (0.11).'
-  },
-  {
-    title: 'AI classification',
+    title: 'Roster',
     description:
-      'Smart Local from names and metadata, or the whole batch through your own Claude. Talyx hosts no classification models.'
+      'Every bot in one list, with pins, folders, unread marks and what each bot is doing. Each bot wears its own block avatar.'
   },
   {
-    title: 'Bring your own brain',
+    title: 'Talyx, the manager',
+    description: 'A manager bot that hands work to the other bots and briefs you.'
+  },
+  {
+    title: 'One chat per bot',
     description:
-      'Talyx is the harness — abilities, approval, memory, notices. The model is yours: an API key or your Claude Code sign-in. Talyx-owned sorting models were retired.'
+      'Approvals and questions arrive as cards. Add images, dictate a message, and pick the model and how hard it reasons.'
   },
   {
-    title: 'Privacy-first design',
+    title: 'Bot details',
     description:
-      'File classification defaults to running 100% on your device, with no telemetry. Your Claude, an opt-in mode added later, is the one sorting option that sends file content to Anthropic.'
+      'Title, description, model, routines, look and SOUL in one panel. Create a bot from the roster.'
   },
   {
-    title: 'Smart file renaming',
+    title: 'Group rooms',
+    description: 'Several bots answer in one conversation, hosted by the engine.'
+  },
+  {
+    title: 'Settings',
     description:
-      'AI-powered rename suggestions based on document content — dates, names, organizations, and topics.'
+      'Model providers (API keys, account sign-ins and custom endpoints), the engine, launch at login and the theme.'
   },
   {
-    title: 'Watch folders',
+    title: 'First-run setup',
     description:
-      'Automatic sorting when new files appear. Set it once, files get organized while you work.'
+      'Installs the engine for your user only, with no admin password, then helps you add a provider and a first bot.'
   },
   {
-    title: 'Multilingual support',
+    title: 'Updates you start',
     description:
-      'Classification and renaming follow the language of the document — English gets English names, Bulgarian gets Cyrillic.'
-  },
-  {
-    title: 'Keyboard shortcuts',
-    description: 'Navigate and sort with keyboard shortcuts for a faster workflow.'
-  },
-  {
-    title: 'Duplicate detection',
-    description: 'Detect and handle duplicate files before sorting.'
-  },
-  {
-    title: 'Scheduled sorts',
-    description:
-      'Automatic sorting on a schedule — daily, weekly, or monthly. Runs in the background.'
-  },
-  {
-    title: 'Search',
-    description:
-      'Search what Talyx has indexed — files you sorted and folders you Deep Scan. A rule-based parser turns a plain-language query into keywords and a file type; no model is involved.'
-  },
-  {
-    title: 'MCP server architecture',
-    description:
-      'Talyx exposes an MCP server so external AI assistants (Claude Desktop, Cursor) can trigger file operations via JSON-RPC.'
-  },
-  {
-    title: 'The assistant',
-    description:
-      'Cmd+Shift+Space opens an overlay anywhere. Your own Claude plans the steps, shows a card, and asks before it changes anything. Kill switch on Cmd+Shift+Esc. Replaced the Quick Search overlay.'
-  },
-  {
-    title: 'Bring your own Claude',
-    description:
-      'Run the assistant on an Anthropic API key or on the Claude Code already signed in on your Mac. Pick the model from inside the input.'
-  },
-  {
-    title: 'Voice',
-    description:
-      'Hold Option+Space to dictate; replies spoken back by a neural voice. Whisper and Kokoro run on-device — audio never leaves the Mac. Apple Silicon required.'
-  },
-  {
-    title: 'Everyday abilities',
-    description:
-      'Calendar, reminders, notes, unread mail, Music, dark mode, Wi‑Fi, volume, image conversion, recent files, disk clutter — plus repos, shell commands, apps and URLs for developers.'
-  },
-  {
-    title: 'First run',
-    description:
-      'Welcome, connect your Claude (optional), done. No hardware detection, no model download.'
-  },
-  {
-    title: 'Language-aware renaming',
-    description:
-      'AI detects content language and suggests filenames in the same language. Bulgarian documents get Cyrillic names, English reports get English names.'
-  },
-  {
-    title: 'Capture',
-    description:
-      'Dump a thought into the overlay and it lands as a Note, Reminder, Calendar event or file — without typing a prompt.'
-  },
-  {
-    title: 'Recall',
-    description: 'One search returns indexed files and past assistant conversations together.'
-  },
-  {
-    title: 'Triage and watch',
-    description:
-      'Ask what needs you now and get a ranked pile. Notices are rare, ranked, and one ⌘⇧Esc quiets them for the day.'
-  },
-  {
-    title: 'Act: screen control',
-    description:
-      'When no typed ability fits, the assistant looks at the screen and clicks, types, presses keys or scrolls — every step carded, kill switch mid-way.'
-  },
-  {
-    title: 'Focus',
-    description:
-      'Meeting mode in one action: notices go quiet until the meeting ends, and the related files and chats come with it.'
+      'Talyx tells you when a new release is out. Click Download and it fetches the installer, checks it against the release’s SHA256SUMS and opens it. A deb install updates from the release page.'
   }
 ]
 
-const inProgress: RoadmapItem[] = [
+/** Not in 1.0, from the release notes. No dates: these are the gaps, not promises. */
+const next: RoadmapItem[] = [
+  // The platform rule in websiteClaims.test.ts allows this title only with this exact description.
   {
-    title: 'Screen control acceptance',
-    description:
-      'Act ships for the display under the cursor on Apple Silicon and Intel. Wider hardware and multi-display acceptance is underway.'
-  }
-]
-
-const planned: RoadmapItem[] = [
-  {
-    title: 'More brains',
-    description:
-      'Run the assistant on other coding agents you already pay for, starting with Codex. Same abilities, same approval gate.'
+    title: 'Windows',
+    description: 'It comes once the engine runs there.'
   },
   {
-    title: 'Earned autonomy',
+    title: 'Remote engines',
     description:
-      'Every ability starts by asking. As one proves itself, you can move it to automatic — the assistant gets quieter the longer you use it.'
+      'Talyx attaches only to an engine on the same computer, so it cannot reach bots on another one yet.'
   },
   {
-    title: 'Undo for every ability',
-    description:
-      'Reminders, notes and system toggles become reversible the same way file moves already are.'
+    title: 'The model’s reasoning',
+    description: 'The transcript shows each answer, but not the reasoning behind it yet.'
   },
   {
-    title: 'Abilities over MCP',
-    description:
-      'Expose the same abilities through the built-in MCP server so Claude Desktop, Cursor and other clients can drive your Mac with the same approval gate.'
+    title: 'Voice mode',
+    description: 'You can dictate a message today. Spoken conversations come later.'
   },
   {
-    title: 'Multi-device',
-    description:
-      'One Mac is the boss, others are helpers over your own network. Your phone is a remote for the assistant, not a place files go.'
+    title: 'Other languages',
+    description: 'The app is in English only for now.'
   }
 ]
 
 const SHIPPED_SCREENS = [
-  { src: '/previews/suggestions.jpg', alt: 'The assistant in Talyx' },
-  { src: '/previews/watch.jpg', alt: 'Watch folders in Talyx' },
-  { src: '/previews/history.jpg', alt: 'Sort history and undo in Talyx' }
+  { src: '/previews/chat.jpg', alt: 'Talyx: the roster and a chat with Talyx' },
+  { src: '/previews/details.jpg', alt: 'A bot’s details panel in Talyx' },
+  { src: '/previews/room.jpg', alt: 'A group room in Talyx' }
 ]
 
 /** A status as a heading on the left and its items, unboxed, on the right. */
@@ -206,19 +124,14 @@ function StatusSection({
 export function RoadmapPage() {
   return (
     <>
-      <PageHero
-        title="Roadmap"
-        lead="What we've built, what we're working on, and where we're headed. Your feedback shapes our priorities."
-      >
-        <AppScreenshot src="/previews/sort.jpg" alt="The Sort page in Talyx" />
+      <PageHero title="Roadmap" lead="What Talyx 1.0 does today, and what comes next.">
+        <AppScreenshot src="/previews/chat.jpg" alt="Talyx: the roster and a chat with Talyx" />
       </PageHero>
 
-      <StatusSection title="In progress" lead="Being built and tested now." items={inProgress} />
-      <StatusSection title="Planned" lead="Where Talyx is headed next." items={planned} />
       <StatusSection
-        title="Shipped"
+        title="In 1.0"
         lead="Everything here is in the app you can download today."
-        items={completed}
+        items={shipped}
       >
         <ul className="mt-12 grid gap-10 md:grid-cols-3">
           {SHIPPED_SCREENS.map(({ src, alt }, i) => (
@@ -228,6 +141,7 @@ export function RoadmapPage() {
           ))}
         </ul>
       </StatusSection>
+      <StatusSection title="Next" lead="Not in 1.0 yet, and no dates set." items={next} />
 
       <section className={`${GUTTER} grid gap-12 py-16 md:grid-cols-12 md:py-24`}>
         <div className="md:col-span-4">
@@ -238,14 +152,14 @@ export function RoadmapPage() {
           className="max-w-[40ch] leading-snug text-[var(--color-text-primary)] md:col-span-8"
           style={STEP.lead}
         >
-          Have a feature request?{' '}
+          Missing something you need?{' '}
           <a
             href={ISSUES_URL}
             className="font-semibold underline underline-offset-4 transition-opacity hover:opacity-70"
           >
-            Let us know on GitHub
+            Ask for it in a GitHub issue
           </a>
-          . Your feedback directly influences what we build next.
+          . Issues are public, and requests there help decide what comes next.
         </p>
       </section>
 

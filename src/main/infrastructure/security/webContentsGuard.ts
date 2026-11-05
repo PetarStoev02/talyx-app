@@ -45,8 +45,8 @@ export function checkedRequest(
 }
 
 /**
- * Every window Talyx creates — main, splash, and anything a link tries
- * to open — follows the same rules: no new Electron windows (web links go to the
+ * Every window Talyx creates (main, splash, and anything a link tries
+ * to open) follows the same rules: no new Electron windows (web links go to the
  * browser), no navigating away from the app's own pages (a dropped .html file or
  * a model-written link would otherwise load with the preload attached), and
  * permissions only for the app's own pages. Install before creating any window.

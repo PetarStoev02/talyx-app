@@ -18,7 +18,7 @@
   "main": "./out/main/index.js",
   "scripts": {
     "format": "prettier --write .",
-    "lint": "eslint --cache src tests",
+    "lint": "eslint --cache .",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",

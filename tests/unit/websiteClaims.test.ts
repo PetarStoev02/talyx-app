@@ -17,7 +17,7 @@ function files(path: string): string[] {
 
 const SITE = ROOTS.flatMap(files).filter((f) => /\.(tsx?|md|html|mjs|json|svg|txt|xml)$/.test(f))
 
-/** Claims that stopped being true when Talyx became free, unsigned and macOS-only. */
+/** Claims that are not true of Talyx 1.0: free, unsigned, macOS and Linux only. */
 const RETIRED = [
   /\$\d/,
   /\bpricing\b/i,
@@ -25,7 +25,9 @@ const RETIRED = [
   /railway|talyxapp-production/i,
   /\bstripe\b/i,
   /upgrade to pro/i,
-  /\bwindows\b/i,
+  // Windows is said one way while there is no build, plus the roadmap's item, worded as the
+  // release notes word it.
+  /\bwindows\b(?! comes later\.)(?!',\s+description: 'It comes once the engine runs there\.')/i,
   /built-in AI|local AI|on-device AI/i,
   /refund/i,
   /(?<!not |or )notari[sz]ed/i,
@@ -36,7 +38,15 @@ const RETIRED = [
   /vision credits?/i,
   /plausible|@vercel\/analytics|datafast/i,
   /licen[cs]e key/i,
-  /100% offline|fully offline|works offline/i
+  /100% offline|fully offline|works offline/i,
+  // The file organizer's claims. Code like `.sort(` or `sortOrder` is not prose.
+  /(?<![.\w])sort(?:s|ed|ing)?\b(?!\()/i,
+  /watch[ -]folders?/i,
+  /smart local/i,
+  /your claude/i,
+  /\b0 bytes/i,
+  /\bundo\b/i,
+  /⌘\s*⇧\s*space/i
 ]
 
 /**
@@ -46,7 +56,9 @@ const RETIRED = [
 const REDIRECT_SOURCES: Record<string, string[]> = {
   [/refund/i.source]: ['website/vercel.json'],
   [/taxonom/i.source]: ['website/vercel.json'],
-  [/\bpricing\b/i.source]: ['website/vercel.json']
+  [/\bpricing\b/i.source]: ['website/vercel.json'],
+  [/(?<![.\w])sort(?:s|ed|ing)?\b(?!\()/i.source]: ['website/vercel.json'],
+  [/watch[ -]folders?/i.source]: ['website/vercel.json']
 }
 
 describe('website claims', () => {
@@ -60,6 +72,14 @@ describe('website claims', () => {
       expect(hits).toEqual([])
     }
   )
+
+  it('should state the website analytics in the privacy policy exactly as the site does', () => {
+    const data = readFileSync('website/src/shared/data/privacy.ts', 'utf8')
+    const sentence = data.match(/SITE_ANALYTICS =\s*'([^']+)'/)?.[1]
+    expect(sentence).toBeDefined()
+    const policy = readFileSync('website/src/pages/legal/content/privacy.md', 'utf8')
+    expect(policy).toContain(sentence)
+  })
 
   it('should send every download to the GitHub release assets', () => {
     const release = readFileSync('website/src/shared/data/release.ts', 'utf8')

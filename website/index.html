@@ -5,18 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="index, follow" />
     <meta name="google-site-verification" content="WuBlm_Xu_x4xsKaalfU5Tz0vJEQ-qccz0F81C1vMV3Q" />
-    <title>Talyx — Tell your Mac what to do | Free and open source</title>
+    <title>Talyx: Your bots, in one place | Free and open source</title>
     <meta
       name="description"
-      content="Press ⌘⇧Space and say it in your own words. Your own Claude plans it, shows you a card before it changes anything. Free and open source. macOS only."
+      content="Talyx is a free desktop app for your AI bots, on macOS and Linux. One roster, one chat, and a manager bot that hands out the work and briefs you."
     />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Talyx — Tell your Mac what to do" />
+    <meta property="og:title" content="Talyx: Your bots, in one place" />
     <meta
       property="og:description"
-      content="One shortcut, your own Claude, approval before anything changes. Free and open source."
+      content="A free, open-source desktop app: one roster, one chat, and a manager bot that briefs you. macOS and Linux."
     />
     <meta property="og:url" content="https://talyx.app" />
     <meta property="og:site_name" content="Talyx" />
@@ -27,10 +27,10 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Talyx — Tell your Mac what to do" />
+    <meta name="twitter:title" content="Talyx: Your bots, in one place" />
     <meta
       name="twitter:description"
-      content="One shortcut, your own Claude, approval before anything changes. Free and open source."
+      content="A free, open-source desktop app: one roster, one chat, and a manager bot that briefs you. macOS and Linux."
     />
     <meta name="twitter:image" content="https://talyx.app/og-image.png" />
 
@@ -43,7 +43,12 @@
     <script>
       // Blocking script: apply theme before paint to prevent flash
       ;(function () {
-        var t = localStorage.getItem('talyx-theme')
+        var t = null
+        try {
+          t = localStorage.getItem('talyx-theme')
+        } catch (e) {
+          // Blocked storage throws; follow the system theme.
+        }
         var dark =
           t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
         document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')

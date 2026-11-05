@@ -21,14 +21,8 @@ Element.prototype.scrollIntoView = function (options?: boolean | ScrollIntoViewO
   if (hasInteracted) scrollIntoView.call(this, options)
 }
 
-const scene = (new URLSearchParams(location.search).get('view') ?? 'assistant') as DemoView
+const scene = (new URLSearchParams(location.search).get('view') ?? 'chat') as DemoView
 
-void Promise.all([import('./DemoApp'), import('@shared/ui/tooltip')]).then(
-  ([{ DemoApp }, { TooltipProvider }]) => {
-    createRoot(document.getElementById('root')!).render(
-      <TooltipProvider>
-        <DemoApp scene={scene} />
-      </TooltipProvider>
-    )
-  }
-)
+void import('./DemoApp').then(({ DemoApp }) => {
+  createRoot(document.getElementById('root')!).render(<DemoApp scene={scene} />)
+})

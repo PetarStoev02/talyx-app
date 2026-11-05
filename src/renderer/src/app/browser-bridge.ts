@@ -27,7 +27,7 @@ export function createBrowserTransport(deps: BrowserTransportDeps): ApiTransport
   return {
     invoke: async (channel, ...args) => {
       // JSON turns trailing undefined args into null, which zod-validated
-      // handlers reject — ipcRenderer's structured clone has no such problem
+      // handlers reject; ipcRenderer's structured clone has no such problem
       while (args.length > 0 && args[args.length - 1] === undefined) args.pop()
       const response = await deps.fetchFn('/bridge/invoke', {
         method: 'POST',
@@ -65,6 +65,6 @@ export function installBrowserBridge(): void {
     electron: { platform: 'darwin' }
   })
   console.info(
-    '[Talyx] Browser dev bridge active — window.api forwards to the Electron main process'
+    '[Talyx] Browser dev bridge active: window.api forwards to the Electron main process'
   )
 }

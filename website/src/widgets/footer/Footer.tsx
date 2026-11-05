@@ -1,31 +1,26 @@
 import { Link } from '@tanstack/react-router'
-import { DOWNLOADS, ISSUES_URL, REPO_URL, SECURITY_REPORT_URL } from '../../shared/data/release'
-import { NAV_GROUPS, type NavGroup } from '../../shared/data/navigation'
+import { ISSUES_URL, SECURITY_REPORT_URL } from '../../shared/data/release'
+import {
+  DOWNLOAD_GROUP,
+  PRODUCT_GROUP,
+  RESOURCES_GROUP,
+  type NavGroup
+} from '../../shared/data/navigation'
 import { NavAnchor } from '../../shared/ui/NavAnchor'
 import { ThemeSwitcher } from '../../features/theme/ThemeSwitcher'
 import { useTheme } from '../../features/theme/useTheme'
 
-const [product, useCases, resources] = NAV_GROUPS
-
 const COLUMNS: NavGroup[] = [
-  product,
-  useCases,
+  PRODUCT_GROUP,
   {
-    ...resources,
+    ...RESOURCES_GROUP,
     links: [
-      ...resources.links,
+      ...RESOURCES_GROUP.links,
       { label: 'Issues on GitHub', href: ISSUES_URL },
       { label: 'Report a security issue', href: SECURITY_REPORT_URL }
     ]
   },
-  {
-    title: 'Download',
-    links: [
-      { label: 'macOS, Apple Silicon', href: DOWNLOADS.appleSilicon },
-      { label: 'macOS, Intel', href: DOWNLOADS.intel },
-      { label: 'Source on GitHub', href: REPO_URL }
-    ]
-  }
+  DOWNLOAD_GROUP
 ]
 
 const LINK_CLASS =
@@ -63,7 +58,7 @@ export function Footer() {
       </p>
 
       <div className="mt-8 flex flex-col gap-4 text-[14px] text-[var(--color-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
-        <p>&copy; {new Date().getFullYear()} Talyx · MIT licensed · Set in Geist</p>
+        <p>&copy; {__BUILD_YEAR__} Talyx · MIT licensed · Set in Geist</p>
         <div className="flex flex-wrap items-center gap-5">
           <Link
             to="/legal/$slug"

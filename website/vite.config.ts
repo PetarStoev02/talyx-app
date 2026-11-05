@@ -7,15 +7,20 @@ import tailwindcss from '@tailwindcss/vite'
 const renderer = path.resolve(__dirname, '../src/renderer/src')
 const site = path.resolve(__dirname, 'src')
 const websitePkg = path.resolve(__dirname, 'package.json')
-const rendererSegment = `${path.sep}src${path.sep}renderer${path.sep}`
+// The renderer, and the roster fixture's engine double the demo runs on (and the unit double it uses).
+const borrowedSegments = [
+  ['src', 'renderer'],
+  ['tests', 'fixtures'],
+  ['tests', 'unit', 'providers']
+].map((parts) => path.sep + parts.join(path.sep) + path.sep)
 
-/** Vercel installs only website/node_modules; renderer imports must not walk the repo root. */
+/** Vercel installs only website/node_modules; borrowed files' imports must not walk the repo root. */
 function resolveRendererDepsFromWebsite(): Plugin {
   return {
     name: 'resolve-renderer-deps-from-website',
     enforce: 'pre',
     async resolveId(source, importer, options) {
-      if (!importer?.includes(rendererSegment)) return null
+      if (!borrowedSegments.some((segment) => importer?.includes(segment))) return null
       if (source.startsWith('.') || path.isAbsolute(source)) return null
       if (/^@(app|pages|widgets|features|entities|shared|renderer)(\/|$)/.test(source)) return null
       if (source.startsWith('@/')) return null
@@ -27,6 +32,15 @@ function resolveRendererDepsFromWebsite(): Plugin {
 export default defineConfig(({ isSsrBuild }) => ({
   plugins: [resolveRendererDepsFromWebsite(), react(), tailwindcss()],
   base: '/',
+  // The prerendered footer and the hydrating client must print the same year.
+  define: { __BUILD_YEAR__: JSON.stringify(new Date().getFullYear()) },
+  // Fixed, so esbuild never reads the repo root's tsconfigs: they extend a package Vercel does
+  // not install (only website/node_modules), and the demo pulls in files under tests/.
+  esbuild: {
+    tsconfigRaw: JSON.stringify({
+      compilerOptions: { jsx: 'react-jsx', useDefineForClassFields: true }
+    })
+  },
   resolve: {
     alias: [
       // Both trees spell their own root `@/` and both have a `shared/`, so the

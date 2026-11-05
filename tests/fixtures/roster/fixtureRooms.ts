@@ -1,7 +1,15 @@
+import { COSTLY_MODEL, DEFAULT_MODEL, PROVIDER } from './fixtureProviders'
+
 // Deliberately in-memory: hosted rooms whose members answer in turn. Words in your message pick
 // the script: "approve" makes the first member ask to run a command, "stall" leaves a turn to
 // retry, "fail" fails a turn; anything else gets one reply per member, a few seconds apart.
 const REPLY_MS = 1500
+// Each member's answer, by their place in the room.
+const REPLIES = [
+  'Noted. I will pull the numbers and post them here.',
+  'Agreed. I will add my part to the shared notes today.',
+  'Makes sense. Tell me if the plan changes.'
+]
 
 interface Member {
   member_id: string
@@ -55,19 +63,21 @@ const rooms: FixtureRoom[] = [
     actions: []
   }
 ]
-append(rooms[0], 'message.user', 'desktop', { text: 'Should we move clients to monthly billing?' })
+append(rooms[0], 'message.user', 'desktop', { text: 'Should we offer monthly billing?' })
 append(rooms[0], 'message.member', 'analyst', {
-  text: '**Plus:** steadier cash.\n\n**Minus:** monthly revenue drops 18% against the yearly advance.'
+  text: '**Upside:** more sign-ups from small teams.\n\n**Downside:** we lose the cash a yearly plan pays up front, about 18% of next quarter.'
 })
 append(rooms[0], 'turn.settled', 'gateway', { member_id: 'analyst' })
 append(rooms[0], 'message.member', 'writer', {
-  text: 'Small farms have asked for it since spring.'
+  text: 'Customers asked for it in nine support threads since spring. I can draft the announcement.'
 })
 append(rooms[0], 'message.member', 'default', {
-  text: 'Summary: monthly with a winter pause; yearly keeps its 15% discount.'
+  text: 'Summary: offer monthly billing and keep the 15% discount on yearly. Writer drafts the announcement for Friday.'
 })
-append(rooms[2], 'message.user', 'desktop', { text: 'Plan the 2025 season.' })
-append(rooms[2], 'message.member', 'planner', { text: 'Done, see the shared sheet.' })
+append(rooms[2], 'message.user', 'desktop', { text: 'Plan the Q1 launch.' })
+append(rooms[2], 'message.member', 'planner', {
+  text: 'Four milestones, the first on January 12. The dates are in the shared sheet.'
+})
 
 export function roomRequest(method: string, params: Record<string, unknown>): unknown {
   const room = rooms.find((item) => item.room_id === params.room_id)
@@ -199,7 +209,7 @@ function answer(room: FixtureRoom, text: string): void {
             member_id: item.member_id,
             error: 'Provider down'
           })
-        else reply(room, item, `${item.display_name} here: noted, my take is below.`)
+        else reply(room, item, REPLIES[index % REPLIES.length])
         room.activity = room.activity
           .filter((entry) => entry.member_id !== item.member_id)
           .map((entry, next) => (next === 0 ? { ...entry, status: 'running' } : entry))
@@ -212,9 +222,9 @@ function answer(room: FixtureRoom, text: string): void {
 // Each member's session in a room, by profile and room, from its first answer on. Analyst runs on
 // another model than the rest of Team discussion, so the room's model chip reads "Mixed models".
 const memberSessions = new Map<string, { model: string; revision: number }>([
-  ['default:team-room', { model: '9-route-provider', revision: 1 }],
-  ['analyst:team-room', { model: 'paid-model', revision: 1 }],
-  ['writer:team-room', { model: '9-route-provider', revision: 1 }]
+  ['default:team-room', { model: DEFAULT_MODEL, revision: 1 }],
+  ['analyst:team-room', { model: COSTLY_MODEL, revision: 1 }],
+  ['writer:team-room', { model: DEFAULT_MODEL, revision: 1 }]
 ])
 
 /** Calls on members' room sessions (`Group: <room>`); null for any other session. */
@@ -230,7 +240,7 @@ export function roomSessionRequest(
   if (method === 'session.list' && title.startsWith('Group: '))
     return { sessions: session ? [{ id: `${profile}/${roomId}` }] : [] }
   if (!session || !id.includes('/')) return null
-  if (method === 'session.info') return { model: session.model, provider: 'custom' }
+  if (method === 'session.info') return { model: session.model, provider: PROVIDER }
   if (method === 'session.resume')
     return { session_id: id, revision: session.revision, subscription_id: `sub-${id}` }
   if (method === 'config.set' && params.key === 'model') {
@@ -245,7 +255,7 @@ export function roomSessionRequest(
 function reply(room: FixtureRoom, from: Member, text: string): void {
   if (!memberSessions.has(`${from.profile}:${room.room_id}`))
     memberSessions.set(`${from.profile}:${room.room_id}`, {
-      model: '9-route-provider',
+      model: DEFAULT_MODEL,
       revision: 1
     })
   append(room, 'message.member', from.member_id, { text, member_id: from.member_id })

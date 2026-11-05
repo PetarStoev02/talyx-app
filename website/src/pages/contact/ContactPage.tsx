@@ -4,13 +4,13 @@ import { GUTTER, PageHero, STEP, stagger } from '../../shared/ui/page'
 const CHANNELS = [
   {
     title: 'Bugs and ideas',
-    description: 'Open an issue on GitHub; issues are public.',
+    description: 'Open an issue on GitHub. Issues are public, so leave out anything private.',
     cta: 'Open an issue',
     href: ISSUES_URL
   },
   {
     title: 'Security problems',
-    description: 'Report privately on GitHub.',
+    description: 'Report it on GitHub, where the report stays private.',
     cta: 'Report a vulnerability',
     href: SECURITY_REPORT_URL
   }

@@ -2,20 +2,20 @@ import { STEP } from '../../../shared/ui/page'
 
 const STAGES = [
   {
-    line: 'First, press ⌘⇧Space.',
-    note: 'Then say it in your own words, typed or spoken. Voice is transcribed on your Mac.'
+    line: 'First, add a bot.',
+    note: 'Click + in the roster, name it, say what it does and pick its look. Folders and pins keep a long roster short.'
   },
   {
-    line: 'Then Claude plans it.',
-    note: 'Your API key, or the Claude Code you are already signed into. Talyx hosts no model.'
+    line: 'Then talk to it.',
+    note: 'Each bot has its own chat, with images and dictation. When it needs your approval or an answer, it asks with a card.'
   },
   {
-    line: 'You read the card.',
-    note: 'It names the exact change: which files, which event, which click. Reads run without asking.'
+    line: 'Let Talyx delegate.',
+    note: 'Ask Talyx, the manager bot, and it passes the work to the bot that fits.'
   },
   {
-    line: 'Approve, and it runs.',
-    note: 'Every batch of files can be undone in one click. ⌘⇧Esc stops it mid-run.'
+    line: 'Read the brief.',
+    note: 'Talyx collects the replies and sums them up for you.'
   }
 ]
 

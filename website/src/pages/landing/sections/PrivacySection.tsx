@@ -1,8 +1,8 @@
 import { REPO_URL } from '../../../shared/data/release'
-import { PRIVACY_LEDGER } from '../../../shared/data/privacy'
+import { PRIVACY_LEDGER, SITE_ANALYTICS } from '../../../shared/data/privacy'
 import { STEP, stagger } from '../../../shared/ui/page'
 
-/** Privacy as a ledger: the few numbers that say what leaves the machine. */
+/** Privacy as a ledger: the few numbers that say what leaves the computer. */
 export function PrivacySection() {
   return (
     <section id="privacy" className="grid gap-16 px-5 py-32 sm:px-8 md:grid-cols-12 md:py-48">
@@ -12,16 +12,16 @@ export function PrivacySection() {
           className="leading-none font-semibold tracking-[-0.035em]"
           style={STEP.heading}
         >
-          <span className="block text-[var(--color-text-secondary)]">What leaves</span>
-          <span className="block text-[var(--color-text-primary)]">your Mac.</span>
+          <span className="block text-[var(--color-text-secondary)]">Where your</span>
+          <span className="block text-[var(--color-text-primary)]">chats go.</span>
         </h2>
         <p
           data-reveal
           className="mt-8 max-w-[40ch] leading-relaxed text-[var(--color-text-primary)]"
           style={{ ...stagger(1), ...STEP.body }}
         >
-          The assistant sends your conversation to your own Claude, through your API key or the
-          Claude Code you are signed into. A screenshot goes only when you ask it to look.
+          Each bot sends them to the model provider it uses, under that provider’s terms. A bot’s
+          tools, like web search, can reach other services too. Talyx sends them nowhere else.
         </p>
       </div>
 
@@ -46,15 +46,21 @@ export function PrivacySection() {
             </div>
           ))}
         </dl>
-        <p className="mt-16 text-[var(--color-text-primary)]" style={STEP.body}>
-          Every one of these can be checked in the source.{' '}
-          <a
-            href={REPO_URL}
-            className="font-medium underline underline-offset-4 transition-opacity hover:opacity-70"
+        {/* On the ledger's grid, so the note starts on the captions' left edge. */}
+        <div className="mt-16 md:grid md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-6">
+          <p
+            className="max-w-[56ch] text-[var(--color-text-primary)] md:col-start-2"
+            style={STEP.body}
           >
-            Read the code on GitHub
-          </a>
-        </p>
+            {SITE_ANALYTICS} The app counts nothing. Every line above can be checked in the source.{' '}
+            <a
+              href={REPO_URL}
+              className="font-medium underline underline-offset-4 transition-opacity hover:opacity-70"
+            >
+              Read the code on GitHub
+            </a>
+          </p>
+        </div>
       </div>
     </section>
   )

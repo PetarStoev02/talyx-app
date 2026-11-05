@@ -1,10 +1,8 @@
 import { ArrowRight } from 'lucide-react'
 import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle'
 import { useNoIndex } from '../../shared/hooks/useNoIndex'
-import { ApprovalCard } from '../../shared/ui/ApprovalCard'
 import { APP_VERSION } from '../../shared/data/release'
-import { CTA_LABEL, DMG_SIZE_MB, MIN_MACOS } from '../../shared/data/offer'
-import { planFor } from '../../shared/data/plans'
+import { CTA_LABEL, MIN_MACOS } from '../../shared/data/offer'
 import {
   AppScreenshot,
   Body,
@@ -12,30 +10,37 @@ import {
   ItemTitle,
   PageHero,
   SectionHeading,
-  STEP
+  STEP,
+  Wallpaper
 } from '../../shared/ui/page'
+import { RosterChatFragment } from '../../shared/ui/RosterChatFragment'
 
 const TYPE_STEPS = [
-  { token: '--step-display', use: 'Page titles and the closing headline', sample: 'Tell your Mac' },
+  {
+    token: '--step-display',
+    use: 'Page titles and the closing headline',
+    sample: 'Your bots, in one place.'
+  },
   {
     token: '--step-heading',
     use: 'Section headings and ledger figures',
-    sample: 'What leaves your Mac.'
+    sample: 'Where your chats go.'
   },
   {
     token: '--step-lead',
     use: 'The sentence under a title, item titles',
-    sample: 'Your own Claude does it once you approve the card.'
+    sample: 'Ask Talyx and it hands the work to the right bot, then briefs you.'
   },
   {
     token: '--step-body',
     use: 'Running text, always in full ink',
-    sample: 'Every sort is recorded. Put one file or a whole batch back exactly where it came from.'
+    sample:
+      'Each bot sends its conversation, with any images you add, to the model provider it uses.'
   },
   {
     token: '--step-small',
     use: 'Meta lines and notes only',
-    sample: `v${APP_VERSION} · ${MIN_MACOS} or newer · ${DMG_SIZE_MB} MB`
+    sample: `v${APP_VERSION} · ${MIN_MACOS} or newer · Linux x64`
   }
 ]
 
@@ -53,10 +58,8 @@ const RULES = [
   'Surfaces separate by a tone step, never a line.',
   'Running text is 16px or more, in full ink.',
   'One button shape: the full pill.',
-  'Pictures are the real app, or the Mac wallpaper it runs on.'
+  'Pictures are the real app on the wallpaper: a screenshot or a live fragment.'
 ]
-
-const SAMPLE_PLAN = planFor('sort my Downloads')
 
 /** The site's design system on one unlisted page. Not linked anywhere and not indexed. */
 export function DesignPage() {
@@ -67,7 +70,7 @@ export function DesignPage() {
     <>
       <PageHero
         title="Design"
-        lead="The parts the Talyx site is built from: five type steps, one ground, one ink, one action, and the real app as the picture."
+        lead="The parts the Talyx site is built from: five type steps, one ground, one ink, one action and the real app as the picture."
       >
         <ul className="space-y-3 text-[var(--color-text-primary)]" style={STEP.body}>
           {RULES.map((rule) => (
@@ -159,22 +162,24 @@ export function DesignPage() {
         <div className="md:col-span-5">
           <SectionHeading>Pictures</SectionHeading>
           <div className="mt-8 space-y-6">
-            <ItemTitle>The approval card</ItemTitle>
+            <ItemTitle>The live fragment</ItemTitle>
             <Body>
-              Rebuilt in HTML at true size and marked <code>data-ui</code>, so it keeps the
-              app&apos;s own divider. Used in the hero, the try-it section and the use-case
-              previews.
+              <code>RosterChatFragment</code>: the roster and a chat, set in HTML with the app’s own
+              parts. It carries <code>data-ui</code>, so its borders and small labels are the app’s.
             </Body>
             <ItemTitle>App screenshots</ItemTitle>
             <Body>
-              Taken from the real app demo views into <code>public/previews/</code>, always shown on
-              the Mac wallpaper.
+              Taken from the demo, on made-up bots, into <code>public/previews/</code>, and always
+              shown on the wallpaper.
             </Body>
           </div>
         </div>
         <div data-reveal className="space-y-8 md:col-span-7">
-          <ApprovalCard plan={SAMPLE_PLAN} />
-          <AppScreenshot src="/previews/sort.jpg" alt="Talyx: the sort preview" />
+          <div className="relative isolate overflow-hidden rounded-2xl px-3 py-6 sm:p-8">
+            <Wallpaper loading="lazy" />
+            <RosterChatFragment />
+          </div>
+          <AppScreenshot src="/previews/chat.jpg" alt="Talyx: the roster and a chat with Talyx" />
         </div>
       </section>
     </>

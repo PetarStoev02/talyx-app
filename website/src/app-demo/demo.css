@@ -4,5 +4,16 @@
    tailwind from the renderer folder (Vercel only installs website deps). */
 @import '../../../src/renderer/src/assets/fonts.css';
 @import '../../../src/renderer/src/assets/theme.css';
+@import '../../../src/renderer/src/assets/chat.css';
+@import '../../../src/renderer/src/assets/avatar.css';
 
 @source '../../../src/renderer/src';
+
+/* The demo is same-origin with talyx.app, so dictation would ask the visitor for the microphone,
+   and the footer's Settings and Engine (debug) pages are not part of it. Their labels are the
+   app's English copy (src/renderer/src/shared/lib/i18n.ts). */
+button[aria-label='Dictate'],
+button[aria-label='Settings'],
+button[aria-label='Engine (debug)'] {
+  display: none;
+}

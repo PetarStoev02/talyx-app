@@ -34,7 +34,7 @@ export function PageHero({
     <section className={`${GUTTER} pt-20 pb-16 md:pt-32 md:pb-24`}>
       <h1
         data-reveal
-        className="max-w-[16ch] leading-[0.98] font-semibold tracking-[-0.045em] text-[var(--color-text-primary)]"
+        className="max-w-[16ch] leading-[0.98] font-semibold text-balance tracking-[-0.045em] text-[var(--color-text-primary)]"
         style={STEP.display}
       >
         {title}

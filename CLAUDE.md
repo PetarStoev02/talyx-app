@@ -1,4 +1,4 @@
-# CLAUDE.md — Talyx Project Guidelines
+# CLAUDE.md: Talyx Project Guidelines
 
 > This file is automatically loaded by AI assistants working on this codebase.
 > Keep it accurate and up to date.
@@ -134,7 +134,7 @@ through the profile's control socket. Main opens the gateway websocket itself (t
 admits no Origin header and takes the ticket in a subprotocol) and relays frames over
 `engine:socket-*` IPC; REST goes through `engine:http`. Main never owns or kills the gateway.
 
-### Renderer Process (React Frontend — Feature-Sliced Design)
+### Renderer Process (React Frontend: Feature-Sliced Design)
 
 ```
 src/renderer/src/
@@ -189,6 +189,8 @@ import { AppShell } from '@widgets/app-shell'
 
 - Single quotes, no semicolons, 100 char print width, no trailing commas
 - 2-space indentation, LF line endings
+- No em dash (U+2014) in any file outside the vendored engine files: use a comma, colon, period or
+  parentheses. `tests/unit/noEmDash.test.ts` and `npm run lint` enforce it.
 
 ### TypeScript
 
@@ -196,7 +198,7 @@ import { AppShell } from '@widgets/app-shell'
 - Never use `any`; prefer `unknown` with type guards
 - Always type IPC return values explicitly
 - Use `string | null` not optional for nullable values
-- Exception: the vendored engine files (listed in `eslint.config.mjs`) keep upstream's code as
+- Exception: the vendored engine files (listed in `eslint.vendored.mjs`) keep upstream's code as
   written so re-syncs stay clean diffs; see README → Engine → Re-syncing the vendored client
 
 ### React Components
@@ -317,5 +319,6 @@ try {
 - Old features are deleted, not kept dormant; git history and `legacy/file-organizer` keep them.
 - Builds for macOS and Linux, none signed. No auto-update.
 - Free and open source (MIT). No account, no server, no telemetry.
-- Website (`website/`) on Vercel, updated for the pivot in its own PR. Releases: GitHub
-  Releases on `PetarStoev02/talyx-app` (the Release workflow creates a draft).
+- Website (`website/`) on Vercel: it describes 1.0 and runs cookieless PostHog page analytics
+  (the app itself stays no-telemetry). Releases: GitHub Releases on `PetarStoev02/talyx-app`
+  (the Release workflow creates a draft).

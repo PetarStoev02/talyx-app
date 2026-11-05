@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { ArrowRight, ChevronDown } from 'lucide-react'
 import { GitHubIcon, TalyxLogo } from '../../shared/ui/icons'
@@ -6,12 +6,16 @@ import { GUTTER } from '../../shared/ui/page'
 import { NavAnchor } from '../../shared/ui/NavAnchor'
 import { REPO_URL } from '../../shared/data/release'
 import { CTA_LABEL } from '../../shared/data/offer'
-import { NAV_GROUPS, type NavGroup } from '../../shared/data/navigation'
-import { ProductPanel, ResourcesPanel, UseCasesPanel } from './MegaPanels'
+import {
+  DOWNLOAD_GROUP,
+  PRODUCT_GROUP,
+  RESOURCES_GROUP,
+  type NavGroup
+} from '../../shared/data/navigation'
+import { ProductPanel, ResourcesPanel } from './MegaPanels'
 
 const MENUS = [
   { id: 'product', label: 'Product', Panel: ProductPanel },
-  { id: 'use-cases', label: 'Use cases', Panel: UseCasesPanel },
   { id: 'resources', label: 'Resources', Panel: ResourcesPanel }
 ] as const
 
@@ -23,12 +27,11 @@ const CLOSE_DELAY_MS = 220
 
 const FAQ_HREF = '/#faq'
 
-/** Wordmark, three menus with previews, one action. */
+/** Wordmark, two menus with previews, one action. */
 export function Header() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const closeSheet = useCallback(() => setSheetOpen(false), [])
   const menu = useHoverMenu(closeSheet)
-  const active = MENUS.find(({ id }) => id === menu.openMenuId)
 
   return (
     <header
@@ -44,24 +47,6 @@ export function Header() {
         <DesktopNav menu={menu} />
         <HeaderActions sheetOpen={sheetOpen} onToggleSheet={() => setSheetOpen(!sheetOpen)} />
       </div>
-
-      {active ? (
-        <>
-          <div
-            aria-hidden="true"
-            onClick={() => menu.setOpenMenuId(null)}
-            className="fixed inset-x-0 top-16 bottom-0 -z-10 hidden bg-black/25 lg:block"
-          />
-          <div
-            id={`menu-${active.id}`}
-            role="region"
-            aria-label={active.label}
-            className={`menu-drop hidden bg-[var(--color-bg)] pt-6 pb-10 ${GUTTER} lg:block`}
-          >
-            <active.Panel />
-          </div>
-        </>
-      ) : null}
 
       {sheetOpen ? <MenuSheet /> : null}
     </header>
@@ -111,22 +96,41 @@ function DesktopNav({ menu }: { menu: ReturnType<typeof useHoverMenu> }) {
 
   return (
     <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
-      {MENUS.map(({ id, label }) => (
-        <button
-          key={id}
-          type="button"
-          aria-expanded={openMenuId === id}
-          aria-controls={`menu-${id}`}
-          onClick={() => setOpenMenuId(openMenuId === id ? null : id)}
-          onMouseEnter={() => scheduleMenu(id, openMenuId ? 0 : OPEN_DELAY_MS)}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[15px] font-medium text-[var(--color-text-primary)] transition-colors aria-expanded:bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-secondary)]"
-        >
-          {label}
-          <ChevronDown
-            aria-hidden="true"
-            className={`size-4 transition-transform duration-200 ${openMenuId === id ? 'rotate-180' : ''}`}
-          />
-        </button>
+      {MENUS.map(({ id, label, Panel }) => (
+        <Fragment key={id}>
+          <button
+            type="button"
+            aria-expanded={openMenuId === id}
+            aria-controls={`menu-${id}`}
+            onClick={() => setOpenMenuId(openMenuId === id ? null : id)}
+            onMouseEnter={() => scheduleMenu(id, openMenuId ? 0 : OPEN_DELAY_MS)}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[15px] font-medium text-[var(--color-text-primary)] transition-colors aria-expanded:bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-secondary)]"
+          >
+            {label}
+            <ChevronDown
+              aria-hidden="true"
+              className={`size-4 transition-transform duration-200 ${openMenuId === id ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {/* Right after its button, so Tab goes from the button into the panel. */}
+          {openMenuId === id ? (
+            <>
+              <div
+                aria-hidden="true"
+                onClick={() => setOpenMenuId(null)}
+                className="fixed inset-x-0 top-16 bottom-0 -z-10 bg-black/25"
+              />
+              <div
+                id={`menu-${id}`}
+                role="region"
+                aria-label={label}
+                className={`menu-drop absolute inset-x-0 top-full bg-[var(--color-bg)] pt-6 pb-10 ${GUTTER}`}
+              >
+                <Panel />
+              </div>
+            </>
+          ) : null}
+        </Fragment>
       ))}
       <a
         href={FAQ_HREF}
@@ -177,12 +181,10 @@ function HeaderActions({
   )
 }
 
-const [product, useCases, resources] = NAV_GROUPS
-
 const SHEET_GROUPS: NavGroup[] = [
-  product,
-  useCases,
-  { ...resources, links: [...resources.links, { label: 'FAQ', href: FAQ_HREF }] }
+  PRODUCT_GROUP,
+  { ...RESOURCES_GROUP, links: [...RESOURCES_GROUP.links, { label: 'FAQ', href: FAQ_HREF }] },
+  DOWNLOAD_GROUP
 ]
 
 const SHEET_LINK =

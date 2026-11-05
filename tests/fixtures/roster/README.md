@@ -7,7 +7,8 @@ npx vite --config tests/fixtures/roster/vite.config.ts
 ```
 
 Open `http://localhost:5183`. This renders the production roster components against an
-in-memory engine double with 11 profiles and three rooms. It never accesses user profiles.
+in-memory engine double (`engineDouble.ts`, which the website's live demo runs on too) with 11
+profiles and three rooms. It never accesses user profiles.
 Reloading resets its synthetic data; restart and cross-client persistence are covered by the
 unit tests and checked against the real engine through `npm run dev`.
 
@@ -15,14 +16,14 @@ Check pin/unpin (folder counts change), four-pin layout, menu and drag reorderin
 and cycle prevention, hide/restore, folder creation, profile deletion confirmation, bot and
 room selection, unread clearing, and keyboard navigation through menus and dialogs.
 The chat side runs a scripted bot per profile (`fixtureChat.ts`): Talyx has a history with a
-delegation line; any other bot starts empty. A message containing "clarify" shows a two-question
+delegation line, Analyst one that ends on a question; any other bot starts empty. A message containing "clarify" shows a two-question
 card, "approve" an approval card, "ask" a delegation line before the reply; anything else streams
 a short markdown reply. Check streaming, the cards, Stop, the model and reasoning chips, images,
 scroll-to-bottom and unread marks on a bot you leave while it replies.
 
-The details panel opens from the name pill or "Edit bot" (right-click a bot). Each profile has a synthetic
-description, SOUL and model (`custom · 9-route-provider`); Analyst has two routines, one paused.
-Picking `paid-model` makes the double ask for confirmation, as the engine does for a costly
+The details panel opens from the name pill or "Edit bot" (right-click a bot). Each profile has a one-line
+description, SOUL and model (`anthropic · claude-sonnet-4-5`); Analyst has two routines, one paused.
+Picking `claude-opus-4-1` makes the double ask for confirmation, as the engine does for a costly
 model. Check that the panel pushes the chat, Save applies title, description, model and SOUL,
 Cancel discards, the confirm dialog's two answers, routine toggles, New routine and Delete. The
 roster's `+` opens New bot: check the profile-id hint, a taken name, a non-Latin name (`bot-N`),
@@ -47,8 +48,8 @@ when a row is not full), Move to, Delete room with its name in the confirmation,
 composer, and the unread dot on a room that gets a reply while another one is open.
 
 Settings (the button under the roster) shows the Providers and Default model sections against an
-in-memory providers double (`fixtureProviders.ts`, the unit tests' double): the router as the active
-endpoint, written in config.yaml, so Edit asks for its key again and it has no Remove. Check Add
+in-memory providers double (`fixtureProviders.ts`, the unit tests' double): an Anthropic endpoint as the
+active one, written in config.yaml, so Edit asks for its key again and it has no Remove. Check Add
 provider with an API key (`sk-` keys pass Check, others are rejected), Reveal and Hide, an account
 sign-in (openai-codex: a device code the "browser" approves after two polls; xai-oauth: paste `good`,
 anything else fails with Retry; qwen-oauth: an external command with Copy and Check again), a new
@@ -99,15 +100,15 @@ Cancel, and the engine action landing on the Agents page's install flow; in ligh
 only.
 
 Check Copy and Copy all, Install, Cancel (back to the commands), Try again, Choose file (it always
-"finds" engine 0.22.7), Continue, the provider step (Continue once the router is read, Skip), Make
+"finds" engine 0.22.7), Continue, the provider step (Continue once the endpoint is read, Skip), Make
 bot and Skip, and that Done lands on Talyx's chat; in light and dark, keyboard only.
 
 `?nudge` starts with no provider: Talyx's chat (no other bot's) shows "Add a model provider so bots
 can answer." above the composer, its Open Settings opens Settings, and once the Providers section
-reads the router the line is gone when you go back.
+reads the endpoint the line is gone when you go back.
 
 Use the engine integration for final acceptance; this fixture does not prove gateway access.
 
-Room model: Team discussion starts on mixed models (Analyst runs on `paid-model`), so its model
+Room model: Team discussion starts on mixed models (Analyst runs on `claude-opus-4-1`), so its model
 chip reads "Mixed models" and a pick switches every member. Clients discussion's chip is off until
 its bots have answered once.
