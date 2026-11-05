@@ -49,6 +49,7 @@ if (root.firstElementChild && ROUTES.includes(path)) {
         <RouterProvider router={router} />
       </StrictMode>
     )
+    startAnalytics()
   }
   void router.load().then(hydrate, hydrate)
 } else {
@@ -58,6 +59,5 @@ if (root.firstElementChild && ROUTES.includes(path)) {
       <RouterProvider router={router} />
     </StrictMode>
   )
+  startAnalytics()
 }
-
-startAnalytics()

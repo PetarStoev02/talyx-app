@@ -67,10 +67,10 @@ We have no access to any of these.
 This website counts page views and download clicks with PostHog, hosted in the EU, without cookies.
 
 - **What it counts.** A page view each time you open a page, a page leave when you go, and one event when you click a Download button, naming the file.
-- **What each count carries.** The page's address and title, the page you came from, your browser, operating system and device type, your screen and window size, and your browser's language and time zone. A page leave also says how long you stayed and how far you scrolled.
-- **How.** The counts go to PostHog's EU Cloud in cookieless mode. PostHog sets no cookies and keeps nothing in your browser's storage, so no ID follows you from visit to visit. To count visitors, PostHog's servers compute a privacy-preserving hash. PostHog removes the IP address from these events, so they carry no location.
+- **What each count carries.** The page's address and title, including any campaign or ad-click tags in the address (such as `utm_source` or `gclid`), the page you came from, your browser, operating system, device type and model, your screen and window size, and your browser's language and time zone. Each page view gets a random ID that lives only in the open page's memory. A page leave also says how long you stayed and how far you scrolled.
+- **How.** The counts go to PostHog's EU Cloud in cookieless mode. PostHog sets no cookies and keeps nothing in your browser's storage, so no ID follows you from visit to visit. To count visitors, PostHog's servers compute a privacy-preserving hash. PostHog strips your IP address from these events, so they carry no location derived from it.
 - **What is off.** Autocapture of clicks and form fields, session replay, heatmaps, dead-click tracking, surveys, error capture and page-speed measurements.
-- **Where.** Only on talyx.app. Previews of the site and the live demo on the landing page count nothing.
+- **Where.** Only on talyx.app and www.talyx.app. Previews of the site and the live demo on the landing page count nothing.
 - **If you block it.** The site and its downloads work the same with PostHog blocked.
 
 The site remembers your theme choice (light, dark or system) in your browser's local storage, under `talyx-theme`. It is never sent anywhere.

@@ -4,7 +4,7 @@ import type { PostHog } from 'posthog-js'
 const POSTHOG_KEY = 'phc_uvakVLbnsMmUH879fEjzTZBkSYgccboqV943zzgtV63B'
 const POSTHOG_HOST = 'https://eu.i.posthog.com'
 /** Dev builds and Vercel previews count nothing. */
-const PRODUCTION_HOST = 'talyx.app'
+const PRODUCTION_HOSTS = ['talyx.app', 'www.talyx.app']
 
 let posthog: PostHog | null = null
 
@@ -13,7 +13,7 @@ let posthog: PostHog | null = null
  * storage. Everything the privacy policy says about the site's analytics is set here.
  */
 export function startAnalytics(): void {
-  if (location.hostname !== PRODUCTION_HOST) return
+  if (!PRODUCTION_HOSTS.includes(location.hostname)) return
   // Loaded only here, so other hosts never download it.
   void import('posthog-js').then(({ default: client }) => {
     client.init(POSTHOG_KEY, {
@@ -27,7 +27,13 @@ export function startAnalytics(): void {
       capture_dead_clicks: false,
       capture_exceptions: false,
       capture_performance: false,
-      disable_surveys: true
+      disable_surveys: true,
+      disable_product_tours: true,
+      disable_conversations: true,
+      // No remote config, no /flags/ call and no scripts from PostHog: project settings in the
+      // PostHog UI cannot switch on anything the privacy policy says is off.
+      advanced_disable_flags: true,
+      disable_external_dependency_loading: true
     })
     posthog = client
   })
@@ -39,12 +45,9 @@ export function trackDownload(asset: string): void {
   posthog?.capture('download', { asset }, { send_instantly: true })
 }
 
+/** A throw here cannot cancel the link: only preventDefault() stops a navigation. */
 function onDownloadClick(event: MouseEvent): void {
-  try {
-    const link = event.target instanceof Element && event.target.closest('[data-cta="download"]')
-    const asset = link instanceof HTMLElement ? link.dataset.asset : undefined
-    if (asset) trackDownload(asset)
-  } catch {
-    // Counting a download must never stand between a visitor and the file.
-  }
+  const link = event.target instanceof Element && event.target.closest('[data-cta="download"]')
+  const asset = link instanceof HTMLElement ? link.dataset.asset : undefined
+  if (asset) trackDownload(asset)
 }
