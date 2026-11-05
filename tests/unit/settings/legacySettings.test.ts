@@ -8,7 +8,8 @@ describe('migrateSettings', () => {
       sidebarWidth: 320,
       enginePath: null,
       lastSelection: null,
-      setupDone: false
+      setupDone: false,
+      launchAtLogin: false
     })
   })
 
@@ -26,7 +27,8 @@ describe('migrateSettings', () => {
       sidebarWidth: 320,
       enginePath: null,
       lastSelection: null,
-      setupDone: false
+      setupDone: false,
+      launchAtLogin: false
     })
   })
 
@@ -46,6 +48,14 @@ describe('migrateSettings', () => {
     ['a number', 1, false]
   ])('should read setupDone %s', (_case, setupDone, expected) => {
     expect(migrateSettings({ setupDone }).setupDone).toBe(expected)
+  })
+
+  it.each([
+    ['saved on', true, true],
+    ['missing', undefined, false],
+    ['a hand-edited string', 'yes', false]
+  ])('should read launchAtLogin %s', (_case, launchAtLogin, expected) => {
+    expect(migrateSettings({ launchAtLogin }).launchAtLogin).toBe(expected)
   })
 
   it.each([

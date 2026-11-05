@@ -11,6 +11,7 @@ export interface AppSettings {
   sidebarWidth: number
   lastSelection: { kind: 'bot' | 'room'; id: string } | null
   setupDone: boolean
+  launchAtLogin: boolean
 }
 
 export const settingsApi = {

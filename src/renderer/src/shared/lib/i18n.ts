@@ -362,6 +362,11 @@ const en = {
   'settings.appearance': 'Appearance',
   'settings.errorSave':
     'Talyx could not save this setting. It applies until you quit; change it again to retry.',
+  'settings.startup': 'Startup',
+  'settings.launchAtLogin': 'Launch at login',
+  'settings.launchAtLoginDesc': 'Open Talyx when you sign in to your computer.',
+  'settings.errorLaunchAtLogin':
+    'Talyx could not change whether it starts at login. Check your system settings and try again.',
   'settings.theme': 'Theme',
   'settings.themeDesc': 'Choose your preferred color scheme.',
   'settings.light': 'Light',

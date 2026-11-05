@@ -11,6 +11,7 @@ import type { ModelLists } from '@features/chat/chat'
 import { reportProvider, useSetup } from '@features/setup/store'
 import { ProvidersSection } from '@widgets/providers'
 import { EngineSection } from '@widgets/settings-engine'
+import { StartupSection } from '@widgets/settings-startup'
 
 export function SettingsPage({
   providers,
@@ -75,6 +76,7 @@ export function SettingsPage({
               </div>
             </div>
           </section>
+          <StartupSection />
           <section className="space-y-2">
             <h2 className="text-xl font-semibold text-foreground">{t('settings.setup')}</h2>
             <p className="text-base">{t('settings.setupDesc')}</p>

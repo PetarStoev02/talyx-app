@@ -12,6 +12,7 @@ import { closeEngineSockets, registerEngineIpc } from './infrastructure/ipc/engi
 import { registerUpdaterIpc, updates } from './infrastructure/ipc/updater.ipc'
 import { fetchLatestRelease } from './infrastructure/updater/releaseCheck'
 import { settingsStore } from './infrastructure/storage/SettingsStore'
+import { readLaunchAtLogin, systemLoginItemDeps } from './infrastructure/system/loginItem'
 import { ThemeSchema, validateInput, type Theme } from './infrastructure/ipc/validation'
 import { DevBridge } from './infrastructure/bridge/DevBridge'
 import icon from '../../resources/talyx-icon.png?asset'
@@ -223,6 +224,17 @@ function scheduleUpdateChecks(): void {
   setInterval(() => void check(), UPDATE_CHECK_INTERVAL_MS)
 }
 
+/** The OS is the truth: a login item removed in System Settings must show as off in Talyx. */
+async function adoptLoginItemState(): Promise<void> {
+  if (is.dev) return
+  try {
+    const enabled = await readLaunchAtLogin(systemLoginItemDeps())
+    if (enabled !== settingsStore.store.launchAtLogin) settingsStore.set({ launchAtLogin: enabled })
+  } catch (error) {
+    log.warn('[Main] Could not read the launch-at-login state', error)
+  }
+}
+
 // Logged rather than left to Electron's default dialog, which would stop at the first one.
 process.on('uncaughtException', (error) => log.error('[Main] Uncaught exception', error))
 process.on('unhandledRejection', (reason) => log.error('[Main] Unhandled rejection', reason))
@@ -260,6 +272,7 @@ app
       if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setBackgroundColor(groundColor())
     })
     syncNativeTheme(settingsStore.store.theme)
+    await adoptLoginItemState()
     showMainWindow(splash)
     scheduleUpdateChecks()
 

@@ -105,6 +105,7 @@ src/main/
     ├── security/               # webContentsGuard: no new windows, no navigation away
     ├── setup/                  # installPin.ts (the hash pin), installSteps.ts (loads the install file), installRunner.ts (runs it)
     ├── storage/SettingsStore.ts # settings.json in userData
+    ├── system/loginItem.ts     # launch at login: macOS login item, Linux autostart .desktop
     └── updater/                # releaseCheck.ts (GitHub latest-release check), releaseDownload.ts
                                 # (installer download, checked against SHA256SUMS), updateState.ts
                                 # (the update state machine; the user runs the installer)
