@@ -20,8 +20,8 @@ export function PrivacySection() {
           className="mt-8 max-w-[40ch] leading-relaxed text-[var(--color-text-primary)]"
           style={{ ...stagger(1), ...STEP.body }}
         >
-          Each bot sends them to the model provider it uses, under that provider’s terms. Talyx
-          sends them nowhere else.
+          Each bot sends them to the model provider it uses, under that provider’s terms. A bot’s
+          tools, like web search, can reach other services too. Talyx sends them nowhere else.
         </p>
       </div>
 

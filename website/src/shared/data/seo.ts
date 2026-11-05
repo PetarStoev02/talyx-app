@@ -71,7 +71,7 @@ export const faqEntries = [
   },
   {
     q: 'Can Talyx see my chats?',
-    a: 'No. Talyx has no server, so your chats never reach us. They pass between the app and the engine on your computer, and each bot sends them on to the model provider you chose, under that provider\u2019s terms.'
+    a: 'No. Talyx has no server, so your chats never reach us. They pass between the app and the engine on your computer, and each bot sends them on to the model provider you chose, under that provider\u2019s terms. A bot\u2019s tools, like web search or a command it runs, can reach other services too.'
   },
   {
     q: 'Which computers does it run on?',
@@ -126,7 +126,7 @@ const featureMeta: Record<FeatureSlug, Pick<PageMeta, 'title' | 'description'>> 
   privacy: {
     title: 'Privacy: Talyx | No Account, No Server, No Telemetry in the App',
     description:
-      'Chats pass from Talyx to the engine on your computer, then to the model provider each bot uses. Talyx has no server and no telemetry.'
+      'Chats pass from Talyx to the engine on your computer, then to the model provider each bot uses and any service its tools reach. Talyx has no server and no telemetry.'
   }
 }
 
@@ -171,7 +171,7 @@ export const seoData: Record<string, PageMeta> = {
   '/legal/privacy': {
     title: 'Privacy Policy: Talyx | No Server, No Telemetry in the App',
     description:
-      'The app collects nothing and has no server. Bots send what they need to the model provider you chose, and this website counts page views without cookies.',
+      'The app collects nothing and has no server. Bots send what they need to the model provider you chose and to the services their tools use, and this website counts page views without cookies.',
     canonical: '/legal/privacy'
   },
   '/press': {

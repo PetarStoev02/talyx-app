@@ -31,7 +31,7 @@ export function PrivacyPage() {
     <FeaturePageLayout
       slug="privacy"
       title="Where your chats go."
-      lead="Your chats pass from Talyx to the engine on your computer, and from there to the model provider each bot uses, under that provider’s terms. Talyx has no server and sends your chats nowhere else."
+      lead="Your chats pass from Talyx to the engine on your computer, and from there to the model provider each bot uses, under that provider’s terms. A bot’s tools can reach other services too. Talyx has no server and sends your chats nowhere else."
       figure={<Ledger />}
       stepsHeading="Where it goes"
       steps={[
@@ -39,6 +39,11 @@ export function PrivacyPage() {
           title: 'Your chats',
           description:
             'Each bot sends its conversation, with any images you add, to the model provider it uses. You choose the provider in Settings.'
+        },
+        {
+          title: 'A bot’s tools',
+          description:
+            'Web search, a command the bot runs and its other tools can reach other services. Some ask for your approval first, in a card in the chat.'
         },
         {
           title: 'Your keys and sign-ins',

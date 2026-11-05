@@ -7,7 +7,7 @@
 ## 1. The Short Version
 
 - Talyx has no server, no account and no telemetry. The app sends nothing about you to us.
-- Your bots run on the engine, on your computer. What a bot sends goes from the engine to the model provider you set up for it, under that provider's terms.
+- Your bots run on the engine, on your computer. What a bot sends goes from the engine to the model provider you set up for it, under that provider's terms. A bot's tools, like web search or a command it runs, can reach other services too. Some ask for your approval first.
 - On the internet, Talyx itself reaches only GitHub: to check for a new release, to download an update when you click Download (a deb install updates from the release page instead), and to fetch the engine's install steps. Those steps then download the engine.
 - This website counts page views and download clicks with PostHog, hosted in the EU, without cookies.
 
@@ -25,8 +25,9 @@ Talyx is a window onto the engine, a separate agent backend that runs your bots 
 
 - **What you send.** Your messages and the images you attach go from Talyx to the engine. When you dictate a message, Talyx sends the recording to the engine, which turns it into text. The engine picks how: with a speech model on your computer, or with a cloud speech-to-text provider you have a key for. In the second case the recording leaves your computer and goes to that provider.
 - **Where it goes next.** The engine sends what a bot needs to answer to the model provider that bot uses: the provider of an API key you added, an account you signed in to, or a custom endpoint you set up. What happens there is governed by that provider's terms and privacy policy, not by this policy. Read them before you add a provider.
+- **Tools.** A bot's tools, like web search or a command it runs, can reach other services, under those services' terms. Some ask for your approval first, in a card in the chat.
 - **Routines and rooms.** Routines run in the engine on their schedule, even while Talyx is closed. Group rooms are hosted by the engine. Both reach your providers the same way.
-- **What stays.** The engine keeps your bots and their chats on your computer. Talyx sends your chats nowhere else.
+- **What stays.** The engine keeps your bots and their chats on your computer. Talyx itself sends your chats nowhere else.
 
 ### 3.1 The Engine's Own Usage Metrics
 
