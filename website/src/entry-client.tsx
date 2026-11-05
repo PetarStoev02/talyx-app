@@ -34,11 +34,15 @@ const root = document.getElementById('root')!
 window.__talyxBooted = true
 
 if (root.firstElementChild) {
-  hydrateRoot(
-    root,
-    <StrictMode>
-      <RouterProvider router={router} />
-    </StrictMode>
+  // The prerender ran after router.load(); hydrating before it would render no matches yet.
+  // A failed load still hydrates, so the page stays interactive.
+  void router.load().finally(() =>
+    hydrateRoot(
+      root,
+      <StrictMode>
+        <RouterProvider router={router} />
+      </StrictMode>
+    )
   )
 } else {
   createRoot(root).render(

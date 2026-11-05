@@ -1,6 +1,5 @@
 import type { DemoView } from '../../../app-demo/DemoApp'
 import { AppEmbed } from '../../../features/app-demo/AppEmbed'
-import { ABILITY_COUNT, EXTENSION_COUNT } from '../../../shared/data/offer'
 import { SectionHeading, STEP, stagger, Wallpaper } from '../../../shared/ui/page'
 
 interface Feature {
@@ -15,37 +14,29 @@ const FEATURES: Feature[] = [
   {
     view: 'chat',
     wallpaper: '20% 30%',
-    title: `${ABILITY_COUNT} abilities, each with a fixed shape`,
+    title: 'One roster, one chat',
     paragraphs: [
-      'Calendar, mail, reminders, music, files and code. Claude can only ask for what an ability describes, so there is no free-run shell.',
-      'When none fits, Talyx looks at the screen and clicks or types for you, with a card for every step.'
+      'Pin the bots you use most and file the rest in folders. Each one shows whether it is working, waiting on you or has something new.',
+      'Pick a bot and its chat opens beside the roster, with your choice of model and how hard it reasons.'
     ]
   },
   {
     view: 'details',
     wallpaper: '80% 20%',
-    title: 'Sorts by what the file is',
+    title: 'Each bot, its own way',
     paragraphs: [
-      `Smart Local knows ${EXTENSION_COUNT} file types from their names and metadata, on first launch, and sends nothing anywhere.`,
-      'Choose Your Claude in Settings and it reads the contents too. You see the whole plan before a file moves.'
+      'Open a bot\u2019s details to set its title, description, model and look, and to write its SOUL: the few lines that say how it works.',
+      'Routines give a bot a job on a schedule, such as a Monday cash report. The engine runs them even with Talyx closed.',
+      'The models are your own. Add an API key, sign in with an account or point Talyx at a custom endpoint.'
     ]
   },
   {
     view: 'room',
     wallpaper: '40% 90%',
-    title: 'Undo a whole batch',
+    title: 'Group rooms',
     paragraphs: [
-      'Every sort is recorded.',
-      'Put one file or a whole batch back exactly where it came from, in one click.'
-    ]
-  },
-  {
-    view: 'chat',
-    wallpaper: '90% 60%',
-    title: 'Downloads sorts itself',
-    paragraphs: [
-      'Point Talyx at a folder and new files are sorted as they land.',
-      'Notices are ranked and rare, and ⌘⇧Esc quiets them for the day.'
+      'Put several bots in one room and they answer in one conversation. You see who is answering and approve what they ask for.',
+      'The engine hosts each room and keeps its history.'
     ]
   }
 ]

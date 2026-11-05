@@ -22,6 +22,8 @@ const COLUMNS: NavGroup[] = [
     links: [
       { label: 'macOS, Apple Silicon', href: DOWNLOADS.appleSilicon },
       { label: 'macOS, Intel', href: DOWNLOADS.intel },
+      { label: 'Linux, AppImage', href: DOWNLOADS.appImage },
+      { label: 'Linux, deb', href: DOWNLOADS.deb },
       { label: 'Source on GitHub', href: REPO_URL }
     ]
   }

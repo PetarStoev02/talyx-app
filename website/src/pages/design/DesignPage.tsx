@@ -2,7 +2,7 @@ import { ArrowRight } from 'lucide-react'
 import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle'
 import { useNoIndex } from '../../shared/hooks/useNoIndex'
 import { APP_VERSION } from '../../shared/data/release'
-import { CTA_LABEL, DMG_SIZE_MB, MIN_MACOS } from '../../shared/data/offer'
+import { CTA_LABEL, MIN_MACOS } from '../../shared/data/offer'
 import {
   AppScreenshot,
   Body,
@@ -33,7 +33,7 @@ const TYPE_STEPS = [
   {
     token: '--step-small',
     use: 'Meta lines and notes only',
-    sample: `v${APP_VERSION} · ${MIN_MACOS} or newer · ${DMG_SIZE_MB} MB`
+    sample: `v${APP_VERSION} · ${MIN_MACOS} or newer · Linux x64`
   }
 ]
 

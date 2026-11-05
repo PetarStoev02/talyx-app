@@ -47,34 +47,33 @@ const softwareJsonLd = {
 }
 
 /**
- * The five objections that stop a download, answered in the order they come
- * up. Rendered on the landing page and emitted as FAQ JSON-LD, so the markup
- * and the visible page can never disagree.
+ * The objections that stop a download, answered in the order they come up. Rendered on the
+ * landing page and emitted as FAQ JSON-LD, so the markup and the visible page can never disagree.
  */
 export const faqEntries = [
   {
-    q: 'Will it move my files somewhere I can\u2019t find them?',
-    a: 'When you sort files, Talyx shows the exact plan (how many files, into which folders) and nothing moves until you confirm. Watch folders and scheduled sorts you set up yourself are the exceptions: they sort on their own. Reads run without asking, and everything else the assistant changes shows a card first. Every batch is recorded, and one click puts all of it back exactly where it was. You can also choose Copy instead of Move, which leaves the originals untouched.'
+    q: 'What is the engine?',
+    a: 'The engine is the agent backend your bots run on. It runs on your computer, separate from the app, and Talyx\u2019s first-run setup installs it for your user only, with no admin password. Talyx is the window onto it.'
   },
   {
-    q: 'Do I need an AI subscription or API key?',
-    a: 'No. Sorting works on first launch from filenames and metadata, with no account, no key and no download. One optional upgrade reads file contents and powers the assistant: your own Claude: your existing Anthropic API key or Claude Code subscription. Talyx never resells it and hosts no model of its own.'
+    q: 'Do I need an account or an API key?',
+    a: 'You need no Talyx account. Your bots need a model, so setup asks for one: an API key, a sign-in with an account you already have, or a custom endpoint.'
   },
   {
-    q: 'Does my data leave my Mac?',
-    a: 'Your files don\u2019t, by default. Smart Local sorting classifies on-device and makes zero network calls. These things do use the network: the update check to GitHub (on by default; set it to manual in Settings), voice models downloaded from Hugging Face when you turn voice on, and everything Your Claude and the assistant send, when you use them, to your own Anthropic account: the conversation and tool results for the assistant, the first 2000 characters of files that need reading for sorting (currency amounts, dates and company names ending in a legal suffix masked first, best-effort), and a screenshot only when you ask it to look at the screen. Talyx collects no telemetry and no analytics from the app.'
+    q: 'Which model providers work?',
+    a: 'Any provider the engine supports. In Settings, add each one with an API key, by signing in with your account, or as a custom endpoint with its base URL. Each bot then picks its model from what you added.'
   },
   {
     q: 'Is it free?',
-    a: 'Yes. Talyx is free and open source under the MIT licence; the source is on GitHub. There is no trial, licence or account.'
+    a: 'Yes. Talyx is free and open source under the MIT licence, with no account and no card. Your model provider bills you for what your bots use, if it charges.'
   },
   {
-    q: 'Can it click and type for me?',
-    a: 'Yes, as a last resort. When no built-in ability covers what you asked, Talyx takes a screenshot and works from that. Every click, keystroke and scroll shows a card first, even after you have approved the rest of a task, and \u2318\u21e7Esc stops it mid-way. It needs the Screen Recording and Accessibility permissions, which macOS asks for the first time.'
+    q: 'Can Talyx see my chats?',
+    a: 'No. Talyx has no server, so your chats never reach us. They pass between the app and the engine on your computer, and each bot sends them on to the model provider you chose, under that provider\u2019s terms.'
   },
   {
-    q: 'Will it run on my Mac?',
-    a: 'Talyx is macOS only, for both Apple Silicon and Intel Macs. Voice dictation and spoken replies need Apple Silicon. The app is not notarized, so macOS blocks it the first time you open it; the install steps on the download section show how to allow it.'
+    q: 'Which computers does it run on?',
+    a: 'Macs with macOS 13 or newer, Apple Silicon or Intel, and Linux x64, as an AppImage or a deb. Windows comes later.'
   }
 ]
 

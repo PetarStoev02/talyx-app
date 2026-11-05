@@ -68,7 +68,11 @@ async function prerender() {
   for (const route of routes) {
     const url = basepath + (route === '/' ? '/' : route)
     const { html, meta } = await render(url)
-    const page = replaceMeta(template.replace('<!--ssr-outlet-->', html), meta)
+    // React puts the resources it preloads (the hero's eager images) ahead of the app's markup;
+    // inside #root they would not hydrate, so they go to the head.
+    const [, hoisted, app] = html.match(/^((?:<link [^>]*>)*)([\s\S]*)$/)
+    const shell = template.replace('</head>', `${hoisted}</head>`).replace('<!--ssr-outlet-->', app)
+    const page = replaceMeta(shell, meta)
 
     if (route === '/') {
       writeFileSync(join(distDir, 'index.html'), page)

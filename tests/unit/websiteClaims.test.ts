@@ -17,7 +17,7 @@ function files(path: string): string[] {
 
 const SITE = ROOTS.flatMap(files).filter((f) => /\.(tsx?|md|html|mjs|json|svg|txt|xml)$/.test(f))
 
-/** Claims that stopped being true when Talyx became free, unsigned and macOS-only. */
+/** Claims that are not true of Talyx 1.0: free, unsigned, macOS and Linux only. */
 const RETIRED = [
   /\$\d/,
   /\bpricing\b/i,
@@ -25,7 +25,8 @@ const RETIRED = [
   /railway|talyxapp-production/i,
   /\bstripe\b/i,
   /upgrade to pro/i,
-  /\bwindows\b/i,
+  // Windows is said exactly one way while there is no build.
+  /\bwindows\b(?! comes later\.)/i,
   /built-in AI|local AI|on-device AI/i,
   /refund/i,
   /(?<!not |or )notari[sz]ed/i,
