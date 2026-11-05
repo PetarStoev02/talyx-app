@@ -5,9 +5,9 @@ import type { ChatActions } from '@features/chat/chat'
 import { handleEvent, promptHandler } from '@features/chat/events'
 import type { ChatUpdate } from '@features/chat/events'
 import { useChat } from '@features/chat/store'
-import { forgetDeleted } from './forgetDeleted'
 import { host } from '@shared/engine/host'
 import { engineHttp } from '@shared/engine/http'
+import { forgetDeleted } from './forgetDeleted'
 
 /**
  * The chat's engine access, once the socket has opened once. Use it in one place: it routes

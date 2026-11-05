@@ -76,11 +76,14 @@ export function Roster({
   }
   // Every mutation re-reads the roster afterwards, so a reload is an empty mutation.
   const reload = (): void => run(() => Promise.resolve())
+  // Moving on to another bot or room takes a failed action's message away.
   const selectBot = (bot: Bot): void => {
+    clearError()
     select({ kind: 'bot', id: bot.name })
     onSelect()
   }
   const selectRoom = (room: Room): void => {
+    clearError()
     select({ kind: 'room', id: room.room_id })
     onSelect()
   }

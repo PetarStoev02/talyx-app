@@ -21,8 +21,9 @@ export interface RosterState {
   saving: boolean
   // A read of the roster failed: set and cleared by each poll or refresh.
   loadError: RosterProblem | null
-  // The user's last change failed: kept until the next change, clearError, or moving on (another
-  // bot, opening or closing the details), so a poll that succeeds does not wipe it from a dialog.
+  // The user's last change failed: kept until the next change, clearError, or opening or closing
+  // the details, so a poll that succeeds does not wipe it from a dialog. Choosing another bot or
+  // room clears it in the roster (not here: a selection made for the user must not hide it).
   actionError: RosterProblem | null
   select: (selection: Selection) => void
   editProfile: (profile: string | null) => void
@@ -53,7 +54,6 @@ export const useRoster = create<RosterState>((set) => ({
     set((state) => ({
       selection,
       editingProfile: null,
-      actionError: null,
       unread: selection?.kind === 'bot' ? { ...state.unread, [selection.id]: false } : state.unread,
       roomUnread:
         selection?.kind === 'room'

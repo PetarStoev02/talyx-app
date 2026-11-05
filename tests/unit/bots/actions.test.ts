@@ -221,8 +221,11 @@ describe('roster polls', () => {
       engine.rooms.findIndex((item) => item.room_id === 'team-room'),
       1
     )
-    await refreshRoster(backend)
-    off()
+    try {
+      await refreshRoster(backend)
+    } finally {
+      off()
+    }
     expect(useRoster.getState().unread).not.toHaveProperty('support')
     expect(useRoster.getState().activity).not.toHaveProperty('support')
     expect(Object.keys(useChat.getState().chats)).toEqual(['writer'])
@@ -268,9 +271,9 @@ describe('roster mutations', () => {
     })
     await refreshRoster(backend)
     expect(useRoster.getState().actionError?.detail).toBe('Engine gateway is not connected')
-    // Moving on to another bot takes it away.
+    // A selection made for the user, such as the fallback after a deleted chat, keeps it.
     useRoster.getState().select({ kind: 'bot', id: 'writer' })
-    expect(useRoster.getState().actionError).toBeNull()
+    expect(useRoster.getState().actionError?.detail).toBe('Engine gateway is not connected')
   })
   it('should clear the selection of a bot hidden on another client', async () => {
     useRoster.getState().select({ kind: 'bot', id: 'support' })

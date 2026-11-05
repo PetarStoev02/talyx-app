@@ -13,6 +13,8 @@ describe('problems', () => {
   it.each([
     'Engine gateway is not connected',
     'Engine socket is not open',
+    'Engine gateway connection closed',
+    'Could not connect to Engine gateway (code 1006)',
     'fetch failed',
     'connect ECONNREFUSED 127.0.0.1:8642',
     'The operation timed out',
