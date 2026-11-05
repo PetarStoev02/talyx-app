@@ -30,7 +30,8 @@
     "build:mac": "electron-vite build && electron-builder --mac --publish never",
     "release": "bash scripts/release.sh",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:smoke": "vitest run --config vitest.smoke.config.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.1",
