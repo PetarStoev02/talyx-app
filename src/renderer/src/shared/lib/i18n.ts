@@ -232,6 +232,7 @@ const en = {
   'crash.title': 'This part of Talyx stopped working.',
   'crash.body': 'Try again. If it keeps happening, reload Talyx; the error is in its log.',
   'crash.appTitle': 'Talyx stopped working.',
+  'crash.appBody': 'Reload Talyx to carry on. If it keeps happening, the error is in its log.',
   'crash.reload': 'Reload Talyx',
   'roster.errorUnsafeSave':
     'This engine version cannot save roster changes safely. Update the engine, then try again.',
