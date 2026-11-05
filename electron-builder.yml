@@ -45,3 +45,5 @@ electronFuses:
   enableNodeCliInspectArguments: false
   enableEmbeddedAsarIntegrityValidation: true
   onlyLoadAppFromAsar: true
+  # The renderer is served over app:// (appProtocol.ts), so file:// pages need no extra reach.
+  grantFileProtocolExtraPrivileges: false

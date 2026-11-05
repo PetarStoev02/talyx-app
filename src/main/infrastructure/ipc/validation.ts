@@ -8,10 +8,13 @@ export const LastSelectionSchema = z.object({
   id: z.string().min(1).max(200)
 })
 
+export const ThemeSchema = z.enum(['light', 'dark', 'system'])
+export type Theme = z.infer<typeof ThemeSchema>
+
 export const UserSettingsPartialSchema = z
   .object({
     lastSelection: LastSelectionSchema.nullable(),
-    theme: z.enum(['light', 'dark', 'system']),
+    theme: ThemeSchema,
     sidebarWidth: z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)
   })
   .partial()
