@@ -37,7 +37,7 @@ function sourceFor(
 
 const FILE = {
   schema: 1,
-  engineVersion: '0.22.5',
+  engineVersion: '0.22.7',
   platforms: {
     darwin: { commands: ['echo one', 'echo two'] },
     linux: { commands: ['echo linux'] }
@@ -51,7 +51,7 @@ describe('loadInstallSteps', () => {
     expect(result).toEqual({
       kind: 'ready',
       commands: ['echo one', 'echo two'],
-      engineVersion: '0.22.5',
+      engineVersion: '0.22.7',
       releaseUrl: RELEASE_URL
     })
   })

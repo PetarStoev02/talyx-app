@@ -18,6 +18,8 @@ export type SetupMode = (typeof MODES)[number]
 const LINE_MS = 300
 const CHECK_MS = 600
 const OLD_VERSION = '0.21.0'
+// The owner's current Mac: one release below the pin.
+const OLD_AFTER_VERSION = '0.22.5'
 // An older copy earlier on PATH, and the one the install links in the user bin.
 const OLD_PATH = '/usr/local/bin/talyx-engine'
 const INSTALLED_PATH = '/Users/fixture/.local/bin/talyx-engine'
@@ -99,7 +101,8 @@ export function fixtureSetup(mode: SetupMode, options: { stuck: boolean }): Setu
   const found = (): EngineStatus => {
     if (linked || (installed && !options.stuck))
       return { ...attachedEngine(EXPECTED_ENGINE_VERSION), stale: gatewayStale }
-    if (mode === 'old' || mode === 'old-after') return attachedEngine(OLD_VERSION, OLD_PATH)
+    if (mode === 'old') return attachedEngine(OLD_VERSION, OLD_PATH)
+    if (mode === 'old-after') return attachedEngine(OLD_AFTER_VERSION, OLD_PATH)
     if (mode === 'windows') return WINDOWS_STATUS
     if (mode === 'protocol') return PROTOCOL_STATUS
     return { state: 'missing', enginePath: null }

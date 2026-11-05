@@ -42,14 +42,17 @@ export type EngineStatus =
       managerHandle: string
     }
 
-/** The engine release this Talyx is built and tested against. */
-export const EXPECTED_ENGINE_VERSION = '0.22.5'
+/**
+ * The engine release this Talyx is tested with, and the oldest it runs on: an older engine gets the
+ * Update offer, a newer one a "newer than tested" note.
+ */
+export const EXPECTED_ENGINE_VERSION = '0.22.7'
 
 export type EngineVersionFit = 'older' | 'same' | 'newer' | 'unknown'
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/
 
-/** How a found engine version compares with the expected one, number by number (0.22.10 > 0.22.5). */
+/** How a found engine version compares with the expected one, number by number (0.22.10 > 0.22.7). */
 export function engineVersionFit(
   found: string | null,
   expected: string = EXPECTED_ENGINE_VERSION

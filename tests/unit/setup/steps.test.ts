@@ -39,7 +39,7 @@ describe('isEngineCurrent', () => {
     ['a missing engine', missing, false],
     ['an engine that could not attach', failed, false],
     ['an older engine', attached('0.21.0'), false],
-    ['the expected engine', attached('0.22.5'), true],
+    ['the expected engine', attached('0.22.7'), true],
     ['a newer engine', attached('0.22.10'), true],
     ['an unreadable version', attached('dev'), true]
   ] as const)('should judge %s', (_name, engine, current) => {
@@ -52,9 +52,9 @@ describe('firstUndoneStep', () => {
     ['a missing engine', missing, false, false, 'engine'],
     ['an engine that could not attach', failed, true, true, 'engine'],
     ['an older engine', attached('0.21.0'), true, true, 'engine'],
-    ['no provider yet', attached('0.22.5'), false, false, 'provider'],
+    ['no provider yet', attached('0.22.7'), false, false, 'provider'],
     ['no own bot on a newer engine', attached('0.22.10'), true, false, 'bot'],
-    ['everything done', attached('0.22.5'), true, true, null]
+    ['everything done', attached('0.22.7'), true, true, null]
   ] as const)(
     'should name the first undone step for %s',
     (_name, engine, hasProv, hasBot, step) => {
@@ -64,7 +64,7 @@ describe('firstUndoneStep', () => {
 })
 
 describe('stepAfter', () => {
-  const engine = attached('0.22.5')
+  const engine = attached('0.22.7')
 
   it.each([
     ['the engine, with nothing else done', 'engine', false, false, 'provider'],
@@ -90,13 +90,13 @@ describe('knownFirstStep', () => {
   })
 
   it('should wait for the provider and bot facts once the engine is done', () => {
-    const engine = attached('0.22.5')
+    const engine = attached('0.22.7')
     expect(knownFirstStep({ engine, hasProvider: null, hasOwnBot: false })).toBeUndefined()
     expect(knownFirstStep({ engine, hasProvider: true, hasOwnBot: null })).toBeUndefined()
   })
 
   it('should name the first undone step once every fact is known', () => {
-    const engine = attached('0.22.5')
+    const engine = attached('0.22.7')
     expect(knownFirstStep({ engine, hasProvider: true, hasOwnBot: false })).toBe('bot')
     expect(knownFirstStep({ engine, hasProvider: true, hasOwnBot: true })).toBeNull()
   })

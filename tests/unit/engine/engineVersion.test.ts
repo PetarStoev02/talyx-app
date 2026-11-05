@@ -8,8 +8,10 @@ import {
 describe('engineVersionFit', () => {
   it.each([
     ['0.21.0', 'older'],
-    ['0.22.4', 'older'],
-    ['0.22.5', 'same'],
+    ['0.22.5', 'older'],
+    ['0.22.6', 'older'],
+    ['0.22.7', 'same'],
+    ['0.22.8', 'newer'],
     ['0.22.10', 'newer'],
     ['1.0.0', 'newer'],
     ['garbage', 'unknown'],
@@ -24,6 +26,6 @@ describe('engineVersionFit', () => {
 
   it('should compare with the given version instead of the built-in one', () => {
     expect(engineVersionFit('1.2.3', '1.2.3')).toBe('same')
-    expect(EXPECTED_ENGINE_VERSION).toBe('0.22.5')
+    expect(EXPECTED_ENGINE_VERSION).toBe('0.22.7')
   })
 })

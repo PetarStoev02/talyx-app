@@ -8,7 +8,7 @@ const missing: EngineStatus = { state: 'missing', enginePath: null }
 const ready: InstallSteps = {
   kind: 'ready',
   commands: ['echo one', 'echo two'],
-  engineVersion: '0.22.5',
+  engineVersion: '0.22.7',
   releaseUrl
 }
 
@@ -50,9 +50,9 @@ describe('engineScreen', () => {
     })
 
     it('should show a current engine as ready', () => {
-      expect(engineScreen(facts({ status: attached('0.22.5') }))).toEqual({
+      expect(engineScreen(facts({ status: attached('0.22.7') }))).toEqual({
         kind: 'ready',
-        version: '0.22.5',
+        version: '0.22.7',
         path: '/usr/local/bin/talyx-engine',
         newer: false,
         stale: false
@@ -83,7 +83,7 @@ describe('engineScreen', () => {
     })
 
     it('should show the attach error for a current or unknown version', () => {
-      expect(engineScreen(facts({ status: errored('0.22.5') }))).toEqual({
+      expect(engineScreen(facts({ status: errored('0.22.7') }))).toEqual({
         kind: 'attachError',
         message: 'no socket'
       })
@@ -102,7 +102,7 @@ describe('engineScreen', () => {
 
     it.each([
       ['0.23.0', 'newer'],
-      ['0.22.5', 'same'],
+      ['0.22.7', 'same'],
       [null, 'same']
     ] as const)('should show the protocol screen for engine %s (%s)', (version, fit) => {
       expect(engineScreen(facts({ status: errored(version, 'protocol') }))).toEqual({
@@ -171,7 +171,7 @@ describe('engineScreen', () => {
       expect(engineScreen(facts({ steps: ready, exit, checking: true })).kind).toBe('checking')
       expect(engineScreen(facts({ steps: ready, exit })).kind).toBe('notFound')
       expect(
-        engineScreen(facts({ steps: ready, exit, wantsInstall: true, status: attached('0.22.5') }))
+        engineScreen(facts({ steps: ready, exit, wantsInstall: true, status: attached('0.22.7') }))
           .kind
       ).toBe('ready')
     })

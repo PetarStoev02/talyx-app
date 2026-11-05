@@ -61,24 +61,24 @@ above; its Done opens the fixture on Talyx's chat. No `?setup` keeps the fixture
 
 | Mode        | The engine step shows                                                          |
 | ----------- | ------------------------------------------------------------------------------ |
-| `missing`   | The install commands; Install runs them, then the engine is ready (0.22.5)     |
+| `missing`   | The install commands; Install runs them, then the engine is ready (0.22.7)     |
 | `offline`   | "Talyx could not get the install steps." with Try again and Choose file        |
 | `mismatch`  | The same screen with the hash-mismatch sentence                                |
 | `fail`      | The install stops in command 2 (exit 1): Try again, Show the commands, Copy    |
 | `old`       | Engine 0.21.0 is older: Update runs the install, Continue anyway moves on      |
-| `old-after` | No setup; the Agents page has the older-engine notice (0.21.0), see below      |
+| `old-after` | No setup; the Agents page has the older-engine notice (0.22.5), see below      |
 | `windows`   | Windows' attach error; Install the engine shows the Windows sentence and link  |
 | `protocol`  | Engine 0.22.9 on another protocol: Get the latest Talyx opens the release page |
 
-`old-after` is an older engine after setup: "Your engine (0.21.0) is older than this Talyx needs."
+`old-after` is an older engine after setup: "Your engine (0.22.5) is older than this Talyx needs."
 sits over the Agents page; Update the engine opens the Update flow, which ends on ready with the
 restart hint (Copy; Try again clears it), and the notice is gone. Add `&stuck=1` to `old` or
-`old-after` and the install leaves engine 0.21.0 running: "Talyx still runs the engine at
-/usr/local/bin/talyx-engine, which is 0.21.0." Use the newly installed engine (or Choose file) then
+`old-after` and the install leaves the older engine running (0.21.0 and 0.22.5 respectively): "Talyx
+still runs the engine at /usr/local/bin/talyx-engine, which is 0.21.0." Use the newly installed engine (or Choose file) then
 finds the expected engine in the user bin.
 
 Check Copy and Copy all, Install, Cancel (back to the commands), Try again, Choose file (it always
-"finds" engine 0.22.5), Continue, the provider step (Continue once the router is read, Skip), Make
+"finds" engine 0.22.7), Continue, the provider step (Continue once the router is read, Skip), Make
 bot and Skip, and that Done lands on Talyx's chat; in light and dark, keyboard only.
 
 `?nudge` starts with no provider: Talyx's chat (no other bot's) shows "Add a model provider so bots

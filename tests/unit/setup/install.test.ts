@@ -5,7 +5,7 @@ import { displayOutput, useInstall, type SetupBackend } from '@features/setup/in
 const ready: InstallSteps = {
   kind: 'ready',
   commands: ['one', 'two'],
-  engineVersion: '0.22.5',
+  engineVersion: '0.22.7',
   releaseUrl: 'https://example.test/release'
 }
 
