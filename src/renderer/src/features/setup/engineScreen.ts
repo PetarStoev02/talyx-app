@@ -14,9 +14,11 @@ export type EngineScreen =
   | { kind: 'running' }
   | { kind: 'stopped'; index: number; code: number }
   | { kind: 'notFound' }
-  | { kind: 'ready'; version: string; newer: boolean; stale: boolean }
+  | { kind: 'ready'; version: string; path: string; newer: boolean; stale: boolean }
   /** `attached` false: it cannot attach either, so only the update is offered. */
   | { kind: 'older'; version: string; attached: boolean }
+  /** An install finished, yet the engine Talyx runs (another copy, at `path`) is still older. */
+  | { kind: 'still-older'; path: string; version: string }
 
 export interface EngineScreenFacts {
   status: EngineStatus | null
@@ -34,8 +36,14 @@ export function engineScreen(facts: EngineScreenFacts): EngineScreen {
   if (exit?.kind === 'failed') return { kind: 'stopped', index: exit.index, code: exit.code }
   if (facts.checking || !status) return { kind: 'checking' }
   // A finished install is judged by the check that follows it, not by the steps.
-  if (exit?.kind === 'ok') return foundScreen(status)
+  if (exit?.kind === 'ok') return installedScreen(status)
   if (facts.wantsInstall || status.state === 'missing') return installScreen(facts.steps)
+  return foundScreen(status)
+}
+
+function installedScreen(status: EngineStatus): EngineScreen {
+  if (status.state === 'attached' && engineVersionFit(status.version) === 'older')
+    return { kind: 'still-older', path: status.path, version: status.version }
   return foundScreen(status)
 }
 
@@ -52,7 +60,18 @@ function foundScreen(status: EngineStatus): EngineScreen {
   }
   const fit = engineVersionFit(status.version)
   if (fit === 'older') return { kind: 'older', version: status.version, attached: true }
-  return { kind: 'ready', version: status.version, newer: fit === 'newer', stale: status.stale }
+  return {
+    kind: 'ready',
+    version: status.version,
+    path: status.path,
+    newer: fit === 'newer',
+    stale: status.stale
+  }
+}
+
+/** The command that restarts the gateway of the engine at `path`, single-quoted for a POSIX shell. */
+export function restartCommand(path: string): string {
+  return `'${path.replaceAll("'", "'\\''")}' gateway restart`
 }
 
 function installScreen(steps: InstallSteps | null): EngineScreen {

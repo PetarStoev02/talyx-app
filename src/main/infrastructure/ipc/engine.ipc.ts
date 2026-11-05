@@ -1,7 +1,9 @@
+import { existsSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { BrowserWindow, dialog, ipcMain } from 'electron'
 import log from 'electron-log'
 import type { EngineStatus } from '../../../shared/engine'
-import { createEngine } from '../engine/engine'
+import { createEngine, userBinEngine } from '../engine/engine'
 import { EngineSockets, type SocketEventSink } from '../engine/engineSockets'
 import { settingsStore } from '../storage/SettingsStore'
 import {
@@ -46,6 +48,15 @@ export function registerEngineIpc(): void {
     if (!picked.canceled && picked.filePaths[0]) {
       settingsStore.set({ enginePath: validateInput(EnginePathSchema, picked.filePaths[0]) })
     }
+    return loggedStatus()
+  })
+
+  // The file the install steps link, chosen explicitly: an older copy earlier on PATH must not win.
+  // It takes no argument, so a page can only point Talyx at this one file.
+  ipcMain.handle('engine:use-installed', async (): Promise<EngineStatus> => {
+    const installed = userBinEngine(process.platform, homedir())
+    if (!existsSync(installed)) throw new Error('No installed engine found')
+    settingsStore.set({ enginePath: installed })
     return loggedStatus()
   })
 

@@ -8,6 +8,7 @@ import {
   AttachError,
   EngineOlder,
   EngineReady,
+  EngineStillOlder,
   ProtocolMismatch,
   StepsFailed
 } from './EngineScreens'
@@ -55,12 +56,23 @@ export function InstallEngine({
   }, [screen.kind, backend])
 
   const install = (): void => startInstall(backend)
+  const recheck = (): void => void useEngine.getState().check()
 
   function chooseFile(): void {
     // What the chosen file turns out to be decides the next screen, not the install.
     setWantsInstall(false)
     useInstall.setState({ exit: null })
     void useEngine.getState().pickPath()
+  }
+
+  function runInstalled(): void {
+    // Rejects when the user bin has no engine; the screen and the status stay as they were.
+    useEngine
+      .getState()
+      .useInstalled()
+      .catch((error: unknown) =>
+        toast.error(error instanceof Error ? error.message : String(error))
+      )
   }
 
   function showCommands(): void {
@@ -78,7 +90,7 @@ export function InstallEngine({
         <AttachError
           message={screen.message}
           actions={{
-            recheck: () => void useEngine.getState().check(),
+            recheck,
             install: () => setWantsInstall(true),
             chooseFile
           }}
@@ -89,7 +101,7 @@ export function InstallEngine({
         <ProtocolMismatch
           fit={screen.fit}
           releaseUrl={steps?.releaseUrl ?? null}
-          actions={{ recheck: () => void useEngine.getState().check() }}
+          actions={{ recheck }}
         />
       )
     case 'commands':
@@ -125,7 +137,15 @@ export function InstallEngine({
         />
       )
     case 'ready':
-      return <EngineReady screen={screen} onContinue={onReady} />
+      return <EngineReady screen={screen} actions={{ recheck, continue: onReady }} />
+    case 'still-older':
+      return (
+        <EngineStillOlder
+          path={screen.path}
+          version={screen.version}
+          actions={{ useInstalled: runInstalled, chooseFile }}
+        />
+      )
     case 'older':
       return (
         <EngineOlder

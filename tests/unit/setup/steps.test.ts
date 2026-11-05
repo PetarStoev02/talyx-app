@@ -7,6 +7,7 @@ vi.mock('@shared/api/ipc', () => ({ settingsApi: settings }))
 import {
   firstUndoneStep,
   hasProvider,
+  isEngineCurrent,
   knownFirstStep,
   setupVisibility,
   stepAfter
@@ -32,6 +33,19 @@ function attached(version: string): EngineStatus {
     botGroupsMetaKey: 'g'
   }
 }
+
+describe('isEngineCurrent', () => {
+  it.each([
+    ['a missing engine', missing, false],
+    ['an engine that could not attach', failed, false],
+    ['an older engine', attached('0.21.0'), false],
+    ['the expected engine', attached('0.22.5'), true],
+    ['a newer engine', attached('0.22.10'), true],
+    ['an unreadable version', attached('dev'), true]
+  ] as const)('should judge %s', (_name, engine, current) => {
+    expect(isEngineCurrent(engine)).toBe(current)
+  })
+})
 
 describe('firstUndoneStep', () => {
   it.each([

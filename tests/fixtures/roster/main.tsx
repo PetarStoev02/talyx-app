@@ -16,7 +16,7 @@ import { blockPng } from '../../../src/renderer/src/shared/ui/blockPng'
 import { fixtureChat } from './fixtureChat'
 import { fixtureProviders } from './fixtureProviders'
 import { roomRequest, roomSessionRequest } from './fixtureRooms'
-import { attachedEngine, fixtureSetup, setupMode } from './fixtureSetup'
+import { attachedEngine, fixtureSetup, setupMode, setupStuck } from './fixtureSetup'
 import './fixture.css'
 
 // Saved looks: one in today's values, one from an older client (read as the nearest block).
@@ -230,7 +230,18 @@ const providers = fixtureProviders(profiles.map((bot) => bot.name))
 const chat = fixtureChat(providers)
 // `?setup=<mode>` opens the setup flow first, against a scripted install; it replaces the engine.
 const mode = setupMode(location.search)
-const setup = mode && fixtureSetup(mode)
+const setup = mode && fixtureSetup(mode, { stuck: setupStuck(location.search) })
+// `old-after`: setup is done; the Agents page's engine gate runs its update through `window.api`.
+if (setup && mode === 'old-after')
+  Object.assign(window, {
+    api: {
+      getInstallSteps: setup.installSteps,
+      runInstall: setup.run,
+      cancelInstall: setup.cancel,
+      onInstallOutput: setup.onOutput,
+      onInstallExit: setup.onExit
+    }
+  })
 // `?nudge`: no provider read yet, so Talyx's chat asks for one until Settings reads the router.
 if (new URLSearchParams(location.search).has('nudge')) useSetup.getState().setHasProvider(false)
 
@@ -253,7 +264,7 @@ function ExportedAvatar(): React.JSX.Element | null {
 
 // The setup flow until its Done, then the fixture with Talyx's chat open, as the app does.
 function Root(): React.JSX.Element {
-  const [inSetup, setInSetup] = useState(setup !== null)
+  const [inSetup, setInSetup] = useState(setup !== null && mode !== 'old-after')
   if (!setup || !inSetup) return <Fixture />
   return (
     <div className="h-screen bg-background">

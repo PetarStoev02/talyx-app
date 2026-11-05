@@ -21,7 +21,8 @@ export const UserSettingsPartialSchema = z
   .partial()
 
 /** Talyx runs this file, so it is never set through `settings:set` (page code could name any
- *  binary): only the native file chooser behind `engine:pick-path` writes it. */
+ *  binary): only the native file chooser behind `engine:pick-path` and `engine:use-installed`
+ *  (the user bin's engine, no argument) write it. */
 export const EnginePathSchema = z.string().refine(isAbsolute, 'enginePath must be an absolute path')
 
 /** A renderer failure for the log file; capped so a page cannot flood it. */

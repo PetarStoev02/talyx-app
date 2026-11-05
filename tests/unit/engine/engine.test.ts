@@ -8,6 +8,7 @@ import {
   engineCandidates,
   EngineHttpError,
   EngineRouteError,
+  resolveOnPath,
   type EngineDeps
 } from '../../../src/main/infrastructure/engine/engine'
 import {
@@ -22,6 +23,9 @@ import { engineWire, parseEngineVersion } from '../../../src/shared/engine'
 const VERSION_LINE =
   'Acme Agent v1.2.3 (2026.9.24) · stable · local abcdef1234ab\nInstall directory: /x'
 const HOME = '/home/u/.acme'
+// Where the made-up PATH holds the engine command.
+const PATH_ENV = '/usr/bin:/opt/acme/bin'
+const ON_PATH = '/opt/acme/bin/talyx-engine'
 
 function endpointFixture(overrides: Partial<GatewayEndpoint> = {}): GatewayEndpoint {
   return {
@@ -70,6 +74,8 @@ function engineWith(overrides: Partial<EngineDeps> & { ensure?: () => CliResult 
     mintTicket: async () => 'ticket-1',
     platform: 'darwin',
     home: '/home/u',
+    pathEnv: PATH_ENV,
+    isExecutable: (path) => path === ON_PATH,
     ...overrides
   })
   return { engine, run }
@@ -120,6 +126,40 @@ describe('engine command', () => {
       'ensure',
       '--json'
     ])
+  })
+})
+
+describe('which engine runs', () => {
+  const executable = (paths: string[]) => (path: string) => paths.includes(path)
+
+  it('should find the command in a later PATH entry', () => {
+    expect(resolveOnPath('talyx-engine', '/usr/bin:/opt/acme/bin', executable([ON_PATH]))).toBe(
+      ON_PATH
+    )
+  })
+
+  it('should find nothing when no PATH entry holds the command', () => {
+    expect(resolveOnPath('talyx-engine', '/usr/bin:/bin', executable([ON_PATH]))).toBeNull()
+  })
+
+  it('should skip a file that is not executable, and relative or empty entries', () => {
+    const isExecutable = vi.fn((path: string) => path === '/b/talyx-engine')
+    expect(resolveOnPath('talyx-engine', '::bin:/a:/b', isExecutable)).toBe('/b/talyx-engine')
+    expect(isExecutable.mock.calls.map(([path]) => path)).toEqual([
+      '/a/talyx-engine',
+      '/b/talyx-engine'
+    ])
+  })
+
+  it('should report a PATH hit as its absolute file, and run that file', async () => {
+    const { engine, run } = engineWith()
+    expect(await engine.status()).toMatchObject({ state: 'attached', path: ON_PATH })
+    expect(run).toHaveBeenLastCalledWith(ON_PATH, expect.arrayContaining(['ensure']))
+  })
+
+  it('should report the chosen file as the engine that runs', async () => {
+    const status = await engineWith({ enginePath: () => '/chosen/engine' }).engine.status()
+    expect(status).toMatchObject({ state: 'attached', path: '/chosen/engine' })
   })
 })
 
@@ -203,6 +243,7 @@ describe('engine status', () => {
       version: '1.2.3',
       commit: 'abcdef1',
       home: HOME,
+      path: ON_PATH,
       stale: false,
       botMetaKey: 'acme-bots',
       botGroupsMetaKey: 'acme-bots-groups',

@@ -31,6 +31,8 @@ const en = {
     'The gateway runs older code than the engine. Run talyx-engine gateway restart when no bot is working.',
   'engine.protocolTitle': "This engine and this version of Talyx don't speak the same protocol.",
   'engine.getLatest': 'Get the latest Talyx',
+  'engine.olderNotice': 'Your engine ({version}) is older than this Talyx needs.',
+  'engine.updateEngine': 'Update the engine',
   'setup.welcomeTitle': 'Welcome to Talyx',
   'setup.welcomeBody':
     'Talyx is where you tally your AI bots. They run on the engine, a separate program on this computer. Three short steps: the engine, a model provider, your first bot.',
@@ -69,11 +71,14 @@ const en = {
   'setup.readyTitle': 'The engine is ready.',
   'setup.readyBadge': 'engine {version}',
   'setup.readyBody': 'Talyx found it and attached to its gateway.',
+  'setup.foundAt': 'Found at {path}.',
   'setup.newer': 'This engine is newer than the one Talyx is tested with.',
   'setup.olderTitle': 'Your engine is older than Talyx expects.',
   'setup.olderBody':
     'This computer has engine {version}. Talyx is built and tested with {expected}; some screens may not work.',
   'setup.update': 'Update to {version}',
+  'setup.stillOlder': 'Talyx still runs the engine at {path}, which is {version}.',
+  'setup.useInstalled': 'Use the newly installed engine',
   'setup.continue': 'Continue',
   'setup.continueAnyway': 'Continue anyway',
   'setup.providerTitle': 'Connect a model provider',

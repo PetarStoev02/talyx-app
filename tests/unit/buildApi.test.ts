@@ -28,6 +28,7 @@ describe('buildApi', () => {
     ['setNativeTheme', ['dark'], 'theme:set-native', ['dark']],
     ['getEngineStatus', [], 'engine:status', []],
     ['pickEnginePath', [], 'engine:pick-path', []],
+    ['useInstalledEngine', [], 'engine:use-installed', []],
     ['engineHttp', [{ path: '/api/profiles' }], 'engine:http', [{ path: '/api/profiles' }]],
     ['openEngineSocket', ['id-1', 'default'], 'engine:socket-open', ['id-1', 'default']],
     ['sendEngineSocket', ['id-1', '{}'], 'engine:socket-send', ['id-1', '{}']],
@@ -64,7 +65,8 @@ describe('buildApi', () => {
       'runInstall',
       'sendEngineSocket',
       'setNativeTheme',
-      'setSettings'
+      'setSettings',
+      'useInstalledEngine'
     ])
   })
 

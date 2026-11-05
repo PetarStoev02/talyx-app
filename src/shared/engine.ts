@@ -33,6 +33,8 @@ export type EngineStatus =
       version: string
       commit: string | null
       home: string
+      /** The absolute executable Talyx resolved and runs (a PATH hit as its full path). */
+      path: string
       /** The gateway runs other code than the engine CLI (it outlived an update). */
       stale: boolean
       botMetaKey: string

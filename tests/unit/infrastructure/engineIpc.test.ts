@@ -1,3 +1,5 @@
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 type Handler = (event: unknown, ...args: unknown[]) => unknown
@@ -8,6 +10,10 @@ const sockets = vi.hoisted(() => ({
   send: vi.fn(),
   close: vi.fn()
 }))
+const settings = vi.hoisted(() => ({ store: { enginePath: null }, set: vi.fn() }))
+const files = vi.hoisted(() => ({ existsSync: vi.fn() }))
+// No real engine runs: status is a canned answer.
+const ATTACHED = { state: 'attached', path: '/somewhere/talyx-engine' }
 
 vi.mock('electron', () => ({
   ipcMain: { handle: (channel: string, fn: Handler) => handlers.set(channel, fn) },
@@ -16,7 +22,15 @@ vi.mock('electron', () => ({
 }))
 vi.mock('electron-log', () => ({ default: { warn: vi.fn() } }))
 vi.mock('../../../src/main/infrastructure/storage/SettingsStore', () => ({
-  settingsStore: { store: { enginePath: null } }
+  settingsStore: settings
+}))
+vi.mock('node:fs', async (original) => ({
+  ...(await original<typeof import('node:fs')>()),
+  existsSync: files.existsSync
+}))
+vi.mock('../../../src/main/infrastructure/engine/engine', async (original) => ({
+  ...(await original<typeof import('../../../src/main/infrastructure/engine/engine')>()),
+  createEngine: () => ({ status: async () => ATTACHED })
 }))
 vi.mock('../../../src/main/infrastructure/engine/engineSockets', () => ({
   EngineSockets: class {
@@ -71,5 +85,35 @@ describe('engine socket ownership', () => {
     expect(() => invoke('engine:socket-send', owner, ID, 'hello')).toThrow(
       'Engine socket is not open'
     )
+  })
+})
+
+describe('using the installed engine', () => {
+  const installed = join(homedir(), '.local', 'bin', 'talyx-engine')
+
+  beforeEach(() => {
+    handlers.clear()
+    vi.clearAllMocks()
+    registerEngineIpc()
+  })
+
+  it('should point Talyx at the engine in the user bin and report the new status', async () => {
+    files.existsSync.mockImplementation((path: string) => path === installed)
+    expect(await invoke('engine:use-installed', page())).toEqual(ATTACHED)
+    expect(settings.set).toHaveBeenCalledWith({ enginePath: installed })
+  })
+
+  it('should refuse, and keep the setting, when nothing is installed there', async () => {
+    files.existsSync.mockReturnValue(false)
+    await expect(invoke('engine:use-installed', page())).rejects.toThrow(
+      'No installed engine found'
+    )
+    expect(settings.set).not.toHaveBeenCalled()
+  })
+
+  it('should take no path from the page', async () => {
+    files.existsSync.mockReturnValue(true)
+    await invoke('engine:use-installed', page(), '/tmp/evil')
+    expect(settings.set).toHaveBeenCalledWith({ enginePath: installed })
   })
 })

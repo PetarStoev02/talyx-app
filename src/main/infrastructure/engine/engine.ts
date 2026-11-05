@@ -1,5 +1,6 @@
+import { accessSync, constants, statSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { delimiter, isAbsolute, join } from 'node:path'
 import {
   engineWire,
   parseEngineVersion,
@@ -74,6 +75,9 @@ export interface EngineDeps {
   fetch?: typeof fetch
   platform?: NodeJS.Platform
   home?: string
+  /** The PATH a bare command is looked up in; defaults to the process's own. */
+  pathEnv?: string
+  isExecutable?: (path: string) => boolean
 }
 
 /** Resolution order: the chosen file, then `talyx-engine` on PATH, then the per-OS user bin. A
@@ -83,13 +87,32 @@ export function engineCandidates(
   platform: NodeJS.Platform,
   home: string
 ): string[] {
-  const userBin = join(
+  const userBin = userBinEngine(platform, home)
+  return enginePath ? [enginePath, ENGINE_COMMAND, userBin] : [ENGINE_COMMAND, userBin]
+}
+
+/** Where the install steps link the engine command: the per-user bin. */
+export function userBinEngine(platform: NodeJS.Platform, home: string): string {
+  return join(
     home,
     '.local',
     'bin',
     platform === 'win32' ? `${ENGINE_COMMAND}.exe` : ENGINE_COMMAND
   )
-  return enginePath ? [enginePath, ENGINE_COMMAND, userBin] : [ENGINE_COMMAND, userBin]
+}
+
+/** The first executable `command` in PATH's absolute entries, as spawn would find it. */
+export function resolveOnPath(
+  command: string,
+  pathEnv: string,
+  isExecutable: (path: string) => boolean
+): string | null {
+  for (const dir of pathEnv.split(delimiter)) {
+    if (!isAbsolute(dir)) continue
+    const candidate = join(dir, command)
+    if (isExecutable(candidate)) return candidate
+  }
+  return null
 }
 
 export function createEngine(deps: EngineDeps): Engine {
@@ -98,6 +121,7 @@ export function createEngine(deps: EngineDeps): Engine {
   const fetchFn = deps.fetch ?? fetch
   const platform = deps.platform ?? process.platform
   const home = deps.home ?? homedir()
+  const isExecutable = deps.isExecutable ?? isExecutableFile
   let attached: Promise<{ command: string; version: EngineVersion; ensure: EnsureResult }> | null =
     null
   // The version the last `status()` found, so an attach that fails after `--version` can say it.
@@ -114,9 +138,17 @@ export function createEngine(deps: EngineDeps): Engine {
       }
       const version = parseEngineVersion(result.stdout)
       foundVersion = version.version
-      return { command, version }
+      return { command: absolute(command), version }
     }
     throw new EngineMissingError()
+  }
+
+  // The bare command as its PATH file, so the user sees (and Talyx runs) one exact engine. Spawn
+  // found it, so a miss here only means the lookups disagree: the bare name still runs.
+  function absolute(command: string): string {
+    if (command !== ENGINE_COMMAND) return command
+    const pathEnv = deps.pathEnv ?? process.env.PATH ?? ''
+    return resolveOnPath(command, pathEnv, isExecutable) ?? command
   }
 
   function attach(): Promise<{ command: string; version: EngineVersion; ensure: EnsureResult }> {
@@ -171,13 +203,14 @@ export function createEngine(deps: EngineDeps): Engine {
       attached = null
       foundVersion = null
       try {
-        const { version, ensure } = await attach()
+        const { command, version, ensure } = await attach()
         const wire = engineWire(version.name)
         return {
           state: 'attached',
           version: version.version,
           commit: version.commit,
           home: ensure.endpoint.profile_id,
+          path: command,
           stale: ensure.stale,
           botMetaKey: wire.botMetaKey,
           botGroupsMetaKey: wire.botGroupsMetaKey,
@@ -229,6 +262,15 @@ export function createEngine(deps: EngineDeps): Engine {
       if (!response.ok) throw new EngineHttpError(response.status, errorDetail(payload, text))
       return payload
     }
+  }
+}
+
+function isExecutableFile(path: string): boolean {
+  try {
+    accessSync(path, constants.X_OK)
+    return statSync(path).isFile()
+  } catch {
+    return false
   }
 }
 

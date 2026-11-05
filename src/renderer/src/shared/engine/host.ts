@@ -63,6 +63,10 @@ export const host = {
 
   pickEnginePath: (): Promise<EngineStatus> => window.api.pickEnginePath() as Promise<EngineStatus>,
 
+  /** Point Talyx at the engine the install steps linked; rejects when none is there. */
+  useInstalledEngine: (): Promise<EngineStatus> =>
+    window.api.useInstalledEngine() as Promise<EngineStatus>,
+
   /** Open the shared socket and keep it open: a drop redials with backoff and replays the gap. */
   connect(): Promise<void> {
     wanted = true

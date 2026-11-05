@@ -3,12 +3,24 @@ import type { SetupBackend } from '../../../src/renderer/src/features/setup/inst
 import { EXPECTED_ENGINE_VERSION, type EngineStatus } from '../../../src/shared/engine'
 import type { InstallExit, InstallSteps } from '../../../src/shared/setup'
 
-const MODES = ['missing', 'offline', 'mismatch', 'fail', 'old', 'windows', 'protocol'] as const
+const MODES = [
+  'missing',
+  'offline',
+  'mismatch',
+  'fail',
+  'old',
+  'old-after',
+  'windows',
+  'protocol'
+] as const
 export type SetupMode = (typeof MODES)[number]
 
 const LINE_MS = 300
 const CHECK_MS = 600
 const OLD_VERSION = '0.21.0'
+// An older copy earlier on PATH, and the one the install links in the user bin.
+const OLD_PATH = '/usr/local/bin/talyx-engine'
+const INSTALLED_PATH = '/Users/fixture/.local/bin/talyx-engine'
 // Newer than the pin, so the protocol screen offers the latest Talyx.
 const PROTOCOL_VERSION = '0.22.9'
 const RELEASE_URL = 'https://example.com/releases/v1.0.0-fixture'
@@ -46,13 +58,22 @@ export function setupMode(search: string): SetupMode | null {
   return MODES.find((known) => known === mode) ?? null
 }
 
+/** `&stuck=1`: an install leaves the older engine running (another copy comes first on PATH). */
+export function setupStuck(search: string): boolean {
+  return new URLSearchParams(search).get('stuck') === '1'
+}
+
 /** An attached engine as the fixture's pages need it. */
-export function attachedEngine(version: string): EngineStatus {
+export function attachedEngine(
+  version: string,
+  path: string = INSTALLED_PATH
+): Extract<EngineStatus, { state: 'attached' }> {
   return {
     state: 'attached',
     version,
     commit: null,
     home: '/fixture/engine',
+    path,
     stale: false,
     botMetaKey: 'acme-bots',
     botGroupsMetaKey: 'acme-bots-groups',
@@ -61,19 +82,24 @@ export function attachedEngine(version: string): EngineStatus {
 }
 
 /**
- * A scripted engine install for the setup flow: the engine status, Check and Choose file go through
- * `useEngine`, the install prints one output line every 300 ms. A finished install (or a chosen
- * file) makes the next check find engine 0.22.5.
+ * A scripted engine install for the setup flow: the engine status, Check, Choose file and Use the
+ * newly installed engine go through `useEngine`, the install prints one output line every 300 ms.
+ * A finished install (unless `stuck`) or a chosen file makes the next check find the expected
+ * engine. In `old-after` an update leaves the gateway stale until the next check.
  */
-export function fixtureSetup(mode: SetupMode): SetupBackend {
+export function fixtureSetup(mode: SetupMode, options: { stuck: boolean }): SetupBackend {
   let installed = false
+  // Choose file or Use the newly installed engine: Talyx now runs the installed copy.
+  let linked = false
+  let gatewayStale = false
   let timer: ReturnType<typeof setTimeout> | null = null
   const outputs = new Set<(index: number, text: string) => void>()
   const exits = new Set<(exit: InstallExit) => void>()
 
   const found = (): EngineStatus => {
-    if (installed) return attachedEngine(EXPECTED_ENGINE_VERSION)
-    if (mode === 'old') return attachedEngine(OLD_VERSION)
+    if (linked || (installed && !options.stuck))
+      return { ...attachedEngine(EXPECTED_ENGINE_VERSION), stale: gatewayStale }
+    if (mode === 'old' || mode === 'old-after') return attachedEngine(OLD_VERSION, OLD_PATH)
     if (mode === 'windows') return WINDOWS_STATUS
     if (mode === 'protocol') return PROTOCOL_STATUS
     return { state: 'missing', enginePath: null }
@@ -82,21 +108,26 @@ export function fixtureSetup(mode: SetupMode): SetupBackend {
     useEngine.setState({ checking: true })
     await delay(CHECK_MS)
     useEngine.setState({ status: found(), checking: false })
+    // The user restarts the gateway before the next Try again.
+    gatewayStale = false
+  }
+  const link = (): Promise<void> => {
+    linked = true
+    return check()
   }
   useEngine.setState({
     status: found(),
     connection: 'open',
     everConnected: true,
     check,
-    pickPath: () => {
-      installed = true
-      return check()
-    }
+    pickPath: link,
+    useInstalled: link
   })
 
   const exit = (result: InstallExit): void => {
     timer = null
     if (result.kind === 'ok') installed = true
+    if (result.kind === 'ok' && mode === 'old-after') gatewayStale = true
     for (const cb of exits) cb(result)
   }
 

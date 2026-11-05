@@ -35,6 +35,7 @@ export function buildApi(transport: ApiTransport) {
     // Engine (the gateway socket and REST calls run in main, which holds the tickets)
     getEngineStatus: () => invoke('engine:status'),
     pickEnginePath: () => invoke('engine:pick-path'),
+    useInstalledEngine: () => invoke('engine:use-installed'),
     engineHttp: (request: EngineHttpRequest) => invoke('engine:http', request),
     openEngineSocket: (id: string, profile: string) => invoke('engine:socket-open', id, profile),
     sendEngineSocket: (id: string, text: string) => invoke('engine:socket-send', id, text),

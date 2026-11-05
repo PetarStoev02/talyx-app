@@ -3,10 +3,12 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { Button } from '@shared/ui/button'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
 import { EXPECTED_ENGINE_VERSION } from '../../../../shared/engine'
+import { restartCommand } from './engineScreen'
 import { CopyButton, ScreenTitle } from './ScreenParts'
 import { centeredPanelClass, linkClass, rowClass } from './screenStyles'
 
-// The command `engine.stale` names. Talyx never restarts the gateway itself: main does not own it.
+// The command `engine.stale` names, for a gateway Talyx could not attach to (no resolved path).
+// Talyx never restarts the gateway itself: main does not own it.
 const RESTART_COMMAND = 'talyx-engine gateway restart'
 
 // Where a newer engine's user finds a Talyx that speaks its protocol, when the steps did not load.
@@ -91,12 +93,26 @@ export function StepsFailed({
   )
 }
 
-function RestartHint(): React.JSX.Element {
+/** `recheck` is null where the screen already has its own Try again. */
+function RestartHint({
+  command,
+  recheck
+}: {
+  command: string
+  recheck: (() => void) | null
+}): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   return (
     <div className="flex max-w-md flex-col items-center gap-2 rounded-xl bg-warning-subtle px-4 py-3">
       <p className="text-base text-foreground">{t('engine.stale')}</p>
-      <CopyButton text={RESTART_COMMAND} label={t('providers.copy')} name={null} />
+      <div className={`${rowClass} justify-center`}>
+        <CopyButton text={command} label={t('providers.copy')} name={null} />
+        {recheck && (
+          <button className={linkClass} onClick={recheck}>
+            {t('action.tryAgain')}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -119,7 +135,7 @@ export function ProtocolMismatch({
     <div className={centeredPanelClass}>
       {logo}
       <ScreenTitle level={2}>{t('engine.protocolTitle')}</ScreenTitle>
-      {fit === 'same' && <RestartHint />}
+      {fit === 'same' && <RestartHint command={RESTART_COMMAND} recheck={null} />}
       <div className={`${rowClass} justify-center`}>
         {fit === 'newer' && (
           <Button
@@ -142,13 +158,16 @@ export function ProtocolMismatch({
   )
 }
 
-/** Screen 6: the engine attached, with notes for a newer engine or a gateway left on old code. */
+/**
+ * Screen 6: the engine attached, where it was found, and notes for a newer engine or a gateway left
+ * on old code (an update over a running gateway): restart it, then Try again.
+ */
 export function EngineReady({
   screen,
-  onContinue
+  actions
 }: {
-  screen: { version: string; newer: boolean; stale: boolean }
-  onContinue: () => void
+  screen: { version: string; path: string; newer: boolean; stale: boolean }
+  actions: { recheck: () => void; continue: () => void }
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   return (
@@ -159,10 +178,17 @@ export function EngineReady({
         <Check size={14} aria-hidden="true" />
         {t('setup.readyBadge').replace('{version}', screen.version)}
       </p>
-      <p className="text-base text-muted-foreground">{t('setup.readyBody')}</p>
+      <div>
+        <p className="text-base text-muted-foreground">{t('setup.readyBody')}</p>
+        <p className="text-sm text-muted-foreground wrap-anywhere">
+          {t('setup.foundAt').replace('{path}', screen.path)}
+        </p>
+      </div>
       {screen.newer && <p className="text-base text-foreground">{t('setup.newer')}</p>}
-      {screen.stale && <RestartHint />}
-      <Button className="px-5" onClick={onContinue}>
+      {screen.stale && (
+        <RestartHint command={restartCommand(screen.path)} recheck={actions.recheck} />
+      )}
+      <Button className="px-5" onClick={actions.continue}>
         {t('setup.continue')}
       </Button>
     </div>
@@ -199,6 +225,39 @@ export function EngineOlder({
             {t('setup.continueAnyway')}
           </button>
         )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * An install finished, but the engine Talyx runs is still the older one: another copy comes first
+ * (a chosen file, or one earlier on PATH). Talyx can switch to the copy the install linked.
+ */
+export function EngineStillOlder({
+  path,
+  version,
+  actions
+}: {
+  path: string
+  version: string
+  actions: { useInstalled: () => void; chooseFile: () => void }
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  return (
+    <div className={centeredPanelClass}>
+      {logo}
+      <ScreenTitle level={2}>{t('setup.olderTitle')}</ScreenTitle>
+      <p className="max-w-md rounded-xl bg-warning-subtle px-4 py-3 text-base text-foreground wrap-anywhere">
+        {t('setup.stillOlder').replace('{path}', path).replace('{version}', version)}
+      </p>
+      <div className={`${rowClass} justify-center`}>
+        <Button className="px-5" onClick={actions.useInstalled}>
+          {t('setup.useInstalled')}
+        </Button>
+        <button className={linkClass} onClick={actions.chooseFile}>
+          {t('engine.chooseFile')}
+        </button>
       </div>
     </div>
   )

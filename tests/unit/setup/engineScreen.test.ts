@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { EngineStatus } from '../../../src/shared/engine'
 import type { InstallSteps } from '../../../src/shared/setup'
-import { engineScreen, type EngineScreenFacts } from '@features/setup/engineScreen'
+import { engineScreen, restartCommand, type EngineScreenFacts } from '@features/setup/engineScreen'
 
 const releaseUrl = 'https://example.test/releases/tag/v1.0.0'
 const missing: EngineStatus = { state: 'missing', enginePath: null }
@@ -18,6 +18,7 @@ function attached(version: string, stale = false): EngineStatus {
     version,
     commit: null,
     home: 'default',
+    path: '/usr/local/bin/talyx-engine',
     stale,
     botMetaKey: 'k',
     botGroupsMetaKey: 'g',
@@ -52,6 +53,7 @@ describe('engineScreen', () => {
       expect(engineScreen(facts({ status: attached('0.22.5') }))).toEqual({
         kind: 'ready',
         version: '0.22.5',
+        path: '/usr/local/bin/talyx-engine',
         newer: false,
         stale: false
       })
@@ -61,6 +63,7 @@ describe('engineScreen', () => {
       expect(engineScreen(facts({ status: attached('0.23.0', true) }))).toEqual({
         kind: 'ready',
         version: '0.23.0',
+        path: '/usr/local/bin/talyx-engine',
         newer: true,
         stale: true
       })
@@ -172,5 +175,35 @@ describe('engineScreen', () => {
           .kind
       ).toBe('ready')
     })
+
+    it('should name the engine that still runs when the install left it older', () => {
+      const exit = { kind: 'ok' } as const
+      expect(engineScreen(facts({ steps: ready, exit, status: attached('0.21.0') }))).toEqual({
+        kind: 'still-older',
+        path: '/usr/local/bin/talyx-engine',
+        version: '0.21.0'
+      })
+    })
+
+    it('should still offer the update to an older engine that cannot attach after the install', () => {
+      const exit = { kind: 'ok' } as const
+      expect(engineScreen(facts({ steps: ready, exit, status: errored('0.21.0') })).kind).toBe(
+        'older'
+      )
+    })
+  })
+})
+
+describe('restartCommand', () => {
+  it('should quote the engine path for the shell', () => {
+    expect(restartCommand('/Users/a b/.local/bin/talyx-engine')).toBe(
+      "'/Users/a b/.local/bin/talyx-engine' gateway restart"
+    )
+  })
+
+  it('should keep a single quote in the path inside the quoting', () => {
+    expect(restartCommand("/Users/o'neil/bin/talyx-engine")).toBe(
+      "'/Users/o'\\''neil/bin/talyx-engine' gateway restart"
+    )
   })
 })

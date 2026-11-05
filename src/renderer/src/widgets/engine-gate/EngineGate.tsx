@@ -4,6 +4,7 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { useSetupBackend } from '@app/providers/useSetupBackend'
 import { InstallEngine } from '@features/setup/InstallEngine'
 import { linkClass } from '@features/setup/screenStyles'
+import { isEngineCurrent } from '@features/setup/steps'
 import { host } from '@shared/engine/host'
 import { useElapsed } from '@shared/hooks/useElapsed'
 import { reportError } from '@shared/lib/report'
@@ -27,7 +28,8 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
   const everConnected = useEngine((s) => s.everConnected)
   const setup = useSetupBackend()
   // Install the engine: the setup's engine screens, until their Continue. An attach error shows
-  // them too: their error screen links the install, and an old engine gets the update.
+  // them too: their error screen links the install, and an old engine gets the update (also
+  // offered by the notice over the page).
   const [installing, setInstalling] = useState(false)
   // The first open is given a grace period, restarted by each Try again.
   const [waitStart, setWaitStart] = useState(() => Date.now())
@@ -47,7 +49,14 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
     )
   if (status?.state === 'attached') {
     // Once open, a drop is a reconnect the banner shows (ConnectionBanner), not a gate.
-    if (everConnected) return <>{children}</>
+    if (everConnected && isEngineCurrent(status)) return <>{children}</>
+    if (everConnected)
+      return (
+        <div className="flex h-full min-h-0 flex-1 flex-col">
+          <OlderNotice version={status.version} onUpdate={() => setInstalling(true)} />
+          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        </div>
+      )
     if (!waitedLong) return <Checking label={t('engine.connecting')} />
     return (
       <div className={centered} role="alert">
@@ -84,6 +93,25 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
           {t('engine.chooseFile')}
         </button>
       </div>
+    </div>
+  )
+}
+
+/** Over the page while the engine is older than this Talyx needs; it goes once the engine is current. */
+function OlderNotice({
+  version,
+  onUpdate
+}: {
+  version: string
+  onUpdate: () => void
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-warning-subtle px-4 py-2 text-sm text-foreground">
+      <span>{t('engine.olderNotice').replace('{version}', version)}</span>
+      <button className="underline underline-offset-4 hover:decoration-2" onClick={onUpdate}>
+        {t('engine.updateEngine')}
+      </button>
     </div>
   )
 }

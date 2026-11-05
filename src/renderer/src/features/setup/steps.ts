@@ -38,7 +38,7 @@ export function knownFirstStep(facts: {
   hasOwnBot: boolean | null
 }): SetupStep | null | undefined {
   const { engine, hasProvider, hasOwnBot } = facts
-  if (!isEngineDone(engine)) return 'engine'
+  if (!isEngineCurrent(engine)) return 'engine'
   if (hasProvider === null || hasOwnBot === null) return undefined
   return firstUndoneStep({ engine, hasProvider, hasOwnBot })
 }
@@ -64,11 +64,14 @@ export function setupVisibility(
 }
 
 function isDone(step: SetupStep, facts: SetupFacts): boolean {
-  if (step === 'engine') return isEngineDone(facts.engine)
+  if (step === 'engine') return isEngineCurrent(facts.engine)
   return step === 'provider' ? facts.hasProvider : facts.hasOwnBot
 }
 
-// An unreadable version counts as done: the engine runs, so the user is not sent to reinstall.
-function isEngineDone(engine: EngineStatus): boolean {
+/**
+ * Attached and not older than this Talyx needs: the setup's engine step is done, and the gate shows
+ * no update notice. An unreadable version counts: the engine runs, so no one is sent to reinstall.
+ */
+export function isEngineCurrent(engine: EngineStatus): boolean {
   return engine.state === 'attached' && engineVersionFit(engine.version) !== 'older'
 }
