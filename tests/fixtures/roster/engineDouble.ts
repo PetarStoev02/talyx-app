@@ -25,7 +25,7 @@ const BOTS: Record<string, { description: string; preview: string; soul: string 
   default: {
     description: 'Hands work to the right bot and briefs you.',
     preview: 'Q3 margins are up 4 points, to 41%.',
-    soul: 'You run the team. Send each task to the bot that fits, then brief the user in a few lines.'
+    soul: 'You run the team. Send each task to the bot that fits, then brief the user.'
   },
   researcher: {
     description: 'Finds sources and sums them up.',
@@ -34,7 +34,7 @@ const BOTS: Record<string, { description: string; preview: string; soul: string 
   },
   designer: {
     description: 'Sketches layouts and reviews visuals.',
-    preview: 'Two pricing page layouts are ready to compare.',
+    preview: 'Two landing page layouts are ready to compare.',
     soul: 'You sketch layouts and give visual feedback that names the fix, not just the problem.'
   },
   writer: {

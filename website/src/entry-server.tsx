@@ -9,7 +9,7 @@ export { ROUTES } from './shared/data/routes'
 
 /**
  * `prerender` resolves every Suspense boundary before it hands back HTML, so
- * the lazily loaded page and post chunks are in the static output while the
+ * the lazily loaded page chunks are in the static output while the
  * browser still downloads only the chunk it needs.
  */
 export async function render(url: string): Promise<{ html: string; meta: PageMeta }> {

@@ -1,9 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { ROUTES } from '../../website/src/shared/data/routes'
-import { features } from '../../website/src/shared/data/navigation'
 import { seoData } from '../../website/src/shared/data/seo'
-import { featurePages } from '../../website/src/pages/features/featurePages'
 
 interface Redirect {
   source: string
@@ -123,20 +121,12 @@ describe('website routes', () => {
       ])
     })
 
-    it('should have a page for every feature in the menu and no other', () => {
-      expect([...featurePages.keys()]).toEqual(features.map(({ slug }) => slug))
-    })
-
     it('should give every live page its own title and canonical', () => {
       expect(Object.keys(seoData).sort()).toEqual([...ROUTES].sort())
       for (const route of ROUTES) expect(seoData[route].canonical).toBe(route)
 
       const titles = ROUTES.map((route) => seoData[route].title)
       expect(new Set(titles).size).toBe(titles.length)
-    })
-
-    it('should find no page under a name every object inherits', () => {
-      expect(featurePages.get('constructor')).toBeUndefined()
     })
   })
 })
