@@ -21,10 +21,9 @@ const FACTS = [
 ]
 
 const SCREENSHOTS = [
-  { src: '/previews/suggestions.jpg', caption: 'The assistant' },
-  { src: '/previews/sort.jpg', caption: 'Sort' },
-  { src: '/previews/watch.jpg', caption: 'Watch folders' },
-  { src: '/previews/history.jpg', caption: 'History and undo' }
+  { src: '/previews/chat.jpg', caption: 'The roster and a chat with Talyx' },
+  { src: '/previews/details.jpg', caption: 'A bot\u2019s details panel' },
+  { src: '/previews/room.jpg', caption: 'A group room' }
 ]
 
 const BOILERPLATE = [

@@ -163,7 +163,7 @@ export function DesignPage() {
           </div>
         </div>
         <div data-reveal className="space-y-8 md:col-span-7">
-          <AppScreenshot src="/previews/sort.jpg" alt="Talyx: the sort preview" />
+          <AppScreenshot src="/previews/chat.jpg" alt="Talyx: the roster and a chat with Talyx" />
         </div>
       </section>
     </>

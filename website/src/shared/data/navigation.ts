@@ -12,37 +12,37 @@ export const features: FeatureNav[] = [
     slug: 'roster',
     title: 'Roster',
     shortDescription: 'Every bot in one list, with pins, folders and unread marks.',
-    preview: null
+    preview: '/previews/chat.jpg'
   },
   {
     slug: 'manager',
     title: 'The manager bot',
     shortDescription: 'Talyx delegates to your other bots and briefs you on the result.',
-    preview: null
+    preview: '/previews/chat.jpg'
   },
   {
     slug: 'rooms',
     title: 'Group rooms',
     shortDescription: 'Several bots in one chat, with approvals when they ask.',
-    preview: null
+    preview: '/previews/room.jpg'
   },
   {
     slug: 'routines',
     title: 'Routines',
     shortDescription: 'Jobs a bot runs on a schedule, managed from its details panel.',
-    preview: null
+    preview: '/previews/details.jpg'
   },
   {
     slug: 'bot-details',
     title: 'Bot details',
     shortDescription: 'A bot\u2019s title, model, look and SOUL in one panel.',
-    preview: null
+    preview: '/previews/details.jpg'
   },
   {
     slug: 'models-and-keys',
     title: 'Models and keys',
     shortDescription: 'Add API keys, sign in with an account, or point at a custom endpoint.',
-    preview: null
+    preview: '/previews/details.jpg'
   },
   {
     slug: 'privacy',

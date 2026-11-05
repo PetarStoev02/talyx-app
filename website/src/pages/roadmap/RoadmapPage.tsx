@@ -167,9 +167,9 @@ const planned: RoadmapItem[] = [
 ]
 
 const SHIPPED_SCREENS = [
-  { src: '/previews/suggestions.jpg', alt: 'The assistant in Talyx' },
-  { src: '/previews/watch.jpg', alt: 'Watch folders in Talyx' },
-  { src: '/previews/history.jpg', alt: 'Sort history and undo in Talyx' }
+  { src: '/previews/chat.jpg', alt: 'Talyx: the roster and a chat with Talyx' },
+  { src: '/previews/details.jpg', alt: 'A bot\u2019s details panel in Talyx' },
+  { src: '/previews/room.jpg', alt: 'A group room in Talyx' }
 ]
 
 /** A status as a heading on the left and its items, unboxed, on the right. */
@@ -210,7 +210,7 @@ export function RoadmapPage() {
         title="Roadmap"
         lead="What we've built, what we're working on, and where we're headed. Your feedback shapes our priorities."
       >
-        <AppScreenshot src="/previews/sort.jpg" alt="The Sort page in Talyx" />
+        <AppScreenshot src="/previews/chat.jpg" alt="Talyx: the roster and a chat with Talyx" />
       </PageHero>
 
       <StatusSection title="In progress" lead="Being built and tested now." items={inProgress} />
