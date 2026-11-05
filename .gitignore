@@ -44,3 +44,6 @@ docs/superpowers/plans/
 
 # design-taste-frontend skill screenshots and reports
 .taste-skill/
+
+# Engine install commands (name the engine; uploaded by release.sh, never committed)
+/engine-install.json
