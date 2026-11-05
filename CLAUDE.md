@@ -198,7 +198,7 @@ import { AppShell } from '@widgets/app-shell'
 - Never use `any`; prefer `unknown` with type guards
 - Always type IPC return values explicitly
 - Use `string | null` not optional for nullable values
-- Exception: the vendored engine files (listed in `eslint.config.mjs`) keep upstream's code as
+- Exception: the vendored engine files (listed in `eslint.vendored.mjs`) keep upstream's code as
   written so re-syncs stay clean diffs; see README → Engine → Re-syncing the vendored client
 
 ### React Components
