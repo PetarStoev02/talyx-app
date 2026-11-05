@@ -1,28 +1,31 @@
-import { isWithin, pinnedBots } from '@features/bots/roster'
+import {
+  folderItems,
+  isWithin,
+  itemFolder,
+  itemKey,
+  itemRef,
+  pinnedBots
+} from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { RosterActions } from '@features/bots/actions'
-import type { Bot, Folder, Room } from '@features/bots/types'
+import type { Bot, Folder, Room, RosterItemRef } from '@features/bots/types'
 import type { TranslationKey } from '@shared/lib/i18n'
-import type { MenuAction } from './RosterMenu'
-
-export const ROSTER_DRAG = 'application/x-talyx-roster'
-
-export interface RosterDragItem {
-  kind: 'bot' | 'room' | 'folder'
-  id: string
-}
-
-// Anything else dropped here (text, files, other apps' payloads) is not a roster item.
-export function readRosterDrag(data: string): RosterDragItem | null {
-  try {
-    const item = JSON.parse(data)
-    return item && ['bot', 'room', 'folder'].includes(item.kind) && typeof item.id === 'string'
-      ? { kind: item.kind, id: item.id }
-      : null
-  } catch {
-    return null
-  }
-}
+import type { RosterDragItem } from './drag'
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Folder as FolderIcon,
+  FolderInput,
+  FolderPlus,
+  Inbox,
+  Pencil,
+  Pin,
+  PinOff,
+  Trash2
+} from 'lucide-react'
+import type { MenuAction } from '@shared/ui/menu'
 
 interface ControlsOptions {
   actions: RosterActions
@@ -30,52 +33,71 @@ interface ControlsOptions {
   selectBot: (bot: Bot) => void
   setDeleting: (bot: Bot) => void
   setDeletingRoom: (room: Room) => void
+  setRenamingFolder: (folder: Folder) => void
+  setDeletingFolder: (folder: Folder) => void
+  setSubfolderOf: (folder: Folder) => void
   t: (key: TranslationKey) => string
+}
+
+/** Where dragged roster items land: rows into a folder's list, folders in the folder tree. */
+export interface RosterDrops {
+  /** A bot or room into `folderId`, in front of the row keyed `before` (null: last). */
+  item: (item: RosterDragItem, place: { folderId: string | null; before: string | null }) => void
+  /** A folder under `parentId` (null: top level), in front of `beforeId` (null: last). */
+  folder: (id: string, place: { parentId: string | null; beforeId: string | null }) => void
 }
 
 export function rosterControls(options: ControlsOptions): {
   botActions: (bot: Bot) => MenuAction[]
   roomActions: (room: Room) => MenuAction[]
   folderActions: (folder: Folder) => MenuAction[]
-  dropOnFolder: (data: string, folderId: string | null) => void
+  drops: RosterDrops
 } {
+  const { actions, run } = options
   return {
     botActions: (bot) => botActions(bot, options),
     roomActions: (room) => roomActions(room, options),
     folderActions: (folder) => folderActions(folder, options),
-    dropOnFolder: (data, folderId) => dropOnFolder(readRosterDrag(data), folderId, options)
+    drops: {
+      item: ({ kind, id }, place) => {
+        if (kind !== 'folder') run(() => actions.placeItem({ kind, id }, place))
+      },
+      folder: (id, place) => {
+        // Releasing a folder inside itself or a descendant is a no-op, not an error.
+        const { folders } = useRoster.getState().snapshot
+        if (!place.parentId || !isWithin(folders, place.parentId, id))
+          run(() => actions.placeFolder({ id, ...place }))
+      }
+    }
   }
 }
 
 function botActions(bot: Bot, options: ControlsOptions): MenuAction[] {
   const { actions, run, selectBot, setDeleting, t } = options
-  const { folders } = useRoster.getState().snapshot
-  // A section that no longer exists shows in Unassigned, so it counts as Unassigned here too.
-  const current = folders.some((folder) => folder.id === bot.meta.sectionId)
-    ? bot.meta.sectionId
-    : null
+  const current = itemFolder(useRoster.getState().snapshot, { kind: 'bot', id: bot.name })
   return [
     {
       label: bot.meta.pinned ? t('roster.unpin') : t('roster.pin'),
+      icon: bot.meta.pinned ? PinOff : Pin,
       onSelect: () => run(() => actions.pin(bot))
     },
     ...pinOrderActions(bot, options),
-    ...[{ id: null, name: t('roster.unassigned') }, ...folders]
-      .filter((folder) => folder.id !== current)
-      .map((folder) => ({
-        label: t('roster.moveTo').replace('{name}', folder.name),
-        onSelect: () => run(() => actions.moveBot(bot, folder.id))
-      })),
+    ...(bot.meta.pinned ? [] : stepActions({ kind: 'bot', id: bot.name }, options)),
+    moveToMenu(current, (folderId) => run(() => actions.moveBot(bot, folderId)), options),
     {
       label: t('roster.editProfile'),
+      icon: Pencil,
+      separated: true,
       onSelect: () => {
         selectBot(bot)
         useRoster.getState().editProfile(bot.name)
       }
     },
-    { label: t('roster.hide'), onSelect: () => run(() => actions.hide(bot)) },
     {
       label: t('roster.deleteProfile'),
+      icon: Trash2,
+      destructive: true,
+      separated: true,
       disabled: bot.name === 'default',
       onSelect: () => setDeleting(bot)
     }
@@ -84,56 +106,97 @@ function botActions(bot: Bot, options: ControlsOptions): MenuAction[] {
 
 function roomActions(room: Room, options: ControlsOptions): MenuAction[] {
   const { actions, run, setDeletingRoom, t } = options
-  const { folders, roomFolders, roomPins } = useRoster.getState().snapshot
-  const assigned = roomFolders[room.room_id]
-  const current = folders.some((folder) => folder.id === assigned) ? assigned : null
+  const snapshot = useRoster.getState().snapshot
+  const current = itemFolder(snapshot, { kind: 'room', id: room.room_id })
+  const pinned = snapshot.roomPins.includes(room.room_id)
   return [
     {
-      label: roomPins.includes(room.room_id) ? t('roster.unpin') : t('roster.pin'),
+      label: pinned ? t('roster.unpin') : t('roster.pin'),
+      icon: pinned ? PinOff : Pin,
       onSelect: () => run(() => actions.pinRoom(room))
     },
-    ...[{ id: null, name: t('roster.unassigned') }, ...folders]
-      .filter((folder) => folder.id !== current)
-      .map((folder) => ({
-        label: t('roster.moveTo').replace('{name}', folder.name),
-        onSelect: () => run(() => actions.moveRoom(room.room_id, folder.id))
-      })),
-    { label: t('roster.deleteRoom'), onSelect: () => setDeletingRoom(room) }
+    ...(pinned ? [] : stepActions({ kind: 'room', id: room.room_id }, options)),
+    moveToMenu(current, (folderId) => run(() => actions.moveRoom(room.room_id, folderId)), options),
+    {
+      label: t('roster.deleteRoom'),
+      icon: Trash2,
+      destructive: true,
+      separated: true,
+      onSelect: () => setDeletingRoom(room)
+    }
   ]
 }
 
-function folderActions(folder: Folder, { actions, run, t }: ControlsOptions): MenuAction[] {
+// "Move to ›": every folder, and Unassigned after a line; the current one checked.
+function moveToMenu(
+  current: string | null,
+  move: (folderId: string | null) => void,
+  { t }: ControlsOptions
+): MenuAction {
   const { folders } = useRoster.getState().snapshot
-  return [
-    { label: t('roster.moveUp'), onSelect: () => run(() => actions.orderFolder(folder.id, -1)) },
-    { label: t('roster.moveDown'), onSelect: () => run(() => actions.orderFolder(folder.id, 1)) },
-    ...(folder.parentId
-      ? [{ label: t('roster.moveToTop'), onSelect: () => run(() => actions.nest(folder.id, null)) }]
-      : []),
-    ...folders
-      .filter((item) => item.id !== folder.parentId && !isWithin(folders, item.id, folder.id))
-      .map((item) => ({
-        label: t('roster.nestIn').replace('{name}', item.name),
-        onSelect: () => run(() => actions.nest(folder.id, item.id))
-      }))
-  ]
+  return {
+    label: t('roster.moveTo'),
+    icon: FolderInput,
+    submenu: [
+      ...folders.map((folder) => ({
+        label: folder.name,
+        icon: FolderIcon,
+        current: folder.id === current,
+        onSelect: () => move(folder.id)
+      })),
+      {
+        label: t('roster.unassigned'),
+        icon: Inbox,
+        separated: true,
+        current: current === null,
+        onSelect: () => move(null)
+      }
+    ]
+  }
 }
 
-function dropOnFolder(
-  item: RosterDragItem | null,
-  folderId: string | null,
-  { actions, run }: ControlsOptions
-): void {
+// Dragging sorts with a pointer; these are the same moves from the keyboard.
+function stepActions(item: RosterItemRef, { actions, run, t }: ControlsOptions): MenuAction[] {
   const snapshot = useRoster.getState().snapshot
-  if (item?.kind === 'folder') {
-    // Releasing a folder inside itself or a descendant is a no-op, not an error.
-    if (!folderId || !isWithin(snapshot.folders, folderId, item.id))
-      run(() => actions.nest(item.id, folderId))
-  }
-  if (item?.kind === 'room' && snapshot.rooms.some((room) => room.room_id === item.id))
-    run(() => actions.moveRoom(item.id, folderId))
-  const bot = item?.kind === 'bot' && snapshot.bots.find((candidate) => candidate.name === item.id)
-  if (bot) run(() => actions.moveBot(bot, folderId))
+  const keys = folderItems(snapshot, itemFolder(snapshot, item)).map((row) => itemKey(itemRef(row)))
+  const index = keys.indexOf(itemKey(item))
+  return [
+    { label: t('roster.moveUp'), icon: ArrowUp, direction: -1 as const, possible: index > 0 },
+    {
+      label: t('roster.moveDown'),
+      icon: ArrowDown,
+      direction: 1 as const,
+      possible: index >= 0 && index < keys.length - 1
+    }
+  ]
+    .filter((step) => step.possible)
+    .map((step) => ({
+      label: step.label,
+      icon: step.icon,
+      onSelect: () => run(() => actions.stepItem(item, step.direction))
+    }))
+}
+
+function folderActions(
+  folder: Folder,
+  { setRenamingFolder, setDeletingFolder, setSubfolderOf, t }: ControlsOptions
+): MenuAction[] {
+  return [
+    { label: t('roster.newFolder'), icon: FolderPlus, onSelect: () => setSubfolderOf(folder) },
+    {
+      label: t('roster.renameFolder'),
+      icon: Pencil,
+      separated: true,
+      onSelect: () => setRenamingFolder(folder)
+    },
+    {
+      label: t('roster.deleteFolder'),
+      icon: Trash2,
+      destructive: true,
+      separated: true,
+      onSelect: () => setDeletingFolder(folder)
+    }
+  ]
 }
 
 function pinOrderActions(bot: Bot, { actions, run, t }: ControlsOptions): MenuAction[] {
@@ -144,6 +207,7 @@ function pinOrderActions(bot: Bot, { actions, run, t }: ControlsOptions): MenuAc
     .filter((direction) => pins[index + direction])
     .map((direction) => ({
       label: direction < 0 ? t('roster.pinEarlier') : t('roster.pinLater'),
+      icon: direction < 0 ? ArrowLeft : ArrowRight,
       onSelect: () => run(() => actions.orderPin(bot.name, pins[index + direction].name))
     }))
 }

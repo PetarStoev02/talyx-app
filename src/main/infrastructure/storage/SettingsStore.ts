@@ -1,18 +1,24 @@
 import { app } from 'electron'
 import { isAbsolute, join } from 'path'
-import { readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
+import log from 'electron-log'
+import { SIDEBAR_WIDTH, clampSidebarWidth } from '../../../shared/sidebar'
+import { LastSelectionSchema } from '../ipc/validation'
 
 export interface UserSettings {
   theme: 'light' | 'dark' | 'system'
-  sidebarCollapsed: boolean
+  sidebarWidth: number
   /** Absolute path to the engine's command, picked by the user; null means look it up. */
   enginePath: string | null
+  /** The bot or room open when Talyx last ran, opened again on launch; null on a first run. */
+  lastSelection: { kind: 'bot' | 'room'; id: string } | null
 }
 
 const defaults: UserSettings = {
   theme: 'system',
-  sidebarCollapsed: false,
-  enginePath: null
+  sidebarWidth: SIDEBAR_WIDTH.initial,
+  enginePath: null,
+  lastSelection: null
 }
 
 function getSettingsPath(): string {
@@ -34,22 +40,43 @@ export function migrateSettings(raw: Record<string, unknown>): UserSettings {
   // Talyx runs this file: a hand-edited value that is not an absolute path is ignored.
   const path: unknown = settings.enginePath
   if (typeof path !== 'string' || !isAbsolute(path)) settings.enginePath = null
+  settings.sidebarWidth = clampSidebarWidth(settings.sidebarWidth)
+  if (!LastSelectionSchema.nullable().safeParse(settings.lastSelection).success)
+    settings.lastSelection = null
   return settings
 }
 
 function read(): UserSettings {
+  const path = getSettingsPath()
+  let text: string
   try {
-    const data = JSON.parse(readFileSync(getSettingsPath(), 'utf-8')) as Record<string, unknown>
-    return migrateSettings(data)
+    text = readFileSync(path, 'utf-8')
   } catch {
-    // A missing or unreadable file means a fresh install
+    // No file yet: a fresh install.
+    return { ...defaults }
+  }
+  try {
+    return migrateSettings(JSON.parse(text) as Record<string, unknown>)
+  } catch (error) {
+    // Kept aside, not overwritten by the next save: it may hold an engine path worth recovering.
+    const aside = `${path}.corrupt-${Date.now()}`
+    try {
+      renameSync(path, aside)
+      log.warn(`[Settings] settings.json was unreadable; moved to ${aside}`, error)
+    } catch (renameError) {
+      log.error('[Settings] settings.json is unreadable and could not be moved aside', renameError)
+    }
     return { ...defaults }
   }
 }
 
+// Written to a temporary file and renamed over the old one, so a crash mid-write never leaves
+// half a file behind.
 function write(settings: UserSettings): void {
   mkdirSync(app.getPath('userData'), { recursive: true })
-  writeFileSync(getSettingsPath(), JSON.stringify(settings, null, 2))
+  const path = getSettingsPath()
+  writeFileSync(`${path}.tmp`, JSON.stringify(settings, null, 2))
+  renameSync(`${path}.tmp`, path)
 }
 
 export const settingsStore = {

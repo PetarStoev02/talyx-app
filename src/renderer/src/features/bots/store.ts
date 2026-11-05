@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { RosterProblem } from './roster'
 import type { BotActivity, RosterSnapshot, Selection } from './types'
 
-interface RosterState {
+export interface RosterState {
   snapshot: RosterSnapshot
   selection: Selection
   editingProfile: string | null
@@ -19,7 +19,12 @@ interface RosterState {
   revision: number
   loading: boolean
   saving: boolean
-  error: RosterProblem | null
+  // A read of the roster failed: set and cleared by each poll or refresh.
+  loadError: RosterProblem | null
+  // The user's last change failed: kept until the next change, clearError, or opening or closing
+  // the details, so a poll that succeeds does not wipe it from a dialog. Choosing another bot or
+  // room clears it in the roster (not here: a selection made for the user must not hide it).
+  actionError: RosterProblem | null
   select: (selection: Selection) => void
   editProfile: (profile: string | null) => void
   clearError: () => void
@@ -31,7 +36,7 @@ interface RosterState {
 }
 
 export const useRoster = create<RosterState>((set) => ({
-  snapshot: { bots: [], folders: [], rooms: [], roomFolders: {}, roomPins: [] },
+  snapshot: { bots: [], folders: [], rooms: [], roomFolders: {}, roomPins: [], itemOrder: {} },
   selection: null,
   editingProfile: null,
   activity: {},
@@ -43,7 +48,8 @@ export const useRoster = create<RosterState>((set) => ({
   revision: 0,
   loading: true,
   saving: false,
-  error: null,
+  loadError: null,
+  actionError: null,
   select: (selection) =>
     set((state) => ({
       selection,
@@ -55,8 +61,8 @@ export const useRoster = create<RosterState>((set) => ({
           : state.roomUnread,
       seen: leftAt(state.selection, selection, state.seen)
     })),
-  editProfile: (profile) => set({ editingProfile: profile }),
-  clearError: () => set({ error: null }),
+  editProfile: (profile) => set({ editingProfile: profile, actionError: null }),
+  clearError: () => set({ actionError: null }),
   setActivity: (profile, activity) =>
     set((state) => ({ activity: { ...state.activity, [profile]: activity } })),
   setOnline: (online) => set({ online }),

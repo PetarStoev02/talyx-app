@@ -5,6 +5,7 @@ import { useLanguage } from '@app/providers/useLanguage'
 import type { RosterBackend } from '@features/bots/data'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
 import { problemOf } from '@features/bots/roster'
+import { problemText } from '@shared/lib/problem'
 import type { RosterProblem } from '@features/bots/roster'
 import {
   DEFAULT_SCHEDULE,
@@ -21,6 +22,9 @@ import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { Input, NativeSelect, Textarea } from '@shared/ui/input'
+import { Loading, Skeleton } from '@shared/ui/skeleton'
+import { useArrival } from '@shared/hooks/useStayMounted'
+import { cn } from '@shared/lib/utils'
 import { Switch } from '@shared/ui/switch'
 
 type Translate = (key: TranslationKey) => string
@@ -49,6 +53,9 @@ export function RoutinesSection({
   const [problem, setProblem] = useState<RosterProblem | null>(null)
   const [adding, setAdding] = useState(false)
   const [deleting, setDeleting] = useState<Routine | null>(null)
+  const arrival = useArrival(!routines && !problem)
+  // A failed delete shows in its dialog: a toast would sit under the dialog, out of reach.
+  const [deleteProblem, setDeleteProblem] = useState<RosterProblem | null>(null)
 
   const load = useCallback(
     (): Promise<void> =>
@@ -78,54 +85,69 @@ export function RoutinesSection({
     try {
       await setRoutineActive(backend, bot.name, { id: routine.id, active })
     } catch (error) {
-      toast.error(failureText(t, error))
+      toast.error(failureText(t, error), { duration: Infinity })
     }
     await load()
   }
 
   async function remove(routine: Routine): Promise<void> {
+    setDeleteProblem(null)
     try {
       await removeRoutine(backend, bot.name, routine.id)
       setDeleting(null)
     } catch (error) {
-      toast.error(failureText(t, error))
+      setDeleteProblem(problemOf(error))
     }
     await load()
+  }
+
+  function closeDelete(): void {
+    setDeleting(null)
+    setDeleteProblem(null)
   }
 
   return (
     <section aria-labelledby="routines-heading" className="space-y-2 pt-2">
       <div className="flex items-center justify-between">
-        <h3 id="routines-heading" className="text-base font-medium">
+        <h3 id="routines-heading" className="text-xl font-semibold">
           {t('routines.title')}
         </h3>
-        <button
-          className="rounded-full px-3 py-1 text-sm hover:bg-accent"
-          onClick={() => setAdding(true)}
-        >
-          {t('routines.new')}
-        </button>
+        {/* With no routines yet, the empty state below carries the button. */}
+        {routines?.length !== 0 && (
+          <Button variant="ghost" onClick={() => setAdding(true)}>
+            {t('routines.new')}
+          </Button>
+        )}
       </div>
       {problem ? (
         <div role="alert">
           <ProblemMessage problem={problem} />
-          <button className="mt-2 underline" onClick={() => void load()}>
-            {t('roster.retry')}
+          <button
+            className="mt-2 underline underline-offset-4 hover:decoration-2"
+            onClick={() => void load()}
+          >
+            {t('action.tryAgain')}
           </button>
         </div>
       ) : !routines ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          {t('routines.loading')}
-        </p>
+        <Loading label={t('routines.loading')} className="space-y-2">
+          <Skeleton className="h-16 w-full rounded-xl" />
+          <Skeleton className="h-16 w-full rounded-xl" />
+        </Loading>
       ) : routines.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('routines.empty')}</p>
+        <div className="flex flex-col items-start gap-2 rounded-xl bg-secondary p-4">
+          <p className="text-base">{t('routines.empty')}</p>
+          <p className="text-sm text-muted-foreground">{t('routines.newHint')}</p>
+          <Button onClick={() => setAdding(true)}>{t('routines.new')}</Button>
+        </div>
       ) : (
-        <ul className="space-y-2">
+        <ul className={cn('space-y-2', arrival)}>
           {routines.map((routine) => (
             <li key={routine.id} className="flex items-center gap-2 rounded-xl bg-secondary p-3">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-base font-medium">{routine.name}</p>
-                <p className="truncate text-sm text-muted-foreground">
+                {/* No other view shows a routine, so its name and schedule wrap, never cut off. */}
+                <p className="text-base font-medium wrap-break-word">{routine.name}</p>
+                <p className="text-sm text-muted-foreground wrap-break-word">
                   {scheduleWords(t, routine.schedule)}
                   {routine.postsToChat && ` · ${t('routines.postsToChat')}`}
                 </p>
@@ -138,9 +160,9 @@ export function RoutinesSection({
               <button
                 aria-label={t('routines.delete').replace('{name}', routine.name)}
                 onClick={() => setDeleting(routine)}
-                className="rounded-full p-2 hover:bg-accent"
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-foreground/10"
               >
-                <Trash2 size={16} />
+                <Trash2 size={18} />
               </button>
             </li>
           ))}
@@ -156,17 +178,22 @@ export function RoutinesSection({
           }}
         />
       )}
-      <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
+      <Dialog open={!!deleting} onOpenChange={(open) => !open && closeDelete()}>
         <DialogContent>
           <DialogTitle>
             {t('routines.deleteTitle').replace('{name}', deleting?.name ?? '')}
           </DialogTitle>
           <DialogDescription>{t('routines.deleteWarning')}</DialogDescription>
+          {deleteProblem && (
+            <div role="alert">
+              <ProblemMessage problem={deleteProblem} />
+            </div>
+          )}
           <div className="flex gap-2">
             <Button variant="destructive" onClick={() => deleting && void remove(deleting)}>
               {t('routines.deleteConfirm')}
             </Button>
-            <Button variant="ghost" onClick={() => setDeleting(null)}>
+            <Button variant="ghost" onClick={closeDelete}>
               {t('roster.cancel')}
             </Button>
           </div>
@@ -370,6 +397,5 @@ function weekdayName(day: number): string {
 }
 
 function failureText(t: Translate, error: unknown): string {
-  const problem = problemOf(error)
-  return problem.detail ? `${t(problem.key)} ${problem.detail}` : t(problem.key)
+  return problemText(t, problemOf(error))
 }

@@ -7,6 +7,7 @@ import type { ChatUpdate } from '@features/chat/events'
 import { useChat } from '@features/chat/store'
 import { host } from '@shared/engine/host'
 import { engineHttp } from '@shared/engine/http'
+import { forgetDeleted } from './forgetDeleted'
 
 /**
  * The chat's engine access, once the socket has opened once. Use it in one place: it routes
@@ -23,6 +24,8 @@ export function useChatBackend(): ChatActions | null {
     []
   )
 
+  useEffect(() => useRoster.subscribe(forgetDeleted), [])
+
   const actions = useMemo(
     () => (opened ? chatActions({ request: host.request, http: engineHttp }) : null),
     [opened]
@@ -37,6 +40,8 @@ export function useChatBackend(): ChatActions | null {
       if (state === 'closed' || state === 'error') dropped = true
       if (state !== 'open' || !dropped) return
       dropped = false
+      // Providers may have changed while the engine was away.
+      actions.forgetModels()
       // The redial replays the gap; a reload covers a session whose re-resume failed.
       for (const chat of Object.values(useChat.getState().chats)) {
         if (chat.sessionId) void actions.rebuild(chat.profile)

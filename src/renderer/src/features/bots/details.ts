@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { create } from 'zustand'
 import { saveBotMeta } from './data'
 import type { RosterBackend } from './data'
 import { exportAvatar, lookMeta, sameLook } from './look'
@@ -45,6 +46,12 @@ const configureSchema = z.object({
   confirm_message: z.string().nullish()
 })
 
+/**
+ * Counts saves of bot details, so a view that shows them (the chat's intro) reads them again;
+ * the details panel and the intro each read their own.
+ */
+export const useDetailsRevision = create<{ revision: number }>(() => ({ revision: 0 }))
+
 export async function loadDetails(
   backend: RosterBackend,
   profile: string
@@ -60,12 +67,29 @@ export async function loadDetails(
   }
 }
 
+function detailsChanged(): void {
+  useDetailsRevision.setState(({ revision }) => ({ revision: revision + 1 }))
+}
+
 /**
  * Title and look go to the bot's metadata; description, SOUL and model to the profile, only if
  * changed. A new look is exported as the profile's avatar image first, so a failed export saves
  * nothing and Save stays there to retry. Talyx is always the logo: only its face is its own.
  */
 export async function saveDetails(
+  backend: RosterBackend,
+  bot: Bot,
+  change: { opening: DetailsDraft; draft: DetailsDraft }
+): Promise<ModelConfirm | null> {
+  // Even a save that fails part way may have changed some of them.
+  try {
+    return await saveAll(backend, bot, change)
+  } finally {
+    detailsChanged()
+  }
+}
+
+async function saveAll(
   backend: RosterBackend,
   bot: Bot,
   change: { opening: DetailsDraft; draft: DetailsDraft }
@@ -90,11 +114,15 @@ export async function confirmModel(
   profile: string,
   model: ModelChoice
 ): Promise<void> {
-  await configure(backend, profile, {
-    model: model.model,
-    provider: model.provider,
-    confirm_expensive_model: true
-  })
+  try {
+    await configure(backend, profile, {
+      model: model.model,
+      provider: model.provider,
+      confirm_expensive_model: true
+    })
+  } finally {
+    detailsChanged()
+  }
 }
 
 async function configure(

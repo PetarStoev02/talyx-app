@@ -16,14 +16,26 @@ import type {
   ProvidersBackend,
   ProvidersOverview
 } from '@features/providers/providers'
+import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
-import type { ModelOptionProvider } from '@shared/engine/gateway-events'
+import type { ModelLists } from '@features/chat/chat'
 import { AddProviderDialog } from './AddProviderDialog'
 import { DefaultModelSection } from './DefaultModelSection'
+import { Loading, Skeleton } from '@shared/ui/skeleton'
+import { useArrival } from '@shared/hooks/useStayMounted'
+import { cn } from '@shared/lib/utils'
 import { failureText, reportSpread } from './feedback'
 
-const linkClass = 'text-sm underline underline-offset-4 disabled:opacity-50'
+const linkClass =
+  'text-sm underline underline-offset-4 hover:decoration-2 disabled:opacity-50 disabled:hover:decoration-1'
+
+// Each confirm button names what it removes.
+const CONFIRM: Record<Removal['kind'], TranslationKey> = {
+  endpoint: 'providers.removeEndpoint',
+  key: 'providers.removeKey',
+  account: 'providers.disconnect'
+}
 
 type Removal =
   | { kind: 'endpoint'; endpoint: CustomEndpoint }
@@ -36,19 +48,21 @@ type Removal =
  */
 export function ProvidersSection({
   backend,
-  models
+  chat
 }: {
   backend: ProvidersBackend
-  models: ((profile: string) => Promise<ModelOptionProvider[]>) | null
+  chat: ModelLists | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const [overview, setOverview] = useState<ProvidersOverview | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [editing, setEditing] = useState<CustomEndpoint | 'new' | null>(null)
   const [removing, setRemoving] = useState<Removal | null>(null)
+  // A failed removal shows in its dialog: a toast would sit under the dialog, out of reach.
+  const [removeProblem, setRemoveProblem] = useState<string | null>(null)
   const [revealed, setRevealed] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
-  const [loads, setLoads] = useState(0)
+  const arrival = useArrival(!overview && !problem)
 
   const load = useCallback(
     (): Promise<void> =>
@@ -56,13 +70,13 @@ export function ProvidersSection({
         (next) => {
           setOverview(next)
           setProblem(null)
-          // A revealed value may be stale now, and the model menu must load the new list.
+          // A revealed value may be stale now, and every model menu must load the new list.
           setRevealed({})
-          setLoads((count) => count + 1)
+          chat?.forgetModels()
         },
         (error: unknown) => setProblem(failureText(t, error))
       ),
-    [backend, t]
+    [backend, t, chat]
   )
 
   useEffect(() => {
@@ -81,12 +95,13 @@ export function ProvidersSection({
       const value = await revealKey(backend, slot.key)
       setRevealed((shown) => ({ ...shown, [slot.key]: value }))
     } catch (error) {
-      toast.error(failureText(t, error))
+      toast.error(failureText(t, error), { duration: Infinity })
     }
   }
 
   async function remove(removal: Removal): Promise<void> {
     setBusy(true)
+    setRemoveProblem(null)
     try {
       if (removal.kind === 'account') {
         await disconnectAccount(backend, removal.account.id)
@@ -96,16 +111,21 @@ export function ProvidersSection({
           removal.kind === 'endpoint'
             ? await removeEndpoint(backend, removal.endpoint.id)
             : await removeKey(backend, removal.slot.key)
-        reportSpread(t, failed, 'providers.removed')
+        reportSpread(t, failed, 'removed')
       }
       if (removal.kind === 'key') hide(removal.slot.key)
       setRemoving(null)
     } catch (error) {
-      toast.error(failureText(t, error))
+      setRemoveProblem(failureText(t, error))
     } finally {
       setBusy(false)
     }
     await load()
+  }
+
+  function closeRemoval(): void {
+    setRemoving(null)
+    setRemoveProblem(null)
   }
 
   const keys = overview?.keys.filter((slot) => slot.preview) ?? []
@@ -116,27 +136,35 @@ export function ProvidersSection({
     <>
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-sm font-semibold text-foreground">{t('providers.title')}</h2>
+          <h2 className="text-xl font-semibold text-foreground">{t('providers.title')}</h2>
           <Button disabled={!overview} onClick={() => setEditing('new')}>
             {t('providers.add')}
           </Button>
         </div>
-        <p className="text-sm text-muted-foreground">{t('providers.hint')}</p>
+        <p className="text-base">{t('providers.hint')}</p>
         {problem ? (
           <div role="alert" className="text-base">
             <p>{problem}</p>
-            <button className="mt-2 underline" onClick={() => void load()}>
-              {t('roster.retry')}
+            <button
+              className="mt-2 underline underline-offset-4 hover:decoration-2"
+              onClick={() => void load()}
+            >
+              {t('action.tryAgain')}
             </button>
           </div>
         ) : !overview ? (
-          <p role="status" className="text-sm text-muted-foreground">
-            {t('providers.loading')}
-          </p>
+          <Loading label={t('providers.loading')} className="space-y-2">
+            {[0, 1, 2].map((row) => (
+              <Skeleton key={row} className="h-16 w-full rounded-xl" />
+            ))}
+          </Loading>
         ) : empty ? (
-          <p className="text-base">{t('providers.empty')}</p>
+          <div className="flex flex-col items-start gap-3 rounded-xl bg-secondary p-4">
+            <p className="text-base">{t('providers.empty')}</p>
+            <Button onClick={() => setEditing('new')}>{t('providers.add')}</Button>
+          </div>
         ) : (
-          <ul className="space-y-2">
+          <ul className={cn('space-y-2', arrival)}>
             {overview.endpoints.map((endpoint) => (
               <Row
                 key={`endpoint:${endpoint.id}`}
@@ -207,18 +235,23 @@ export function ProvidersSection({
             onClose={() => setEditing(null)}
           />
         )}
-        <Dialog open={!!removing} onOpenChange={(open) => !open && setRemoving(null)}>
+        <Dialog open={!!removing} onOpenChange={(open) => !open && closeRemoval()}>
           <DialogContent>
             {removing && <RemovalCopy removal={removing} />}
+            {removeProblem && (
+              <p role="alert" className="text-base text-destructive-text wrap-anywhere">
+                {removeProblem}
+              </p>
+            )}
             <div className="flex gap-2">
               <Button
                 variant="destructive"
                 disabled={busy}
                 onClick={() => removing && void remove(removing)}
               >
-                {removing?.kind === 'account' ? t('providers.disconnect') : t('providers.remove')}
+                {t(CONFIRM[removing?.kind ?? 'key'])}
               </Button>
-              <Button variant="ghost" onClick={() => setRemoving(null)}>
+              <Button variant="ghost" onClick={closeRemoval}>
                 {t('roster.cancel')}
               </Button>
             </div>
@@ -226,10 +259,9 @@ export function ProvidersSection({
         </Dialog>
       </section>
       <DefaultModelSection
-        key={loads}
         backend={backend}
         model={overview?.model ?? null}
-        models={overview ? models : null}
+        models={overview && chat ? chat.models : null}
         onChanged={load}
       />
     </>
@@ -252,8 +284,8 @@ function Row({
   return (
     <li className="flex items-center gap-4 rounded-xl bg-secondary p-3">
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-2 text-base font-medium">
-          <span className="truncate">{title}</span>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base font-medium">
+          <span className="min-w-0 wrap-break-word">{title}</span>
           {badge && (
             <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-sm font-normal">
               {badge}
@@ -266,7 +298,7 @@ function Row({
             className={
               secret
                 ? 'font-mono text-sm break-all select-text'
-                : 'truncate text-sm text-muted-foreground'
+                : 'text-sm text-muted-foreground wrap-break-word'
             }
           >
             {line}

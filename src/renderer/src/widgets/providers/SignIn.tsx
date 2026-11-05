@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import {
   cancelSignIn,
@@ -18,7 +17,7 @@ import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { failureText } from './feedback'
 
-const linkClass = 'text-base underline underline-offset-4'
+const linkClass = 'text-base underline underline-offset-4 hover:decoration-2'
 
 type Step =
   | { kind: 'starting' }
@@ -45,6 +44,8 @@ export function SignIn({
   const [step, setStep] = useState<Step>({ kind: 'starting' })
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
+  // Shown here, not as a toast: the dialog hides toasts from a screen reader.
+  const [note, setNote] = useState<string | null>(null)
   const done = useRef(onDone)
   done.current = onDone
   // A pasted code finishes outside the effect; its session must not be cancelled on close.
@@ -58,7 +59,10 @@ export function SignIn({
     const finish = (result: SignInResult): void => {
       if (!live) return
       session = null
-      if (result.status === 'approved') void done.current()
+      if (result.status === 'approved')
+        done
+          .current()
+          .catch((error: unknown) => setStep({ kind: 'failed', message: failureText(t, error) }))
       else if (result.status === 'failed') setStep({ kind: 'failed', message: result.message })
     }
     async function run(): Promise<void> {
@@ -104,12 +108,13 @@ export function SignIn({
 
   async function checkAgain(): Promise<void> {
     setBusy(true)
+    setNote(null)
     try {
       const { accounts } = await loadProviders(backend)
       if (accounts.some((item) => item.id === account.id && item.signedIn)) await onDone()
-      else toast(t('providers.stillSignedOut'))
+      else setNote(t('providers.stillSignedOut'))
     } catch (error) {
-      toast.error(failureText(t, error))
+      setNote(failureText(t, error))
     } finally {
       setBusy(false)
     }
@@ -122,6 +127,9 @@ export function SignIn({
         <code className="block rounded-lg bg-secondary px-3 py-2 font-mono text-sm select-text">
           {account.command}
         </code>
+        <p role="status" className="empty:hidden">
+          {note}
+        </p>
         <div className="flex items-center gap-4">
           <Button disabled={busy} onClick={() => void checkAgain()}>
             {t('providers.checkAgain')}
@@ -129,9 +137,10 @@ export function SignIn({
           <button
             className={linkClass}
             onClick={() =>
-              void navigator.clipboard
-                .writeText(account.command)
-                .then(() => toast.success(t('providers.copied')))
+              void navigator.clipboard.writeText(account.command).then(
+                () => setNote(t('providers.copied')),
+                () => setNote(t('providers.copyFailed'))
+              )
             }
           >
             {t('providers.copy')}
@@ -145,7 +154,7 @@ export function SignIn({
       <div role="alert" className="space-y-4 text-base">
         <p>{t('providers.signInFailed').replace('{reason}', step.message)}</p>
         <button className={linkClass} onClick={onBack}>
-          {t('roster.retry')}
+          {t('providers.signInBack')}
         </button>
       </div>
     )

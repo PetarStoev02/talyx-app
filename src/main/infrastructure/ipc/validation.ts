@@ -1,16 +1,30 @@
 import { isAbsolute } from 'path'
 import { z } from 'zod/v4'
+import { SIDEBAR_WIDTH } from '../../../shared/sidebar'
+
+/** A bot (profile name) or room (room id) to open again on launch. */
+export const LastSelectionSchema = z.object({
+  kind: z.enum(['bot', 'room']),
+  id: z.string().min(1).max(200)
+})
 
 export const UserSettingsPartialSchema = z
   .object({
+    lastSelection: LastSelectionSchema.nullable(),
     theme: z.enum(['light', 'dark', 'system']),
-    sidebarCollapsed: z.boolean()
+    sidebarWidth: z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)
   })
   .partial()
 
 /** Talyx runs this file, so it is never set through `settings:set` (page code could name any
  *  binary): only the native file chooser behind `engine:pick-path` writes it. */
 export const EnginePathSchema = z.string().refine(isAbsolute, 'enginePath must be an absolute path')
+
+/** A renderer failure for the log file; capped so a page cannot flood it. */
+export const RendererErrorSchema = z.object({
+  scope: z.string().max(100),
+  message: z.string().max(8000)
+})
 
 /** A profile name as the engine accepts it. */
 export const ProfileNameSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/)

@@ -7,8 +7,9 @@ import {
   moveFolder,
   normalizeFolders,
   pinnedBots,
+  placeKey,
   recoverFolders,
-  reorder,
+  startSelection,
   timeInWords
 } from '../../../src/renderer/src/features/bots/roster'
 import { t } from '../../../src/renderer/src/shared/lib/i18n'
@@ -23,7 +24,8 @@ const snapshot = (bots: Bot[]): RosterSnapshot => ({
   rooms: [],
   folders: [{ id: 'team', name: 'Team' }],
   roomFolders: {},
-  roomPins: []
+  roomPins: [],
+  itemOrder: {}
 })
 
 describe('roster layout', () => {
@@ -99,11 +101,13 @@ describe('roster layout', () => {
     ])
     expect(folders[1].parentId).toBe('a')
   })
-  it('should reorder without mutating and ignore an unknown drag source', () => {
-    const values = ['a', 'b', 'c']
-    expect(reorder(values, 0, 2)).toEqual(['b', 'c', 'a'])
-    expect(reorder(values, -1, 0)).toEqual(values)
-    expect(values).toEqual(['a', 'b', 'c'])
+  it.each([
+    ['in front of an item', 'c', 'a', ['c', 'a', 'b']],
+    ['to the end', 'a', null, ['b', 'c', 'a']],
+    ['to the end when the item in front is gone', 'a', 'x', ['b', 'c', 'a']],
+    ['into a list it was not in', 'd', 'b', ['a', 'd', 'b', 'c']]
+  ])('should place a key %s', (_case, key, before, expected) => {
+    expect(placeKey(['a', 'b', 'c'], key, before)).toEqual(expected)
   })
 })
 
@@ -131,5 +135,41 @@ describe('roster previews', () => {
     expect(timeInWords(100, english, 864100000)).toBe('10 days ago')
     expect(timeInWords(200, english, 100000)).toBe('just now')
     expect(timeInWords(0, english)).toBe('')
+  })
+})
+
+describe('the chat the Agents page opens', () => {
+  const roster = (bots: Bot[], roomIds: string[] = []): RosterSnapshot => ({
+    ...snapshot(bots),
+    rooms: roomIds.map((room_id) => ({ room_id, name: room_id, members: [] }))
+  })
+  const bots = [bot('default'), bot('analyst'), bot('ghost', { hidden: true })]
+
+  it.each([
+    ['the saved bot', { kind: 'bot', id: 'analyst' }, { kind: 'bot', id: 'analyst' }],
+    ['the saved room', { kind: 'room', id: 'team' }, { kind: 'room', id: 'team' }],
+    [
+      'Talyx when the saved bot is gone',
+      { kind: 'bot', id: 'deleted' },
+      { kind: 'bot', id: 'default' }
+    ],
+    [
+      'Talyx when the saved bot is hidden',
+      { kind: 'bot', id: 'ghost' },
+      { kind: 'bot', id: 'default' }
+    ],
+    [
+      'Talyx when the saved room is gone',
+      { kind: 'room', id: 'gone' },
+      { kind: 'bot', id: 'default' }
+    ],
+    ['Talyx on a first run', null, { kind: 'bot', id: 'default' }]
+  ] as const)('should open %s', (_case, saved, expected) => {
+    expect(startSelection(roster(bots, ['team']), saved)).toEqual(expected)
+  })
+
+  it('should open another bot when Talyx is not in the roster, and nothing when no bot is', () => {
+    expect(startSelection(roster([bot('analyst')]), null)).toEqual({ kind: 'bot', id: 'analyst' })
+    expect(startSelection(roster([]), null)).toBeNull()
   })
 })

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { GatewayEvent } from '@shared/engine/shared'
+import type { Problem } from '@shared/lib/problem'
 import type { Transcript } from './types'
 
 /** The session's model and reasoning level, as the composer shows them. */
@@ -17,7 +18,8 @@ export interface ChatState {
   // Events that arrived while the chat reloads; null when no load is running.
   pending: GatewayEvent[] | null
   loading: boolean
-  error: string | null
+  // The last action that failed on this chat: what failed and what to do, then the cause.
+  error: Problem | null
 }
 
 interface ChatStore {
@@ -25,6 +27,8 @@ interface ChatStore {
   chats: Record<string, ChatState>
   chatForSession: (sessionId: string) => ChatState | null
   update: (profile: string, change: Partial<ChatState>) => void
+  /** Drops the chats of deleted bots, so a new bot with one's name starts empty. */
+  forget: (profiles: string[]) => void
 }
 
 const blank = (profile: string): ChatState => ({
@@ -47,5 +51,11 @@ export const useChat = create<ChatStore>((set, get) => ({
         ...state.chats,
         [profile]: { ...(state.chats[profile] ?? blank(profile)), ...change }
       }
+    })),
+  forget: (profiles) =>
+    set((state) => ({
+      chats: Object.fromEntries(
+        Object.entries(state.chats).filter(([profile]) => !profiles.includes(profile))
+      )
     }))
 }))

@@ -71,11 +71,13 @@ describe('group room', () => {
       expect(view().events.map((item) => item.seq)).toEqual([1, 2, 3, 4])
     })
 
-    it('should skip the log when nothing new was written', async () => {
+    it('should skip the log and leave the view as it is when nothing new was written', async () => {
       await actions.refresh(ROOM)
+      const before = view()
       engine.calls.length = 0
       await actions.refresh(ROOM)
       expect(methods()).toEqual(['groups.state'])
+      expect(view()).toBe(before)
     })
 
     it('should join a read already on its way instead of starting a second one', async () => {
@@ -93,7 +95,10 @@ describe('group room', () => {
     it('should show a failed read on the room', async () => {
       engine.failNext('groups.state', 'Socket closed')
       await actions.refresh(ROOM)
-      expect(view()).toMatchObject({ loading: false, error: 'Socket closed' })
+      expect(view()).toMatchObject({
+        loading: false,
+        error: { key: 'rooms.errorLoad', detail: 'Socket closed' }
+      })
     })
   })
 
@@ -140,7 +145,7 @@ describe('group room', () => {
       await actions.refresh(ROOM)
       engine.loseNextAnswer()
       expect(await actions.send(ROOM, { text: 'Go monthly?', attachments: [] })).toBe(false)
-      expect(view().actionError).toBe('Request timed out')
+      expect(view().actionError).toEqual({ key: 'rooms.errorSend', detail: 'Request timed out' })
       expect(await actions.send(ROOM, { text: 'Go monthly?', attachments: [] })).toBe(true)
       const [first, second] = sent()
       expect(second.event_id).toBe(first.event_id)
@@ -153,9 +158,15 @@ describe('group room', () => {
       await actions.send(ROOM, { text: 'Go monthly?', attachments: [] })
       engine.failNext('groups.state', 'Socket closed')
       await actions.refresh(ROOM)
-      expect(view()).toMatchObject({ actionError: 'Room is full', error: 'Socket closed' })
+      expect(view()).toMatchObject({
+        actionError: { key: 'rooms.errorSend', detail: 'Room is full' },
+        error: { key: 'rooms.errorLoad', detail: 'Socket closed' }
+      })
       await actions.refresh(ROOM)
-      expect(view()).toMatchObject({ actionError: 'Room is full', error: null })
+      expect(view()).toMatchObject({
+        actionError: { key: 'rooms.errorSend', detail: 'Room is full' },
+        error: null
+      })
     })
 
     it('should show a sent message even when a read was already on its way', async () => {
@@ -177,6 +188,14 @@ describe('group room', () => {
       await actions.send(ROOM, { text: 'Go yearly?', attachments: [] })
       const [first, second] = sent()
       expect(second.event_id).not.toBe(first.event_id)
+    })
+
+    it('should refuse an image too big for one socket frame without sending it', async () => {
+      const dataUrl = `data:image/png;base64,${'A'.repeat(15 * 1024 * 1024)}`
+      await expect(
+        actions.uploadImage(ROOM, { dataUrl, name: 'huge.png', mime: 'image/png' })
+      ).rejects.toMatchObject({ key: 'rooms.imageTooBig' })
+      expect(engine.stored).toEqual([])
     })
 
     it('should upload an image for the next message and read it back', async () => {
@@ -204,7 +223,7 @@ describe('group room', () => {
       engine.failNext('groups.stop', 'Gateway busy')
       await actions.stop(ROOM)
       await actions.refresh(ROOM)
-      expect(view().actionError).toBe('Gateway busy')
+      expect(view().actionError).toEqual({ key: 'rooms.errorStop', detail: 'Gateway busy' })
       await actions.stop(ROOM)
       expect(view().actionError).toBeNull()
     })
@@ -359,7 +378,10 @@ describe('room model', () => {
     await actions.refresh(ROOM)
     const result = await actions.setModel(ROOM, MEMBERS, PICK)
     expect(result.switched).toEqual([])
-    expect(view().actionError).toBe('9-route-provider costs more per turn.')
+    expect(view().actionError).toEqual({
+      key: 'rooms.modelNeedsConfirm',
+      detail: '9-route-provider costs more per turn.'
+    })
     expect(engine.memberSessions.default.model).toBe('team-manager')
     // A session opened for a refused switch is still let go of.
     expect(calls('session.detach')).toHaveLength(2)
@@ -370,7 +392,7 @@ describe('room model', () => {
     engine.failNext('session.detach', 'Socket closed')
     const result = await actions.setModel(ROOM, MEMBERS, PICK)
     expect(result.switched).toEqual(['default', 'acme-cfo'])
-    expect(view().actionError).toBe('Socket closed')
+    expect(view().actionError).toEqual({ key: 'rooms.errorModel', detail: 'Socket closed' })
   })
 })
 

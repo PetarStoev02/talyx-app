@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Toaster } from 'sonner'
 import { Roster } from '../../../src/renderer/src/widgets/roster/Roster'
+import { RosterAdd } from '../../../src/renderer/src/widgets/roster/RosterAdd'
 import { AgentsPage } from '../../../src/renderer/src/pages/agents/AgentsPage'
 import { ProvidersSection } from '../../../src/renderer/src/widgets/providers'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
@@ -221,7 +222,10 @@ useEngine.setState({
     botMetaKey: 'acme-bots',
     botGroupsMetaKey: 'acme-bots-groups',
     managerHandle: 'acme'
-  }
+  },
+  // Nor a socket: it counts as open, or the page would wait for one and say it cannot connect.
+  connection: 'open',
+  everConnected: true
 })
 useRoster.getState().setActivity('researcher', 'working')
 useRoster.getState().setActivity('analyst', 'waiting')
@@ -253,7 +257,11 @@ export function Fixture(): React.JSX.Element {
     <div className="flex h-screen bg-background">
       <Toaster position="bottom-right" closeButton />
       <aside className="tone-step flex w-[320px] max-w-[85vw] shrink-0 flex-col">
-        <h1 className="px-5 pt-4 text-xl font-semibold">Talyx</h1>
+        {/* The app puts the roster's `+` at the end of the sidebar's title row. */}
+        <div className="flex items-center justify-between px-5 pt-4 pr-3">
+          <h1 className="text-xl font-semibold">Talyx</h1>
+          <RosterAdd />
+        </div>
         <span className="px-5 text-xs">Interaction fixture · synthetic data</span>
         <Roster backend={backend} models={chat.models} onSelect={() => setPage('agents')} />
         <button
@@ -276,7 +284,7 @@ export function Fixture(): React.JSX.Element {
         {page === 'settings' ? (
           // The settings page's own sections, without Appearance: it needs the desktop bridge.
           <div className="mx-auto w-full max-w-2xl space-y-4 overflow-y-auto p-6">
-            <ProvidersSection backend={providers} models={chat.models} />
+            <ProvidersSection backend={providers} chat={chat} />
           </div>
         ) : (
           <AgentsPage chat={chat} roster={backend} />

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { botTitle } from '@features/bots/roster'
+import { roomHandle } from '@features/bots/rooms'
 import { useRoster } from '@features/bots/store'
 import type { Bot, Room } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
@@ -13,11 +14,21 @@ import { parseAttachmentKey, roomItems } from '@features/chat/roomLog'
 import { useRooms } from '@features/chat/roomStore'
 import type { RoomTask, RoomView } from '@features/chat/types'
 import { useRoomPolling } from '@features/chat/useRoomPolling'
+import { useRefocus } from '@shared/hooks/useRefocus'
 import type { TranslationKey } from '@shared/lib/i18n'
+import { listOf } from '@shared/lib/list'
+import { reportError } from '@shared/lib/report'
+import { Button } from '@shared/ui/button'
 import { ModelPicker } from '@shared/ui/ModelPicker'
 import { ApprovalCard } from './ApprovalCard'
 import { Chip, Composer } from './Composer'
 import type { ComposerTarget } from './Composer'
+import { ChatSkeleton } from './ChatSkeleton'
+import { Starters } from './ChatIntro'
+import type { Starter } from './ChatIntro'
+import { Reveal } from '@shared/ui/Reveal'
+import { useArrival } from '@shared/hooks/useStayMounted'
+import { cn } from '@shared/lib/utils'
 import { Transcript } from './Transcript'
 
 /** A hosted room: its log with who is answering below, then a composer with the room's model. */
@@ -38,7 +49,19 @@ export function RoomPane({
   const lastSeq = view?.lastSeq ?? 0
   const working = view?.working ?? false
   const memberKey = room.members.map((member) => member.profile).join(',')
+  const composer = useRef<HTMLTextAreaElement>(null)
+  const [seed, setSeed] = useState<{ text: string } | null>(null)
+  const start = (starter: Starter): void => {
+    if (starter.send) return void actions?.send(roomId, { text: starter.text, attachments: [] })
+    setSeed({ text: starter.text })
+    requestAnimationFrame(() => {
+      composer.current?.focus()
+      composer.current?.setSelectionRange(starter.text.length, starter.text.length)
+    })
+  }
   useRoomPolling(actions, roomId)
+  // A settled card unmounts with focus on it; the composer is where the room goes on.
+  useRefocus(composer, view?.tasks.length)
 
   // Read on open and after each round: a member's room session exists from its first answer on.
   useEffect(() => {
@@ -66,8 +89,9 @@ export function RoomPane({
     [actions, roomId]
   )
 
-  if (!actions || !chat || !view || (view.loading && !view.events.length))
-    return <p className="m-auto text-base text-muted-foreground">{t('chat.loading')}</p>
+  const loading = !actions || !chat || !view || (view.loading && !view.events.length)
+  const arrival = useArrival(loading)
+  if (loading) return <ChatSkeleton label={t('chat.loading')} />
 
   const target: ComposerTarget = {
     placeholder: t('rooms.placeholder'),
@@ -97,26 +121,32 @@ export function RoomPane({
 
   return (
     <>
-      {items.length || view.tasks.length ? (
-        <Transcript items={items} loadImage={loadImage}>
-          {view.tasks.map((task) => (
-            <li key={`${task.kind}:${task.task_id}:${task.execution_generation}`}>
-              <TaskCard
-                task={task}
-                name={nameOf(task.member_id)}
-                onApprove={(choice) => void actions.approve(roomId, task, choice)}
-                onSettle={() => void actions.settle(roomId, task)}
-              />
-            </li>
-          ))}
-        </Transcript>
-      ) : (
-        <div className="grid flex-1 place-content-center justify-items-center gap-4 px-8 text-center">
-          <RoomAvatars room={room} bots={bots} size={44} />
-          <h1 className="text-2xl font-semibold">{room.name}</h1>
-          <p className="max-w-sm text-base">{t('rooms.empty')}</p>
-        </div>
-      )}
+      <div className={cn('flex min-h-0 flex-1 flex-col', arrival)}>
+        {items.length || view.tasks.length ? (
+          <Transcript items={items} loadImage={loadImage}>
+            {view.tasks.map((task) => (
+              <li key={`${task.kind}:${task.task_id}:${task.execution_generation}`}>
+                <TaskCard
+                  task={task}
+                  name={nameOf(task.member_id)}
+                  onApprove={(choice) => void actions.approve(roomId, task, choice)}
+                  onSettle={() => void actions.settle(roomId, task)}
+                />
+              </li>
+            ))}
+          </Transcript>
+        ) : (
+          <div className="grid flex-1 place-content-center justify-items-center gap-3 px-8 text-center">
+            <RoomAvatars room={room} bots={bots} cluster={64} />
+            <h1 className="text-2xl font-semibold">{room.name}</h1>
+            <p className="max-w-md text-base">
+              {listOf(room.members.map((member) => nameOf(member.member_id ?? member.profile)))}
+            </p>
+            <p className="max-w-md text-sm text-muted-foreground">{t('rooms.empty')}</p>
+            <Starters starters={roomStarters(room, t)} onStart={start} />
+          </div>
+        )}
+      </div>
       <p
         role="status"
         className="mx-auto flex w-full max-w-3xl items-center gap-2 px-6 pb-2 text-sm text-muted-foreground empty:hidden"
@@ -132,21 +162,36 @@ export function RoomPane({
         {activityLine(view, nameOf, t)}
       </p>
       {/* The composer's Send or the card's own button is the retry for these. */}
-      {view.actionError && (
-        <p className="mx-auto w-full max-w-3xl px-6 pb-2 text-base text-destructive" role="alert">
-          {view.actionError}
-        </p>
-      )}
-      {view.error && (
-        <p className="mx-auto w-full max-w-3xl px-6 pb-2 text-base text-destructive" role="alert">
-          {view.error}{' '}
-          <button className="underline" onClick={() => void actions.refresh(roomId)}>
-            {t('chat.retry')}
-          </button>
-        </p>
-      )}
+      <Reveal value={view.actionError}>
+        {(failure) => (
+          <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
+            <p className="text-destructive-text">{t(failure.key)}</p>
+            {failure.detail && (
+              <p className="text-sm text-muted-foreground wrap-anywhere">{failure.detail}</p>
+            )}
+          </div>
+        )}
+      </Reveal>
+      <Reveal value={view.error}>
+        {(error) => (
+          <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
+            <p className="text-destructive-text">
+              {t(error.key)}{' '}
+              <button
+                className="underline underline-offset-4 hover:decoration-2"
+                onClick={() => void actions.refresh(roomId)}
+              >
+                {t('action.tryAgain')}
+              </button>
+            </p>
+            {error.detail && (
+              <p className="text-sm text-muted-foreground wrap-anywhere">{error.detail}</p>
+            )}
+          </div>
+        )}
+      </Reveal>
       {view.live ? (
-        <Composer target={target}>
+        <Composer target={target} inputRef={composer} seed={seed}>
           <RoomModelMenu room={room} view={view} actions={actions} chat={chat} nameOf={nameOf} />
         </Composer>
       ) : (
@@ -181,7 +226,10 @@ function RoomModelMenu({
     try {
       const { skipped } = await actions.setModel(room.room_id, room.members, choice)
       if (skipped.length)
-        toast(t('rooms.modelSkipped').replace('{names}', skipped.map(nameOf).join(', ')))
+        toast(t('rooms.modelSkipped').replace('{names}', listOf(skipped.map(nameOf))))
+    } catch (error) {
+      // setModel keeps member failures on the room; anything else is Talyx's own and logged.
+      reportError('room', error)
     } finally {
       setSwitching(false)
     }
@@ -193,7 +241,7 @@ function RoomModelMenu({
       // The members' reading has model names only, so no provider entry is marked.
       selected={null}
       onSelect={(choice) => void switchAll(choice)}
-      loadingLabel={t('chat.modelsLoading')}
+      labels={{ loading: t('chat.modelsLoading'), failed: t('chat.modelsFailed') }}
     >
       {/* Before any member has answered there is no room session to switch. */}
       <Chip label={t('chat.model')} value={value} disabled={!shared || switching} />
@@ -222,8 +270,8 @@ function activityLine(
   const working = named('working')
   const queued = named('queued')
   return [
-    working.length ? t('rooms.working').replace('{names}', working.join(', ')) : '',
-    queued.length ? t('rooms.queued').replace('{names}', queued.join(', ')) : ''
+    working.length ? t('rooms.working').replace('{names}', listOf(working)) : '',
+    queued.length ? t('rooms.queued').replace('{names}', listOf(queued)) : ''
   ]
     .filter(Boolean)
     .join(' · ')
@@ -268,23 +316,30 @@ function TaskCard({
           : t(discard ? 'rooms.discardTitle' : 'rooms.retryTitle').replace('{name}', name)}
       </p>
       <div className="flex flex-wrap gap-2">
-        <button
+        <Button
           type="button"
+          variant={confirming ? 'destructive' : 'default'}
           onClick={() => (discard && !confirming ? setConfirming(true) : onSettle())}
-          className="rounded-full bg-primary px-5 py-2 text-base text-primary-foreground"
         >
           {t(discard ? 'rooms.discard' : 'rooms.retry')}
-        </button>
+        </Button>
         {confirming && (
-          <button
-            type="button"
-            onClick={() => setConfirming(false)}
-            className="rounded-full bg-background px-5 py-2 text-base hover:bg-accent"
-          >
+          <Button type="button" variant="secondary" onClick={() => setConfirming(false)}>
             {t('roster.cancel')}
-          </button>
+          </Button>
         )}
       </div>
     </section>
   )
+}
+
+// Ways to start a room: ask one bot (the first that is not Talyx), or hear from every one.
+function roomStarters(room: Room, t: (key: TranslationKey) => string): Starter[] {
+  const first = room.members.find((member) => member.profile !== 'default') ?? room.members[0]
+  return [
+    ...(first
+      ? [{ text: t('starter.roomAsk').replace('{handle}', roomHandle(first.profile)), send: false }]
+      : []),
+    { text: t('starter.roomIntro'), send: true }
+  ]
 }

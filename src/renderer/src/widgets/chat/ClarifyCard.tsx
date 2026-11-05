@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { cn } from '@shared/lib/utils'
+import { Button } from '@shared/ui/button'
 import type { ChatPrompt } from '@features/chat/types'
 
 type Clarify = Extract<ChatPrompt, { kind: 'clarify' }>
@@ -72,20 +73,16 @@ export function ClarifyCard({
       )}
       <div className="flex flex-wrap gap-2">
         {question.choices.map((choice) => (
-          <button
+          <Button
             key={choice}
             type="button"
+            variant={chosen(choice) ? 'default' : 'secondary'}
             aria-pressed={chosen(choice)}
             onClick={() => choose(choice)}
-            className={cn(
-              'rounded-full px-4 py-2 text-base',
-              chosen(choice)
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-background hover:bg-accent'
-            )}
+            className="h-auto min-h-9 whitespace-normal"
           >
             {choice}
-          </button>
+          </Button>
         ))}
       </div>
       <div className="flex items-center gap-4">
@@ -101,27 +98,22 @@ export function ClarifyCard({
               <span
                 key={item.qid}
                 className={cn(
-                  'size-1.5 rounded-full',
-                  index === page ? 'bg-foreground' : 'bg-muted-foreground/40'
+                  'h-2 rounded-full',
+                  index === page ? 'w-4 bg-foreground' : 'w-2 bg-muted-foreground'
                 )}
               />
             ))}
           </span>
         )}
-        <span className="ml-auto flex items-center gap-4">
+        <span className="ml-auto flex items-center gap-2">
           {page > 0 && (
-            <button type="button" className="text-base underline" onClick={() => setPage(page - 1)}>
+            <Button type="button" variant="ghost" onClick={() => setPage(page - 1)}>
               {t('chat.clarifyBack')}
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
-            disabled={sending || empty}
-            onClick={() => void next()}
-            className="rounded-full bg-primary px-5 py-2 text-base text-primary-foreground disabled:opacity-50"
-          >
+          <Button type="button" disabled={sending || empty} onClick={() => void next()}>
             {last ? t('chat.clarifySend') : t('chat.clarifyNext')}
-          </button>
+          </Button>
         </span>
       </div>
     </section>

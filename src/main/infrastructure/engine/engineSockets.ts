@@ -1,4 +1,8 @@
+import log from 'electron-log'
 import type { Engine } from './engine'
+
+// A close the app asked for; anything else is worth a line in the log.
+const NORMAL_CLOSE = 1000
 
 const MAX_SOCKETS = 16
 
@@ -34,6 +38,8 @@ export class EngineSockets {
     })
     socket.addEventListener('close', (event) => {
       this.sockets.delete(id)
+      if (event.code !== NORMAL_CLOSE)
+        log.warn(`[Engine] Socket ${id} closed (${event.code} ${event.reason || 'no reason'})`)
       sink('engine:socket-closed', id, event.code, event.reason)
     })
     await new Promise<void>((resolve, reject) => {

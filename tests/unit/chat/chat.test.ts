@@ -106,7 +106,10 @@ describe('bot chat', () => {
       await actions.open(MANAGER, 'manager-chat')
       engine.failNext('session.resume', 'Gateway restarting')
       await actions.rebuild(MANAGER)
-      expect(chat(MANAGER)).toMatchObject({ pending: null, error: 'Gateway restarting' })
+      expect(chat(MANAGER)).toMatchObject({
+        pending: null,
+        error: { key: 'chat.errorLoad', detail: 'Gateway restarting' }
+      })
     })
 
     it('should not let an older reload overwrite a newer one', async () => {
@@ -195,11 +198,25 @@ describe('bot chat', () => {
       })
     })
 
+    it.each([
+      ['stop', 'session.interrupt', 'chat.errorStop'],
+      ['model change', 'config.set', 'chat.errorModel']
+    ] as const)('should name a failed %s on the chat', async (action, method, key) => {
+      await actions.open(MANAGER, 'manager-chat')
+      engine.failNext(method, 'Gateway busy')
+      if (action === 'stop') await actions.interrupt(MANAGER)
+      else await actions.setModel(MANAGER, { model: 'm', provider: 'p' })
+      expect(chat(MANAGER).error).toEqual({ key, detail: 'Gateway busy' })
+    })
+
     it("should show a failed send as the chat's error", async () => {
       await actions.open(MANAGER, 'manager-chat')
       engine.failNext('prompt.submit', 'Gateway refused the prompt')
       await actions.send(MANAGER, { text: 'Hi', images: [] })
-      expect(chat(MANAGER).error).toBe('Gateway refused the prompt')
+      expect(chat(MANAGER).error).toEqual({
+        key: 'chat.errorSend',
+        detail: 'Gateway refused the prompt'
+      })
     })
   })
 
@@ -286,6 +303,22 @@ describe('bot chat', () => {
       expect(call('GET /api/model/options')?.params).toMatchObject({ explicit_only: '1' })
       expect(call('GET /api/providers/custom-endpoints')?.profile).toBe(MANAGER)
       expect(engine.calls.at(-1)?.profile).toBe(MANAGER)
+    })
+
+    it('should load the models once for every menu until they are forgotten', async () => {
+      const loads = (): number => methods().filter((m) => m === 'GET /api/model/options').length
+      await actions.models(MANAGER)
+      await actions.models(MANAGER)
+      expect(loads()).toBe(1)
+      actions.forgetModels()
+      await actions.models(MANAGER)
+      expect(loads()).toBe(2)
+    })
+
+    it('should try again after a failed load', async () => {
+      engine.failNext('GET /api/model/options', 'Engine offline')
+      await expect(actions.models(MANAGER)).rejects.toThrow()
+      expect(await actions.models(MANAGER)).toHaveLength(2)
     })
 
     it('should list every model offered when the saved lists cannot be read', async () => {

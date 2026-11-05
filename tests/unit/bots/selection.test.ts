@@ -15,7 +15,8 @@ const snapshotWith = (lastActive: Record<string, number>): RosterSnapshot => ({
   folders: [],
   rooms: [],
   roomFolders: {},
-  roomPins: []
+  roomPins: [],
+  itemOrder: {}
 })
 
 beforeEach(() =>

@@ -5,7 +5,7 @@
 .chat-markdown h1,
 .chat-markdown h2,
 .chat-markdown h3 {
-  font-size: 1.125rem;
+  font-size: var(--text-xl);
   font-weight: 600;
 }
 .chat-markdown ul {
@@ -21,7 +21,7 @@
 }
 .chat-markdown code {
   font-family: var(--font-mono);
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
 }
 .chat-markdown pre {
   overflow-x: auto;
@@ -34,7 +34,11 @@
   background: var(--secondary);
   padding: 0.125rem 0.375rem;
 }
+/* A wide table scrolls inside the bubble instead of pushing past it. */
 .chat-markdown table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
 }
 .chat-markdown th,
@@ -53,8 +57,13 @@
   background: var(--background);
 }
 
-/* The streaming cursor: a blinking bar after the text so far. */
-.chat-cursor {
+/* The streaming cursor: a blinking bar after the text so far, on its last line. A list or a
+   code block ends on its own box, so there the bar goes after its last item or line. */
+.chat-streaming:empty::after,
+.chat-streaming > :not(ul, ol, pre):last-child::after,
+.chat-streaming > :is(ul, ol):last-child > li:last-child::after,
+.chat-streaming > pre:last-child > code::after {
+  content: '';
   display: inline-block;
   width: 0.5em;
   height: 1em;

@@ -72,6 +72,13 @@ export const host = {
     return gateway.connect(engineDialUrl())
   },
 
+  /** Dial now instead of waiting out the backoff, for a user who asks to try again. */
+  retryNow(): Promise<void> {
+    clearTimeout(retry)
+    retry = undefined
+    return host.connect()
+  },
+
   disconnect(): void {
     wanted = false
     openSessions.clear()

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   EngineHttpRequestSchema,
   EnginePathSchema,
+  RendererErrorSchema,
   validateInput,
   UserSettingsPartialSchema
 } from '../../../src/main/infrastructure/ipc/validation'
@@ -19,8 +20,12 @@ describe('UserSettingsPartialSchema', () => {
     expect(() => validateInput(UserSettingsPartialSchema, { theme: 'blue' })).toThrow()
   })
 
-  it('should reject a sidebar state that is not a boolean', () => {
-    expect(() => validateInput(UserSettingsPartialSchema, { sidebarCollapsed: 'yes' })).toThrow()
+  it.each([
+    ['not a number', 'wide'],
+    ['below the minimum', 100],
+    ['above the maximum', 2000]
+  ])('should reject a sidebar width that is %s', (_case, sidebarWidth) => {
+    expect(() => validateInput(UserSettingsPartialSchema, { sidebarWidth })).toThrow()
   })
 
   it('should drop settings this version does not have', () => {
@@ -58,4 +63,18 @@ describe('EngineHttpRequestSchema', () => {
       expect(() => validateInput(EngineHttpRequestSchema, { path })).toThrow()
     }
   )
+})
+
+describe('RendererErrorSchema', () => {
+  it('should take a renderer failure for the log', () => {
+    const report = { scope: 'chat', message: 'Error: boom' }
+    expect(validateInput(RendererErrorSchema, report)).toEqual(report)
+  })
+
+  it.each([
+    ['a message longer than the cap', { scope: 'chat', message: 'x'.repeat(8001) }],
+    ['a missing scope', { message: 'boom' }]
+  ])('should refuse %s', (_case, report) => {
+    expect(() => validateInput(RendererErrorSchema, report)).toThrow()
+  })
 })

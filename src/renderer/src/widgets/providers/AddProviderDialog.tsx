@@ -21,7 +21,8 @@ import { Input, NativeSelect, Textarea } from '@shared/ui/input'
 import { failureText, reportSpread } from './feedback'
 import { SignIn } from './SignIn'
 
-const linkClass = 'text-base underline underline-offset-4 disabled:opacity-50'
+const linkClass =
+  'text-base underline underline-offset-4 hover:decoration-2 disabled:opacity-50 disabled:hover:decoration-1'
 type Kind = 'key' | 'account' | 'endpoint'
 const KINDS: Array<[Kind, TranslationKey]> = [
   ['key', 'providers.kindKey'],
@@ -53,17 +54,17 @@ export function AddProviderDialog({
         </DialogTitle>
         <DialogDescription>{t('providers.hint')}</DialogDescription>
         {!editing && (
-          <div role="group" aria-label={t('providers.kinds')} className="flex gap-2">
+          <div role="group" aria-label={t('providers.kinds')} className="flex flex-wrap gap-2">
             {KINDS.map(([value, label]) => (
               <button
                 key={value}
                 aria-pressed={kind === value}
                 onClick={() => setKind(value)}
                 className={cn(
-                  'rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                  'h-9 rounded-full px-4 text-sm font-medium transition-colors',
                   kind === value
                     ? 'bg-foreground text-background'
-                    : 'bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground'
+                    : 'bg-secondary text-muted-foreground hover:bg-foreground/10 hover:text-foreground'
                 )}
               >
                 {t(label)}
@@ -115,7 +116,7 @@ function KeyForm({ backend, overview, onChanged, onClose }: FormProps): React.JS
     if (!slot) return
     setBusy('save')
     try {
-      reportSpread(t, await saveKey(backend, { key: slot.key, value }), 'providers.saved')
+      reportSpread(t, await saveKey(backend, { key: slot.key, value }), 'saved')
       await onChanged()
       onClose()
     } catch (error) {
@@ -211,7 +212,7 @@ function AccountForm({ backend, overview, onChanged, onClose }: FormProps): Reac
         <li key={item.id}>
           <button
             onClick={() => setPicked(item.id)}
-            className="flex w-full items-center justify-between rounded-xl bg-secondary p-3 text-left text-base hover:bg-accent"
+            className="flex w-full items-center justify-between rounded-xl bg-secondary p-3 text-left text-base hover:bg-foreground/10"
           >
             <span>{item.name}</span>
             <span className="text-sm text-muted-foreground">{t('providers.signIn')}</span>
@@ -246,7 +247,9 @@ function EndpointForm({
       const result = await checkEndpoint(backend, draft)
       setNote(
         result.ok
-          ? t('providers.checkModels').replace('{count}', String(result.models.length))
+          ? result.models.length === 1
+            ? t('providers.checkModel')
+            : t('providers.checkModels').replace('{count}', String(result.models.length))
           : result.message
       )
       if (result.ok && !editing && !models.trim() && result.models[0]) setModels(result.models[0])
@@ -260,7 +263,7 @@ function EndpointForm({
   async function save(): Promise<void> {
     setBusy('save')
     try {
-      reportSpread(t, await saveEndpoint(backend, draft), 'providers.saved')
+      reportSpread(t, await saveEndpoint(backend, draft), 'saved')
       await onChanged()
       onClose()
     } catch (error) {
@@ -339,10 +342,11 @@ function EndpointForm({
   )
 }
 
-function Note({ text }: { text: string | null }): React.JSX.Element | null {
-  return text ? (
-    <p role="status" className="text-base">
+// Always mounted, so a screen reader hears each new note; empty, it takes no room.
+function Note({ text }: { text: string | null }): React.JSX.Element {
+  return (
+    <p role="status" className="text-base empty:hidden">
       {text}
     </p>
-  ) : null
+  )
 }

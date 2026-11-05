@@ -2,6 +2,7 @@ import { useId } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { TranslationKey } from '@shared/lib/i18n'
 import type { ApprovalChoice, ChatPrompt } from '@features/chat/types'
+import { Button } from '@shared/ui/button'
 
 type Approval = Extract<ChatPrompt, { kind: 'approval' }>
 
@@ -38,18 +39,14 @@ export function ApprovalCard({
       {prompt.description && <p className="text-base">{prompt.description}</p>}
       <div className="flex flex-wrap gap-2">
         {offered.map(([choice, label]) => (
-          <button
+          <Button
             key={choice}
             type="button"
+            variant={choice === 'once' ? 'default' : 'secondary'}
             onClick={() => onAnswer(choice)}
-            className={
-              choice === 'once'
-                ? 'rounded-full bg-primary px-5 py-2 text-base text-primary-foreground'
-                : 'rounded-full bg-background px-5 py-2 text-base hover:bg-accent'
-            }
           >
             {t(label)}
-          </button>
+          </Button>
         ))}
       </div>
     </section>
