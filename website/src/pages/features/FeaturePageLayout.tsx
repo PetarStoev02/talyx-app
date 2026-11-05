@@ -58,8 +58,8 @@ export function FeaturePageLayout({
       <PageHero title={title} lead={lead}>
         {figure ?? (preview ? <AppScreenshot src={preview} alt={`Talyx: ${title}`} /> : null)}
       </PageHero>
-      {steps.length > 0 ? <HowItWorks heading={stepsHeading} steps={steps} /> : null}
-      {benefits.length > 0 ? <Benefits heading={benefitsHeading} benefits={benefits} /> : null}
+      <HowItWorks heading={stepsHeading} steps={steps} />
+      <Benefits heading={benefitsHeading} benefits={benefits} />
       <MoreFeatures related={related} />
       <DownloadSection />
     </>
