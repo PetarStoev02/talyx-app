@@ -51,9 +51,37 @@ check_install_file_content() {
   fi
 }
 
+# The update button shows the "## Highlights" section of the release body. It is written by hand in
+# the gitignored release-highlights.md (1-3 lines like "- **Lead.** Text."), and goes above the
+# notes GitHub generates. Writes the body to $2 and returns 0, or returns 1 when there is no file.
+# A line the app cannot read only warns: the app skips it.
+HIGHLIGHTS_FILE=release-highlights.md
+HIGHLIGHT_LINE='^- \*\*.+\.\*\* .+$'
+
+release_notes_file() {
+  local highlights="${1:-$HIGHLIGHTS_FILE}" out="$2" line
+  if [ ! -f "$highlights" ]; then
+    echo "! No $highlights: the update button will show no highlights." >&2
+    return 1
+  fi
+  while IFS= read -r line || [ -n "$line" ]; do
+    if [ -n "${line//[[:space:]]/}" ] && ! [[ "$line" =~ $HIGHLIGHT_LINE ]]; then
+      echo "! $highlights: the app will skip this line (want '- **Lead.** Text.'): $line" >&2
+    fi
+  done < "$highlights"
+  { printf '## Highlights\n\n'; cat "$highlights"; echo; } > "$out"
+}
+
 # Checked before the build so a bad file fails fast, and again on the copy that is uploaded,
 # since the file can change during the minutes the build takes.
 check_install_file
+
+NOTES_ARGS=()
+NOTES_TMP=$(mktemp)
+trap 'rm -f "$NOTES_TMP"' EXIT
+if release_notes_file "$HIGHLIGHTS_FILE" "$NOTES_TMP"; then
+  NOTES_ARGS=(--notes-file "$NOTES_TMP")
+fi
 
 # Every uploaded file must come from this build; electron-builder never cleans dist/.
 rm -rf dist
@@ -81,6 +109,7 @@ gh release create "v$VERSION" \
   --repo PetarStoev02/talyx-app \
   --draft \
   --title "Talyx $VERSION" \
+  "${NOTES_ARGS[@]}" \
   --generate-notes \
   dist/*.dmg "dist/$INSTALL_FILE" dist/SHA256SUMS
 echo "✅ Draft created. Review it, then publish: gh release edit v$VERSION --repo PetarStoev02/talyx-app --draft=false"
