@@ -38,7 +38,15 @@ const RETIRED = [
   /vision credits?/i,
   /plausible|@vercel\/analytics|datafast/i,
   /licen[cs]e key/i,
-  /100% offline|fully offline|works offline/i
+  /100% offline|fully offline|works offline/i,
+  // The file organizer's claims. Code like `.sort(` or `sortOrder` is not prose.
+  /(?<![.\w])sort(?:s|ed|ing)?\b(?!\()/i,
+  /watch[ -]folders?/i,
+  /smart local/i,
+  /your claude/i,
+  /\b0 bytes/i,
+  /\bundo\b/i,
+  /⌘\s*⇧\s*space/i
 ]
 
 /**
@@ -48,7 +56,9 @@ const RETIRED = [
 const REDIRECT_SOURCES: Record<string, string[]> = {
   [/refund/i.source]: ['website/vercel.json'],
   [/taxonom/i.source]: ['website/vercel.json'],
-  [/\bpricing\b/i.source]: ['website/vercel.json']
+  [/\bpricing\b/i.source]: ['website/vercel.json'],
+  [/(?<![.\w])sort(?:s|ed|ing)?\b(?!\()/i.source]: ['website/vercel.json'],
+  [/watch[ -]folders?/i.source]: ['website/vercel.json']
 }
 
 describe('website claims', () => {

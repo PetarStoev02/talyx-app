@@ -45,7 +45,7 @@ When you add an API key or a custom endpoint in Settings, Talyx passes it to the
 Every download the app makes itself comes from GitHub, from the releases of `PetarStoev02/talyx-app`. GitHub sees each request like any other web request.
 
 - **Release check.** Shortly after launch, and then once a day, Talyx asks GitHub whether a newer release exists.
-- **Update download.** When you click Download, Talyx downloads the installer for your computer and the release's `SHA256SUMS`. It checks the installer against `SHA256SUMS`, then opens it for you to run. Talyx never installs anything by itself. A Linux deb install downloads nothing: Talyx opens the release page instead.
+- **Update download.** When you click Download, Talyx downloads the installer for your computer and the release's `SHA256SUMS`. It checks the installer against `SHA256SUMS`, then opens it for you to run. Talyx never installs anything by itself. A Linux deb install downloads nothing: Talyx links to the release page instead.
 - **Engine install steps.** During first-run setup or an engine update, Talyx downloads the release's `engine-install.json` and checks it against a hash built into Talyx. The steps in it then download and install the engine.
 
 A link you click inside Talyx opens in your web browser.

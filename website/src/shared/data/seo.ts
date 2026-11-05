@@ -124,7 +124,7 @@ const featureMeta: Record<FeatureSlug, Pick<PageMeta, 'title' | 'description'>> 
       'Talyx runs no model of its own. Add a provider with an API key, an account sign-in or a custom endpoint, and every bot can use it.'
   },
   privacy: {
-    title: 'Privacy: Talyx | No Account, No Server, No Telemetry',
+    title: 'Privacy: Talyx | No Account, No Server, No Telemetry in the App',
     description:
       'Chats pass from Talyx to the engine on your computer, then to the model provider each bot uses. Talyx has no server and no telemetry.'
   }
