@@ -54,6 +54,19 @@ export interface Transcript {
   lastSeq: number
   // The replay epoch that sequence counts in; a new epoch restarts it.
   epoch: string | null
+  // How far the streaming turn's reply is applied, when the engine stamps its frames; null otherwise.
+  stream: StreamCursor | null
+}
+
+/**
+ * The engine (0.22.7 on) re-sends a turn's frames under new seqs on some roads (a reconnect replay,
+ * a superseded attempt), so a stamped turn is applied by position: the segment its deltas extend
+ * and the UTF-16 code units of it already applied.
+ */
+export interface StreamCursor {
+  turnId: string
+  segment: number
+  end: number
 }
 
 /** One row of a hosted room's log, as `groups.log` returns it. */
