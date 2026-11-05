@@ -1,10 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import { botChatId, botTitle } from '@features/bots/roster'
 import type { Bot } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
 import { useChat } from '@features/chat/store'
+import type { ChatItem } from '@features/chat/types'
+import { useRefocus } from '@shared/hooks/useRefocus'
+import type { TranslationKey } from '@shared/lib/i18n'
 import { ApprovalCard } from './ApprovalCard'
 import { ClarifyCard } from './ClarifyCard'
 import { ChatChips, Composer } from './Composer'
@@ -26,6 +29,9 @@ export function ChatPane({
   const chat = useChat((state) => state.chats[bot.name])
   const title = botTitle(bot)
   const chatId = botChatId(bot)
+  const composer = useRef<HTMLTextAreaElement>(null)
+  // An answered card unmounts with focus on it; the composer is where the conversation goes on.
+  useRefocus(composer, chat?.transcript?.prompts.length)
 
   // The roster learns the chat id after the first send; the open chat already has it.
   useEffect(() => {
@@ -39,6 +45,7 @@ export function ChatPane({
   const items = chat.transcript?.items ?? []
   const prompts = chat.transcript?.prompts ?? []
   const loadImage = (path: string): Promise<string> => actions.mediaUrl(bot.name, path)
+  const announced = announcement(items, prompts.length, chat.transcript?.running === true)
   const target: ComposerTarget = {
     placeholder: t('chat.placeholder').replace('{name}', title),
     running: chat.transcript?.running === true,
@@ -84,15 +91,18 @@ export function ChatPane({
         </div>
       )}
       {chat.error && (
-        <p className="mx-auto w-full max-w-3xl px-6 pb-2 text-base text-destructive" role="alert">
-          {chat.error}{' '}
-          <button
-            className="underline"
-            onClick={() => void actions.open(bot.name, chat.sessionId ?? chatId)}
-          >
-            {t('chat.retry')}
-          </button>
-        </p>
+        <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
+          <p className="text-destructive-text">
+            {t('chat.errorTitle')}{' '}
+            <button
+              className="underline underline-offset-4 hover:decoration-2"
+              onClick={() => void actions.open(bot.name, chat.sessionId ?? chatId)}
+            >
+              {t('action.tryAgain')}
+            </button>
+          </p>
+          <p className="text-sm text-muted-foreground wrap-anywhere">{chat.error}</p>
+        </div>
       )}
       {target.running && !prompts.length && (
         <p className="mx-auto flex w-full max-w-3xl items-center gap-2 px-6 pb-2 text-sm text-muted-foreground">
@@ -100,13 +110,22 @@ export function ChatPane({
           {t('chat.typing').replace('{name}', title)}
         </p>
       )}
-      {/* Always mounted, so a screen reader hears when a card asks for an answer. */}
-      <p className="sr-only" aria-live="polite">
-        {prompts.length ? t('chat.waiting').replace('{name}', title) : ''}
+      {/* Always mounted, so a screen reader hears each change: typing, a card, a reply. */}
+      <p className="sr-only" role="status">
+        {announced && t(announced).replace('{name}', title)}
       </p>
-      <Composer target={target}>
+      <Composer target={target} inputRef={composer}>
         <ChatChips chat={chat} actions={actions} />
       </Composer>
     </>
   )
+}
+
+// What the status line says for the newest turn; the first render's text is never read out.
+function announcement(items: ChatItem[], prompts: number, running: boolean): TranslationKey | null {
+  if (prompts) return 'chat.waiting'
+  if (running) return 'chat.typing'
+  const last = items.at(-1)
+  if (last?.kind !== 'bot') return null
+  return last.error ? 'chat.replyFailedAnnounce' : 'chat.replied'
 }

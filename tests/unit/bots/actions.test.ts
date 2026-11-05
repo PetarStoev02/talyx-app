@@ -5,7 +5,13 @@ import {
   runRosterMutation
 } from '../../../src/renderer/src/features/bots/actions'
 import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
-import { folderBots, pinnedBots } from '../../../src/renderer/src/features/bots/roster'
+import {
+  folderBots,
+  folderItems,
+  itemKey,
+  itemRef,
+  pinnedBots
+} from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { BOT_META_KEY, GROUPS_META_KEY, backendFor, engineDouble } from './engineDouble'
 import type { EngineDouble } from './engineDouble'
@@ -22,7 +28,7 @@ let backend: RosterBackend
 
 beforeEach(async () => {
   useRoster.setState({
-    snapshot: { bots: [], folders: [], rooms: [], roomFolders: {}, roomPins: [] },
+    snapshot: { bots: [], folders: [], rooms: [], roomFolders: {}, roomPins: [], itemOrder: {} },
     selection: null,
     error: null,
     saving: false,
@@ -58,6 +64,8 @@ const bot = (name: string): ReturnType<typeof roster>['bots'][number] =>
   roster().bots.find((item) => item.name === name)!
 const act = (operation: () => Promise<void>): Promise<void> => runRosterMutation(backend, operation)
 const pinNames = (): string[] => pinnedBots(roster().bots).map((item) => item.name)
+const rowKeys = (folderId: string | null): string[] =>
+  folderItems(roster(), folderId).map((item) => itemKey(itemRef(item)))
 
 describe('roster actions', () => {
   it('should pin a bot after the existing pins and return it to its folder when unpinned', async () => {
@@ -78,17 +86,83 @@ describe('roster actions', () => {
     expect(roster().roomFolders).toEqual({ 'team-room': null, 'clients-room': 'clients' })
   })
   it('should nest a folder and refuse to nest it inside its own child', async () => {
-    await act(() => rosterActions(backend).nest('clients', 'team'))
+    await act(() =>
+      rosterActions(backend).placeFolder({ id: 'clients', parentId: 'team', beforeId: null })
+    )
     expect(roster().folders).toContainEqual({ id: 'clients', name: 'Clients', parentId: 'team' })
-    await act(() => rosterActions(backend).nest('team', 'clients'))
+    await act(() =>
+      rosterActions(backend).placeFolder({ id: 'team', parentId: 'clients', beforeId: null })
+    )
     expect(useRoster.getState().error?.key).toBe('roster.errorFolderCycle')
     expect(roster().folders).toContainEqual({ id: 'team', name: 'Team' })
   })
-  it('should swap a folder with its next sibling and ignore a move past the end', async () => {
-    await act(() => rosterActions(backend).orderFolder('team', 1))
+  it('should put a dragged folder in front of the sibling it was dropped on, or last', async () => {
+    await act(() =>
+      rosterActions(backend).placeFolder({ id: 'clients', parentId: null, beforeId: 'team' })
+    )
     expect(roster().folders.map((folder) => folder.id)).toEqual(['clients', 'team'])
-    await act(() => rosterActions(backend).orderFolder('team', 1))
-    expect(roster().folders.map((folder) => folder.id)).toEqual(['clients', 'team'])
+    await act(() =>
+      rosterActions(backend).placeFolder({ id: 'clients', parentId: null, beforeId: null })
+    )
+    expect(roster().folders.map((folder) => folder.id)).toEqual(['team', 'clients'])
+  })
+  it('should rename a folder with the name trimmed', async () => {
+    await act(() => rosterActions(backend).renameFolder('team', '  Core team '))
+    expect(roster().folders).toContainEqual({ id: 'team', name: 'Core team' })
+  })
+  it('should move a deleted folder’s bots, rooms, subfolders and order up to its parent', async () => {
+    await act(() =>
+      rosterActions(backend).placeFolder({ id: 'clients', parentId: 'team', beforeId: null })
+    )
+    await act(() =>
+      rosterActions(backend).placeItem(
+        { kind: 'room', id: 'clients-room' },
+        { folderId: 'clients', before: 'bot:support' }
+      )
+    )
+    await act(() => rosterActions(backend).deleteFolder('clients'))
+    expect(roster().folders).toEqual([{ id: 'team', name: 'Team' }])
+    expect(rowKeys('team')).toEqual(['room:team-room', 'room:clients-room', 'bot:support'])
+  })
+  it('should move a top-level folder’s bots and subfolders to Unassigned when it is deleted', async () => {
+    await act(() =>
+      rosterActions(backend).placeFolder({ id: 'clients', parentId: 'team', beforeId: null })
+    )
+    await act(() => rosterActions(backend).deleteFolder('team'))
+    expect(roster().folders).toEqual([{ id: 'clients', name: 'Clients' }])
+    expect(rowKeys(null)).toEqual(['bot:default', 'room:team-room'])
+    expect(bot('analyst').meta.sectionId).toBeNull()
+    expect(pinNames()).toEqual(['analyst', 'writer', 'planner'])
+  })
+  it('should sort bots and rooms together in a folder and keep the order across reloads', async () => {
+    await act(() => rosterActions(backend).pin(bot('analyst')))
+    expect(rowKeys('team')).toEqual(['bot:analyst', 'room:team-room'])
+    await act(() =>
+      rosterActions(backend).placeItem(
+        { kind: 'room', id: 'team-room' },
+        { folderId: 'team', before: 'bot:analyst' }
+      )
+    )
+    await refreshRoster(backend)
+    expect(rowKeys('team')).toEqual(['room:team-room', 'bot:analyst'])
+  })
+  it('should move a bot dragged into another folder to where it was dropped, out of the pins', async () => {
+    await act(() =>
+      rosterActions(backend).placeItem(
+        { kind: 'bot', id: 'writer' },
+        { folderId: 'clients', before: 'bot:support' }
+      )
+    )
+    expect(rowKeys('clients')).toEqual(['bot:writer', 'bot:support', 'room:clients-room'])
+    expect(pinNames()).toEqual(['analyst', 'planner'])
+  })
+  it('should step a bot later and earlier in its folder and ignore a step past either end', async () => {
+    await act(() => rosterActions(backend).stepItem({ kind: 'bot', id: 'support' }, 1))
+    expect(rowKeys('clients')).toEqual(['room:clients-room', 'bot:support'])
+    await act(() => rosterActions(backend).stepItem({ kind: 'bot', id: 'support' }, 1))
+    expect(rowKeys('clients')).toEqual(['room:clients-room', 'bot:support'])
+    await act(() => rosterActions(backend).stepItem({ kind: 'bot', id: 'support' }, -1))
+    expect(rowKeys('clients')).toEqual(['bot:support', 'room:clients-room'])
   })
   it('should reorder pins, writing only the bots whose position changed', async () => {
     engine.configureCalls.length = 0
@@ -102,8 +176,15 @@ describe('roster actions', () => {
     expect(pinNames()).toEqual(['planner', 'analyst'])
   })
   it('should add a folder after the existing ones with its name trimmed', async () => {
-    await act(() => rosterActions(backend).addFolder('  Research  '))
+    await act(() => rosterActions(backend).addFolder('  Research  ', null))
     expect(roster().folders.map((folder) => folder.name)).toEqual(['Team', 'Clients', 'Research'])
+  })
+  it('should add a folder inside another one, and refuse a parent that is gone', async () => {
+    await act(() => rosterActions(backend).addFolder('Finance', 'clients'))
+    expect(roster().folders.find((folder) => folder.name === 'Finance')?.parentId).toBe('clients')
+    await act(() => rosterActions(backend).addFolder('Lost', 'gone'))
+    expect(useRoster.getState().error?.key).toBe('roster.errorFolderGone')
+    expect(roster().folders.some((folder) => folder.name === 'Lost')).toBe(false)
   })
   it('should hide a bot from its folder and restore it', async () => {
     await act(() => rosterActions(backend).hide(bot('support')))
@@ -123,7 +204,7 @@ describe('roster mutations', () => {
     const actions = rosterActions(backend)
     await Promise.all([
       act(() => actions.hide(bot('support'))),
-      act(() => actions.addFolder('Research'))
+      act(() => actions.addFolder('Research', null))
     ])
     expect(bot('support').meta?.hidden).toBe(true)
     expect(roster().folders.map((folder) => folder.name)).toContain('Research')

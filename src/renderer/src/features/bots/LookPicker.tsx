@@ -53,8 +53,10 @@ export function LookPicker({
                   title={t(`look.shape.${shape}`)}
                   onClick={() => onChange({ ...look, shape })}
                   className={cn(
-                    'rounded-lg p-1 hover:bg-accent',
-                    look.shape === shape && 'bg-accent'
+                    'rounded-lg p-1',
+                    look.shape === shape
+                      ? 'bg-foreground/10 outline-2 outline-foreground'
+                      : 'hover:bg-accent'
                   )}
                 >
                   <BlockAvatar shape={shape} hue={look.hue} size={CHOICE_SIZE} />
@@ -86,11 +88,11 @@ export function LookPicker({
               type="button"
               aria-pressed={look.shape === named.shape && look.hue === named.hue}
               onClick={() => onChange({ ...look, ...named })}
-              className="rounded-full bg-secondary px-3 py-1.5 text-sm font-medium hover:bg-accent aria-pressed:bg-accent"
+              className="h-9 rounded-full bg-secondary px-3 text-sm font-medium hover:bg-foreground/10 aria-pressed:bg-foreground aria-pressed:text-background"
             >
               {t('look.match')}
             </button>
-            <span className="text-sm text-muted-foreground">{t('look.matchHint')}</span>
+            <span className="text-base text-muted-foreground">{t('look.matchHint')}</span>
           </div>
         </>
       )}

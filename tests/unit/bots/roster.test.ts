@@ -7,8 +7,8 @@ import {
   moveFolder,
   normalizeFolders,
   pinnedBots,
+  placeKey,
   recoverFolders,
-  reorder,
   timeInWords
 } from '../../../src/renderer/src/features/bots/roster'
 import { t } from '../../../src/renderer/src/shared/lib/i18n'
@@ -23,7 +23,8 @@ const snapshot = (bots: Bot[]): RosterSnapshot => ({
   rooms: [],
   folders: [{ id: 'team', name: 'Team' }],
   roomFolders: {},
-  roomPins: []
+  roomPins: [],
+  itemOrder: {}
 })
 
 describe('roster layout', () => {
@@ -99,11 +100,13 @@ describe('roster layout', () => {
     ])
     expect(folders[1].parentId).toBe('a')
   })
-  it('should reorder without mutating and ignore an unknown drag source', () => {
-    const values = ['a', 'b', 'c']
-    expect(reorder(values, 0, 2)).toEqual(['b', 'c', 'a'])
-    expect(reorder(values, -1, 0)).toEqual(values)
-    expect(values).toEqual(['a', 'b', 'c'])
+  it.each([
+    ['in front of an item', 'c', 'a', ['c', 'a', 'b']],
+    ['to the end', 'a', null, ['b', 'c', 'a']],
+    ['to the end when the item in front is gone', 'a', 'x', ['b', 'c', 'a']],
+    ['into a list it was not in', 'd', 'b', ['a', 'd', 'b', 'c']]
+  ])('should place a key %s', (_case, key, before, expected) => {
+    expect(placeKey(['a', 'b', 'c'], key, before)).toEqual(expected)
   })
 })
 

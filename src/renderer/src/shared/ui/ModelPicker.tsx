@@ -1,58 +1,70 @@
 import { useState } from 'react'
 import { DropdownMenu } from 'radix-ui'
 import { ChevronDown } from 'lucide-react'
-import { toast } from 'sonner'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
+import { CheckItem, menuContentClass, menuLabelClass } from '@shared/ui/menu'
 
 export interface ModelPick {
   provider: string
   model: string
 }
 
+/** The menu's two placeholder lines: while the list loads, and when it did not. */
+export interface ModelPickerLabels {
+  loading: string
+  failed: string
+}
+
 /**
- * The engine's models by provider, loaded the first time the menu opens. `children` is the
- * menu's `DropdownMenu.Trigger`.
+ * The engine's models by provider, loaded the first time the menu opens; after a failed load the
+ * next open tries again. `children` is the menu's `DropdownMenu.Trigger`.
  */
 export function ModelPicker({
   load,
   selected,
   onSelect,
-  loadingLabel,
+  labels,
   children
 }: {
   load: () => Promise<ModelOptionProvider[]>
   selected: ModelPick | null
   onSelect: (pick: ModelPick) => void
-  loadingLabel: string
+  labels: ModelPickerLabels
   children: React.ReactNode
 }): React.JSX.Element {
   const [providers, setProviders] = useState<ModelOptionProvider[] | null>(null)
+  const [failure, setFailure] = useState<string | null>(null)
 
   function open(isOpen: boolean): void {
     if (!isOpen || providers) return
+    setFailure(null)
     load()
       .then(setProviders)
-      .catch((error: unknown) =>
-        toast.error(error instanceof Error ? error.message : String(error))
-      )
+      .catch((error: unknown) => setFailure(error instanceof Error ? error.message : String(error)))
   }
 
   return (
     <DropdownMenu.Root onOpenChange={open}>
       {children}
       <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          sideOffset={4}
-          className="z-50 max-h-80 min-w-56 overflow-y-auto rounded-xl bg-popover p-2 text-base text-popover-foreground shadow-lg"
-        >
-          {!providers && <p className="px-3 py-2 text-muted-foreground">{loadingLabel}</p>}
+        <DropdownMenu.Content sideOffset={4} align="start" className={menuContentClass}>
+          {failure ? (
+            <div role="alert" className="max-w-72 px-2.5 py-1.5">
+              <p>{labels.failed}</p>
+              <p className="text-sm text-muted-foreground wrap-anywhere">{failure}</p>
+            </div>
+          ) : (
+            !providers && (
+              <p role="status" className="px-2.5 py-1.5 text-muted-foreground">
+                {labels.loading}
+              </p>
+            )
+          )}
           {providers?.map((provider) => (
             <DropdownMenu.Group key={provider.slug}>
-              <DropdownMenu.Label className="px-3 pt-2 text-sm text-muted-foreground">
-                {provider.name}
-              </DropdownMenu.Label>
+              <DropdownMenu.Label className={menuLabelClass}>{provider.name}</DropdownMenu.Label>
               {(provider.models ?? []).map((model) => (
-                <MenuItem
+                <CheckItem
                   key={model}
                   label={model}
                   selected={selected?.model === model && selected.provider === provider.slug}
@@ -67,26 +79,6 @@ export function ModelPicker({
   )
 }
 
-export function MenuItem({
-  label,
-  selected,
-  onSelect
-}: {
-  label: string
-  selected: boolean
-  onSelect: () => void
-}): React.JSX.Element {
-  return (
-    <DropdownMenu.CheckboxItem
-      checked={selected}
-      onSelect={onSelect}
-      className="cursor-default rounded-lg px-3 py-2 outline-none data-[highlighted]:bg-accent data-[state=checked]:font-medium"
-    >
-      {label}
-    </DropdownMenu.CheckboxItem>
-  )
-}
-
 /** A model choice shown as a form field; `labels.empty` names the engine's default. */
 export function ModelField({
   labels,
@@ -94,7 +86,7 @@ export function ModelField({
   load,
   onSelect
 }: {
-  labels: { field: string; empty: string; loading: string }
+  labels: ModelPickerLabels & { field: string; empty: string }
   value: ModelPick | null
   load: (() => Promise<ModelOptionProvider[]>) | null
   onSelect: (pick: ModelPick) => void
@@ -105,7 +97,7 @@ export function ModelField({
       load={load ?? (() => Promise.resolve([]))}
       selected={value}
       onSelect={onSelect}
-      loadingLabel={labels.loading}
+      labels={labels}
     >
       <DropdownMenu.Trigger
         disabled={!load}

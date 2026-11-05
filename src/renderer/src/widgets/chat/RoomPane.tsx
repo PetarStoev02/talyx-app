@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import { BotAvatar } from '@features/bots/BotAvatar'
@@ -13,7 +13,10 @@ import { parseAttachmentKey, roomItems } from '@features/chat/roomLog'
 import { useRooms } from '@features/chat/roomStore'
 import type { RoomTask, RoomView } from '@features/chat/types'
 import { useRoomPolling } from '@features/chat/useRoomPolling'
+import { useRefocus } from '@shared/hooks/useRefocus'
 import type { TranslationKey } from '@shared/lib/i18n'
+import { listOf } from '@shared/lib/list'
+import { Button } from '@shared/ui/button'
 import { ModelPicker } from '@shared/ui/ModelPicker'
 import { ApprovalCard } from './ApprovalCard'
 import { Chip, Composer } from './Composer'
@@ -38,7 +41,10 @@ export function RoomPane({
   const lastSeq = view?.lastSeq ?? 0
   const working = view?.working ?? false
   const memberKey = room.members.map((member) => member.profile).join(',')
+  const composer = useRef<HTMLTextAreaElement>(null)
   useRoomPolling(actions, roomId)
+  // A settled card unmounts with focus on it; the composer is where the room goes on.
+  useRefocus(composer, view?.tasks.length)
 
   // Read on open and after each round: a member's room session exists from its first answer on.
   useEffect(() => {
@@ -133,20 +139,27 @@ export function RoomPane({
       </p>
       {/* The composer's Send or the card's own button is the retry for these. */}
       {view.actionError && (
-        <p className="mx-auto w-full max-w-3xl px-6 pb-2 text-base text-destructive" role="alert">
-          {view.actionError}
-        </p>
+        <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
+          <p className="text-destructive-text">{t('rooms.errorAction')}</p>
+          <p className="text-sm text-muted-foreground wrap-anywhere">{view.actionError}</p>
+        </div>
       )}
       {view.error && (
-        <p className="mx-auto w-full max-w-3xl px-6 pb-2 text-base text-destructive" role="alert">
-          {view.error}{' '}
-          <button className="underline" onClick={() => void actions.refresh(roomId)}>
-            {t('chat.retry')}
-          </button>
-        </p>
+        <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
+          <p className="text-destructive-text">
+            {t('rooms.errorLoad')}{' '}
+            <button
+              className="underline underline-offset-4 hover:decoration-2"
+              onClick={() => void actions.refresh(roomId)}
+            >
+              {t('action.tryAgain')}
+            </button>
+          </p>
+          <p className="text-sm text-muted-foreground wrap-anywhere">{view.error}</p>
+        </div>
       )}
       {view.live ? (
-        <Composer target={target}>
+        <Composer target={target} inputRef={composer}>
           <RoomModelMenu room={room} view={view} actions={actions} chat={chat} nameOf={nameOf} />
         </Composer>
       ) : (
@@ -181,7 +194,7 @@ function RoomModelMenu({
     try {
       const { skipped } = await actions.setModel(room.room_id, room.members, choice)
       if (skipped.length)
-        toast(t('rooms.modelSkipped').replace('{names}', skipped.map(nameOf).join(', ')))
+        toast(t('rooms.modelSkipped').replace('{names}', listOf(skipped.map(nameOf))))
     } finally {
       setSwitching(false)
     }
@@ -193,7 +206,7 @@ function RoomModelMenu({
       // The members' reading has model names only, so no provider entry is marked.
       selected={null}
       onSelect={(choice) => void switchAll(choice)}
-      loadingLabel={t('chat.modelsLoading')}
+      labels={{ loading: t('chat.modelsLoading'), failed: t('chat.modelsFailed') }}
     >
       {/* Before any member has answered there is no room session to switch. */}
       <Chip label={t('chat.model')} value={value} disabled={!shared || switching} />
@@ -222,8 +235,8 @@ function activityLine(
   const working = named('working')
   const queued = named('queued')
   return [
-    working.length ? t('rooms.working').replace('{names}', working.join(', ')) : '',
-    queued.length ? t('rooms.queued').replace('{names}', queued.join(', ')) : ''
+    working.length ? t('rooms.working').replace('{names}', listOf(working)) : '',
+    queued.length ? t('rooms.queued').replace('{names}', listOf(queued)) : ''
   ]
     .filter(Boolean)
     .join(' · ')
@@ -268,21 +281,17 @@ function TaskCard({
           : t(discard ? 'rooms.discardTitle' : 'rooms.retryTitle').replace('{name}', name)}
       </p>
       <div className="flex flex-wrap gap-2">
-        <button
+        <Button
           type="button"
+          variant={confirming ? 'destructive' : 'default'}
           onClick={() => (discard && !confirming ? setConfirming(true) : onSettle())}
-          className="rounded-full bg-primary px-5 py-2 text-base text-primary-foreground"
         >
           {t(discard ? 'rooms.discard' : 'rooms.retry')}
-        </button>
+        </Button>
         {confirming && (
-          <button
-            type="button"
-            onClick={() => setConfirming(false)}
-            className="rounded-full bg-background px-5 py-2 text-base hover:bg-accent"
-          >
+          <Button type="button" variant="secondary" onClick={() => setConfirming(false)}>
             {t('roster.cancel')}
-          </button>
+          </Button>
         )}
       </div>
     </section>

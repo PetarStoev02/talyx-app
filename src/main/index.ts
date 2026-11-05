@@ -65,7 +65,8 @@ function createWindow(): BrowserWindow {
     autoHideMenuBar: true,
     frame: false,
     titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 16, y: 16 },
+    // Centered on the 56px title row (h-14 in AppShell and PageHeader).
+    trafficLightPosition: { x: 16, y: 22 },
     backgroundColor: groundColor(),
     icon,
     webPreferences: {
@@ -173,7 +174,9 @@ app.whenReady().then(async () => {
       : `${pathToFileURL(join(__dirname, '../renderer')).href}/`
   )
 
-  app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
+  app.on('browser-window-created', (_, window) =>
+    optimizer.watchWindowShortcuts(window, { zoom: true })
+  )
 
   const splash = createSplashWindow()
   await waitForSplash(splash)

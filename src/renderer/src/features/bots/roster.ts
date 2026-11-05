@@ -1,9 +1,10 @@
 import type { TranslationKey } from '@shared/lib/i18n'
-import type { Bot, Folder, Room, RosterSnapshot } from './types'
+import type { Bot, Folder, Room, RosterItem, RosterItemRef, RosterSnapshot } from './types'
 
 export const FOLDERS_KEY = 'talyx-folders'
 export const ROOM_FOLDERS_KEY = 'talyx-room-folders'
 export const ROOM_PINS_KEY = 'talyx-room-pins'
+export const ITEM_ORDER_KEY = 'talyx-item-order'
 
 // Thrown for a roster problem the user can act on; `key` is its message in i18n.ts.
 export class RosterError extends Error {
@@ -185,10 +186,81 @@ export function moveFolder(folders: Folder[], id: string, parentId: string | nul
   )
 }
 
-export function reorder<T>(items: T[], from: number, to: number): T[] {
-  if (from < 0 || to < 0 || from >= items.length || to >= items.length) return items
-  const next = [...items]
-  const [item] = next.splice(from, 1)
-  next.splice(to, 0, item)
-  return next
+export function itemRef(item: RosterItem): RosterItemRef {
+  return item.kind === 'bot'
+    ? { kind: 'bot', id: item.bot.name }
+    : { kind: 'room', id: item.room.room_id }
+}
+
+/** The key of a bot or room in `itemOrder`. */
+export function itemKey(ref: RosterItemRef): string {
+  return `${ref.kind}:${ref.id}`
+}
+
+/** The folder a bot or room shows in: null for Unassigned or a folder that no longer exists. */
+export function itemFolder(snapshot: RosterSnapshot, ref: RosterItemRef): string | null {
+  const assigned =
+    ref.kind === 'bot'
+      ? snapshot.bots.find((bot) => bot.name === ref.id)?.meta.sectionId
+      : snapshot.roomFolders[ref.id]
+  return assigned && snapshot.folders.some((folder) => folder.id === assigned) ? assigned : null
+}
+
+/** A folder's key in `itemOrder`: its id, or '' for Unassigned. */
+export function orderKey(folderId: string | null): string {
+  return folderId ?? ''
+}
+
+/** A folder's bots and rooms as one list, in their dragged order. */
+export function folderItems(snapshot: RosterSnapshot, folderId: string | null): RosterItem[] {
+  const items: RosterItem[] = [
+    ...folderBots(snapshot, folderId).map((bot) => ({ kind: 'bot' as const, bot })),
+    ...folderRooms(snapshot, folderId).map((room) => ({ kind: 'room' as const, room }))
+  ]
+  const order = snapshot.itemOrder[orderKey(folderId)] ?? []
+  const rank = (item: RosterItem): number => {
+    const index = order.indexOf(itemKey(itemRef(item)))
+    return index < 0 ? order.length : index
+  }
+  // Array.sort is stable, so unlisted items keep the engine's order after the listed ones.
+  return items.sort((a, b) => rank(a) - rank(b))
+}
+
+/** `keys` with `key` moved in front of `before`, or to the end when `before` is null or absent. */
+export function placeKey(keys: string[], key: string, before: string | null): string[] {
+  const rest = keys.filter((item) => item !== key)
+  const at = before === null ? -1 : rest.indexOf(before)
+  return at < 0 ? [...rest, key] : [...rest.slice(0, at), key, ...rest.slice(at)]
+}
+
+/**
+ * The folder moved under `parentId` (null: top level), in front of the sibling `beforeId`, or
+ * last among its siblings. Siblings take their order from the layout array.
+ */
+export function placeFolder(
+  folders: Folder[],
+  move: { id: string; parentId: string | null; beforeId: string | null }
+): Folder[] {
+  const moved = moveFolder(folders, move.id, move.parentId)
+  const folder = moved.find((item) => item.id === move.id)!
+  const rest = moved.filter((item) => item.id !== move.id)
+  const at = move.beforeId === null ? -1 : rest.findIndex((item) => item.id === move.beforeId)
+  return at < 0 ? [...rest, folder] : [...rest.slice(0, at), folder, ...rest.slice(at)]
+}
+
+/** The layout without the folder; its subfolders move up to its parent. */
+export function removeFolder(folders: Folder[], id: string): Folder[] {
+  const gone = folders.find((folder) => folder.id === id)
+  if (!gone) throw new RosterError('roster.errorFolderGone')
+  return folders
+    .filter((folder) => folder.id !== id)
+    .map((folder) =>
+      folder.parentId === id
+        ? {
+            id: folder.id,
+            name: folder.name,
+            ...(gone.parentId ? { parentId: gone.parentId } : {})
+          }
+        : folder
+    )
 }

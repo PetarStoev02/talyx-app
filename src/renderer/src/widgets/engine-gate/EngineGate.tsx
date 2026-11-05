@@ -30,15 +30,20 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
       <h2 className="text-xl font-semibold text-foreground">
         {status.state === 'missing' ? t('engine.missingTitle') : t('engine.errorTitle')}
       </h2>
-      <p className="max-w-md text-base text-foreground">
-        {status.state === 'missing' ? t('engine.missingBody') : status.message}
-      </p>
-      <div className="flex items-center gap-4">
+      {status.state === 'missing' ? (
+        <p className="max-w-md text-base text-foreground">{t('engine.missingBody')}</p>
+      ) : (
+        <div className="max-w-md">
+          <p className="text-base text-foreground">{t('engine.errorNext')}</p>
+          <p className="text-sm text-muted-foreground wrap-anywhere">{status.message}</p>
+        </div>
+      )}
+      <div className="flex flex-wrap items-center justify-center gap-4">
         <Button className="px-5" disabled={checking} onClick={() => void check()}>
-          {t('engine.retry')}
+          {t('action.tryAgain')}
         </Button>
         <button
-          className="text-sm text-foreground underline underline-offset-4 disabled:opacity-50"
+          className="text-base text-foreground underline underline-offset-4 hover:decoration-2 disabled:opacity-50"
           disabled={checking}
           onClick={() => void pickPath()}
         >

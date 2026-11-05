@@ -35,7 +35,7 @@ export function Transcript({
 
   return (
     <div className="relative min-h-0 flex-1">
-      <div ref={scroller} onScroll={onScroll} className="h-full overflow-y-auto">
+      <div ref={scroller} onScroll={onScroll} className="scroll-y-stable h-full">
         <ol className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-6">
           {items.map((item, index) => (
             <li key={item.id || index} className="flex flex-col">
@@ -54,9 +54,9 @@ export function Transcript({
           type="button"
           aria-label={t('chat.scrollToBottom')}
           onClick={() => setAtEnd(true)}
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-secondary p-2 hover:bg-accent"
+          className="absolute bottom-4 left-1/2 inline-flex size-9 -translate-x-1/2 items-center justify-center rounded-full bg-secondary shadow-md hover:bg-foreground/10"
         >
-          <ArrowDown size={16} />
+          <ArrowDown size={18} />
         </button>
       )}
     </div>

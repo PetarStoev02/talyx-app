@@ -1,66 +1,46 @@
-import { Settings, Sparkles } from 'lucide-react'
-import { cn } from '@shared/lib/utils'
-import { Tooltip, TooltipTrigger, TooltipContent } from '@shared/ui/tooltip'
+import { Bot, Bug, Settings, Sparkles } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { ReleaseInfo } from '@shared/hooks/useAutoUpdater'
 import { NavButton } from './NavButton'
 
 const isMac = navigator.platform.toLowerCase().includes('mac')
+const mod = isMac ? '⌘' : 'Ctrl+'
 
+/**
+ * One row of icon buttons: the pages on the left, `end` (the roster's refresh) on the right.
+ * Without a roster (no engine yet) the Agents page gets a button too, as the way back to it.
+ */
 export function SidebarFooter({
-  collapsed,
-  release
+  release,
+  withRoster,
+  end
 }: {
-  collapsed: boolean
   release: ReleaseInfo | null
+  withRoster: boolean
+  end: React.ReactNode
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
+  const label = release && t('nav.updateVersion').replace('{version}', release.version)
 
   return (
-    <div className="flex flex-col gap-0.5 px-2 pb-2">
+    <div className="flex flex-col gap-1 px-3 pt-3 pb-4">
       {release && (
-        <UpdateButton
-          collapsed={collapsed}
-          label={t('nav.updateVersion').replace('{version}', release.version)}
-          onOpen={() => window.open(release.url, '_blank')}
-        />
-      )}
-      <NavButton
-        view="settings"
-        labelKey="nav.settings"
-        icon={Settings}
-        shortcut={isMac ? '⌘,' : 'Ctrl+,'}
-        collapsed={collapsed}
-      />
-    </div>
-  )
-}
-
-function UpdateButton({
-  collapsed,
-  label,
-  onOpen
-}: {
-  collapsed: boolean
-  label: string
-  onOpen: () => void
-}): React.JSX.Element {
-  return (
-    <Tooltip delayDuration={300}>
-      <TooltipTrigger asChild>
         <button
-          onClick={onOpen}
-          aria-label={collapsed ? label : undefined}
-          className={cn(
-            'flex items-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground',
-            collapsed ? 'mx-auto size-9 justify-center' : 'h-8 w-full gap-2.5 px-2 text-[13px]'
-          )}
+          onClick={() => window.open(release.url, '_blank')}
+          className="flex h-8 w-full items-center gap-2.5 rounded-full px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
-          <Sparkles className={cn('shrink-0', collapsed ? 'size-[18px]' : 'size-4')} />
-          {!collapsed && <span className="flex-1 truncate text-left">{label}</span>}
+          <Sparkles className="size-4 shrink-0" />
+          <span className="flex-1 truncate text-left">{label}</span>
         </button>
-      </TooltipTrigger>
-      <TooltipContent side="right">{label}</TooltipContent>
-    </Tooltip>
+      )}
+      <div className="flex items-center gap-1">
+        {!withRoster && (
+          <NavButton view="agents" labelKey="nav.agents" icon={Bot} shortcut={`${mod}1`} />
+        )}
+        <NavButton view="settings" labelKey="nav.settings" icon={Settings} shortcut={`${mod},`} />
+        <NavButton view="engine-debug" labelKey="nav.engineDebug" icon={Bug} shortcut={`${mod}2`} />
+        <span className="ml-auto">{end}</span>
+      </div>
+    </div>
   )
 }

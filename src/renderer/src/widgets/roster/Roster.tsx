@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { Plus, RefreshCw } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useRosterConnection } from '@features/bots/useRosterConnection'
 import type { RosterBackend } from '@features/bots/data'
 import { rosterActions, runRosterMutation } from '@features/bots/actions'
 import { botTitle, pinnedBots, pinnedRooms } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
-import type { Bot, Room } from '@features/bots/types'
+import type { Bot, Folder, Room } from '@features/bots/types'
 import { BotRow } from './BotRow'
 import { FolderGroup } from './FolderGroup'
 import { RoomRow } from './RoomRow'
@@ -14,9 +13,14 @@ import { ProblemMessage } from '@features/bots/ProblemMessage'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
 import { CreateBotDialog } from './CreateBotDialog'
 import { CreateRoomDialog } from './CreateRoomDialog'
-import { DeleteProfileDialog, DeleteRoomDialog, NewFolderDialog } from './RosterDialogs'
+import {
+  DeleteFolderDialog,
+  DeleteProfileDialog,
+  DeleteRoomDialog,
+  FolderNameDialog
+} from './RosterDialogs'
 import { rosterControls } from './rosterControls'
-import { RosterMenu } from './RosterMenu'
+import { useCreating } from './creating'
 import type { MenuAction } from './RosterMenu'
 
 // `backend` must be a stable reference (see useRosterConnection).
@@ -31,11 +35,14 @@ export function Roster({
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const state = useRoster()
-  const [newFolder, setNewFolder] = useState(false)
-  const [newBot, setNewBot] = useState(false)
-  const [newRoom, setNewRoom] = useState(false)
+  const { creating, setCreating } = useCreating()
+  const closeCreate = (): void => setCreating(null)
   const [deleting, setDeleting] = useState<Bot | null>(null)
   const [deletingRoom, setDeletingRoom] = useState<Room | null>(null)
+  const [renamingFolder, setRenamingFolder] = useState<Folder | null>(null)
+  const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null)
+  // The folder a new folder goes into, from that folder's menu.
+  const [subfolderOf, setSubfolderOf] = useState<Folder | null>(null)
   useRosterConnection(backend)
   const actions = rosterActions(backend)
   const run = (operation: () => Promise<void>): void => {
@@ -51,7 +58,7 @@ export function Roster({
     state.select({ kind: 'room', id: room.room_id })
     onSelect()
   }
-  const { botActions, roomActions, folderActions, dropOnFolder } = rosterControls({
+  const { botActions, roomActions, folderActions, drops } = rosterControls({
     actions,
     run,
     selectBot,
@@ -63,71 +70,128 @@ export function Roster({
       state.clearError()
       setDeletingRoom(room)
     },
+    setRenamingFolder: (folder) => {
+      state.clearError()
+      setRenamingFolder(folder)
+    },
+    setDeletingFolder: (folder) => {
+      state.clearError()
+      setDeletingFolder(folder)
+    },
+    setSubfolderOf: (folder) => {
+      state.clearError()
+      setSubfolderOf(folder)
+    },
     t
   })
-  const dialogOpen = !!deleting || !!deletingRoom || newFolder || newBot || newRoom
+  const dialogOpen =
+    !!deleting ||
+    !!deletingRoom ||
+    !!creating ||
+    !!renamingFolder ||
+    !!deletingFolder ||
+    !!subfolderOf
   return (
     <nav
       aria-label={t('roster.label')}
       aria-busy={state.loading || state.saving}
-      className="min-h-0 flex-1 overflow-y-auto px-3 pt-2"
+      className="flex min-h-0 flex-1 flex-col"
     >
-      {!dialogOpen && <ProblemBanner retry={reload} />}
-      {state.loading && (
-        <p role="status" className="p-2">
-          {t('roster.loading')}
-        </p>
-      )}
-      <PinnedGrid
-        botActions={botActions}
-        roomActions={roomActions}
-        selectBot={selectBot}
-        selectRoom={selectRoom}
-        orderPin={(from, to) => run(() => actions.orderPin(from, to))}
-      />
-      <FoldersHeader
-        reload={reload}
-        newFolder={() => {
-          state.clearError()
-          setNewFolder(true)
-        }}
-        newBot={() => {
-          state.clearError()
-          setNewBot(true)
-        }}
-        newRoom={() => {
-          state.clearError()
-          setNewRoom(true)
-        }}
-      />
-      {[...state.snapshot.folders.filter((folder) => !folder.parentId), null].map((folder) => (
-        <FolderGroup
-          key={folder?.id ?? 'unassigned'}
-          folder={folder}
+      {/* Problems and the pinned tiles stay put; only the folders scroll under them. The same
+          gutter as the scrolling part keeps the tiles lined up with the rows. */}
+      <div className="shrink-0 overflow-y-hidden px-3 pt-2 pb-3 [scrollbar-gutter:stable]">
+        {!dialogOpen && <ProblemBanner retry={reload} />}
+        {state.loading && (
+          <p role="status" className="p-2">
+            {t('roster.loading')}
+          </p>
+        )}
+        <PinnedGrid
           botActions={botActions}
-          folderActions={folderActions}
+          roomActions={roomActions}
           selectBot={selectBot}
           selectRoom={selectRoom}
-          dropOnFolder={dropOnFolder}
-          roomActions={roomActions}
+          orderPin={(from, to) => run(() => actions.orderPin(from, to))}
         />
-      ))}
-      <HiddenAgents restore={(bot) => run(() => actions.hide(bot))} />
-      {newFolder && (
-        <NewFolderDialog
-          onClose={() => setNewFolder(false)}
-          onCreate={(name) =>
+      </div>
+      <div className="scroll-y-stable min-h-0 flex-1 px-3 pb-3">
+        {[...state.snapshot.folders.filter((folder) => !folder.parentId), null].map((folder) => (
+          <FolderGroup
+            key={folder?.id ?? 'unassigned'}
+            folder={folder}
+            botActions={botActions}
+            folderActions={folderActions}
+            selectBot={selectBot}
+            selectRoom={selectRoom}
+            drops={drops}
+            roomActions={roomActions}
+          />
+        ))}
+        <HiddenAgents restore={(bot) => run(() => actions.hide(bot))} />
+      </div>
+      {creating === 'folder' && (
+        <FolderNameDialog
+          copy={{
+            title: t('roster.newFolder'),
+            hint: t('roster.newFolderHint'),
+            submit: t('roster.createFolder')
+          }}
+          onClose={closeCreate}
+          onSubmit={(name) =>
             run(async () => {
-              await actions.addFolder(name)
-              setNewFolder(false)
+              await actions.addFolder(name, null)
+              closeCreate()
             })
           }
         />
       )}
-      {newBot && (
-        <CreateBotDialog backend={backend} models={models} onClose={() => setNewBot(false)} />
+      {subfolderOf && (
+        <FolderNameDialog
+          copy={{
+            title: t('roster.newFolderIn').replace('{name}', subfolderOf.name),
+            hint: t('roster.newFolderHint'),
+            submit: t('roster.createFolder')
+          }}
+          onClose={() => setSubfolderOf(null)}
+          onSubmit={(name) =>
+            run(async () => {
+              await actions.addFolder(name, subfolderOf.id)
+              setSubfolderOf(null)
+            })
+          }
+        />
       )}
-      {newRoom && <CreateRoomDialog backend={backend} onClose={() => setNewRoom(false)} />}
+      {renamingFolder && (
+        <FolderNameDialog
+          copy={{
+            title: t('roster.renameFolder'),
+            hint: t('roster.renameFolderHint'),
+            submit: t('roster.renameFolder')
+          }}
+          initialName={renamingFolder.name}
+          onClose={() => setRenamingFolder(null)}
+          onSubmit={(name) =>
+            run(async () => {
+              await actions.renameFolder(renamingFolder.id, name)
+              setRenamingFolder(null)
+            })
+          }
+        />
+      )}
+      <DeleteFolderDialog
+        folder={deletingFolder}
+        onClose={() => setDeletingFolder(null)}
+        onDelete={(folder) =>
+          run(async () => {
+            await actions.deleteFolder(folder.id)
+            setDeletingFolder(null)
+          })
+        }
+      />
+      {creating === 'bot' && (
+        <CreateBotDialog backend={backend} models={models} onClose={closeCreate} />
+      )}
+      {creating === 'room' && <CreateRoomDialog backend={backend} onClose={closeCreate} />}
       <DeleteRoomDialog
         room={deletingRoom}
         onClose={() => setDeletingRoom(null)}
@@ -161,49 +225,9 @@ function ProblemBanner({ retry }: { retry: () => void }): React.JSX.Element | nu
   return (
     <div role="alert" className="rounded-xl bg-secondary p-3 text-base">
       <ProblemMessage problem={error} />
-      <button className="mt-2 underline" onClick={retry}>
-        {t('roster.retry')}
+      <button className="mt-2 underline underline-offset-4 hover:decoration-2" onClick={retry}>
+        {t('action.tryAgain')}
       </button>
-    </div>
-  )
-}
-
-function FoldersHeader({
-  reload,
-  newFolder,
-  newBot,
-  newRoom
-}: {
-  reload: () => void
-  newFolder: () => void
-  newBot: () => void
-  newRoom: () => void
-}): React.JSX.Element {
-  const t = useLanguage((s) => s.t)
-  const saving = useRoster((state) => state.saving)
-  return (
-    <div className="mt-4 flex items-center justify-between px-2">
-      <span className="text-base font-medium">{t('roster.folders')}</span>
-      <span className="flex gap-1">
-        <button
-          aria-label={t('roster.refresh')}
-          disabled={saving}
-          onClick={reload}
-          className="rounded-full p-2 hover:bg-accent"
-        >
-          <RefreshCw size={16} />
-        </button>
-        <RosterMenu
-          label={t('roster.add')}
-          disabled={saving}
-          icon={<Plus size={18} />}
-          actions={[
-            { label: t('create.title'), onSelect: newBot },
-            { label: t('roster.newRoom'), onSelect: newRoom },
-            { label: t('roster.newFolder'), onSelect: newFolder }
-          ]}
-        />
-      </span>
     </div>
   )
 }
@@ -275,7 +299,7 @@ function HiddenAgents({ restore }: { restore: (bot: Bot) => void }): React.JSX.E
           key={bot.name}
           disabled={saving}
           onClick={() => restore(bot)}
-          className="block py-2 text-base underline"
+          className="block py-2 text-base underline underline-offset-4 hover:decoration-2"
         >
           {t('roster.show').replace('{name}', botTitle(bot))}
         </button>

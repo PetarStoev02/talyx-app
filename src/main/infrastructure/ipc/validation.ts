@@ -1,10 +1,11 @@
 import { isAbsolute } from 'path'
 import { z } from 'zod/v4'
+import { SIDEBAR_WIDTH } from '../../../shared/sidebar'
 
 export const UserSettingsPartialSchema = z
   .object({
     theme: z.enum(['light', 'dark', 'system']),
-    sidebarCollapsed: z.boolean()
+    sidebarWidth: z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)
   })
   .partial()
 

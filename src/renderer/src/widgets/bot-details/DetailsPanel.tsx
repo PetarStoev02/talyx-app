@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Tabs } from 'radix-ui'
 import { X } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { runRosterMutation } from '@features/bots/actions'
@@ -19,7 +20,6 @@ import type { RosterProblem } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot } from '@features/bots/types'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
-import { cn } from '@shared/lib/utils'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
@@ -127,18 +127,19 @@ export function DetailsPanel({
   return (
     <aside
       aria-label={t('agents.details')}
-      className="tone-step flex w-[340px] max-w-[50%] shrink-0 flex-col"
+      // Beside the chat when the page has room for both; over it, from the right edge, when not.
+      className="tone-step absolute inset-y-0 right-0 z-10 flex w-[340px] max-w-full shrink-0 flex-col shadow-xl @3xl:static @3xl:max-w-[50%] @3xl:shadow-none"
     >
       <header className="relative flex flex-col items-center gap-2 px-6 pt-6 pb-4 text-center">
         <button
           aria-label={t('agents.closeDetails')}
           onClick={() => editProfile(null)}
-          className="absolute top-3 right-3 rounded-full p-2 hover:bg-accent"
+          className="absolute top-3 right-3 inline-flex size-9 items-center justify-center rounded-full hover:bg-foreground/10"
         >
           <X size={16} />
         </button>
         <BotAvatar bot={bot} place="hero" />
-        <h2 className="text-xl font-semibold">{botTitle(bot)}</h2>
+        <h2 className="max-w-full text-xl font-semibold wrap-break-word">{botTitle(bot)}</h2>
         <p className="text-sm text-muted-foreground">
           {[
             loaded?.description,
@@ -148,106 +149,110 @@ export function DetailsPanel({
             .join(' · ') || bot.name}
         </p>
       </header>
-      <div
-        role="tablist"
-        aria-label={t('details.sections')}
-        className="mx-6 flex rounded-full bg-secondary p-1"
+      <Tabs.Root
+        value={tab}
+        onValueChange={(value) => setTab(value as Tab)}
+        className="flex min-h-0 flex-1 flex-col"
       >
-        {TABS.map(([id, label]) => (
-          <button
-            key={id}
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className={cn(
-              'flex-1 rounded-full px-3 py-1.5 text-sm font-medium',
-              tab === id
-                ? 'bg-foreground text-background'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {t(label)}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel" className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-4">
-        {loadError ? (
-          <div role="alert">
-            <ProblemMessage problem={loadError} />
-            <button
-              className="mt-2 underline"
-              onClick={() => {
-                setLoadError(null)
-                setAttempt((n) => n + 1)
-              }}
+        <Tabs.List
+          aria-label={t('details.sections')}
+          className="mx-6 flex rounded-full bg-secondary p-1"
+        >
+          {TABS.map(([id, label]) => (
+            <Tabs.Trigger
+              key={id}
+              value={id}
+              className="flex-1 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:bg-foreground data-[state=active]:text-background"
             >
-              {t('roster.retry')}
-            </button>
-          </div>
-        ) : !draft ? (
-          <p role="status">{t('details.loading')}</p>
-        ) : tab === 'details' ? (
-          <div className="space-y-4">
-            {bot.name !== 'default' && (
+              {t(label)}
+            </Tabs.Trigger>
+          ))}
+        </Tabs.List>
+        {/* One panel for the selected tab; Radix names it after its tab. */}
+        <Tabs.Content
+          value={tab}
+          className="scroll-y-stable flex min-h-0 flex-1 flex-col px-6 py-4"
+        >
+          {loadError ? (
+            <div role="alert">
+              <ProblemMessage problem={loadError} />
+              <button
+                className="mt-2 underline underline-offset-4 hover:decoration-2"
+                onClick={() => {
+                  setLoadError(null)
+                  setAttempt((n) => n + 1)
+                }}
+              >
+                {t('action.tryAgain')}
+              </button>
+            </div>
+          ) : !draft ? (
+            <p role="status">{t('details.loading')}</p>
+          ) : tab === 'details' ? (
+            <div className="space-y-4">
+              {bot.name !== 'default' && (
+                <label className="block text-base">
+                  {t('details.title')}
+                  <Input
+                    value={draft.title}
+                    maxLength={100}
+                    placeholder={botTitle({ ...bot, meta: { ...bot.meta, title: undefined } })}
+                    onChange={(event) => setTitle(event.target.value)}
+                  />
+                </label>
+              )}
               <label className="block text-base">
-                {t('details.title')}
-                <Input
-                  value={draft.title}
-                  maxLength={100}
-                  placeholder={botTitle({ ...bot, meta: { ...bot.meta, title: undefined } })}
-                  onChange={(event) => setTitle(event.target.value)}
+                {t('details.description')}
+                <Textarea
+                  value={draft.description}
+                  rows={3}
+                  placeholder={t('details.descriptionHint')}
+                  onChange={(event) => update({ description: event.target.value })}
                 />
               </label>
-            )}
-            <label className="block text-base">
-              {t('details.description')}
+              <div className="text-base">
+                {t('details.model')}
+                <ModelField
+                  labels={{
+                    field: t('details.model'),
+                    empty: t('details.modelDefault'),
+                    loading: t('chat.modelsLoading'),
+                    failed: t('chat.modelsFailed')
+                  }}
+                  value={draft.model}
+                  load={models && (() => models(bot.name))}
+                  onSelect={(model) => update({ model })}
+                />
+              </div>
+              <RoutinesSection bot={bot} backend={backend} />
+            </div>
+          ) : tab === 'look' ? (
+            <LookPicker look={draft.look} profile={bot.name} onChange={setLook} />
+          ) : (
+            <label className="flex flex-1 flex-col text-base">
+              {t('details.soul')}
               <Textarea
-                value={draft.description}
-                rows={3}
-                placeholder={t('details.descriptionHint')}
-                onChange={(event) => update({ description: event.target.value })}
+                value={draft.soul}
+                spellCheck={false}
+                onChange={(event) => update({ soul: event.target.value })}
+                className="min-h-64 flex-1"
               />
             </label>
-            <div className="text-base">
-              {t('details.model')}
-              <ModelField
-                labels={{
-                  field: t('details.model'),
-                  empty: t('details.modelDefault'),
-                  loading: t('chat.modelsLoading')
-                }}
-                value={draft.model}
-                load={models && (() => models(bot.name))}
-                onSelect={(model) => update({ model })}
-              />
-            </div>
-            <RoutinesSection bot={bot} backend={backend} />
-          </div>
-        ) : tab === 'look' ? (
-          <LookPicker look={draft.look} profile={bot.name} onChange={setLook} />
-        ) : (
-          <label className="flex flex-1 flex-col text-base">
-            {t('details.soul')}
-            <Textarea
-              value={draft.soul}
-              spellCheck={false}
-              onChange={(event) => update({ soul: event.target.value })}
-              className="min-h-64 flex-1 font-mono text-sm"
-            />
-          </label>
-        )}
-      </div>
+          )}
+        </Tabs.Content>
+      </Tabs.Root>
       {error && (
         <div role="alert" className="px-6 pb-2">
           <ProblemMessage problem={error} />
         </div>
       )}
-      <footer className="flex justify-end gap-2 px-6 py-3">
-        <Button variant="ghost" onClick={() => editProfile(null)}>
-          {t('roster.cancel')}
-        </Button>
+      {/* Primary first, as in every dialog. */}
+      <footer className="flex gap-2 px-6 py-3">
         <Button disabled={!changed || saving} onClick={save}>
           {saving ? t('details.saving') : t('details.save')}
+        </Button>
+        <Button variant="ghost" onClick={() => editProfile(null)}>
+          {t('roster.cancel')}
         </Button>
       </footer>
       <Dialog open={!!confirm} onOpenChange={(open) => !open && keepModel()}>

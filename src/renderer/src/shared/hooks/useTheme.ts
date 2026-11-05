@@ -11,8 +11,12 @@ function resolveTheme(pref: ThemePreference): EffectiveTheme {
   return pref
 }
 
+// Transitions stay off for the frame the theme changes in, so every control repaints at once.
 function applyTheme(effective: EffectiveTheme): void {
-  document.documentElement.classList.toggle('dark', effective === 'dark')
+  const root = document.documentElement
+  root.classList.add('theme-switching')
+  root.classList.toggle('dark', effective === 'dark')
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('theme-switching')))
 }
 
 export function useTheme(): {

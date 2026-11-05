@@ -35,19 +35,20 @@ export function DefaultModelSection({
       }
     } catch (error) {
       setConfirm(null)
-      toast.error(failureText(t, error))
+      toast.error(failureText(t, error), { duration: Infinity })
     }
   }
 
   return (
     <section className="space-y-2">
-      <h2 className="text-sm font-semibold text-foreground">{t('providers.defaultTitle')}</h2>
-      <p className="text-sm text-muted-foreground">{t('providers.defaultHint')}</p>
+      <h2 className="text-xl font-semibold text-foreground">{t('providers.defaultTitle')}</h2>
+      <p className="text-base">{t('providers.defaultHint')}</p>
       <ModelField
         labels={{
           field: t('providers.defaultTitle'),
           empty: t('details.modelDefault'),
-          loading: t('chat.modelsLoading')
+          loading: t('chat.modelsLoading'),
+          failed: t('chat.modelsFailed')
         }}
         value={model}
         load={models && (() => models(backend.home))}

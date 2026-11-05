@@ -1,17 +1,18 @@
 import { app } from 'electron'
 import { isAbsolute, join } from 'path'
 import { readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { SIDEBAR_WIDTH, clampSidebarWidth } from '../../../shared/sidebar'
 
 export interface UserSettings {
   theme: 'light' | 'dark' | 'system'
-  sidebarCollapsed: boolean
+  sidebarWidth: number
   /** Absolute path to the engine's command, picked by the user; null means look it up. */
   enginePath: string | null
 }
 
 const defaults: UserSettings = {
   theme: 'system',
-  sidebarCollapsed: false,
+  sidebarWidth: SIDEBAR_WIDTH.initial,
   enginePath: null
 }
 
@@ -34,6 +35,7 @@ export function migrateSettings(raw: Record<string, unknown>): UserSettings {
   // Talyx runs this file: a hand-edited value that is not an absolute path is ignored.
   const path: unknown = settings.enginePath
   if (typeof path !== 'string' || !isAbsolute(path)) settings.enginePath = null
+  settings.sidebarWidth = clampSidebarWidth(settings.sidebarWidth)
   return settings
 }
 

@@ -3,11 +3,13 @@ import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useEngine } from '@app/providers/useEngine'
+import { useLanguage } from '@app/providers/useLanguage'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { senderProfile } from '@features/chat/transcript'
 import type { ChatItem } from '@features/chat/types'
+import { cn } from '@shared/lib/utils'
 
 // Links open in the browser through the window-open guard, never inside the app.
 const MARKDOWN_COMPONENTS: Components = {
@@ -27,9 +29,10 @@ export function MessageBubble({
   message: Message
   loadImage: (path: string) => Promise<string>
 }): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
   if (message.kind === 'notice')
     return (
-      <p className="text-sm text-muted-foreground whitespace-pre-wrap wrap-anywhere">
+      <p dir="auto" className="text-sm text-muted-foreground whitespace-pre-wrap wrap-anywhere">
         {message.text}
       </p>
     )
@@ -40,19 +43,33 @@ export function MessageBubble({
           <ChatImage key={path} path={path} loadImage={loadImage} />
         ))}
         {message.text && (
-          <p className="rounded-3xl bg-secondary px-4 py-2 text-base whitespace-pre-wrap wrap-anywhere">
+          <p
+            dir="auto"
+            className="rounded-3xl bg-secondary px-4 py-2 text-base whitespace-pre-wrap wrap-anywhere"
+          >
             {message.text}
           </p>
         )}
       </div>
     )
   const reply = (
-    <div className="chat-markdown chat-bubble max-w-[85%] self-start rounded-3xl bg-secondary px-4 py-3 text-base break-words">
+    <div
+      dir="auto"
+      className={cn(
+        'chat-markdown chat-bubble max-w-[85%] min-w-0 self-start rounded-3xl bg-secondary px-4 py-3 text-base break-words',
+        // The cursor sits after the last line of text, drawn by chat.css.
+        message.streaming && 'chat-streaming'
+      )}
+    >
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
         {message.text}
       </ReactMarkdown>
-      {message.streaming && <span aria-hidden="true" className="chat-cursor" />}
-      {message.error && <p className="mt-2 text-base text-destructive">{message.error}</p>}
+      {message.error && (
+        <div className="mt-2">
+          <p className="text-destructive-text">{t('chat.replyFailed')}</p>
+          <p className="text-sm text-muted-foreground wrap-anywhere">{message.error}</p>
+        </div>
+      )}
     </div>
   )
   if (!message.sender) return reply

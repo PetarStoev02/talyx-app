@@ -10,7 +10,7 @@ import { AgentsPage } from '@pages/agents'
 import { SettingsPage } from '@pages/settings'
 import { EngineDebugPage } from '@pages/engine-debug'
 import { TooltipProvider } from '@shared/ui/tooltip'
-import { Roster } from '@widgets/roster'
+import { Roster, RosterAdd, RosterRefresh } from '@widgets/roster'
 import { EngineSplash } from '@widgets/engine-gate'
 import { useEngine } from '@app/providers/useEngine'
 
@@ -35,13 +35,18 @@ function App(): React.JSX.Element {
   return (
     <TooltipProvider>
       <Toaster
-        position="bottom-right"
+        // Top right: at the bottom, toasts cover the composer's Send and Stop.
+        position="top-right"
         closeButton
+        // Errors wait to be dismissed; the rest go after 6 s, and hovering keeps any one open.
+        duration={6000}
         theme={effectiveTheme}
         // Important: sonner's own border rule sits outside the CSS layers, so a layered utility loses.
         toastOptions={{ className: 'border-0!' }}
       />
       <AppShell
+        titleEnd={rosterBackend && <RosterAdd />}
+        footerEnd={rosterBackend && <RosterRefresh backend={rosterBackend} />}
         roster={
           rosterBackend && (
             <Roster
@@ -52,10 +57,7 @@ function App(): React.JSX.Element {
           )
         }
       >
-        <main
-          key={currentView}
-          className="min-h-0 flex-1 overflow-hidden animate-in fade-in duration-200"
-        >
+        <main key={currentView} className="min-h-0 flex-1 overflow-hidden">
           {pages[currentView]}
         </main>
       </AppShell>

@@ -73,7 +73,7 @@ export function CreateBotDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent>
         <DialogTitle>{t('create.title')}</DialogTitle>
         <DialogDescription>{t('create.hint')}</DialogDescription>
         <form
@@ -113,7 +113,8 @@ export function CreateBotDialog({
               labels={{
                 field: t('details.model'),
                 empty: t('details.modelDefault'),
-                loading: t('chat.modelsLoading')
+                loading: t('chat.modelsLoading'),
+                failed: t('chat.modelsFailed')
               }}
               value={model}
               load={models && (() => models('default'))}

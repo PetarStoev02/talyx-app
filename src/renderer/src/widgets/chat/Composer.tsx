@@ -7,10 +7,14 @@ import type { ChatActions } from '@features/chat/chat'
 import type { ChatState } from '@features/chat/store'
 import { dataUrlOf, useDictation } from '@features/chat/useDictation'
 import { cn } from '@shared/lib/utils'
-import { MenuItem, ModelPicker } from '@shared/ui/ModelPicker'
+import { ModelPicker } from '@shared/ui/ModelPicker'
+import { CheckItem, menuContentClass } from '@shared/ui/menu'
 import type { TranslationKey } from '@shared/lib/i18n'
 
 const MAX_ROWS = 8
+// Every round icon button in the composer: one circle, one icon size.
+const iconButton = 'inline-flex size-9 shrink-0 items-center justify-center rounded-full'
+const ICON_SIZE = 18
 const REASONING_LEVELS: Array<[string, TranslationKey]> = [
   ['low', 'chat.reasoningLow'],
   ['medium', 'chat.reasoningMedium'],
@@ -38,9 +42,12 @@ export interface ComposerTarget {
 
 export function Composer({
   target,
+  inputRef,
   children
 }: {
   target: ComposerTarget
+  // The text field, for a pane that hands focus back to it.
+  inputRef?: React.Ref<HTMLTextAreaElement>
   // Chips between the + and the mic, such as the bot chat's model and reasoning level.
   children?: React.ReactNode
 }): React.JSX.Element {
@@ -54,7 +61,15 @@ export function Composer({
   const dictation = useDictation(
     target.transcribe,
     (words) => setText((current) => (current.trim() ? `${current}\n${words}` : words)),
-    (error) => toast.error(error instanceof Error ? error.message : String(error))
+    (error) =>
+      toast.error(
+        t(
+          error instanceof DOMException && error.name === 'NotAllowedError'
+            ? 'chat.micDenied'
+            : 'chat.dictationFailed'
+        ),
+        { description: error instanceof Error ? error.message : String(error), duration: Infinity }
+      )
   )
 
   async function send(): Promise<void> {
@@ -77,7 +92,7 @@ export function Composer({
         const attached = await target.upload(file, await dataUrlOf(file))
         setFiles((current) => [...current, attached])
       } catch {
-        toast.error(t('chat.imageFailed').replace('{name}', file.name))
+        toast.error(t('chat.imageFailed').replace('{name}', file.name), { duration: Infinity })
       }
     }
   }
@@ -114,7 +129,7 @@ export function Composer({
                   type="button"
                   aria-label={t('chat.removeImage').replace('{name}', image.name)}
                   onClick={() => setFiles((current) => current.filter((item) => item !== image))}
-                  className="rounded-full p-1 hover:bg-accent"
+                  className="rounded-full p-1 hover:bg-foreground/10"
                 >
                   <X size={14} />
                 </button>
@@ -123,6 +138,7 @@ export function Composer({
           </ul>
         )}
         <textarea
+          ref={inputRef}
           value={text}
           rows={1}
           aria-label={target.placeholder}
@@ -143,9 +159,9 @@ export function Composer({
             type="button"
             aria-label={t('chat.addImage')}
             onClick={() => picker.current?.click()}
-            className="rounded-full p-2 hover:bg-accent"
+            className={cn(iconButton, 'hover:bg-foreground/10')}
           >
-            <Plus size={18} />
+            <Plus size={ICON_SIZE} />
           </button>
           <input
             ref={picker}
@@ -174,15 +190,16 @@ export function Composer({
               disabled={dictation.state === 'transcribing' || dictation.state === 'starting'}
               onClick={dictation.toggle}
               className={cn(
-                'rounded-full p-2 hover:bg-accent',
+                iconButton,
+                'hover:bg-foreground/10 disabled:opacity-50',
                 dictation.state === 'recording' &&
                   'bg-primary text-primary-foreground hover:bg-primary'
               )}
             >
               {dictation.state === 'transcribing' ? (
-                <LoaderCircle size={18} className="animate-spin" />
+                <LoaderCircle size={ICON_SIZE} className="animate-spin" />
               ) : (
-                <Mic size={18} />
+                <Mic size={ICON_SIZE} />
               )}
             </button>
             {running ? (
@@ -190,18 +207,18 @@ export function Composer({
                 type="button"
                 aria-label={t('chat.stop')}
                 onClick={target.stop}
-                className="rounded-full bg-primary p-2 text-primary-foreground"
+                className={cn(iconButton, 'bg-primary text-primary-foreground')}
               >
-                <Square size={16} fill="currentColor" />
+                <Square size={ICON_SIZE - 4} fill="currentColor" />
               </button>
             ) : (
               <button
                 type="submit"
                 aria-label={t('chat.send')}
                 disabled={!text.trim() && !files.length}
-                className="rounded-full bg-primary p-2 text-primary-foreground disabled:opacity-50"
+                className={cn(iconButton, 'bg-primary text-primary-foreground disabled:opacity-50')}
               >
-                <ArrowUp size={16} />
+                <ArrowUp size={ICON_SIZE} />
               </button>
             )}
           </div>
@@ -244,7 +261,7 @@ function ModelMenu({
       load={() => actions.models(chat.profile)}
       selected={selected}
       onSelect={(pick) => void actions.setModel(chat.profile, pick)}
-      loadingLabel={t('chat.modelsLoading')}
+      labels={{ loading: t('chat.modelsLoading'), failed: t('chat.modelsFailed') }}
     >
       {/* A chat with no session yet uses the bot's own model; it can change after the first send. */}
       <Chip
@@ -273,12 +290,9 @@ function ReasoningMenu({
         disabled={!chat.sessionId}
       />
       <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          sideOffset={4}
-          className="z-50 min-w-40 rounded-xl bg-popover p-2 text-base text-popover-foreground shadow-lg"
-        >
+        <DropdownMenu.Content sideOffset={4} className={menuContentClass}>
           {REASONING_LEVELS.map(([level, label]) => (
-            <MenuItem
+            <CheckItem
               key={level}
               label={t(label)}
               selected={chat.info.reasoning === level}
@@ -305,7 +319,7 @@ export function Chip({
     <DropdownMenu.Trigger
       disabled={disabled}
       aria-label={`${label}: ${value}`}
-      className="flex max-w-48 items-center gap-1 rounded-full px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50 disabled:hover:bg-transparent"
+      className="flex h-9 max-w-48 items-center gap-1 rounded-full px-3 text-sm hover:bg-foreground/10 disabled:opacity-50 disabled:hover:bg-transparent"
     >
       <span className="truncate">{value}</span>
       <ChevronDown size={14} className="shrink-0" />

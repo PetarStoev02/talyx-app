@@ -4,6 +4,7 @@ import {
   FOLDERS_KEY,
   ROOM_FOLDERS_KEY,
   ROOM_PINS_KEY,
+  ITEM_ORDER_KEY,
   RosterError,
   normalizeFolders,
   recoverFolders
@@ -68,6 +69,7 @@ const metaSchema = z
   .catch({})
 const roomFoldersSchema = z.record(z.string(), z.string().nullable())
 const roomPinsSchema = z.array(z.string()).catch([])
+const itemOrderSchema = z.record(z.string(), z.array(z.string())).catch({})
 const profilesSchema = z.object({ profiles: z.array(profileSchema) })
 type ProfileRow = z.infer<typeof profileSchema>
 const roomsSchema = z.object({
@@ -103,7 +105,8 @@ export async function readRoster(backend: RosterBackend): Promise<RosterSnapshot
     ? storedRoomFolders.data
     : recoverRoomFolders(manager.ui_meta?.[backend.botGroupsMetaKey], rooms)
   const roomPins = roomPinsSchema.parse(manager.ui_meta?.[ROOM_PINS_KEY] ?? [])
-  return { bots, rooms, folders, roomFolders, roomPins }
+  const itemOrder = itemOrderSchema.parse(manager.ui_meta?.[ITEM_ORDER_KEY] ?? {})
+  return { bots, rooms, folders, roomFolders, roomPins, itemOrder }
 }
 
 export function hasSharedLayout(snapshot: RosterSnapshot): boolean {
@@ -149,6 +152,15 @@ export function saveRoomFolders(
     const stored = roomFoldersSchema.safeParse(value)
     return update(stored.success ? stored.data : fallback)
   })
+}
+
+export function saveItemOrder(
+  backend: RosterBackend,
+  update: (order: Record<string, string[]>) => Record<string, string[]>
+): Promise<void> {
+  return updateMetadata(backend, { profile: 'default', key: ITEM_ORDER_KEY }, (value) =>
+    update(itemOrderSchema.parse(value ?? {}))
+  )
 }
 
 export function saveRoomPins(

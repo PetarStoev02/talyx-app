@@ -53,6 +53,18 @@ export interface RosterSnapshot {
   roomFolders: Record<string, string | null>
   // Rooms pinned to the top of their folder, in order.
   roomPins: string[]
+  // Each folder's bots and rooms in the order dragged, by folder id ('' for Unassigned); keys
+  // come from rosterItemKey. An item missing from its folder's list shows after the listed ones.
+  itemOrder: Record<string, string[]>
+}
+
+/** A bot or a room as a row in a folder. */
+export type RosterItem = { kind: 'bot'; bot: Bot } | { kind: 'room'; room: Room }
+
+/** A bot (by profile) or a room (by room id), as a drag or a placement names it. */
+export interface RosterItemRef {
+  kind: 'bot' | 'room'
+  id: string
 }
 
 export type Selection = { kind: 'bot' | 'room'; id: string } | null

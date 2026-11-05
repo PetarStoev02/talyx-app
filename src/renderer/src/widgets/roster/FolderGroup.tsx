@@ -1,14 +1,20 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { folderBots, folderCount, folderRooms } from '@features/bots/roster'
+import { folderCount, folderItems, isWithin, itemKey, itemRef } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { Bot, Folder, Room } from '@features/bots/types'
+import { OverflowTooltip } from '@shared/ui/tooltip'
 import { BotRow } from './BotRow'
+import { DropSlot } from './DropSlot'
+import type { DropEdge } from './DropSlot'
+import { draggedItem, endRosterDrag, startRosterDrag } from './drag'
+import type { RosterDragItem } from './drag'
 import { RoomRow } from './RoomRow'
-import { ROSTER_DRAG } from './rosterControls'
+import type { RosterDrops } from './rosterControls'
+import { ContextMenuArea } from '@shared/ui/menu'
+import type { MenuAction } from '@shared/ui/menu'
 import { RosterMenu } from './RosterMenu'
-import type { MenuAction } from './RosterMenu'
 
 export interface FolderGroupProps {
   folder: Folder | null
@@ -17,65 +23,81 @@ export interface FolderGroupProps {
   selectBot: (bot: Bot) => void
   selectRoom: (room: Room) => void
   roomActions: (room: Room) => MenuAction[]
-  dropOnFolder: (data: string, folderId: string | null) => void
+  drops: RosterDrops
 }
 
 export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
-  const { folder, botActions, folderActions, selectBot, selectRoom, dropOnFolder } = props
+  const { folder, botActions, roomActions, selectBot, selectRoom, drops } = props
   const t = useLanguage((s) => s.t)
   const [collapsed, setCollapsed] = useState(false)
   const snapshot = useRoster((state) => state.snapshot)
   const saving = useRoster((state) => state.saving)
   const id = folder?.id ?? null
-  const bots = folderBots(snapshot, id)
-  const rooms = folderRooms(snapshot, id)
+  const items = folderItems(snapshot, id)
+  const keys = items.map((item) => itemKey(itemRef(item)))
   const children = snapshot.folders.filter((item) => item.parentId === id)
+  // A row takes bots and rooms; `after` is in front of the next row, or last.
+  const rowEdges = (item: RosterDragItem): DropEdge[] | null =>
+    saving || item.kind === 'folder' ? null : ['before', 'after']
+  const dropOnRow = (index: number) => (item: RosterDragItem, edge: DropEdge) =>
+    drops.item(item, {
+      folderId: id,
+      before: edge === 'before' ? keys[index] : (keys[index + 1] ?? null)
+    })
   return (
     <section
       aria-label={folder?.name ?? t('roster.unassigned')}
       className="min-w-0 py-2"
+      // The folder's empty space (its "No bots here" line, the gaps) takes a drop as "into, last".
       onDragOver={(event) => {
-        if (!saving && event.dataTransfer.types.includes(ROSTER_DRAG)) {
+        if (!saving && draggedItem()) {
           event.preventDefault()
           event.stopPropagation()
         }
       }}
       onDrop={(event) => {
+        const item = draggedItem()
         event.preventDefault()
         event.stopPropagation()
-        if (!saving) dropOnFolder(event.dataTransfer.getData(ROSTER_DRAG), id)
+        endRosterDrag()
+        if (!item || saving) return
+        if (item.kind === 'folder') drops.folder(item.id, { parentId: id, beforeId: null })
+        else drops.item(item, { folderId: id, before: null })
       }}
     >
       <FolderHeader
         folder={folder}
         collapsed={collapsed}
         toggle={() => setCollapsed(!collapsed)}
-        folderActions={folderActions}
+        folderActions={props.folderActions}
+        drops={drops}
       />
       {!collapsed && (
-        <div className="space-y-1">
-          {bots.map((bot) => (
-            <BotRow
-              key={bot.name}
-              bot={bot}
-              actions={botActions(bot)}
-              onSelect={() => selectBot(bot)}
-            />
-          ))}
-          {rooms.map((room) => (
-            <RoomRow
-              key={room.room_id}
-              room={room}
-              actions={props.roomActions(room)}
-              onSelect={() => selectRoom(room)}
-            />
+        // Indented so a row's avatar lines up under the folder's name, past its chevron.
+        <div className="mt-1 space-y-1 pl-6">
+          {items.map((item, index) => (
+            <DropSlot key={keys[index]} edges={rowEdges} onDrop={dropOnRow(index)}>
+              {item.kind === 'bot' ? (
+                <BotRow
+                  bot={item.bot}
+                  actions={botActions(item.bot)}
+                  onSelect={() => selectBot(item.bot)}
+                />
+              ) : (
+                <RoomRow
+                  room={item.room}
+                  actions={roomActions(item.room)}
+                  onSelect={() => selectRoom(item.room)}
+                />
+              )}
+            </DropSlot>
           ))}
           {children.map((child) => (
-            <div className="pl-3" key={child.id}>
+            <div key={child.id}>
               <FolderGroup {...props} folder={child} />
             </div>
           ))}
-          {bots.length + rooms.length + children.length === 0 && (
+          {items.length + children.length === 0 && (
             <p className="px-3 py-2 text-base">{t('roster.emptyFolder')}</p>
           )}
         </div>
@@ -88,46 +110,76 @@ function FolderHeader({
   folder,
   collapsed,
   toggle,
-  folderActions
+  folderActions,
+  drops
 }: {
   folder: Folder | null
   collapsed: boolean
   toggle: () => void
   folderActions: (folder: Folder) => MenuAction[]
+  drops: RosterDrops
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const snapshot = useRoster((state) => state.snapshot)
   const saving = useRoster((state) => state.saving)
+  const name = folder?.name ?? t('roster.unassigned')
+  // Bots and rooms drop into the folder; a folder goes in front of it (top part) or inside it.
+  // Unassigned is not a folder: a folder dropped on it goes to the top level, last.
+  const edges = (item: RosterDragItem): DropEdge[] | null => {
+    if (saving) return null
+    if (item.kind !== 'folder' || !folder) return ['inside']
+    if (item.id === folder.id || isWithin(snapshot.folders, folder.id, item.id)) return null
+    return ['before', 'inside']
+  }
+  const onDrop = (item: RosterDragItem, edge: DropEdge): void => {
+    if (item.kind !== 'folder')
+      return drops.item(item, { folderId: folder?.id ?? null, before: null })
+    if (!folder) return drops.folder(item.id, { parentId: null, beforeId: null })
+    drops.folder(
+      item.id,
+      edge === 'before'
+        ? { parentId: folder.parentId ?? null, beforeId: folder.id }
+        : { parentId: folder.id, beforeId: null }
+    )
+  }
+  // The whole header hovers as one rounded row, as a bot's row does; its `…` has its own hover.
   return (
-    <div
-      className="flex items-center"
-      draggable={!!folder && !saving}
-      onDragStart={(event) => {
-        if (folder) {
-          event.stopPropagation()
-          event.dataTransfer.setData(ROSTER_DRAG, JSON.stringify({ kind: 'folder', id: folder.id }))
-        }
-      }}
-    >
-      <button
-        className="flex min-w-0 flex-1 items-center gap-2 rounded-full px-2 py-2 text-left text-base font-medium hover:bg-accent"
-        aria-expanded={!collapsed}
-        onClick={toggle}
-      >
-        {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-        <span className="truncate">{folder?.name ?? t('roster.unassigned')}</span>
-        <span className="ml-auto tabular-nums">{folderCount(snapshot, folder?.id ?? null)}</span>
-      </button>
-      {folder ? (
-        <RosterMenu
-          label={t('roster.folderActionsFor').replace('{name}', folder.name)}
-          actions={folderActions(folder)}
-          disabled={saving}
-        />
-      ) : (
-        // Unassigned has no menu; the gap keeps its count in line with the folders above.
-        <span className="size-8 shrink-0" aria-hidden="true" />
-      )}
-    </div>
+    <DropSlot edges={edges} onDrop={onDrop}>
+      <ContextMenuArea actions={folder ? folderActions(folder) : []} disabled={!folder || saving}>
+        <div
+          className="group flex items-center rounded-xl pr-1 transition-colors hover:bg-accent"
+          draggable={!!folder && !saving}
+          onDragStart={(event) =>
+            folder && startRosterDrag(event, { kind: 'folder', id: folder.id })
+          }
+          onDragEnd={endRosterDrag}
+        >
+          <OverflowTooltip text={name}>
+            <button
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-xl px-2 py-2 text-left text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground"
+              aria-expanded={!collapsed}
+              onClick={toggle}
+            >
+              {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+              <span className="truncate">{name}</span>
+              <span className="ml-auto tabular-nums">
+                {folderCount(snapshot, folder?.id ?? null)}
+              </span>
+            </button>
+          </OverflowTooltip>
+          {folder ? (
+            <RosterMenu
+              label={t('roster.folderActionsFor').replace('{name}', folder.name)}
+              actions={folderActions(folder)}
+              disabled={saving}
+              className="size-8"
+            />
+          ) : (
+            // Unassigned has no menu; the gap keeps its count in line with the folders above.
+            <span className="size-8 shrink-0" aria-hidden="true" />
+          )}
+        </div>
+      </ContextMenuArea>
+    </DropSlot>
   )
 }

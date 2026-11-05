@@ -20,7 +20,7 @@ card, "approve" an approval card, "ask" a delegation line before the reply; anyt
 a short markdown reply. Check streaming, the cards, Stop, the model and reasoning chips, images,
 scroll-to-bottom and unread marks on a bot you leave while it replies.
 
-The details panel opens from the name pill or "Edit profile". Each profile has a synthetic
+The details panel opens from the name pill or "Edit bot" (right-click a bot). Each profile has a synthetic
 description, SOUL and model (`custom · 9-route-provider`); Analyst has two routines, one paused.
 Picking `paid-model` makes the double ask for confirmation, as the engine does for a costly
 model. Check that the panel pushes the chat, Save applies title, description, model and SOUL,

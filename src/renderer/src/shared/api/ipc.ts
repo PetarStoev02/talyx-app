@@ -2,7 +2,7 @@
 
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system'
-  sidebarCollapsed: boolean
+  sidebarWidth: number
 }
 
 export const settingsApi = {

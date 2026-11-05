@@ -31,7 +31,7 @@ interface RosterState {
 }
 
 export const useRoster = create<RosterState>((set) => ({
-  snapshot: { bots: [], folders: [], rooms: [], roomFolders: {}, roomPins: [] },
+  snapshot: { bots: [], folders: [], rooms: [], roomFolders: {}, roomPins: [], itemOrder: {} },
   selection: null,
   editingProfile: null,
   activity: {},

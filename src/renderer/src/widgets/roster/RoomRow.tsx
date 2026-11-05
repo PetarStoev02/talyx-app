@@ -1,14 +1,15 @@
 import { cn } from '@shared/lib/utils'
+import { ContextMenuArea } from '@shared/ui/menu'
+import { OverflowTooltip } from '@shared/ui/tooltip'
 import { useLanguage } from '@app/providers/useLanguage'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { useRoster } from '@features/bots/store'
 import type { Room } from '@features/bots/types'
-import { RosterMenu } from './RosterMenu'
-import { ROSTER_DRAG } from './rosterControls'
-import type { MenuAction } from './RosterMenu'
+import { endRosterDrag, startRosterDrag } from './drag'
+import type { MenuAction } from '@shared/ui/menu'
 
-// Three member avatars overlap; at this share of a bot tile's avatar they fit one tile's width.
-const PINNED_AVATAR_SHARE = 0.6
+// A row's avatar square: a bot's block, and a room's members clustered, in the same box.
+export const ROW_AVATAR_BOX = 28
 
 /** A room in a folder, or as a tile beside the pinned bots. */
 export function RoomRow({
@@ -37,50 +38,51 @@ export function RoomRow({
       ? t('roster.oneBot')
       : t('roster.bots').replace('{count}', String(room.members.length))
   return (
-    <div
-      className={cn(
-        'flex min-w-0 rounded-xl hover:bg-accent',
-        pinned && 'relative flex-col bg-secondary'
-      )}
-      draggable={!saving}
-      onDragStart={(event) =>
-        event.dataTransfer.setData(ROSTER_DRAG, JSON.stringify({ kind: 'room', id: room.room_id }))
-      }
-    >
-      <button
-        onClick={onSelect}
-        aria-pressed={selected}
-        aria-description={unread ? t('roster.statusNewMessages') : undefined}
+    // Right-click (or Shift+F10) opens the row's or tile's actions.
+    <ContextMenuArea actions={actions} disabled={saving}>
+      <div
+        // The same row as a bot's: the selection on the row, the hover on its button.
         className={cn(
-          'flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-left aria-pressed:bg-accent',
-          pinned && 'flex-col px-1 pt-8 text-center'
+          'flex min-w-0 rounded-xl',
+          pinned && 'relative flex-col bg-secondary',
+          selected && 'bg-foreground/10'
         )}
+        draggable={!saving}
+        onDragStart={(event) => startRosterDrag(event, { kind: 'room', id: room.room_id })}
+        onDragEnd={endRosterDrag}
       >
-        {pinned ? (
-          <span className="flex items-center" style={{ height: avatarSize }}>
-            <RoomAvatars
-              room={room}
-              bots={bots}
-              size={Math.round(avatarSize * PINNED_AVATAR_SHARE)}
-            />
-          </span>
-        ) : (
-          <RoomAvatars room={room} bots={bots} />
-        )}
-        <span className={cn('min-w-0 flex-1', pinned && 'w-full')} title={room.name}>
-          <span className="block truncate text-base font-medium">{room.name}</span>
-          <span className="block truncate text-base">
-            {pinned && unread ? t('roster.statusNewMessages') : count}
-          </span>
-        </span>
-        {unread && <span className="size-2 shrink-0 rounded-full bg-brand" aria-hidden="true" />}
-      </button>
-      <RosterMenu
-        compact={pinned}
-        label={t('roster.actionsFor').replace('{name}', room.name)}
-        disabled={saving}
-        actions={actions}
-      />
-    </div>
+        <OverflowTooltip text={room.name}>
+          <button
+            onClick={onSelect}
+            aria-current={selected || undefined}
+            aria-description={unread ? t('roster.statusNewMessages') : undefined}
+            className={cn(
+              'flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-left',
+              !selected && 'hover:bg-accent',
+              pinned && 'flex-col px-1 pt-5 pb-3 text-center'
+            )}
+          >
+            {/* The members share one avatar's square, so a room lines up with the bots. */}
+            <RoomAvatars room={room} bots={bots} cluster={pinned ? avatarSize : ROW_AVATAR_BOX} />
+            <span className={cn('min-w-0 flex-1', pinned && 'w-full')}>
+              <span
+                className={cn(
+                  'block truncate text-base',
+                  selected ? 'font-semibold' : 'font-medium'
+                )}
+              >
+                {room.name}
+              </span>
+              <span className="block truncate text-sm text-muted-foreground">
+                {pinned && unread ? t('roster.statusNewMessages') : count}
+              </span>
+            </span>
+            {unread && (
+              <span className="size-2 shrink-0 rounded-full bg-brand" aria-hidden="true" />
+            )}
+          </button>
+        </OverflowTooltip>
+      </div>
+    </ContextMenuArea>
   )
 }
