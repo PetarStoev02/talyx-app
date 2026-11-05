@@ -100,7 +100,8 @@ export function Roster({
       {/* Problems and the pinned tiles stay put; only the folders scroll under them. The same
           gutter as the scrolling part keeps the tiles lined up with the rows. */}
       <div className="shrink-0 overflow-y-hidden px-3 pt-2 pb-3 [scrollbar-gutter:stable]">
-        {!dialogOpen && <ProblemBanner retry={reload} />}
+        {/* A dialog or the details panel shows the roster's error itself; one place is enough. */}
+        {!dialogOpen && !state.editingProfile && <ProblemBanner retry={reload} />}
         {state.loading && (
           <p role="status" className="p-2">
             {t('roster.loading')}
