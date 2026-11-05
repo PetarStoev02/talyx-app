@@ -2,14 +2,15 @@ import { app, BrowserWindow, ipcMain, shell, type WebContents } from 'electron'
 import log from 'electron-log'
 import * as fs from 'fs/promises'
 import type { UpdateState } from '../../../shared/updater'
-import { downloadRelease, ReleaseDownloadError } from '../updater/releaseDownload'
+import { openInstaller } from '../updater/openInstaller'
+import { downloadRelease } from '../updater/releaseDownload'
 import { createUpdateStore } from '../updater/updateState'
 
 /** The Talyx update for every window; the release checks in index.ts feed it. */
 export const updates = createUpdateStore({
   download: (found, onProgress, signal) =>
     downloadRelease(found, { fetch, dir: app.getPath('downloads'), fs }, onProgress, signal),
-  open: openInstaller,
+  open: (file) => openInstaller(file, { platform: process.platform, shell, chmod: fs.chmod }),
   publish: (state) => {
     for (const win of BrowserWindow.getAllWindows()) emit(win.webContents, state)
   }
@@ -21,14 +22,6 @@ export function registerUpdaterIpc(): void {
   ipcMain.handle('updater:download', (): void => void updates.startDownload())
   ipcMain.handle('updater:cancel', (): void => updates.cancel())
   ipcMain.handle('updater:open-installer', (): Promise<void> => updates.openInstaller())
-}
-
-// Talyx is unsigned and cannot replace itself: the user runs the installer (a Linux AppImage is
-// shown in its folder, since it is the app itself, not an installer).
-async function openInstaller(file: string): Promise<void> {
-  if (process.platform === 'linux') return shell.showItemInFolder(file)
-  if (await shell.openPath(file))
-    throw new ReleaseDownloadError('other', 'The installer could not be opened')
 }
 
 // Never throws: it runs inside download progress, where a throw would fail the download.

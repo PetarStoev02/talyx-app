@@ -29,10 +29,16 @@ describe('settings:set', () => {
   })
 
   it('should tell the OS before saving a launch-at-login change', async () => {
-    loginItem.setLaunchAtLogin.mockResolvedValue(undefined)
+    loginItem.setLaunchAtLogin.mockResolvedValue(true)
     await set({ launchAtLogin: true })
     expect(loginItem.setLaunchAtLogin).toHaveBeenCalledWith(true, loginItem.deps)
     expect(store.set).toHaveBeenCalledWith({ launchAtLogin: true })
+  })
+
+  it('should save what the OS reports when it did not register the login item', async () => {
+    loginItem.setLaunchAtLogin.mockResolvedValue(false)
+    await set({ launchAtLogin: true })
+    expect(store.set).toHaveBeenCalledWith({ launchAtLogin: false })
   })
 
   it('should keep the saved setting and reject when the OS refuses', async () => {

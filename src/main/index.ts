@@ -12,7 +12,7 @@ import { closeEngineSockets, registerEngineIpc } from './infrastructure/ipc/engi
 import { registerUpdaterIpc, updates } from './infrastructure/ipc/updater.ipc'
 import { fetchLatestRelease } from './infrastructure/updater/releaseCheck'
 import { settingsStore } from './infrastructure/storage/SettingsStore'
-import { readLaunchAtLogin, systemLoginItemDeps } from './infrastructure/system/loginItem'
+import { syncLaunchAtLogin, systemLoginItemDeps } from './infrastructure/system/loginItem'
 import { ThemeSchema, validateInput, type Theme } from './infrastructure/ipc/validation'
 import { DevBridge } from './infrastructure/bridge/DevBridge'
 import icon from '../../resources/talyx-icon.png?asset'
@@ -228,7 +228,7 @@ function scheduleUpdateChecks(): void {
 async function adoptLoginItemState(): Promise<void> {
   if (is.dev) return
   try {
-    const enabled = await readLaunchAtLogin(systemLoginItemDeps())
+    const enabled = await syncLaunchAtLogin(systemLoginItemDeps())
     if (enabled !== settingsStore.store.launchAtLogin) settingsStore.set({ launchAtLogin: enabled })
   } catch (error) {
     log.warn('[Main] Could not read the launch-at-login state', error)

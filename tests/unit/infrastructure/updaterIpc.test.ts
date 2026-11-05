@@ -8,6 +8,7 @@ const electron = vi.hoisted(() => ({
   send: vi.fn(),
   openPath: vi.fn(async () => ''),
   showItemInFolder: vi.fn(),
+  chmod: vi.fn(async () => undefined),
   downloadRelease: vi.fn()
 }))
 
@@ -18,6 +19,10 @@ vi.mock('electron', () => ({
   BrowserWindow: {
     getAllWindows: () => [{ webContents: { send: electron.send, isDestroyed: () => false } }]
   }
+}))
+vi.mock('fs/promises', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  chmod: electron.chmod
 }))
 vi.mock('electron-log', () => ({ default: { warn: vi.fn(), info: vi.fn() } }))
 vi.mock('../../../src/main/infrastructure/updater/releaseDownload', async (importOriginal) => ({
@@ -110,13 +115,14 @@ describe('updater IPC', () => {
     await expect(invoke('updater:open-installer')).rejects.toThrow('could not be opened')
   })
 
-  it('should show the AppImage in its folder on Linux', async () => {
+  it('should make the AppImage executable and show it in its folder on Linux', async () => {
     Object.defineProperty(process, 'platform', { value: 'linux' })
     ipc.updates.found(RELEASE)
     await invoke('updater:download')
     await settle()
     await invoke('updater:open-installer')
 
+    expect(electron.chmod).toHaveBeenCalledWith(SAVED, 0o755)
     expect(electron.showItemInFolder).toHaveBeenCalledWith(SAVED)
     expect(electron.openPath).not.toHaveBeenCalled()
   })

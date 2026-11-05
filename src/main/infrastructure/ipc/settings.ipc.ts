@@ -9,8 +9,9 @@ export function registerSettingsIpc(): void {
   ipcMain.handle('settings:set', async (_event, rawPartial: unknown) => {
     const partial = validateInput(UserSettingsPartialSchema, rawPartial)
     // The OS goes first: when it refuses, nothing is saved and the caller sees the failure.
+    // What is saved is what the OS reports, which can differ from what was asked for.
     if (partial.launchAtLogin !== undefined) {
-      await setLaunchAtLogin(partial.launchAtLogin, systemLoginItemDeps())
+      partial.launchAtLogin = await setLaunchAtLogin(partial.launchAtLogin, systemLoginItemDeps())
     }
     settingsStore.set(partial)
     return settingsStore.store

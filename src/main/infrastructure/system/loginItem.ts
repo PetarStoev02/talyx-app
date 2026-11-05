@@ -98,14 +98,17 @@ async function setOnLinux(enabled: boolean, deps: LoginItemDeps): Promise<void> 
   await deps.fs.writeFile(path, autostartEntry(deps.env.APPIMAGE || deps.execPath))
 }
 
-export async function setLaunchAtLogin(enabled: boolean, deps: LoginItemDeps): Promise<void> {
-  if (!deps.packaged) return
+/** Applies the choice and returns what the OS now reports: macOS may not register an ad-hoc app. */
+export async function setLaunchAtLogin(enabled: boolean, deps: LoginItemDeps): Promise<boolean> {
+  if (!deps.packaged) return enabled
   try {
     if (deps.platform === 'darwin') deps.app.setLoginItemSettings({ openAtLogin: enabled })
     else if (deps.platform === 'linux') await setOnLinux(enabled, deps)
+    else return enabled
   } catch (error) {
     throw error instanceof LaunchAtLoginError ? error : new LaunchAtLoginError(error)
   }
+  return readLaunchAtLogin(deps)
 }
 
 /** What the OS does today, which a hand-removed login item or autostart entry can differ from. */
@@ -114,4 +117,14 @@ export async function readLaunchAtLogin(deps: LoginItemDeps): Promise<boolean> {
   if (deps.platform === 'darwin') return deps.app.getLoginItemSettings().openAtLogin
   if (deps.platform === 'linux') return deps.fs.exists(entryPath(deps))
   return false
+}
+
+/**
+ * The launch-time read. An enabled Linux entry is written again (idempotent) so its Exec follows
+ * an AppImage that has been moved since it was enabled.
+ */
+export async function syncLaunchAtLogin(deps: LoginItemDeps): Promise<boolean> {
+  const enabled = await readLaunchAtLogin(deps)
+  if (enabled && deps.platform === 'linux') await setLaunchAtLogin(true, deps)
+  return enabled
 }

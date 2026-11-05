@@ -7,6 +7,7 @@ import {
   autostartEntry,
   readLaunchAtLogin,
   setLaunchAtLogin,
+  syncLaunchAtLogin,
   type LoginItemDeps
 } from '../../../src/main/infrastructure/system/loginItem'
 
@@ -134,6 +135,43 @@ describe('setLaunchAtLogin on macOS', () => {
       throw new Error('denied')
     }
     await expect(setLaunchAtLogin(true, deps)).rejects.toBeInstanceOf(LaunchAtLoginError)
+  })
+})
+
+describe('setLaunchAtLogin result', () => {
+  it('should return what the OS reports when macOS does not register the item', async () => {
+    const { deps } = fakeDeps({ platform: 'darwin' })
+    deps.app.setLoginItemSettings = () => undefined
+    expect(await setLaunchAtLogin(true, deps)).toBe(false)
+  })
+
+  it.each([true, false])('should return %s once the OS has it', async (enabled) => {
+    expect(await setLaunchAtLogin(enabled, fakeDeps().deps)).toBe(enabled)
+    expect(await setLaunchAtLogin(enabled, fakeDeps({ platform: 'darwin' }).deps)).toBe(enabled)
+  })
+})
+
+describe('syncLaunchAtLogin', () => {
+  it('should point an enabled Linux entry at the AppImage where it is now', async () => {
+    const { deps, files } = fakeDeps({ env: { APPIMAGE: '/home/me/Old/Talyx.AppImage' } })
+    await setLaunchAtLogin(true, deps)
+    deps.env.APPIMAGE = '/home/me/New/Talyx.AppImage'
+
+    expect(await syncLaunchAtLogin(deps)).toBe(true)
+    expect(files.get(ENTRY_PATH)).toBe(autostartEntry('/home/me/New/Talyx.AppImage'))
+  })
+
+  it('should write nothing when Linux autostart is off', async () => {
+    const { deps, files } = fakeDeps()
+    expect(await syncLaunchAtLogin(deps)).toBe(false)
+    expect(files.size).toBe(0)
+  })
+
+  it('should only read the macOS login item', async () => {
+    const { deps, loginItem, files } = fakeDeps({ platform: 'darwin' })
+    loginItem.openAtLogin = true
+    expect(await syncLaunchAtLogin(deps)).toBe(true)
+    expect(files.size).toBe(0)
   })
 })
 

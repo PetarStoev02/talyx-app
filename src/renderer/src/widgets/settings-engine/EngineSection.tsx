@@ -52,7 +52,7 @@ export function EngineSection(): React.JSX.Element {
           </p>
         )}
       </div>
-      {summary.stale && summary.path && <RestartHint path={summary.path} recheck={check} />}
+      {summary.stale && summary.path && <RestartHint path={summary.path} recheck={null} />}
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" disabled={checking} onClick={() => void check()}>
           {t('settings.engineCheck')}
