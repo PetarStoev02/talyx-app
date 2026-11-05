@@ -1,8 +1,9 @@
-// Ported from the engine desktop app's electron/local-gateway.ts (tag v0.22.5): attach to the
+// Ported from the engine desktop app's electron/local-gateway.ts (tag v0.22.7): attach to the
 // per-host gateway with `gateway ensure --json` and mint one-use tickets through the profile's
 // control socket. Logic is kept as upstream wrote it, with these cuts (see README, Engine):
 // - no stale-owner restart: Talyx never owns, restarts or kills the gateway, it attaches as-is;
-// - no renderer dial bookkeeping: main opens the socket itself (engineSockets.ts);
+// - no renderer dial bookkeeping (nor its voice-socket dial paths): main opens the socket itself
+//   (engineSockets.ts);
 // - only the direct `<home>/gateway.sock` control socket; the long-path fallback directory and
 //   Windows minting (the engine's Python bridge) are not supported yet.
 import { spawn } from 'node:child_process'

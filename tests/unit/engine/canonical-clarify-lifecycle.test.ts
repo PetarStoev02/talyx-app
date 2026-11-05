@@ -1,4 +1,4 @@
-// Moved from the engine desktop app's canonical clarify lifecycle test (v0.22.5). Upstream drives
+// Moved from the engine desktop app's canonical clarify lifecycle test (v0.22.7). Upstream drives
 // its clarify store and card handler too; those are UI that Talyx writes in PR 4, so these cases
 // assert the client contract the card will use: one delivery per prompt, answered once.
 import { JsonRpcGatewayClient, type ServerRequest } from '@shared/engine/shared'
@@ -107,4 +107,38 @@ test('snapshots expose batch question params without losing already locked answe
       params: { session_id: 'waiting', questions, answers }
     }
   ])
+})
+
+test("a snapshot keeps the owner's server requests beside the projected prompts", () => {
+  const card = {
+    id: 'srq-1',
+    method: 'setup_beat',
+    params: { session_id: 'waiting', beat: 'name', card: {} }
+  }
+
+  const snapshot = new CanonicalDesktopProtocol().result(
+    'session.activate',
+    { session_id: 'waiting' },
+    {
+      session_id: 'waiting',
+      revision: 1,
+      execution_generation: 3,
+      open_requests: [card],
+      prompts: [
+        {
+          kind: 'approval',
+          prompt_id: 'approve-1',
+          command: 'ls',
+          choices: ['once', 'deny'],
+          execution_generation: 3
+        }
+      ]
+    }
+  )
+
+  expect(snapshot.open_requests.map((entry: { id: string }) => entry.id)).toEqual([
+    'srq-1',
+    'approve-1'
+  ])
+  expect(snapshot.open_requests[0]).toEqual(card)
 })
