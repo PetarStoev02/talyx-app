@@ -7,8 +7,9 @@ interface Redirect {
   destination: string
 }
 
-const { redirects } = JSON.parse(readFileSync('website/vercel.json', 'utf8')) as {
+const { redirects, headers } = JSON.parse(readFileSync('website/vercel.json', 'utf8')) as {
   redirects: Redirect[]
+  headers: { source: string; headers: { key: string; value: string }[] }[]
 }
 
 const REMOVED = [
@@ -32,6 +33,7 @@ const REMOVED = [
     'sort-history',
     'drag-and-drop',
     'assistant',
+    'quick-search',
     'privacy-offline',
     'custom-taxonomies',
     'cross-platform'
@@ -45,6 +47,7 @@ const REMOVED = [
 
 const SUCCESSOR: Record<string, string> = {
   '/features/assistant': '/features/manager',
+  '/features/quick-search': '/features/manager',
   '/features/privacy-offline': '/features/privacy',
   '/features/cross-platform': '/#download',
   '/legal/refund': '/legal/terms'
@@ -78,6 +81,23 @@ describe('website routes', () => {
       const sources = redirects.map(({ source }) => source)
 
       expect(ROUTES.filter((route) => sources.includes(route))).toEqual([])
+    })
+
+    it('should point every redirect at a live page', () => {
+      const dead = redirects.filter(
+        ({ destination }) => !ROUTES.includes(destination.split('#')[0])
+      )
+
+      expect(dead).toEqual([])
+    })
+
+    it('should keep the design page out of search results', () => {
+      const design = headers.find(({ source }) => source === '/design')
+
+      expect(design?.headers).toContainEqual({
+        key: 'X-Robots-Tag',
+        value: 'noindex, nofollow'
+      })
     })
 
     it('should list the home page, every feature, and the site pages', () => {

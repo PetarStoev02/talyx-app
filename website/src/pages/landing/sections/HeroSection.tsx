@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
 import { REPO_URL } from '../../../shared/data/release'
 import { CTA_LABEL, MIN_MACOS } from '../../../shared/data/offer'
