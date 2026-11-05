@@ -60,7 +60,7 @@ export function SetupFlow({
               <WelcomeScreen onStart={factsKnown ? () => next(null) : null} />
             )}
             {screen === 'engine' && (
-              <InstallEngine backend={setup} onReady={() => next('engine')} />
+              <InstallEngine backend={setup} onReady={() => next('engine')} onCancel={null} />
             )}
             {screen === 'provider' && (
               <ProviderStep providersForm={providersForm} onNext={() => next('provider')} />

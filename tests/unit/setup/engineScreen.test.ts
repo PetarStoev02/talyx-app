@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { EngineStatus } from '../../../src/shared/engine'
 import type { InstallSteps } from '../../../src/shared/setup'
-import { engineScreen, restartCommand, type EngineScreenFacts } from '@features/setup/engineScreen'
+import {
+  engineScreen,
+  restartCommand,
+  watchRun,
+  type EngineScreenFacts
+} from '@features/setup/engineScreen'
 
 const releaseUrl = 'https://example.test/releases/tag/v1.0.0'
 const missing: EngineStatus = { state: 'missing', enginePath: null }
@@ -205,5 +210,26 @@ describe('restartCommand', () => {
     expect(restartCommand("/Users/o'neil/bin/talyx-engine")).toBe(
       "'/Users/o'\\''neil/bin/talyx-engine' gateway restart"
     )
+  })
+})
+
+describe('watchRun', () => {
+  const cancelled = { kind: 'cancelled' } as const
+
+  it('should report a cancel of a run the screen saw, once', () => {
+    const seen = watchRun(false, true, null)
+    expect(seen).toEqual({ sawRun: true, cancelled: false })
+    const ended = watchRun(seen.sawRun, false, cancelled)
+    expect(ended).toEqual({ sawRun: false, cancelled: true })
+    expect(watchRun(ended.sawRun, false, cancelled).cancelled).toBe(false)
+  })
+
+  it('should not report a cancel left from an earlier visit', () => {
+    expect(watchRun(false, false, cancelled).cancelled).toBe(false)
+  })
+
+  it('should not report a run that ended another way', () => {
+    expect(watchRun(true, false, { kind: 'ok' }).cancelled).toBe(false)
+    expect(watchRun(true, false, { kind: 'failed', index: 0, code: 1 }).cancelled).toBe(false)
   })
 })

@@ -67,6 +67,15 @@ export function engineVersionFit(
   return 'same'
 }
 
+/**
+ * Attached and not older than this Talyx needs: the setup's engine step is done, and the footer
+ * offers no engine update. An unreadable version counts: the engine runs, so no one is sent to
+ * reinstall.
+ */
+export function isEngineCurrent(engine: EngineStatus): boolean {
+  return engine.state === 'attached' && engineVersionFit(engine.version) !== 'older'
+}
+
 export class UnrecognizedEngineError extends Error {
   constructor(versionLine: string) {
     super(`Unrecognized engine: \`--version\` printed "${versionLine.slice(0, 80)}"`)

@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { useEngine } from '@app/providers/useEngine'
 import { useLanguage } from '@app/providers/useLanguage'
 import { reportError } from '@shared/lib/report'
-import { engineScreen } from './engineScreen'
+import { engineScreen, watchRun } from './engineScreen'
 import {
   AttachError,
   EngineOlder,
@@ -19,14 +19,17 @@ import { Waiting } from './ScreenParts'
 
 /**
  * Finding, installing and checking the engine (the setup's screens 2 to 6b), in the setup flow
- * and in the engine gate. `onReady` is Continue once an engine is found.
+ * and in the engine gate. `onReady` is Continue once an engine is found; `onCancel`, when given,
+ * runs once an install started here is cancelled (the gate then shows what it showed before).
  */
 export function InstallEngine({
   backend,
-  onReady
+  onReady,
+  onCancel
 }: {
   backend: SetupBackend
   onReady: () => void
+  onCancel: (() => void) | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const status = useEngine((s) => s.status)
@@ -38,6 +41,7 @@ export function InstallEngine({
   const [wantsInstall, setWantsInstall] = useState(false)
   // Update (screen 6b) runs the install as soon as the steps are there.
   const installWhenReady = useRef(false)
+  const sawRun = useRef(false)
   const screen = engineScreen({ status, checking, wantsInstall, steps, running, exit })
 
   // The install store outlives this screen: an earlier visit's result must not decide this one.
@@ -54,6 +58,12 @@ export function InstallEngine({
     if (screen.kind === 'commands' && installWhenReady.current) startInstall(backend)
     if (screen.kind !== 'fetching') installWhenReady.current = false
   }, [screen.kind, backend])
+
+  useEffect(() => {
+    const watch = watchRun(sawRun.current, running, exit)
+    sawRun.current = watch.sawRun
+    if (watch.cancelled) onCancel?.()
+  }, [running, exit, onCancel])
 
   const install = (): void => startInstall(backend)
   const recheck = (): void => void useEngine.getState().check()

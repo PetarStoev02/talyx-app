@@ -1,4 +1,4 @@
-import { engineVersionFit, type EngineStatus } from '../../../../shared/engine'
+import { isEngineCurrent, type EngineStatus } from '../../../../shared/engine'
 
 export type SetupStep = 'engine' | 'provider' | 'bot'
 
@@ -66,12 +66,4 @@ export function setupVisibility(
 function isDone(step: SetupStep, facts: SetupFacts): boolean {
   if (step === 'engine') return isEngineCurrent(facts.engine)
   return step === 'provider' ? facts.hasProvider : facts.hasOwnBot
-}
-
-/**
- * Attached and not older than this Talyx needs: the setup's engine step is done, and the gate shows
- * no update notice. An unreadable version counts: the engine runs, so no one is sent to reinstall.
- */
-export function isEngineCurrent(engine: EngineStatus): boolean {
-  return engine.state === 'attached' && engineVersionFit(engine.version) !== 'older'
 }

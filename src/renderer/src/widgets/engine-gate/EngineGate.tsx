@@ -27,9 +27,9 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
   const pickPath = useEngine((s) => s.pickPath)
   const everConnected = useEngine((s) => s.everConnected)
   const setup = useSetupBackend()
-  // Install the engine: the setup's engine screens, until their Continue (or Continue anyway). An
-  // attach error shows them too: their error screen links the install. The footer's update button
-  // asks for them when the engine is older than this Talyx needs.
+  // Install the engine: the setup's engine screens, until their Continue (or Continue anyway) or a
+  // cancelled install. An attach error shows them too: their error screen links the install. The
+  // footer's update button asks for them when the engine is older than this Talyx needs.
   const installing = useUpdates((s) => s.engineInstallRequested)
   const requestEngineInstall = useUpdates((s) => s.requestEngineInstall)
   const clearEngineInstall = useUpdates((s) => s.clearEngineInstall)
@@ -45,7 +45,11 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
     return (
       <div className="scroll-y-stable flex h-full flex-1 flex-col items-center px-6 py-8">
         <div className="my-auto flex w-full flex-col items-center">
-          <InstallEngine backend={setup} onReady={clearEngineInstall} />
+          <InstallEngine
+            backend={setup}
+            onReady={clearEngineInstall}
+            onCancel={clearEngineInstall}
+          />
         </div>
       </div>
     )

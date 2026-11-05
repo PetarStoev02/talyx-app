@@ -28,7 +28,16 @@ const failureKeys: Record<UpdateFailure, TranslationKey> = {
 }
 
 type TalyxState = Extract<UpdateItem, { kind: 'talyx' }>['state']
-type Look = 'pending' | 'downloading' | 'installing' | 'ready'
+type Look = 'pending' | 'engine' | 'downloading' | 'installing' | 'ready'
+
+// The button's name says what it shows, as its icon does.
+const lookLabels: Record<Look, TranslationKey> = {
+  pending: 'update.labelPending',
+  engine: 'update.labelEngine',
+  downloading: 'update.labelDownloading',
+  installing: 'update.labelInstalling',
+  ready: 'update.labelReady'
+}
 
 /**
  * The footer's update button: a dot while something is pending, a ring while it downloads or
@@ -44,6 +53,7 @@ export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Elem
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const look = buttonLook(items, engineInstalling)
   const talyx = items.find((item) => item.kind === 'talyx')?.state
+  const percent = talyx?.kind === 'downloading' ? Math.floor(fraction(talyx) * 100) : 0
 
   useEffect(() => () => clearTimeout(timer.current), [])
 
@@ -65,7 +75,7 @@ export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Elem
     <Popover open={open} onOpenChange={(next) => show(next, true)}>
       <PopoverTrigger asChild>
         <button
-          aria-label={t('update.label')}
+          aria-label={t(lookLabels[look]).replace('{percent}', String(percent))}
           onPointerEnter={(event) => hover(event, true)}
           onPointerLeave={(event) => hover(event, false)}
           onClick={(event) => {
@@ -112,7 +122,8 @@ function buttonLook(items: UpdateItem[], engineInstalling: boolean): Look {
   if (first?.kind === 'engine' && engineInstalling) return 'installing'
   const talyx = items.find((item) => item.kind === 'talyx')?.state
   if (talyx?.kind === 'downloading') return 'downloading'
-  return first?.kind === 'talyx' && first.state.kind === 'ready' ? 'ready' : 'pending'
+  if (first?.kind === 'engine') return 'engine'
+  return first?.state.kind === 'ready' ? 'ready' : 'pending'
 }
 
 function fraction(state: Extract<TalyxState, { kind: 'downloading' }>): number {
@@ -130,7 +141,7 @@ function ButtonIcon({ look, fraction }: { look: Look; fraction: number }): React
   return (
     <>
       <Download aria-hidden="true" className="size-[18px]" />
-      {look === 'pending' && (
+      {(look === 'pending' || look === 'engine') && (
         <span className="absolute top-2 right-2 size-1.5 rounded-full bg-foreground" />
       )}
       {look === 'ready' && (

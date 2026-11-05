@@ -1,6 +1,6 @@
 import {
   EXPECTED_ENGINE_VERSION,
-  engineVersionFit,
+  isEngineCurrent,
   type EngineStatus
 } from '../../../../shared/engine'
 import type { UpdateState } from '../../../../shared/updater'
@@ -16,8 +16,7 @@ export type UpdateItem =
  */
 export function updateItems(engine: EngineStatus | null, update: UpdateState): UpdateItem[] {
   const items: UpdateItem[] = []
-  // The same test as the setup's engine step (isEngineCurrent), read from shared: features stay apart.
-  if (engine?.state === 'attached' && engineVersionFit(engine.version) === 'older')
+  if (engine?.state === 'attached' && !isEngineCurrent(engine))
     items.push({ kind: 'engine', installed: engine.version, pinned: EXPECTED_ENGINE_VERSION })
   if (update.kind !== 'none') items.push({ kind: 'talyx', state: update })
   return items

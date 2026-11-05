@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { EngineStatus } from '../../../src/shared/engine'
+import { isEngineCurrent, type EngineStatus } from '../../../src/shared/engine'
 
 const settings = vi.hoisted(() => ({ get: vi.fn(), set: vi.fn() }))
 vi.mock('@shared/api/ipc', () => ({ settingsApi: settings }))
@@ -7,7 +7,6 @@ vi.mock('@shared/api/ipc', () => ({ settingsApi: settings }))
 import {
   firstUndoneStep,
   hasProvider,
-  isEngineCurrent,
   knownFirstStep,
   setupVisibility,
   stepAfter

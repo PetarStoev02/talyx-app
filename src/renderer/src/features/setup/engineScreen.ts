@@ -69,6 +69,19 @@ function foundScreen(status: EngineStatus): EngineScreen {
   }
 }
 
+/**
+ * Follows the install runs a screen sees: `cancelled` once, when a run it saw ends in a cancel. A
+ * cancel left in the store from an earlier visit does not count: that screen never saw it run.
+ */
+export function watchRun(
+  sawRun: boolean,
+  running: boolean,
+  exit: InstallExit | null
+): { sawRun: boolean; cancelled: boolean } {
+  if (running) return { sawRun: true, cancelled: false }
+  return { sawRun: false, cancelled: sawRun && exit?.kind === 'cancelled' }
+}
+
 /** The command that restarts the gateway of the engine at `path`, single-quoted for a POSIX shell. */
 export function restartCommand(path: string): string {
   return `'${path.replaceAll("'", "'\\''")}' gateway restart`
