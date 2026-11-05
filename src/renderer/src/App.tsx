@@ -30,7 +30,7 @@ function App(): React.JSX.Element {
   const pages = {
     agents: <AgentsPage chat={chat} roster={rosterBackend} />,
     'engine-debug': <EngineDebugPage />,
-    settings: <SettingsPage providers={providers} models={chat?.models ?? null} />
+    settings: <SettingsPage providers={providers} chat={chat} />
   }
 
   if (!engineKnown) return <EngineSplash />

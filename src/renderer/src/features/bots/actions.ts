@@ -22,6 +22,9 @@ import {
 } from './roster'
 import type { RosterProblem } from './roster'
 import { useRoster } from './store'
+import type { RosterState } from './store'
+import { sameJson } from '@shared/lib/utils'
+import { keepDetails } from './details'
 import type { Bot, Folder, Room, RosterItemRef, RosterSnapshot } from './types'
 
 export interface RosterActions {
@@ -61,37 +64,101 @@ export async function refreshRoster(backend: RosterBackend): Promise<void> {
 
 // A bot hidden or deleted on another client must not stay selected. A chat that moved since the
 // last snapshot got a reply, including from sessions this window never opened (bot deliveries).
-// A room whose log grew past what was last read has new messages.
+// A room whose log grew past what was last read has new messages. Marks of deleted bots and rooms
+// go, so a new bot with a deleted one's name starts clean.
 // ponytail: the log also counts rows the transcript hides (settled turns, finished rounds), so a
 // room left just before those land can show a dot with nothing new; count only messages if it bites.
-export function applySnapshot(snapshot: RosterSnapshot): void {
-  const { selection, seen, roomSeen, markUnread, markRoomUnread } = useRoster.getState()
-  const nextSeen: Record<string, number> = {}
+export function applySnapshot(next: RosterSnapshot): void {
+  const state = useRoster.getState()
+  const { selection } = state
+  const snapshot = reuseSnapshot(state.snapshot, next)
+  const bots = new Set(snapshot.bots.map((bot) => bot.name))
+  const rooms = new Set(snapshot.rooms.map((room) => room.room_id))
+  keepDetails(bots)
+  const unread = only(state.unread, bots)
+  const roomUnread = only(state.roomUnread, rooms)
+  const seen: Record<string, number> = {}
   for (const bot of snapshot.bots) {
     // 0 for a bot with no chat yet, so the first chat a delivery opens also reads as a reply.
     const active = bot.canonical_session?.last_active ?? 0
-    nextSeen[bot.name] = active
-    if (seen[bot.name] !== undefined && active > seen[bot.name]) markUnread(bot.name)
+    const before = state.seen[bot.name]
+    seen[bot.name] = active
+    if (before !== undefined && active > before)
+      unread[bot.name] = !(selection?.kind === 'bot' && selection.id === bot.name)
   }
-  const nextRoomSeen: Record<string, number> = {}
+  const roomSeen: Record<string, number> = {}
   for (const room of snapshot.rooms) {
     const latest = room.latest_seq ?? 0
-    const read = roomSeen[room.room_id]
-    nextRoomSeen[room.room_id] = Math.max(latest, read ?? 0)
-    if (read !== undefined && latest > read) markRoomUnread(room.room_id)
+    const read = state.roomSeen[room.room_id]
+    roomSeen[room.room_id] = Math.max(latest, read ?? 0)
+    if (read !== undefined && latest > read)
+      roomUnread[room.room_id] = !(selection?.kind === 'room' && selection.id === room.room_id)
   }
   const exists =
     selection?.kind === 'bot'
       ? snapshot.bots.some((bot) => bot.name === selection.id && !bot.meta.hidden)
-      : snapshot.rooms.some((room) => room.room_id === selection?.id)
-  useRoster.setState({
+      : rooms.has(selection?.id ?? '')
+  const change = changes(state, {
     snapshot,
-    seen: nextSeen,
-    roomSeen: nextRoomSeen,
+    unread,
+    roomUnread,
+    seen,
+    roomSeen,
+    activity: only(state.activity, bots),
     loading: false,
-    error: null,
+    loadError: null,
     ...(selection && !exists ? { selection: null } : {})
   })
+  // A poll that finds nothing new leaves the store as it is, so nothing redraws.
+  if (Object.keys(change).length > 0) useRoster.setState(change)
+}
+
+// Unchanged bots, rooms and folders keep their objects, so only rows that changed redraw.
+function reuseSnapshot(previous: RosterSnapshot, next: RosterSnapshot): RosterSnapshot {
+  const reused: RosterSnapshot = {
+    bots: reuseList(previous.bots, next.bots, (bot) => bot.name),
+    rooms: reuseList(previous.rooms, next.rooms, (room) => room.room_id),
+    folders: reuseList(previous.folders, next.folders, (folder) => folder.id),
+    roomFolders: sameJson(previous.roomFolders, next.roomFolders)
+      ? previous.roomFolders
+      : next.roomFolders,
+    roomPins: sameJson(previous.roomPins, next.roomPins) ? previous.roomPins : next.roomPins,
+    itemOrder: sameJson(previous.itemOrder, next.itemOrder) ? previous.itemOrder : next.itemOrder
+  }
+  const keys = Object.keys(reused) as Array<keyof RosterSnapshot>
+  return keys.every((key) => reused[key] === previous[key]) ? previous : reused
+}
+
+function reuseList<T>(previous: T[], next: T[], id: (item: T) => string): T[] {
+  const byId = new Map(previous.map((item) => [id(item), item]))
+  const list = next.map((item) => {
+    const old = byId.get(id(item))
+    return old && sameJson(old, item) ? old : item
+  })
+  return list.length === previous.length && list.every((item, index) => item === previous[index])
+    ? previous
+    : list
+}
+
+function only<T>(marks: Record<string, T>, ids: Set<string>): Record<string, T> {
+  return Object.fromEntries(Object.entries(marks).filter(([id]) => ids.has(id)))
+}
+
+// Only the fields that differ; marks compare by their entries, since each poll rebuilds them.
+function changes(state: RosterState, values: Partial<RosterState>): Partial<RosterState> {
+  return Object.fromEntries(
+    Object.entries(values).filter(([key, value]) => !alike(state[key as keyof RosterState], value))
+  )
+}
+
+function alike(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false
+  const entries = Object.entries(a)
+  return (
+    entries.length === Object.keys(b).length &&
+    entries.every(([key, value]) => (b as Record<string, unknown>)[key] === value)
+  )
 }
 
 export function rosterActions(backend: RosterBackend): RosterActions {
@@ -254,7 +321,7 @@ export function runRosterMutation(
   operation: () => Promise<void>
 ): Promise<void> {
   pending++
-  useRoster.setState((state) => ({ saving: true, error: null, revision: state.revision + 1 }))
+  useRoster.setState((state) => ({ saving: true, actionError: null, revision: state.revision + 1 }))
   queue = queue
     .then(() => mutate(backend, operation))
     .finally(() => {
@@ -273,11 +340,9 @@ async function mutate(backend: RosterBackend, operation: () => Promise<void>): P
   try {
     await refreshRoster(backend)
   } catch (error) {
-    // The operation's own failure is the one the user can act on.
-    useRoster.setState({ loading: false, error: failure ?? problemOf(error) })
-    return
+    useRoster.setState({ loading: false, loadError: problemOf(error) })
   }
-  if (failure) useRoster.setState({ error: failure })
+  if (failure) useRoster.setState({ actionError: failure })
 }
 
 // Writes only the pins whose position changed; a bot dropped onto the pins joins them.

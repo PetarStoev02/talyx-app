@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { create } from 'zustand'
 import { saveBotMeta } from './data'
 import type { RosterBackend } from './data'
 import { exportAvatar, lookMeta, sameLook } from './look'
@@ -45,6 +46,14 @@ const configureSchema = z.object({
   confirm_message: z.string().nullish()
 })
 
+/**
+ * The last details read per profile, so the chat's intro and the details panel show the same
+ * ones. A save drops its profile's, so the intro reads them again.
+ */
+export const useProfileDetails = create<{ byProfile: Record<string, ProfileDetails> }>(() => ({
+  byProfile: {}
+}))
+
 export async function loadDetails(
   backend: RosterBackend,
   profile: string
@@ -52,12 +61,33 @@ export async function loadDetails(
   const { description, soul, model } = describeSchema.parse(
     await backend.request(profile, 'profiles.describe', { name: profile })
   )
-  return {
+  const details = {
     description,
     soul,
     model:
       model.provider && model.default ? { provider: model.provider, model: model.default } : null
   }
+  useProfileDetails.setState((state) => ({
+    byProfile: { ...state.byProfile, [profile]: details }
+  }))
+  return details
+}
+
+/** Keeps only the details of `profiles`, dropping deleted bots' ones. */
+export function keepDetails(profiles: Set<string>): void {
+  const { byProfile } = useProfileDetails.getState()
+  if (Object.keys(byProfile).every((profile) => profiles.has(profile))) return
+  useProfileDetails.setState({
+    byProfile: Object.fromEntries(
+      Object.entries(byProfile).filter(([profile]) => profiles.has(profile))
+    )
+  })
+}
+
+function forgetDetails(profile: string): void {
+  useProfileDetails.setState(({ byProfile }) => ({
+    byProfile: Object.fromEntries(Object.entries(byProfile).filter(([key]) => key !== profile))
+  }))
 }
 
 /**
@@ -66,6 +96,19 @@ export async function loadDetails(
  * nothing and Save stays there to retry. Talyx is always the logo: only its face is its own.
  */
 export async function saveDetails(
+  backend: RosterBackend,
+  bot: Bot,
+  change: { opening: DetailsDraft; draft: DetailsDraft }
+): Promise<ModelConfirm | null> {
+  // Even a save that fails part way may have changed some of them.
+  try {
+    return await saveAll(backend, bot, change)
+  } finally {
+    forgetDetails(bot.name)
+  }
+}
+
+async function saveAll(
   backend: RosterBackend,
   bot: Bot,
   change: { opening: DetailsDraft; draft: DetailsDraft }
@@ -90,11 +133,15 @@ export async function confirmModel(
   profile: string,
   model: ModelChoice
 ): Promise<void> {
-  await configure(backend, profile, {
-    model: model.model,
-    provider: model.provider,
-    confirm_expensive_model: true
-  })
+  try {
+    await configure(backend, profile, {
+      model: model.model,
+      provider: model.provider,
+      confirm_expensive_model: true
+    })
+  } finally {
+    forgetDetails(profile)
+  }
 }
 
 async function configure(

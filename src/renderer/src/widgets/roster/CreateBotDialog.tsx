@@ -34,7 +34,10 @@ export function CreateBotDialog({
   onClose: () => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const { snapshot, selection, saving, error } = useRoster()
+  const snapshot = useRoster((s) => s.snapshot)
+  const selection = useRoster((s) => s.selection)
+  const saving = useRoster((s) => s.saving)
+  const error = useRoster((s) => s.actionError)
   const selected = snapshot.bots.find(
     (bot) => selection?.kind === 'bot' && bot.name === selection.id
   )

@@ -20,7 +20,7 @@ export function RoomRow({
   avatarSize = 44
 }: {
   room: Room
-  actions: MenuAction[]
+  actions: () => MenuAction[]
   onSelect: () => void
   pinned?: boolean
   // The pinned bots' avatar size, so a room tile lines up with theirs.

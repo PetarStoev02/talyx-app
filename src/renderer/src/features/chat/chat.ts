@@ -47,11 +47,17 @@ export interface ChatActions {
   answerApproval: (profile: string, promptId: string, choice: ApprovalChoice) => void
   setModel: (profile: string, model: { model: string; provider: string }) => Promise<void>
   setReasoning: (profile: string, level: string) => Promise<void>
+  /** The models a profile can pick, loaded once and shared by every menu until forgetModels. */
   models: (profile: string) => Promise<ModelOptionProvider[]>
+  /** Drops the loaded model lists, after providers change. */
+  forgetModels: () => void
   uploadImage: (profile: string, image: { dataUrl: string; name: string }) => Promise<ChatImage>
   transcribe: (profile: string, audio: { dataUrl: string; mime: string }) => Promise<string>
   mediaUrl: (profile: string, path: string) => Promise<string>
 }
+
+/** What Settings needs of the chat: the model lists, and a way to drop them. */
+export type ModelLists = Pick<ChatActions, 'models' | 'forgetModels'>
 
 interface ResumeSnapshot {
   info?: SessionLiveInfo | null
@@ -69,6 +75,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
   const loads = new Map<string, number>()
   // The first send's create per profile, so a second quick send joins it.
   const creating = new Map<string, Promise<string>>()
+  const modelLists = new Map<string, Promise<ModelOptionProvider[]>>()
 
   // A failed call shows on its chat, named by what it was, instead of throwing into the view.
   const guarded =
@@ -269,23 +276,15 @@ export function chatActions(backend: ChatBackend): ChatActions {
         update(profile, { info: { ...chatOf(profile)!.info, reasoning: level } })
     }),
 
-    models: async (profile) => {
-      const query = new URLSearchParams({ explicit_only: '1', profile })
-      const [{ providers }, { endpoints }] = await Promise.all([
-        backend.http<{ providers: ModelOptionProvider[] }>({
-          path: `/api/model/options?${query}`,
-          profile
-        }),
-        backend
-          .http<{ endpoints?: CustomEndpoint[] }>({
-            path: `/api/providers/custom-endpoints?${new URLSearchParams({ profile })}`,
-            profile
-          })
-          // The saved lists only narrow the picker: without them it shows every model offered.
-          .catch(() => ({ endpoints: [] }))
-      ])
-      return providers.map((provider) => withSavedModels(provider, endpoints ?? []))
+    models: (profile) => {
+      const loaded = modelLists.get(profile) ?? loadModels(backend, profile)
+      modelLists.set(profile, loaded)
+      // A failed load is not kept: the next open tries again.
+      loaded.catch(() => modelLists.get(profile) === loaded && modelLists.delete(profile))
+      return loaded
     },
+
+    forgetModels: () => modelLists.clear(),
 
     uploadImage: async (profile, { dataUrl, name }) => {
       const { path, mime_type: mime } = await backend.http<{ path: string; mime_type: string }>({
@@ -355,6 +354,24 @@ export function infoOf(
     provider: pick(live?.provider, previous?.provider),
     reasoning: pick(live?.reasoning_effort, previous?.reasoning)
   }
+}
+
+async function loadModels(backend: ChatBackend, profile: string): Promise<ModelOptionProvider[]> {
+  const query = new URLSearchParams({ explicit_only: '1', profile })
+  const [{ providers }, { endpoints }] = await Promise.all([
+    backend.http<{ providers: ModelOptionProvider[] }>({
+      path: `/api/model/options?${query}`,
+      profile
+    }),
+    backend
+      .http<{ endpoints?: CustomEndpoint[] }>({
+        path: `/api/providers/custom-endpoints?${new URLSearchParams({ profile })}`,
+        profile
+      })
+      // The saved lists only narrow the picker: without them it shows every model offered.
+      .catch(() => ({ endpoints: [] }))
+  ])
+  return providers.map((provider) => withSavedModels(provider, endpoints ?? []))
 }
 
 /**

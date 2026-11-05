@@ -26,7 +26,8 @@ beforeEach(async () => {
     selection: null,
     roomUnread: {},
     roomSeen: {},
-    error: null,
+    actionError: null,
+    loadError: null,
     saving: false
   })
   engine = engineDouble(
@@ -158,7 +159,7 @@ describe('group rooms in the roster', () => {
     it('should show why a room could not be deleted and keep it', async () => {
       engine.rooms.splice(0, 1)
       await act(() => rosterActions(backend).deleteRoom({ ...room('review'), room_id: 'gone' }))
-      expect(useRoster.getState().error).toMatchObject({ detail: 'Room not found' })
+      expect(useRoster.getState().actionError).toMatchObject({ detail: 'Room not found' })
       expect(snapshot().rooms.map((item) => item.room_id)).toEqual(['review'])
     })
   })

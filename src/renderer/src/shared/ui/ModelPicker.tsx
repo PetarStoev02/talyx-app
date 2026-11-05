@@ -17,8 +17,8 @@ export interface ModelPickerLabels {
 }
 
 /**
- * The engine's models by provider, loaded the first time the menu opens; after a failed load the
- * next open tries again. `children` is the menu's `DropdownMenu.Trigger`.
+ * The engine's models by provider, asked for each time the menu opens (`load` caches them); after a
+ * failed load the next open tries again. `children` is the menu's `DropdownMenu.Trigger`.
  */
 export function ModelPicker({
   load,
@@ -37,7 +37,7 @@ export function ModelPicker({
   const [failure, setFailure] = useState<string | null>(null)
 
   function open(isOpen: boolean): void {
-    if (!isOpen || providers) return
+    if (!isOpen) return
     setFailure(null)
     load()
       .then(setProviders)

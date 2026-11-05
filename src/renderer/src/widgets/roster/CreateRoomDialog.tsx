@@ -31,7 +31,10 @@ export function CreateRoomDialog({
   onClose: () => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const { snapshot, selection, saving, error } = useRoster()
+  const snapshot = useRoster((s) => s.snapshot)
+  const selection = useRoster((s) => s.selection)
+  const saving = useRoster((s) => s.saving)
+  const error = useRoster((s) => s.actionError)
   const selected = snapshot.bots.find(
     (bot) => selection?.kind === 'bot' && bot.name === selection.id
   )
@@ -52,7 +55,7 @@ export function CreateRoomDialog({
       .catch((failure: unknown) => {
         if (!live) return
         setSeatable({ profiles: [] })
-        useRoster.setState({ error: problemOf(failure) })
+        useRoster.setState({ actionError: problemOf(failure) })
       })
     return () => {
       live = false

@@ -305,6 +305,22 @@ describe('bot chat', () => {
       expect(engine.calls.at(-1)?.profile).toBe(MANAGER)
     })
 
+    it('should load the models once for every menu until they are forgotten', async () => {
+      const loads = (): number => methods().filter((m) => m === 'GET /api/model/options').length
+      await actions.models(MANAGER)
+      await actions.models(MANAGER)
+      expect(loads()).toBe(1)
+      actions.forgetModels()
+      await actions.models(MANAGER)
+      expect(loads()).toBe(2)
+    })
+
+    it('should try again after a failed load', async () => {
+      engine.failNext('GET /api/model/options', 'Engine offline')
+      await expect(actions.models(MANAGER)).rejects.toThrow()
+      expect(await actions.models(MANAGER)).toHaveLength(2)
+    })
+
     it('should list every model offered when the saved lists cannot be read', async () => {
       engine.failNext('GET /api/providers/custom-endpoints', 'Not Found')
 

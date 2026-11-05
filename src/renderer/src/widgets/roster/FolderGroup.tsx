@@ -94,13 +94,13 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
                 {item.kind === 'bot' ? (
                   <BotRow
                     bot={item.bot}
-                    actions={botActions(item.bot)}
+                    actions={() => botActions(item.bot)}
                     onSelect={() => selectBot(item.bot)}
                   />
                 ) : (
                   <RoomRow
                     room={item.room}
-                    actions={roomActions(item.room)}
+                    actions={() => roomActions(item.room)}
                     onSelect={() => selectRoom(item.room)}
                   />
                 )}
@@ -182,7 +182,10 @@ function FolderHeader({
   // The whole header hovers as one rounded row, as a bot's row does; its `…` has its own hover.
   return (
     <DropSlot edges={edges} onDrop={onDrop}>
-      <ContextMenuArea actions={folder ? folderActions(folder) : []} disabled={!folder || saving}>
+      <ContextMenuArea
+        actions={() => (folder ? folderActions(folder) : [])}
+        disabled={!folder || saving}
+      >
         <div
           className="group flex items-center rounded-xl pr-1 transition-colors hover:bg-accent"
           draggable={!!folder && !saving}
@@ -207,7 +210,7 @@ function FolderHeader({
           {folder ? (
             <RosterMenu
               label={t('roster.folderActionsFor').replace('{name}', folder.name)}
-              actions={folderActions(folder)}
+              actions={() => folderActions(folder)}
               disabled={saving}
               className="size-8"
             />

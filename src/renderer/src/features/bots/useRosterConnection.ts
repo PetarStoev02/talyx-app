@@ -27,7 +27,7 @@ export function useRosterConnection(backend: RosterBackend): void {
         }
       } catch (error) {
         if (!disposed && revision === useRoster.getState().revision)
-          useRoster.setState({ loading: false, error: problemOf(error) })
+          useRoster.setState({ loading: false, loadError: problemOf(error) })
       } finally {
         inFlight = false
       }

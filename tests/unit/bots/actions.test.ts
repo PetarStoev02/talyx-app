@@ -30,7 +30,8 @@ beforeEach(async () => {
   useRoster.setState({
     snapshot: { bots: [], folders: [], rooms: [], roomFolders: {}, roomPins: [], itemOrder: {} },
     selection: null,
-    error: null,
+    actionError: null,
+    loadError: null,
     saving: false,
     loading: true
   })
@@ -93,7 +94,7 @@ describe('roster actions', () => {
     await act(() =>
       rosterActions(backend).placeFolder({ id: 'team', parentId: 'clients', beforeId: null })
     )
-    expect(useRoster.getState().error?.key).toBe('roster.errorFolderCycle')
+    expect(useRoster.getState().actionError?.key).toBe('roster.errorFolderCycle')
     expect(roster().folders).toContainEqual({ id: 'team', name: 'Team' })
   })
   it('should put a dragged folder in front of the sibling it was dropped on, or last', async () => {
@@ -183,7 +184,7 @@ describe('roster actions', () => {
     await act(() => rosterActions(backend).addFolder('Finance', 'clients'))
     expect(roster().folders.find((folder) => folder.name === 'Finance')?.parentId).toBe('clients')
     await act(() => rosterActions(backend).addFolder('Lost', 'gone'))
-    expect(useRoster.getState().error?.key).toBe('roster.errorFolderGone')
+    expect(useRoster.getState().actionError?.key).toBe('roster.errorFolderGone')
     expect(roster().folders.some((folder) => folder.name === 'Lost')).toBe(false)
   })
   it('should hide a bot from its folder and restore it', async () => {
@@ -196,6 +197,29 @@ describe('roster actions', () => {
     await act(() => rosterActions(backend).deleteProfile(bot('support')))
     expect(engine.deleted).toEqual(['support'])
     expect(roster().bots.map((item) => item.name)).not.toContain('support')
+  })
+})
+
+describe('roster polls', () => {
+  it('should leave the store as it is when nothing changed', async () => {
+    const before = useRoster.getState()
+    await refreshRoster(backend)
+    expect(useRoster.getState()).toBe(before)
+  })
+  it('should keep the unchanged bots when one changes', async () => {
+    const writer = bot('writer')
+    engine.metadata.support[BOT_META_KEY] = { sectionId: 'clients', title: 'Helpdesk' }
+    await refreshRoster(backend)
+    expect(bot('support').meta.title).toBe('Helpdesk')
+    expect(bot('writer')).toBe(writer)
+  })
+  it("should drop a deleted bot's marks, so a new bot with its name starts clean", async () => {
+    useRoster.getState().markUnread('support')
+    useRoster.getState().setActivity('support', 'working')
+    delete engine.metadata.support
+    await refreshRoster(backend)
+    expect(useRoster.getState().unread).not.toHaveProperty('support')
+    expect(useRoster.getState().activity).not.toHaveProperty('support')
   })
 })
 
@@ -214,21 +238,29 @@ describe('roster mutations', () => {
     await act(async () => {
       throw new Error('Engine offline')
     })
-    expect(useRoster.getState().error).toEqual({
+    expect(useRoster.getState().actionError).toEqual({
       key: 'error.engineUnreachable',
       detail: 'Engine offline'
     })
     expect(roster().bots).toHaveLength(5)
   })
-  it('should report a failed reload once', async () => {
+  it('should report a failed reload as a load problem, not as a failed action', async () => {
     backend.request = async () => {
       throw new Error('Engine offline')
     }
     await act(() => Promise.resolve())
-    expect(useRoster.getState().error).toEqual({
+    expect(useRoster.getState().actionError).toBeNull()
+    expect(useRoster.getState().loadError).toEqual({
       key: 'error.engineUnreachable',
       detail: 'Engine offline'
     })
+  })
+  it('should keep a failed action showing when a later poll succeeds', async () => {
+    await act(async () => {
+      throw new Error('Engine offline')
+    })
+    await refreshRoster(backend)
+    expect(useRoster.getState().actionError?.detail).toBe('Engine offline')
   })
   it('should clear the selection of a bot hidden on another client', async () => {
     useRoster.getState().select({ kind: 'bot', id: 'support' })

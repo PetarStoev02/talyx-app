@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRoster } from '@features/bots/store'
+import type { RosterState } from '@features/bots/store'
 import { chatActions } from '@features/chat/chat'
 import type { ChatActions } from '@features/chat/chat'
 import { handleEvent, promptHandler } from '@features/chat/events'
 import type { ChatUpdate } from '@features/chat/events'
+import { useRooms } from '@features/chat/roomStore'
 import { useChat } from '@features/chat/store'
 import { host } from '@shared/engine/host'
 import { engineHttp } from '@shared/engine/http'
@@ -23,6 +25,8 @@ export function useChatBackend(): ChatActions | null {
     []
   )
 
+  useEffect(() => useRoster.subscribe(forgetDeleted), [])
+
   const actions = useMemo(
     () => (opened ? chatActions({ request: host.request, http: engineHttp }) : null),
     [opened]
@@ -37,6 +41,8 @@ export function useChatBackend(): ChatActions | null {
       if (state === 'closed' || state === 'error') dropped = true
       if (state !== 'open' || !dropped) return
       dropped = false
+      // Providers may have changed while the engine was away.
+      actions.forgetModels()
       // The redial replays the gap; a reload covers a session whose re-resume failed.
       for (const chat of Object.values(useChat.getState().chats)) {
         if (chat.sessionId) void actions.rebuild(chat.profile)
@@ -50,6 +56,17 @@ export function useChatBackend(): ChatActions | null {
   }, [actions])
 
   return actions
+}
+
+// A bot or room gone from the roster takes its chat or view along.
+function forgetDeleted({ snapshot }: RosterState, { snapshot: previous }: RosterState): void {
+  if (snapshot === previous) return
+  const bots = new Set(snapshot.bots.map((bot) => bot.name))
+  const rooms = new Set(snapshot.rooms.map((room) => room.room_id))
+  const goneBots = previous.bots.map((bot) => bot.name).filter((name) => !bots.has(name))
+  const goneRooms = previous.rooms.map((room) => room.room_id).filter((id) => !rooms.has(id))
+  if (goneBots.length > 0) useChat.getState().forget(goneBots)
+  if (goneRooms.length > 0) useRooms.getState().forget(goneRooms)
 }
 
 function showOnRoster(update: ChatUpdate | null): void {

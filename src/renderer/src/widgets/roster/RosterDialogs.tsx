@@ -35,7 +35,7 @@ export function FolderNameDialog({
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const saving = useRoster((state) => state.saving)
-  const error = useRoster((state) => state.error)
+  const error = useRoster((state) => state.actionError)
   const [name, setName] = useState(initialName)
   return (
     <Dialog
@@ -167,7 +167,7 @@ function ConfirmDeleteDialog({
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const saving = useRoster((state) => state.saving)
-  const error = useRoster((state) => state.error)
+  const error = useRoster((state) => state.actionError)
   return (
     <Dialog
       open={open}

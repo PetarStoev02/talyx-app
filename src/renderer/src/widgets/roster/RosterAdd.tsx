@@ -21,7 +21,7 @@ export function RosterAdd(): React.JSX.Element {
       icon={<Plus size={16} />}
       // A white disc on the sidebar's tone, so the one create action stands out.
       className="size-8 bg-background shadow-xs hover:bg-background/70"
-      actions={[
+      actions={() => [
         { label: t('create.title'), icon: Bot, onSelect: () => open('bot') },
         { label: t('roster.newRoom'), icon: MessagesSquare, onSelect: () => open('room') },
         { label: t('roster.newFolder'), icon: FolderPlus, onSelect: () => open('folder') }

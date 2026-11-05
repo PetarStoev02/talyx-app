@@ -33,7 +33,11 @@ export function AgentsPage({
   roster: RosterBackend | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const { snapshot, selection, editingProfile, editProfile, loading } = useRoster()
+  const snapshot = useRoster((s) => s.snapshot)
+  const selection = useRoster((s) => s.selection)
+  const editingProfile = useRoster((s) => s.editingProfile)
+  const loading = useRoster((s) => s.loading)
+  const { editProfile } = useRoster.getState()
   // A chat opens by itself once the roster is in (useSelectionMemory); until then a placeholder.
   const opening = loading || snapshot.bots.some((item) => !item.meta.hidden)
   const bot = snapshot.bots.find((item) => selection?.kind === 'bot' && item.name === selection.id)

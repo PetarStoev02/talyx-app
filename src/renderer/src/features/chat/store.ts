@@ -27,6 +27,8 @@ interface ChatStore {
   chats: Record<string, ChatState>
   chatForSession: (sessionId: string) => ChatState | null
   update: (profile: string, change: Partial<ChatState>) => void
+  /** Drops the chats of deleted bots, so a new bot with one's name starts empty. */
+  forget: (profiles: string[]) => void
 }
 
 const blank = (profile: string): ChatState => ({
@@ -49,5 +51,11 @@ export const useChat = create<ChatStore>((set, get) => ({
         ...state.chats,
         [profile]: { ...(state.chats[profile] ?? blank(profile)), ...change }
       }
+    })),
+  forget: (profiles) =>
+    set((state) => ({
+      chats: Object.fromEntries(
+        Object.entries(state.chats).filter(([profile]) => !profiles.includes(profile))
+      )
     }))
 }))

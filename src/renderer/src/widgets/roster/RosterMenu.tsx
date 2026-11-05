@@ -1,12 +1,12 @@
 import { DropdownMenu } from 'radix-ui'
 import { Ellipsis } from 'lucide-react'
 import { cn } from '@shared/lib/utils'
-import { DropdownEntries, menuContentClass } from '@shared/ui/menu'
+import { BuiltEntries, menuContentClass } from '@shared/ui/menu'
 import type { MenuAction } from '@shared/ui/menu'
 
 export type { MenuAction }
 
-/** A round button that opens `actions`: the title row's `+`. */
+/** A round button that opens `actions`, built on open: the title row's `+`, a folder's dots. */
 export function RosterMenu({
   label,
   actions,
@@ -15,7 +15,7 @@ export function RosterMenu({
   className
 }: {
   label: string
-  actions: MenuAction[]
+  actions: () => MenuAction[]
   disabled?: boolean
   icon?: React.ReactNode
   // Extra trigger classes, such as the raised `+` in the title row.
@@ -35,7 +35,7 @@ export function RosterMenu({
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content sideOffset={4} align="end" className={menuContentClass}>
-          <DropdownEntries actions={actions} />
+          <BuiltEntries build={actions} />
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>

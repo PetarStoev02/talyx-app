@@ -52,7 +52,7 @@ export function DetailsPanel({
   const t = useLanguage((s) => s.t)
   const editProfile = useRoster((s) => s.editProfile)
   const saving = useRoster((s) => s.saving)
-  const error = useRoster((s) => s.error)
+  const error = useRoster((s) => s.actionError)
   const [tab, setTab] = useState<Tab>('details')
   const [loaded, setLoaded] = useState<ProfileDetails | null>(null)
   const [loadError, setLoadError] = useState<RosterProblem | null>(null)

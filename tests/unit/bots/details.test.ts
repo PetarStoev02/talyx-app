@@ -4,7 +4,8 @@ import type { RosterBackend } from '../../../src/renderer/src/features/bots/data
 import {
   confirmModel,
   loadDetails,
-  saveDetails
+  saveDetails,
+  useProfileDetails
 } from '../../../src/renderer/src/features/bots/details'
 import type { DetailsDraft } from '../../../src/renderer/src/features/bots/details'
 import { lookOf } from '../../../src/renderer/src/features/bots/look'
@@ -69,6 +70,16 @@ describe('bot details', () => {
       })
       expect(engine.configured).toEqual([{ name: 'analyst', soul: '# New' }])
       expect(engine.configureCalls).toEqual([])
+    })
+
+    it('should drop the shared details it changed, so the chat intro reads them again', async () => {
+      const before = await opening('analyst')
+      expect(useProfileDetails.getState().byProfile.analyst).toBeDefined()
+      await saveDetails(backend, bot('analyst'), {
+        opening: before,
+        draft: { ...before, description: 'Forecasts' }
+      })
+      expect(useProfileDetails.getState().byProfile.analyst).toBeUndefined()
     })
 
     it('should save the title in the bot metadata', async () => {

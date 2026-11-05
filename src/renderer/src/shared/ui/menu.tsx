@@ -89,16 +89,28 @@ export function DropdownEntries({ actions }: { actions: MenuAction[] }): React.J
   return <Entries parts={DropdownMenu} actions={actions} />
 }
 
+/** Entries built in their own render: menu content renders only while open. */
+export function BuiltEntries({
+  parts = DropdownMenu,
+  build
+}: {
+  parts?: MenuParts
+  build: () => MenuAction[]
+}): React.JSX.Element {
+  return <Entries parts={parts} actions={build()} />
+}
+
 /**
  * `children` (one element) opens `actions` on right-click. From the keyboard, Shift+F10 or the
- * menu key opens it at the row, since macOS sends no context-menu event for those keys.
+ * menu key opens it at the row, since macOS sends no context-menu event for those keys. The
+ * entries are built when the menu opens, so a long list of rows builds none of them.
  */
 export function ContextMenuArea({
   actions,
   disabled = false,
   children
 }: {
-  actions: MenuAction[]
+  actions: () => MenuAction[]
   disabled?: boolean
   children: React.ReactElement
 }): React.JSX.Element {
@@ -125,7 +137,7 @@ export function ContextMenuArea({
       <ContextMenu.Portal>
         <ContextMenu.Content className={menuContentClass}>
           {/* Same parts under another Root; the types differ only in Root, Trigger and Content. */}
-          <Entries parts={ContextMenu as unknown as MenuParts} actions={actions} />
+          <BuiltEntries parts={ContextMenu as unknown as MenuParts} build={actions} />
         </ContextMenu.Content>
       </ContextMenu.Portal>
     </ContextMenu.Root>

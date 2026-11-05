@@ -40,14 +40,20 @@ export function Roster({
   onSelect: () => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const state = useRoster()
+  const loading = useRoster((s) => s.loading)
+  const saving = useRoster((s) => s.saving)
+  const editingProfile = useRoster((s) => s.editingProfile)
+  const actionError = useRoster((s) => s.actionError)
+  const loadError = useRoster((s) => s.loadError)
+  const folders = useRoster((s) => s.snapshot.folders)
+  const { select, clearError } = useRoster.getState()
   const { creating, setCreating } = useCreating()
   // Pins and rows glide to their new place after a reorder, a pin or a drop.
   const pinnedArea = useRef<HTMLDivElement>(null)
   const folderArea = useRef<HTMLDivElement>(null)
   useFlip(pinnedArea)
   useFlip(folderArea)
-  const arrival = useArrival(state.loading)
+  const arrival = useArrival(loading)
   const closeCreate = (): void => setCreating(null)
   const [deleting, setDeleting] = useState<Bot | null>(null)
   const [deletingRoom, setDeletingRoom] = useState<Room | null>(null)
@@ -63,11 +69,11 @@ export function Roster({
   // Every mutation re-reads the roster afterwards, so a reload is an empty mutation.
   const reload = (): void => run(() => Promise.resolve())
   const selectBot = (bot: Bot): void => {
-    state.select({ kind: 'bot', id: bot.name })
+    select({ kind: 'bot', id: bot.name })
     onSelect()
   }
   const selectRoom = (room: Room): void => {
-    state.select({ kind: 'room', id: room.room_id })
+    select({ kind: 'room', id: room.room_id })
     onSelect()
   }
   const { botActions, roomActions, folderActions, drops } = rosterControls({
@@ -75,23 +81,23 @@ export function Roster({
     run,
     selectBot,
     setDeleting: (bot) => {
-      state.clearError()
+      clearError()
       setDeleting(bot)
     },
     setDeletingRoom: (room) => {
-      state.clearError()
+      clearError()
       setDeletingRoom(room)
     },
     setRenamingFolder: (folder) => {
-      state.clearError()
+      clearError()
       setRenamingFolder(folder)
     },
     setDeletingFolder: (folder) => {
-      state.clearError()
+      clearError()
       setDeletingFolder(folder)
     },
     setSubfolderOf: (folder) => {
-      state.clearError()
+      clearError()
       setSubfolderOf(folder)
     },
     t
@@ -106,7 +112,7 @@ export function Roster({
   return (
     <nav
       aria-label={t('roster.label')}
-      aria-busy={state.loading || state.saving}
+      aria-busy={loading || saving}
       className="flex min-h-0 flex-1 flex-col"
     >
       {/* Problems and the pinned tiles stay put; only the folders scroll under them. The same
@@ -115,11 +121,11 @@ export function Roster({
         ref={pinnedArea}
         className="shrink-0 overflow-y-hidden px-3 pt-2 pb-3 [scrollbar-gutter:stable]"
       >
-        {/* A dialog or the details panel shows the roster's error itself; one place is enough. */}
-        <Reveal value={!dialogOpen && !state.editingProfile && state.error}>
+        {/* A dialog or the details panel shows a failed action itself; one place is enough. */}
+        <Reveal value={(!dialogOpen && !editingProfile && actionError) || loadError}>
           {(problem) => <ProblemBanner problem={problem} retry={reload} />}
         </Reveal>
-        {state.loading && <RosterSkeleton label={t('roster.loading')} />}
+        {loading && <RosterSkeleton label={t('roster.loading')} />}
         <PinnedGrid
           botActions={botActions}
           roomActions={roomActions}
@@ -130,8 +136,8 @@ export function Roster({
       </div>
       <div ref={folderArea} className={cn('scroll-y-stable min-h-0 flex-1 px-3 pb-3', arrival)}>
         {/* Until the first read, the skeleton above stands in for the folders too. */}
-        {!state.loading &&
-          [...state.snapshot.folders.filter((folder) => !folder.parentId), null].map((folder) => (
+        {!loading &&
+          [...folders.filter((folder) => !folder.parentId), null].map((folder) => (
             <FolderGroup
               key={folder?.id ?? 'unassigned'}
               folder={folder}
@@ -285,7 +291,7 @@ function PinnedGrid({
             bot={bot}
             pinned
             avatarSize={large ? 44 : 32}
-            actions={botActions(bot)}
+            actions={() => botActions(bot)}
             onSelect={() => selectBot(bot)}
             onDropPin={(from) => orderPin(from, bot.name)}
           />
@@ -297,7 +303,7 @@ function PinnedGrid({
             room={room}
             pinned
             avatarSize={large ? 44 : 32}
-            actions={roomActions(room)}
+            actions={() => roomActions(room)}
             onSelect={() => selectRoom(room)}
           />
         </div>

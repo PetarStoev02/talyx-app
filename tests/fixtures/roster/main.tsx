@@ -284,7 +284,7 @@ export function Fixture(): React.JSX.Element {
         {page === 'settings' ? (
           // The settings page's own sections, without Appearance: it needs the desktop bridge.
           <div className="mx-auto w-full max-w-2xl space-y-4 overflow-y-auto p-6">
-            <ProvidersSection backend={providers} models={chat.models} />
+            <ProvidersSection backend={providers} chat={chat} />
           </div>
         ) : (
           <AgentsPage chat={chat} roster={backend} />

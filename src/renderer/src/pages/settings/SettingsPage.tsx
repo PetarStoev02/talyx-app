@@ -4,15 +4,15 @@ import { cn } from '@shared/lib/utils'
 import { useTheme } from '@shared/hooks/useTheme'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { ProvidersBackend } from '@features/providers/providers'
-import type { ModelOptionProvider } from '@shared/engine/gateway-events'
+import type { ModelLists } from '@features/chat/chat'
 import { ProvidersSection } from '@widgets/providers'
 
 export function SettingsPage({
   providers,
-  models
+  chat
 }: {
   providers: ProvidersBackend | null
-  models: ((profile: string) => Promise<ModelOptionProvider[]>) | null
+  chat: ModelLists | null
 }): React.JSX.Element {
   const { theme, setTheme } = useTheme()
   const t = useLanguage((s) => s.t)
@@ -29,7 +29,7 @@ export function SettingsPage({
       {/* The whole page scrolls, so the scrollbar sits at the window's edge, not the column's. */}
       <div className="scroll-y-stable min-h-0 flex-1">
         <div className="mx-auto w-full max-w-2xl space-y-10 p-6">
-          {providers && <ProvidersSection backend={providers} models={models} />}
+          {providers && <ProvidersSection backend={providers} chat={chat} />}
           <section className="space-y-4">
             <h2 className="text-xl font-semibold text-foreground">{t('settings.appearance')}</h2>
             <div role="group" aria-labelledby="settings-theme" className="space-y-2">

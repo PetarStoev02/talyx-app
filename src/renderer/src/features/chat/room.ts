@@ -3,6 +3,7 @@ import { useRooms } from './roomStore'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { AppError, failureOf } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'
+import { sameJson } from '@shared/lib/utils'
 import type { MemberPhase, RoomAttachment, RoomEvent, RoomTask, RoomView } from './types'
 
 // The engine's own page cap for `groups.log`.
@@ -110,15 +111,28 @@ export function roomActions(backend: RoomBackend): RoomActions {
     const known = current?.lastSeq ?? 0
     // A send's own read may have landed first; keep only what is still new.
     const fresh = events.filter((event) => event.seq > known)
-    update(roomId, {
-      events: fresh.length ? [...(current?.events ?? []), ...fresh] : (current?.events ?? []),
-      lastSeq: Math.max(known, ...fresh.map((event) => event.seq)),
+    const phases = phasesOf(driver)
+    const tasks = tasksOf(driver)
+    const next = {
       live: !!driver,
       working: driver?.working === true,
-      phases: phasesOf(driver),
-      tasks: tasksOf(driver),
+      // Unchanged rounds and tasks keep their objects, so the room does not redraw for them.
+      phases: current && sameJson(current.phases, phases) ? current.phases : phases,
+      tasks: current && sameJson(current.tasks, tasks) ? current.tasks : tasks,
       loading: false,
       error: null
+    }
+    // A poll with nothing new leaves the view alone.
+    if (
+      current &&
+      fresh.length === 0 &&
+      (Object.keys(next) as Array<keyof typeof next>).every((key) => current[key] === next[key])
+    )
+      return
+    update(roomId, {
+      ...next,
+      events: fresh.length ? [...(current?.events ?? []), ...fresh] : (current?.events ?? []),
+      lastSeq: Math.max(known, ...fresh.map((event) => event.seq))
     })
   }
 

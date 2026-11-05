@@ -2,6 +2,7 @@ import { cn } from '@shared/lib/utils'
 import { ContextMenuArea } from '@shared/ui/menu'
 import { OverflowTooltip } from '@shared/ui/tooltip'
 import { useLanguage } from '@app/providers/useLanguage'
+import { useNow } from '@shared/hooks/useNow'
 import { botActivityTime, botPreview, botTitle, timeInWords } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { BotAvatar } from '@features/bots/BotAvatar'
@@ -19,13 +20,14 @@ export function BotRow({
   avatarSize = 44
 }: {
   bot: Bot
-  actions: MenuAction[]
+  actions: () => MenuAction[]
   pinned?: boolean
   avatarSize?: number
   onSelect: () => void
   onDropPin?: (from: string) => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
+  const now = useNow()
   const selected = useRoster(
     (state) => state.selection?.kind === 'bot' && state.selection.id === bot.name
   )
@@ -99,7 +101,7 @@ export function BotRow({
                 </span>
                 {!pinned && (
                   <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-                    {timeInWords(botActivityTime(bot), t)}
+                    {timeInWords(botActivityTime(bot), t, now)}
                   </span>
                 )}
               </span>

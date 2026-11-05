@@ -71,11 +71,13 @@ describe('group room', () => {
       expect(view().events.map((item) => item.seq)).toEqual([1, 2, 3, 4])
     })
 
-    it('should skip the log when nothing new was written', async () => {
+    it('should skip the log and leave the view as it is when nothing new was written', async () => {
       await actions.refresh(ROOM)
+      const before = view()
       engine.calls.length = 0
       await actions.refresh(ROOM)
       expect(methods()).toEqual(['groups.state'])
+      expect(view()).toBe(before)
     })
 
     it('should join a read already on its way instead of starting a second one', async () => {

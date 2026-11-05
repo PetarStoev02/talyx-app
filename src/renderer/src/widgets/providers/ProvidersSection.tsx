@@ -19,7 +19,7 @@ import type {
 import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
-import type { ModelOptionProvider } from '@shared/engine/gateway-events'
+import type { ModelLists } from '@features/chat/chat'
 import { AddProviderDialog } from './AddProviderDialog'
 import { DefaultModelSection } from './DefaultModelSection'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
@@ -48,10 +48,10 @@ type Removal =
  */
 export function ProvidersSection({
   backend,
-  models
+  chat
 }: {
   backend: ProvidersBackend
-  models: ((profile: string) => Promise<ModelOptionProvider[]>) | null
+  chat: ModelLists | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const [overview, setOverview] = useState<ProvidersOverview | null>(null)
@@ -63,7 +63,6 @@ export function ProvidersSection({
   const [revealed, setRevealed] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const arrival = useArrival(!overview && !problem)
-  const [loads, setLoads] = useState(0)
 
   const load = useCallback(
     (): Promise<void> =>
@@ -71,13 +70,13 @@ export function ProvidersSection({
         (next) => {
           setOverview(next)
           setProblem(null)
-          // A revealed value may be stale now, and the model menu must load the new list.
+          // A revealed value may be stale now, and every model menu must load the new list.
           setRevealed({})
-          setLoads((count) => count + 1)
+          chat?.forgetModels()
         },
         (error: unknown) => setProblem(failureText(t, error))
       ),
-    [backend, t]
+    [backend, t, chat]
   )
 
   useEffect(() => {
@@ -260,10 +259,9 @@ export function ProvidersSection({
         </Dialog>
       </section>
       <DefaultModelSection
-        key={loads}
         backend={backend}
         model={overview?.model ?? null}
-        models={overview ? models : null}
+        models={overview && chat ? chat.models : null}
         onChanged={load}
       />
     </>
