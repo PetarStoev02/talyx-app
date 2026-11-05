@@ -29,6 +29,7 @@ missing, an Engine (debug) page that sends "ping" and prints raw session events,
 
 - Design (decisions 1–20): `docs/superpowers/specs/2026-11-04-talyx-agents-pivot-design.md`.
 - Plan (twelve PRs): `docs/superpowers/specs/2026-11-04-talyx-pivot-plan.html`.
+- `docs/superpowers/` is gitignored: specs and plans are local working notes, not in the repo.
 - Work lands as a stack of PRs on branch `pivot`, one branch per PR named `pr/NN-<name>`.
   Each PR targets `pivot`; `pivot` merges into `main` only when 1.0 is in daily use.
 - The file organizer (0.11.0) is preserved on branch `legacy/file-organizer` and tag
