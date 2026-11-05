@@ -12,6 +12,14 @@ const en = {
     'The engine runs your bots on this machine. Its command must be on your PATH as talyx-engine, or choose the file.',
   'engine.chooseFile': 'Choose file',
   'engine.errorTitle': 'Talyx could not attach to the engine.',
+  'engine.connecting': 'Connecting to the engine…',
+  'engine.connectFailedTitle': 'Talyx found the engine but cannot connect to it.',
+  'engine.connectFailedBody':
+    'It keeps trying by itself. If this lasts, restart the engine with talyx-engine gateway restart.',
+  'engine.reconnecting': 'Reconnecting to the engine…',
+  'engine.stillReconnecting':
+    'Still reconnecting to the engine. If it stopped, start it again; Talyx picks it up by itself.',
+  'engine.tryNow': 'Try now',
   'engine.errorNext':
     'Try again. If it keeps failing, restart the engine with talyx-engine gateway restart.',
   'engine.debugProfile': 'Profile',
@@ -27,8 +35,12 @@ const en = {
   'chat.empty': 'Say something to get started.',
   'chat.loading': 'Loading the conversation…',
   'action.tryAgain': 'Try again',
-  'chat.errorTitle':
-    'Talyx lost touch with this chat. Try again; a message that did not send is back in the box.',
+  'chat.errorLoad': 'Talyx could not load this chat.',
+  'chat.errorSend': 'Your message was not sent. It is back in the box; send it again.',
+  'chat.errorStop': 'The reply did not stop. Press Stop again.',
+  'chat.errorAnswer': 'Your answer did not reach the bot. Answer the card again.',
+  'chat.errorModel': 'The model did not change. Pick it again.',
+  'chat.errorReasoning': 'The reasoning level did not change. Pick it again.',
   'chat.placeholder': 'Message {name}',
   'chat.send': 'Send',
   'chat.stop': 'Stop',
@@ -101,7 +113,14 @@ const en = {
   'rooms.create': 'Create room',
   'rooms.errorMembers': 'A room needs 2 to 6 bots.',
   'rooms.errorLoad': 'Talyx could not load this room.',
-  'rooms.errorAction': 'That did not reach the room. Send it again, or answer the card again.',
+  'rooms.imageTooBig': 'The image is too big for a room. Send one under 11 MB.',
+  'rooms.errorSend': 'Your message did not reach the room. It is back in the box; send it again.',
+  'rooms.errorStop': 'The room did not stop. Press Stop again.',
+  'rooms.errorAnswer': 'Your answer did not reach the room. Answer the card again.',
+  'rooms.errorSettle': 'The turn was not run again or discarded. Try the card again.',
+  'rooms.errorModel': 'The room’s model did not change for every bot. Pick it again.',
+  'rooms.modelNeedsConfirm':
+    'This model needs a yes the room cannot give. Pick it in each bot’s own chat, where Talyx can ask.',
   'agents.details': 'Bot details',
   'agents.closeDetails': 'Close details',
   'agents.openDetails': 'Details for {name}',
@@ -206,8 +225,14 @@ const en = {
   'roster.deleteTopFolderWarning':
     'Its bots and rooms move to Unassigned and its folders to the top level. No bot or room is deleted.',
   'roster.noMessages': 'No messages yet',
-  'roster.errorUnexpected':
-    'The engine did not answer. Try again; if it keeps failing, restart it with talyx-engine gateway restart.',
+  'error.unexpected':
+    'Something went wrong in Talyx. Try again; if it keeps happening, the log has the details.',
+  'error.engineUnreachable':
+    'Talyx cannot reach the engine right now. It reconnects by itself; try again in a moment.',
+  'crash.title': 'This part of Talyx stopped working.',
+  'crash.body': 'Try again. If it keeps happening, reload Talyx; the error is in its log.',
+  'crash.appTitle': 'Talyx stopped working.',
+  'crash.reload': 'Reload Talyx',
   'roster.errorUnsafeSave':
     'This engine version cannot save roster changes safely. Update the engine, then try again.',
   'roster.errorNotSaved': 'The engine did not save the change. Try again.',
@@ -247,6 +272,8 @@ const en = {
   'time.day': '1 day ago',
   'time.days': '{count} days ago',
   'settings.appearance': 'Appearance',
+  'settings.errorSave':
+    'Talyx could not save this setting. It applies until you quit; change it again to retry.',
   'settings.theme': 'Theme',
   'settings.themeDesc': 'Choose your preferred color scheme.',
   'settings.light': 'Light',
@@ -326,6 +353,7 @@ const en = {
   'providers.signInExternal': 'This account signs in with its own tool. Run this in a terminal:',
   'providers.copy': 'Copy',
   'providers.copied': 'Copied.',
+  'providers.copyFailed': 'Copying did not work. Select the command and copy it yourself.',
   'providers.checkAgain': 'Check again',
   'providers.stillSignedOut': 'Not signed in yet.',
   'providers.errorKeyEmpty': 'Paste a key first.',

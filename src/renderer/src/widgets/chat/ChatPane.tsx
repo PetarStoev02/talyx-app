@@ -93,15 +93,20 @@ export function ChatPane({
       {chat.error && (
         <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
           <p className="text-destructive-text">
-            {t('chat.errorTitle')}{' '}
-            <button
-              className="underline underline-offset-4 hover:decoration-2"
-              onClick={() => void actions.open(bot.name, chat.sessionId ?? chatId)}
-            >
-              {t('action.tryAgain')}
-            </button>
+            {t(chat.error.key)}{' '}
+            {/* Only a failed load is undone by loading again; the rest are redone where they were. */}
+            {chat.error.key === 'chat.errorLoad' && (
+              <button
+                className="underline underline-offset-4 hover:decoration-2"
+                onClick={() => void actions.open(bot.name, chat.sessionId ?? chatId)}
+              >
+                {t('action.tryAgain')}
+              </button>
+            )}
           </p>
-          <p className="text-sm text-muted-foreground wrap-anywhere">{chat.error}</p>
+          {chat.error.detail && (
+            <p className="text-sm text-muted-foreground wrap-anywhere">{chat.error.detail}</p>
+          )}
         </div>
       )}
       {target.running && !prompts.length && (

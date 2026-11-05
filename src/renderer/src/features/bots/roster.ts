@@ -1,4 +1,6 @@
 import type { TranslationKey } from '@shared/lib/i18n'
+import { AppError, problemOf } from '@shared/lib/problem'
+import type { Problem } from '@shared/lib/problem'
 import type { Bot, Folder, Room, RosterItem, RosterItemRef, RosterSnapshot } from './types'
 
 export const FOLDERS_KEY = 'talyx-folders'
@@ -7,26 +9,15 @@ export const ROOM_PINS_KEY = 'talyx-room-pins'
 export const ITEM_ORDER_KEY = 'talyx-item-order'
 
 // Thrown for a roster problem the user can act on; `key` is its message in i18n.ts.
-export class RosterError extends Error {
-  constructor(
-    readonly key: TranslationKey,
-    readonly detail: string | null = null
-  ) {
-    super(key)
+export class RosterError extends AppError {
+  constructor(key: TranslationKey, detail: string | null = null) {
+    super(key, detail)
     this.name = 'RosterError'
   }
 }
 
-export interface RosterProblem {
-  key: TranslationKey
-  detail: string | null
-}
-
-export function problemOf(error: unknown): RosterProblem {
-  return error instanceof RosterError
-    ? { key: error.key, detail: error.detail }
-    : { key: 'roster.errorUnexpected', detail: error instanceof Error ? error.message : null }
-}
+export type RosterProblem = Problem
+export { problemOf }
 
 export function botTitle(bot: Bot): string {
   return bot.name === 'default'

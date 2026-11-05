@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   EngineHttpRequestSchema,
   EnginePathSchema,
+  RendererErrorSchema,
   validateInput,
   UserSettingsPartialSchema
 } from '../../../src/main/infrastructure/ipc/validation'
@@ -62,4 +63,18 @@ describe('EngineHttpRequestSchema', () => {
       expect(() => validateInput(EngineHttpRequestSchema, { path })).toThrow()
     }
   )
+})
+
+describe('RendererErrorSchema', () => {
+  it('should take a renderer failure for the log', () => {
+    const report = { scope: 'chat', message: 'Error: boom' }
+    expect(validateInput(RendererErrorSchema, report)).toEqual(report)
+  })
+
+  it.each([
+    ['a message longer than the cap', { scope: 'chat', message: 'x'.repeat(8001) }],
+    ['a missing scope', { message: 'boom' }]
+  ])('should refuse %s', (_case, report) => {
+    expect(() => validateInput(RendererErrorSchema, report)).toThrow()
+  })
 })

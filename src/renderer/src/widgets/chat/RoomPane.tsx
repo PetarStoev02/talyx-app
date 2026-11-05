@@ -16,6 +16,7 @@ import { useRoomPolling } from '@features/chat/useRoomPolling'
 import { useRefocus } from '@shared/hooks/useRefocus'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { listOf } from '@shared/lib/list'
+import { reportError } from '@shared/lib/report'
 import { Button } from '@shared/ui/button'
 import { ModelPicker } from '@shared/ui/ModelPicker'
 import { ApprovalCard } from './ApprovalCard'
@@ -140,14 +141,16 @@ export function RoomPane({
       {/* The composer's Send or the card's own button is the retry for these. */}
       {view.actionError && (
         <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
-          <p className="text-destructive-text">{t('rooms.errorAction')}</p>
-          <p className="text-sm text-muted-foreground wrap-anywhere">{view.actionError}</p>
+          <p className="text-destructive-text">{t(view.actionError.key)}</p>
+          {view.actionError.detail && (
+            <p className="text-sm text-muted-foreground wrap-anywhere">{view.actionError.detail}</p>
+          )}
         </div>
       )}
       {view.error && (
         <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
           <p className="text-destructive-text">
-            {t('rooms.errorLoad')}{' '}
+            {t(view.error.key)}{' '}
             <button
               className="underline underline-offset-4 hover:decoration-2"
               onClick={() => void actions.refresh(roomId)}
@@ -155,7 +158,9 @@ export function RoomPane({
               {t('action.tryAgain')}
             </button>
           </p>
-          <p className="text-sm text-muted-foreground wrap-anywhere">{view.error}</p>
+          {view.error.detail && (
+            <p className="text-sm text-muted-foreground wrap-anywhere">{view.error.detail}</p>
+          )}
         </div>
       )}
       {view.live ? (
@@ -195,6 +200,9 @@ function RoomModelMenu({
       const { skipped } = await actions.setModel(room.room_id, room.members, choice)
       if (skipped.length)
         toast(t('rooms.modelSkipped').replace('{names}', listOf(skipped.map(nameOf))))
+    } catch (error) {
+      // setModel keeps member failures on the room; anything else is Talyx's own and logged.
+      reportError('room', error)
     } finally {
       setSwitching(false)
     }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { settingsApi } from '@shared/api/ipc'
+import { reportError } from '@shared/lib/report'
 
 type ThemePreference = 'light' | 'dark' | 'system'
 type EffectiveTheme = 'light' | 'dark'
@@ -19,6 +20,11 @@ function applyTheme(effective: EffectiveTheme): void {
   requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('theme-switching')))
 }
 
+// Native chrome (menus, dialogs) following the theme is cosmetic: a failure is only logged.
+function syncNative(pref: ThemePreference): void {
+  window.api.setNativeTheme(pref).catch((error: unknown) => reportError('theme', error))
+}
+
 export function useTheme(): {
   theme: ThemePreference
   effectiveTheme: EffectiveTheme
@@ -29,14 +35,18 @@ export function useTheme(): {
 
   // Load persisted preference on mount
   useEffect(() => {
-    settingsApi.get().then((s) => {
-      const pref = s.theme ?? 'system'
-      setThemeState(pref)
-      const resolved = resolveTheme(pref)
-      setEffectiveTheme(resolved)
-      applyTheme(resolved)
-      window.api.setNativeTheme(pref)
-    })
+    settingsApi
+      .get()
+      .then((s) => {
+        const pref = s.theme ?? 'system'
+        setThemeState(pref)
+        const resolved = resolveTheme(pref)
+        setEffectiveTheme(resolved)
+        applyTheme(resolved)
+        syncNative(pref)
+      })
+      // Unreadable settings leave the system theme on screen; the log says why.
+      .catch((error: unknown) => reportError('settings', error))
   }, [])
 
   // Listen for OS preference changes when in 'system' mode
@@ -58,8 +68,8 @@ export function useTheme(): {
     const resolved = resolveTheme(pref)
     setEffectiveTheme(resolved)
     applyTheme(resolved)
-    settingsApi.set({ theme: pref })
-    window.api.setNativeTheme(pref)
+    settingsApi.save({ theme: pref })
+    syncNative(pref)
   }, [])
 
   return { theme, effectiveTheme, setTheme }

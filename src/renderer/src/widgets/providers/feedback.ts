@@ -1,18 +1,15 @@
 import { toast } from 'sonner'
 import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
-import { ProvidersError } from '@features/providers/providers'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { listOf } from '@shared/lib/list'
+import { problemOf, problemText } from '@shared/lib/problem'
 
 export type Translate = (key: TranslationKey) => string
 
-// A failure the providers code did not name still says what to do; the engine's text follows.
+// A failure as one line: what failed and what to do, then the underlying text.
 export function failureText(t: Translate, error: unknown): string {
-  if (error instanceof ProvidersError)
-    return error.detail ? `${t(error.key)} ${error.detail}` : t(error.key)
-  const detail = error instanceof Error ? error.message : String(error)
-  return `${t('roster.errorUnexpected')} ${detail}`
+  return problemText(t, problemOf(error))
 }
 
 const SPREAD: Record<'saved' | 'removed', { done: TranslationKey; partial: TranslationKey }> = {

@@ -1,4 +1,5 @@
 import { Toaster } from 'sonner'
+import { ErrorBoundary } from '@app/ErrorBoundary'
 import { AppShell } from '@widgets/app-shell'
 import { useNavigation } from '@app/providers/useNavigation'
 import { useRosterBackend } from '@app/providers/useRosterBackend'
@@ -11,7 +12,7 @@ import { SettingsPage } from '@pages/settings'
 import { EngineDebugPage } from '@pages/engine-debug'
 import { TooltipProvider } from '@shared/ui/tooltip'
 import { Roster, RosterAdd, RosterRefresh } from '@widgets/roster'
-import { EngineSplash } from '@widgets/engine-gate'
+import { ConnectionBanner, EngineSplash } from '@widgets/engine-gate'
 import { useEngine } from '@app/providers/useEngine'
 
 function App(): React.JSX.Element {
@@ -49,16 +50,19 @@ function App(): React.JSX.Element {
         footerEnd={rosterBackend && <RosterRefresh backend={rosterBackend} />}
         roster={
           rosterBackend && (
-            <Roster
-              backend={rosterBackend}
-              models={chat?.models ?? null}
-              onSelect={() => navigate('agents')}
-            />
+            <ErrorBoundary scope="roster">
+              <Roster
+                backend={rosterBackend}
+                models={chat?.models ?? null}
+                onSelect={() => navigate('agents')}
+              />
+            </ErrorBoundary>
           )
         }
       >
+        <ConnectionBanner />
         <main key={currentView} className="min-h-0 flex-1 overflow-hidden">
-          {pages[currentView]}
+          <ErrorBoundary scope={currentView}>{pages[currentView]}</ErrorBoundary>
         </main>
       </AppShell>
     </TooltipProvider>

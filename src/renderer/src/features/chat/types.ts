@@ -1,3 +1,4 @@
+import type { Problem } from '@shared/lib/problem'
 export type ChatItem =
   | { kind: 'user'; id: string; text: string; images: string[] }
   | {
@@ -104,7 +105,8 @@ export interface RoomView {
   failedSend: { eventId: string; draft: string } | null
   loading: boolean
   // Why the last read failed; the next read that works clears it.
-  error: string | null
-  // Why your last send, stop, answer, retry or discard failed; it stays until one of them works.
-  actionError: string | null
+  error: Problem | null
+  // Why your last send, stop, answer, retry, discard or model switch failed; it stays until one
+  // of them works.
+  actionError: Problem | null
 }

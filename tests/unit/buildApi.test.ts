@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildApi, type ApiTransport } from '../../src/shared/api'
+import { buildApi, ipcErrorMessage, type ApiTransport } from '../../src/shared/api'
 
 function recordingTransport(): ApiTransport & {
   calls: Array<{ channel: string; args: unknown[] }>
@@ -31,7 +31,13 @@ describe('buildApi', () => {
     ['engineHttp', [{ path: '/api/profiles' }], 'engine:http', [{ path: '/api/profiles' }]],
     ['openEngineSocket', ['id-1', 'default'], 'engine:socket-open', ['id-1', 'default']],
     ['sendEngineSocket', ['id-1', '{}'], 'engine:socket-send', ['id-1', '{}']],
-    ['closeEngineSocket', ['id-1'], 'engine:socket-close', ['id-1']]
+    ['closeEngineSocket', ['id-1'], 'engine:socket-close', ['id-1']],
+    [
+      'logError',
+      [{ scope: 'chat', message: 'boom' }],
+      'log:error',
+      [{ scope: 'chat', message: 'boom' }]
+    ]
   ] as const)('should invoke %s over %s', async (method, callArgs, channel, wireArgs) => {
     const transport = recordingTransport()
     const api = buildApi(transport) as unknown as Record<string, (...a: unknown[]) => unknown>
@@ -39,12 +45,13 @@ describe('buildApi', () => {
     expect(transport.calls).toEqual([{ channel, args: wireArgs }])
   })
 
-  it('should expose only the settings, engine and updater surface', () => {
+  it('should expose only the settings, engine, log and updater surface', () => {
     expect(Object.keys(buildApi(recordingTransport())).sort()).toEqual([
       'closeEngineSocket',
       'engineHttp',
       'getEngineStatus',
       'getSettings',
+      'logError',
       'onEngineSocketClosed',
       'onEngineSocketFrame',
       'onUpdateAvailable',
@@ -78,5 +85,34 @@ describe('buildApi', () => {
     expect(seen).toEqual([{ version: '1.0.0', url: 'u' }])
     unsubscribe()
     expect(transport.listeners.has('updater:update-available')).toBe(false)
+  })
+
+  it.each([
+    [
+      'an Electron invoke rejection',
+      "Error invoking remote method 'engine:http': EngineHttpError: Profile not found",
+      'Profile not found'
+    ],
+    [
+      'a plain Error rejection',
+      "Error invoking remote method 'settings:set': Error: disk full",
+      'disk full'
+    ],
+    [
+      'a bridge rejection, already bare',
+      'Engine gateway is not connected',
+      'Engine gateway is not connected'
+    ]
+  ])('should give the handler’s own message from %s', (_case, message, expected) => {
+    expect(ipcErrorMessage(new Error(message))).toBe(expected)
+  })
+
+  it('should reject a failed invoke with the handler’s message only', async () => {
+    const api = buildApi({
+      invoke: () =>
+        Promise.reject(new Error("Error invoking remote method 'settings:get': Error: unreadable")),
+      on: () => () => undefined
+    })
+    await expect(api.getSettings()).rejects.toThrow(/^unreadable$/)
   })
 })

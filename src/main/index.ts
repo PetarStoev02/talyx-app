@@ -1,10 +1,11 @@
-import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
 import log from 'electron-log'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { optimizer, is } from './lib/electronUtils'
 import { installWebContentsGuard } from './infrastructure/security/webContentsGuard'
 import { registerSettingsIpc } from './infrastructure/ipc/settings.ipc'
+import { registerLogIpc } from './infrastructure/ipc/log.ipc'
 import { closeEngineSockets, registerEngineIpc } from './infrastructure/ipc/engine.ipc'
 import { checkForUpdate } from './infrastructure/updater/releaseCheck'
 import { settingsStore } from './infrastructure/storage/SettingsStore'
@@ -31,8 +32,11 @@ function registerIpc(): void {
   devBridge?.installTap(ipcMain)
   registerSettingsIpc()
   registerEngineIpc()
+  registerLogIpc()
   ipcMain.handle('theme:set-native', (_event, theme: unknown) => syncNativeTheme(theme))
-  void devBridge?.start(Number(process.env['TALYX_BRIDGE_PORT'] ?? 5175))
+  devBridge
+    ?.start(Number(process.env['TALYX_BRIDGE_PORT'] ?? 5175))
+    .catch((error: unknown) => log.error('[DevBridge] Could not start', error))
 }
 
 /** Keep native chrome (menus, dialogs, scrollbars) in the same appearance as the app theme. */
@@ -47,12 +51,45 @@ function groundColor(): string {
   return nativeTheme.shouldUseDarkColors ? '#0a0a0c' : '#ffffff'
 }
 
+// A failed load is reported by did-fail-load (see watchWindowFailures); the promise only logs.
 function loadPage(win: BrowserWindow, page: 'index' | 'splash'): void {
-  if (rendererUrl) {
-    void win.loadURL(page === 'index' ? rendererUrl : `${rendererUrl}/splash.html`)
-  } else {
-    void win.loadFile(join(__dirname, `../renderer/${page}.html`))
-  }
+  const loading = rendererUrl
+    ? win.loadURL(page === 'index' ? rendererUrl : `${rendererUrl}/splash.html`)
+    : win.loadFile(join(__dirname, `../renderer/${page}.html`))
+  loading.catch((error: unknown) => log.warn(`[Main] ${page} page did not load`, error))
+}
+
+// Chromium's code for a load cut short by another navigation: not a failure.
+const LOAD_ABORTED = -3
+
+/**
+ * The main window must never sit blank: a page that fails to load, or a renderer that dies, is
+ * logged and offered a reload.
+ */
+function watchWindowFailures(win: BrowserWindow): void {
+  win.webContents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
+    if (!isMainFrame || code === LOAD_ABORTED) return
+    log.error(`[Main] Window failed to load ${url} (${code} ${description})`)
+    void offerReload(win, 'Talyx could not load its window.', `${description} (${code})`)
+  })
+  win.webContents.on('render-process-gone', (_event, details) => {
+    log.error('[Main] Renderer process gone', details)
+    void offerReload(win, 'Talyx’s window stopped working.', details.reason)
+  })
+}
+
+async function offerReload(win: BrowserWindow, message: string, reason: string): Promise<void> {
+  if (win.isDestroyed()) return
+  const { response } = await dialog.showMessageBox(win, {
+    type: 'error',
+    message,
+    detail: `${reason}\n\nThe log has the details: ${log.transports.file.getFile().path}`,
+    buttons: ['Reload', 'Quit'],
+    defaultId: 0,
+    cancelId: 1
+  })
+  if (response === 1) app.quit()
+  else if (!win.isDestroyed()) loadPage(win, 'index')
 }
 
 function createWindow(): BrowserWindow {
@@ -76,6 +113,7 @@ function createWindow(): BrowserWindow {
       sandbox: true
     }
   })
+  watchWindowFailures(win)
   loadPage(win, 'index')
   return win
 }
@@ -161,44 +199,62 @@ function scheduleUpdateChecks(): void {
   setInterval(check, UPDATE_CHECK_INTERVAL_MS)
 }
 
-app.whenReady().then(async () => {
-  if (!app.requestSingleInstanceLock()) {
-    log.warn('[Main] Another instance holds the single-instance lock; quitting')
+// Logged rather than left to Electron's default dialog, which would stop at the first one.
+process.on('uncaughtException', (error) => log.error('[Main] Uncaught exception', error))
+process.on('unhandledRejection', (reason) => log.error('[Main] Unhandled rejection', reason))
+
+app
+  .whenReady()
+  .then(async () => {
+    if (!app.requestSingleInstanceLock()) {
+      log.warn('[Main] Another instance holds the single-instance lock; quitting')
+      app.quit()
+      return
+    }
+
+    installWebContentsGuard(
+      rendererUrl
+        ? `${new URL(rendererUrl).origin}/`
+        : `${pathToFileURL(join(__dirname, '../renderer')).href}/`
+    )
+
+    app.on('browser-window-created', (_, window) =>
+      optimizer.watchWindowShortcuts(window, { zoom: true })
+    )
+
+    const splash = createSplashWindow()
+    await waitForSplash(splash)
+    // The splash can be closed by then (a crash, a click); startup goes on without it.
+    if (!splash.isDestroyed()) {
+      splash.webContents.send('splash:version', app.getVersion())
+      splash.webContents.send('splash:status', 'Starting...')
+    }
+    await new Promise((resolve) => setTimeout(resolve, SPLASH_MIN_VISIBLE_MS))
+
+    registerIpc()
+    // A theme switch (in Talyx or, on System, in the OS) repaints the window's ground too.
+    nativeTheme.on('updated', () => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setBackgroundColor(groundColor())
+    })
+    syncNativeTheme(settingsStore.store.theme)
+    showMainWindow(splash)
+    scheduleUpdateChecks()
+
+    // Registered only now: a launch during the splash must not race showMainWindow
+    app.on('second-instance', bringMainWindowForward)
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) bringMainWindowForward()
+    })
+  })
+  .catch((error: unknown) => {
+    // Nothing is on screen yet to show this, so it gets a native box before Talyx quits.
+    log.error('[Main] Startup failed', error)
+    dialog.showErrorBox(
+      'Talyx could not start',
+      `${error instanceof Error ? error.message : String(error)}\n\nThe log has the details: ${log.transports.file.getFile().path}`
+    )
     app.quit()
-    return
-  }
-
-  installWebContentsGuard(
-    rendererUrl
-      ? `${new URL(rendererUrl).origin}/`
-      : `${pathToFileURL(join(__dirname, '../renderer')).href}/`
-  )
-
-  app.on('browser-window-created', (_, window) =>
-    optimizer.watchWindowShortcuts(window, { zoom: true })
-  )
-
-  const splash = createSplashWindow()
-  await waitForSplash(splash)
-  splash.webContents.send('splash:version', app.getVersion())
-  splash.webContents.send('splash:status', 'Starting...')
-  await new Promise((resolve) => setTimeout(resolve, SPLASH_MIN_VISIBLE_MS))
-
-  registerIpc()
-  // A theme switch (in Talyx or, on System, in the OS) repaints the window's ground too.
-  nativeTheme.on('updated', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setBackgroundColor(groundColor())
   })
-  syncNativeTheme(settingsStore.store.theme)
-  showMainWindow(splash)
-  scheduleUpdateChecks()
-
-  // Registered only now: a launch during the splash must not race showMainWindow
-  app.on('second-instance', bringMainWindowForward)
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) bringMainWindowForward()
-  })
-})
 
 // Only Talyx's sockets close; the engine gateway outlives the app and is never stopped here.
 app.on('before-quit', closeEngineSockets)

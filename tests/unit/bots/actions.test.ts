@@ -215,7 +215,7 @@ describe('roster mutations', () => {
       throw new Error('Engine offline')
     })
     expect(useRoster.getState().error).toEqual({
-      key: 'roster.errorUnexpected',
+      key: 'error.engineUnreachable',
       detail: 'Engine offline'
     })
     expect(roster().bots).toHaveLength(5)
@@ -226,7 +226,7 @@ describe('roster mutations', () => {
     }
     await act(() => Promise.resolve())
     expect(useRoster.getState().error).toEqual({
-      key: 'roster.errorUnexpected',
+      key: 'error.engineUnreachable',
       detail: 'Engine offline'
     })
   })

@@ -1,4 +1,5 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron'
+import log from 'electron-log'
 import type { EngineStatus } from '../../../shared/engine'
 import { createEngine } from '../engine/engine'
 import { EngineSockets, type SocketEventSink } from '../engine/engineSockets'
@@ -25,8 +26,16 @@ interface Sender {
 /** Open sockets per page, so a reload or a closed window closes exactly that page's sockets. */
 const ownedSockets = new WeakMap<Sender, Set<string>>()
 
+// What the engine screen shows the user also goes to the log, where support can read it.
+async function loggedStatus(): Promise<EngineStatus> {
+  const status = await engine.status()
+  if (status.state === 'error') log.warn('[Engine] Could not attach:', status.message)
+  if (status.state === 'missing') log.warn('[Engine] Command not found', status.enginePath ?? '')
+  return status
+}
+
 export function registerEngineIpc(): void {
-  ipcMain.handle('engine:status', (): Promise<EngineStatus> => engine.status())
+  ipcMain.handle('engine:status', () => loggedStatus())
 
   ipcMain.handle('engine:pick-path', async (event): Promise<EngineStatus> => {
     const window = BrowserWindow.fromWebContents(event.sender)
@@ -37,7 +46,7 @@ export function registerEngineIpc(): void {
     if (!picked.canceled && picked.filePaths[0]) {
       settingsStore.set({ enginePath: validateInput(EnginePathSchema, picked.filePaths[0]) })
     }
-    return engine.status()
+    return loggedStatus()
   })
 
   ipcMain.handle('engine:http', (_event, raw: unknown) =>

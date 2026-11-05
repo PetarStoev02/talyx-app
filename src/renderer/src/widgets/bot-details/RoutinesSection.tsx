@@ -5,6 +5,7 @@ import { useLanguage } from '@app/providers/useLanguage'
 import type { RosterBackend } from '@features/bots/data'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
 import { problemOf } from '@features/bots/roster'
+import { problemText } from '@shared/lib/problem'
 import type { RosterProblem } from '@features/bots/roster'
 import {
   DEFAULT_SCHEDULE,
@@ -384,6 +385,5 @@ function weekdayName(day: number): string {
 }
 
 function failureText(t: Translate, error: unknown): string {
-  const problem = problemOf(error)
-  return problem.detail ? `${t(problem.key)} ${problem.detail}` : t(problem.key)
+  return problemText(t, problemOf(error))
 }

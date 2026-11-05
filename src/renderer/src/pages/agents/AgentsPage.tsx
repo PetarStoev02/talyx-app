@@ -4,6 +4,7 @@ import { useRoster } from '@features/bots/store'
 import { botTitle } from '@features/bots/roster'
 import { BotAvatar } from '@widgets/roster'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
+import { ErrorBoundary } from '@app/ErrorBoundary'
 import { useRefocus } from '@shared/hooks/useRefocus'
 import { cn } from '@shared/lib/utils'
 import { useLanguage } from '@app/providers/useLanguage'
@@ -90,22 +91,24 @@ export function AgentsPage({
               </button>
             </header>
           )}
-          {bot ? (
-            <ChatPane
-              key={bot.name}
-              bot={bot}
-              avatar={<BotAvatar bot={bot} place="tile" size={64} />}
-              actions={chat}
-            />
-          ) : room ? (
-            <RoomPane key={room.room_id} room={room} actions={rooms} chat={chat} />
-          ) : (
-            <div className="grid flex-1 place-content-center justify-items-center gap-4 px-8 text-center">
-              <TalyxLogo size={48} />
-              <h1 className="text-2xl font-semibold">{t('agents.welcome')}</h1>
-              <p className="max-w-sm text-base">{t('agents.chooseHint')}</p>
-            </div>
-          )}
+          <ErrorBoundary key={bot?.name ?? room?.room_id ?? 'none'} scope="chat">
+            {bot ? (
+              <ChatPane
+                key={bot.name}
+                bot={bot}
+                avatar={<BotAvatar bot={bot} place="tile" size={64} />}
+                actions={chat}
+              />
+            ) : room ? (
+              <RoomPane key={room.room_id} room={room} actions={rooms} chat={chat} />
+            ) : (
+              <div className="grid flex-1 place-content-center justify-items-center gap-4 px-8 text-center">
+                <TalyxLogo size={48} />
+                <h1 className="text-2xl font-semibold">{t('agents.welcome')}</h1>
+                <p className="max-w-sm text-base">{t('agents.chooseHint')}</p>
+              </div>
+            )}
+          </ErrorBoundary>
         </section>
         {bot && roster && detailsOpen && (
           <DetailsPanel key={bot.name} bot={bot} backend={roster} models={chat?.models ?? null} />

@@ -59,7 +59,10 @@ export function SignIn({
     const finish = (result: SignInResult): void => {
       if (!live) return
       session = null
-      if (result.status === 'approved') void done.current()
+      if (result.status === 'approved')
+        done
+          .current()
+          .catch((error: unknown) => setStep({ kind: 'failed', message: failureText(t, error) }))
       else if (result.status === 'failed') setStep({ kind: 'failed', message: result.message })
     }
     async function run(): Promise<void> {
@@ -134,9 +137,10 @@ export function SignIn({
           <button
             className={linkClass}
             onClick={() =>
-              void navigator.clipboard
-                .writeText(account.command)
-                .then(() => setNote(t('providers.copied')))
+              void navigator.clipboard.writeText(account.command).then(
+                () => setNote(t('providers.copied')),
+                () => setNote(t('providers.copyFailed'))
+              )
             }
           >
             {t('providers.copy')}

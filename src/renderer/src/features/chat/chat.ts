@@ -2,6 +2,8 @@ import type { EngineApiRequest } from '@shared/engine/http'
 import type { CustomEndpoint, SessionMessage } from '@shared/engine/types'
 import type { ModelOptionProvider, SessionLiveInfo } from '@shared/engine/gateway-events'
 import type { GatewayEvent } from '@shared/engine/shared'
+import type { TranslationKey } from '@shared/lib/i18n'
+import { failureOf } from '@shared/lib/problem'
 import { useChat } from './store'
 import type { ChatInfo, ChatState } from './store'
 import { applyEvent, fromHistory, settlePrompt } from './transcript'
@@ -68,17 +70,17 @@ export function chatActions(backend: ChatBackend): ChatActions {
   // The first send's create per profile, so a second quick send joins it.
   const creating = new Map<string, Promise<string>>()
 
-  // A failed call shows on its chat instead of throwing into the view.
+  // A failed call shows on its chat, named by what it was, instead of throwing into the view.
   const guarded =
-    <A extends unknown[]>(run: (profile: string, ...args: A) => Promise<void>) =>
+    <A extends unknown[]>(
+      failed: TranslationKey,
+      run: (profile: string, ...args: A) => Promise<void>
+    ) =>
     async (profile: string, ...args: A): Promise<void> => {
       try {
         await run(profile, ...args)
       } catch (error) {
-        update(profile, {
-          loading: false,
-          error: error instanceof Error ? error.message : String(error)
-        })
+        update(profile, { loading: false, error: failureOf(failed, error) })
       }
     }
 
@@ -173,7 +175,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
   }
 
   return {
-    open: guarded(async (profile, chatId: string | null) => {
+    open: guarded('chat.errorLoad', async (profile, chatId: string | null) => {
       update(profile, { loading: true, error: null })
       const sessionId = chatId ?? (await findChat(profile))
       // Known before the history loads, so cards the snapshot delivers find this chat.
@@ -185,7 +187,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
       else update(profile, { sessionId: null, transcript: null, loading: false })
     }),
 
-    rebuild: guarded(async (profile) => {
+    rebuild: guarded('chat.errorLoad', async (profile) => {
       const sessionId = sessionOf(profile)
       if (sessionId) await load(profile, sessionId)
     }),
@@ -215,7 +217,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
         // The composer gets the draft back, so the bubble for it goes.
         const transcript = chatOf(profile)?.transcript ?? null
         update(profile, {
-          error: error instanceof Error ? error.message : String(error),
+          error: failureOf('chat.errorSend', error),
           transcript: transcript && {
             ...transcript,
             items: transcript.items.filter((item) => item.id !== local)
@@ -225,12 +227,12 @@ export function chatActions(backend: ChatBackend): ChatActions {
       }
     },
 
-    interrupt: guarded(async (profile) => {
+    interrupt: guarded('chat.errorStop', async (profile) => {
       const sessionId = sessionOf(profile)
       if (sessionId) await backend.request(profile, 'session.interrupt', { session_id: sessionId })
     }),
 
-    answerClarify: guarded(async (profile, promptId: string, answers) => {
+    answerClarify: guarded('chat.errorAnswer', async (profile, promptId: string, answers) => {
       const prompt = chatOf(profile)?.transcript?.prompts.find((item) => item.id === promptId)
       if (prompt?.kind !== 'clarify') return
       // In order: the last lock completes the batch, so every earlier one must already be in.
@@ -254,12 +256,15 @@ export function chatActions(backend: ChatBackend): ChatActions {
       update(profile, { transcript: settlePrompt(transcript, promptId) })
     },
 
-    setModel: guarded(async (profile, { model, provider }: { model: string; provider: string }) => {
-      if (await configure(profile, 'model', `${model} --provider ${provider}`))
-        update(profile, { info: { ...chatOf(profile)!.info, model, provider } })
-    }),
+    setModel: guarded(
+      'chat.errorModel',
+      async (profile, { model, provider }: { model: string; provider: string }) => {
+        if (await configure(profile, 'model', `${model} --provider ${provider}`))
+          update(profile, { info: { ...chatOf(profile)!.info, model, provider } })
+      }
+    ),
 
-    setReasoning: guarded(async (profile, level: string) => {
+    setReasoning: guarded('chat.errorReasoning', async (profile, level: string) => {
       if (await configure(profile, 'reasoning', level))
         update(profile, { info: { ...chatOf(profile)!.info, reasoning: level } })
     }),

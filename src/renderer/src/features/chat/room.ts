@@ -1,5 +1,8 @@
 import type { ModelPick } from '@shared/ui/ModelPicker'
 import { useRooms } from './roomStore'
+import type { TranslationKey } from '@shared/lib/i18n'
+import { AppError, failureOf } from '@shared/lib/problem'
+import type { Problem } from '@shared/lib/problem'
 import type { MemberPhase, RoomAttachment, RoomEvent, RoomTask, RoomView } from './types'
 
 // The engine's own page cap for `groups.log`.
@@ -57,6 +60,10 @@ interface LogPage {
   has_more: boolean
 }
 
+// Main relays socket frames up to 16 MiB; the image goes as base64 inside one, with room to spare
+// for the JSON around it.
+const MAX_UPLOAD_CHARS = 15 * 1024 * 1024
+
 export function roomActions(backend: RoomBackend): RoomActions {
   const { update } = useRooms.getState()
   const viewOf = (roomId: string): RoomView | undefined => useRooms.getState().rooms[roomId]
@@ -73,19 +80,22 @@ export function roomActions(backend: RoomBackend): RoomActions {
     try {
       await read(roomId)
     } catch (error) {
-      update(roomId, { loading: false, error: messageOf(error) })
+      update(roomId, { loading: false, error: failureOf('rooms.errorLoad', error) })
     }
   }
 
   // A failed stop, answer, retry or discard shows until an action works; polls do not clear it.
   const acting =
-    <A extends unknown[]>(run: (roomId: string, ...args: A) => Promise<void>) =>
+    <A extends unknown[]>(
+      failed: TranslationKey,
+      run: (roomId: string, ...args: A) => Promise<void>
+    ) =>
     async (roomId: string, ...args: A): Promise<void> => {
       try {
         await run(roomId, ...args)
         update(roomId, { actionError: null })
       } catch (error) {
-        update(roomId, { actionError: messageOf(error) })
+        update(roomId, { actionError: failureOf(failed, error) })
       }
     }
 
@@ -187,7 +197,7 @@ export function roomActions(backend: RoomBackend): RoomActions {
     roomId: string,
     member: RoomMember,
     choice: ModelPick
-  ): Promise<{ switched: boolean; problem: string | null }> {
+  ): Promise<{ switched: boolean; problem: Problem | null }> {
     const view = viewOf(roomId)
     const id = member.member_id ?? member.profile
     if (view?.phases[id] || view?.tasks.some((task) => task.member_id === id))
@@ -211,18 +221,22 @@ export function roomActions(backend: RoomBackend): RoomActions {
   async function changeModel(
     session: { profile: string; sessionId: string },
     choice: ModelPick
-  ): Promise<{ switched: boolean; problem: string | null }> {
+  ): Promise<{ switched: boolean; problem: Problem | null }> {
     try {
       const answer = (await backend.request(session.profile, 'config.set', {
         session_id: session.sessionId,
         key: 'model',
         value: `${choice.model} --provider ${choice.provider}`
       })) as { confirm_required?: boolean; confirm_message?: string }
+      // A costly or restricted model asks for a yes that a room's switch cannot give.
       return answer.confirm_required
-        ? { switched: false, problem: answer.confirm_message || 'confirm_required' }
+        ? {
+            switched: false,
+            problem: { key: 'rooms.modelNeedsConfirm', detail: answer.confirm_message || null }
+          }
         : { switched: true, problem: null }
     } catch (error) {
-      return { switched: false, problem: messageOf(error) }
+      return { switched: false, problem: failureOf('rooms.errorModel', error) }
     }
   }
 
@@ -230,7 +244,7 @@ export function roomActions(backend: RoomBackend): RoomActions {
   async function letGo(
     session: { profile: string; sessionId: string },
     subscription: string
-  ): Promise<string | null> {
+  ): Promise<Problem | null> {
     try {
       await backend.request(session.profile, 'session.detach', {
         session_id: session.sessionId,
@@ -238,7 +252,7 @@ export function roomActions(backend: RoomBackend): RoomActions {
       })
       return null
     } catch (error) {
-      return messageOf(error)
+      return failureOf('rooms.errorModel', error)
     }
   }
 
@@ -259,31 +273,37 @@ export function roomActions(backend: RoomBackend): RoomActions {
         })
         update(roomId, { failedSend: null, actionError: null })
       } catch (error) {
-        update(roomId, { failedSend: { eventId, draft: key }, actionError: messageOf(error) })
+        update(roomId, {
+          failedSend: { eventId, draft: key },
+          actionError: failureOf('rooms.errorSend', error)
+        })
         return false
       }
       await readAfterChange(roomId)
       return true
     },
 
-    stop: acting(async (roomId) => {
+    stop: acting('rooms.errorStop', async (roomId) => {
       await call('groups.stop', { room_id: roomId, cancel_id: crypto.randomUUID() })
       await readAfterChange(roomId)
     }),
 
-    approve: acting(async (roomId, task: RoomTask, choice: 'once' | 'deny') => {
-      await call('groups.approve', {
-        room_id: roomId,
-        member_id: task.member_id,
-        task_id: task.task_id,
-        execution_generation: task.execution_generation,
-        request_id: task.request_id,
-        choice
-      })
-      await readAfterChange(roomId)
-    }),
+    approve: acting(
+      'rooms.errorAnswer',
+      async (roomId, task: RoomTask, choice: 'once' | 'deny') => {
+        await call('groups.approve', {
+          room_id: roomId,
+          member_id: task.member_id,
+          task_id: task.task_id,
+          execution_generation: task.execution_generation,
+          request_id: task.request_id,
+          choice
+        })
+        await readAfterChange(roomId)
+      }
+    ),
 
-    settle: acting(async (roomId, task: RoomTask) => {
+    settle: acting('rooms.errorSettle', async (roomId, task: RoomTask) => {
       await call(task.kind === 'discard' ? 'groups.discard' : 'groups.retry', {
         room_id: roomId,
         member_id: task.member_id,
@@ -294,6 +314,8 @@ export function roomActions(backend: RoomBackend): RoomActions {
     }),
 
     uploadImage: async (roomId, { dataUrl, name, mime }) => {
+      // The upload rides one socket frame; a bigger one would be refused and time out unseen.
+      if (dataUrl.length > MAX_UPLOAD_CHARS) throw new AppError('rooms.imageTooBig')
       const stored = await call<RoomAttachment>('groups.attachment.upload', {
         room_id: roomId,
         upload_id: crypto.randomUUID(),
@@ -316,14 +338,14 @@ export function roomActions(backend: RoomBackend): RoomActions {
 
     setModel: async (roomId, members, choice) => {
       const result: ModelSwitch = { switched: [], skipped: [] }
-      let failure: string | null = null
+      let failure: Problem | null = null
       for (const member of members) {
         try {
           const { switched, problem } = await switchMember(roomId, member, choice)
           result[switched ? 'switched' : 'skipped'].push(member.profile)
           failure = problem ?? failure
         } catch (error) {
-          failure = messageOf(error)
+          failure = failureOf('rooms.errorModel', error)
           result.skipped.push(member.profile)
         }
       }

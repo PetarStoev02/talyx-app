@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { GatewayEvent } from '@shared/engine/shared'
+import type { Problem } from '@shared/lib/problem'
 import type { Transcript } from './types'
 
 /** The session's model and reasoning level, as the composer shows them. */
@@ -17,7 +18,8 @@ export interface ChatState {
   // Events that arrived while the chat reloads; null when no load is running.
   pending: GatewayEvent[] | null
   loading: boolean
-  error: string | null
+  // The last action that failed on this chat: what failed and what to do, then the cause.
+  error: Problem | null
 }
 
 interface ChatStore {

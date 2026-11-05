@@ -6,6 +6,7 @@ import { useLanguage } from '@app/providers/useLanguage'
 import type { ChatActions } from '@features/chat/chat'
 import type { ChatState } from '@features/chat/store'
 import { dataUrlOf, useDictation } from '@features/chat/useDictation'
+import { problemOf, problemText } from '@shared/lib/problem'
 import { cn } from '@shared/lib/utils'
 import { ModelPicker } from '@shared/ui/ModelPicker'
 import { CheckItem, menuContentClass } from '@shared/ui/menu'
@@ -91,8 +92,11 @@ export function Composer({
       try {
         const attached = await target.upload(file, await dataUrlOf(file))
         setFiles((current) => [...current, attached])
-      } catch {
-        toast.error(t('chat.imageFailed').replace('{name}', file.name), { duration: Infinity })
+      } catch (error) {
+        toast.error(t('chat.imageFailed').replace('{name}', file.name), {
+          description: problemText(t, problemOf(error)),
+          duration: Infinity
+        })
       }
     }
   }

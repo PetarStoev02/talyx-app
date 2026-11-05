@@ -13,6 +13,12 @@ export const UserSettingsPartialSchema = z
  *  binary): only the native file chooser behind `engine:pick-path` writes it. */
 export const EnginePathSchema = z.string().refine(isAbsolute, 'enginePath must be an absolute path')
 
+/** A renderer failure for the log file; capped so a page cannot flood it. */
+export const RendererErrorSchema = z.object({
+  scope: z.string().max(100),
+  message: z.string().max(8000)
+})
+
 /** A profile name as the engine accepts it. */
 export const ProfileNameSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/)
 

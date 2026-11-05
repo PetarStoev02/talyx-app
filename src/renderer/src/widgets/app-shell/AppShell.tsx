@@ -3,6 +3,7 @@ import { TalyxLogo } from '@shared/ui/TalyxLogo'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useAutoUpdater } from '@shared/hooks/useAutoUpdater'
 import { settingsApi } from '@shared/api/ipc'
+import { reportError } from '@shared/lib/report'
 import { SIDEBAR_WIDTH, clampSidebarWidth } from '../../../../shared/sidebar'
 import { SidebarFooter } from './SidebarFooter'
 
@@ -30,7 +31,11 @@ export function AppShell({
   const [width, setWidth] = useState<number>(SIDEBAR_WIDTH.initial)
 
   useEffect(() => {
-    void settingsApi.get().then((s) => setWidth(clampSidebarWidth(s.sidebarWidth)))
+    settingsApi
+      .get()
+      .then((s) => setWidth(clampSidebarWidth(s.sidebarWidth)))
+      // Unreadable settings leave the first width on screen; the log says why.
+      .catch((error: unknown) => reportError('settings', error))
   }, [])
 
   return (
@@ -56,7 +61,7 @@ export function AppShell({
           width={width}
           label={t('sidebar.resize')}
           onResize={setWidth}
-          onCommit={(sidebarWidth) => void settingsApi.set({ sidebarWidth })}
+          onCommit={(sidebarWidth) => settingsApi.save({ sidebarWidth })}
         />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>

@@ -103,7 +103,9 @@ export class DevBridge {
   start(port: number): Promise<void> {
     this.bridgePort = port
     this.server = createServer((req, res) => this.route(req, res))
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      // A taken port (another dev run) rejects instead of crashing main.
+      this.server!.once('error', reject)
       this.server!.listen(port, '127.0.0.1', () => {
         log.info(`[DevBridge] Browser dev bridge on http://127.0.0.1:${port}`)
         resolve()

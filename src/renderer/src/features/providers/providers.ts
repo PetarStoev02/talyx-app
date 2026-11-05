@@ -11,6 +11,7 @@ import type {
   OAuthSubmitResponse
 } from '@shared/engine/types'
 import type { TranslationKey } from '@shared/lib/i18n'
+import { AppError } from '@shared/lib/problem'
 
 export type { CustomEndpoint, OAuthStartResponse }
 
@@ -76,12 +77,9 @@ export type SignInResult =
   | { status: 'cancelled' }
 
 // Thrown for a providers problem the user can act on; `key` is its message in i18n.ts.
-export class ProvidersError extends Error {
-  constructor(
-    readonly key: TranslationKey,
-    readonly detail: string | null = null
-  ) {
-    super(key)
+export class ProvidersError extends AppError {
+  constructor(key: TranslationKey, detail: string | null = null) {
+    super(key, detail)
     this.name = 'ProvidersError'
   }
 }

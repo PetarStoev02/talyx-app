@@ -1,3 +1,4 @@
+import log from 'electron-log'
 import { app, session, shell } from 'electron'
 
 /** Only web and mail links leave the app; a file:// or custom-scheme link from model text would launch what it points at. */
@@ -43,7 +44,10 @@ export function installWebContentsGuard(appRoot: string): void {
   )
   app.on('web-contents-created', (_event, contents) => {
     contents.setWindowOpenHandler(({ url }) => {
-      if (isSafeExternalUrl(url)) void shell.openExternal(url)
+      if (isSafeExternalUrl(url))
+        shell
+          .openExternal(url)
+          .catch((error: unknown) => log.warn('[Guard] No app opened the link', error))
       return { action: 'deny' }
     })
     contents.on('will-navigate', (event, url) => {
