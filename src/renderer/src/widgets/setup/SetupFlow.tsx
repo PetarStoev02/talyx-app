@@ -4,7 +4,7 @@ import type { RosterBackend } from '@features/bots/data'
 import type { ModelLists } from '@features/chat/chat'
 import type { SetupBackend } from '@features/setup/install'
 import { InstallEngine } from '@features/setup/InstallEngine'
-import { stepAfter, type SetupStep } from '@features/setup/steps'
+import { knownFirstStep, stepAfter, type SetupStep } from '@features/setup/steps'
 import { useSetup } from '@features/setup/store'
 import { BotStep } from './BotStep'
 import { ProviderStep, type ProvidersForm } from './ProviderStep'
@@ -33,6 +33,9 @@ export function SetupFlow({
   const engine = useEngine((s) => s.status)
   const hasProvider = useSetup((s) => s.hasProvider)
   const hasOwnBot = useSetup((s) => s.hasOwnBot)
+  // Get started waits until it knows which steps are done (after Run setup again they are re-read).
+  const factsKnown =
+    engine !== null && knownFirstStep({ engine, hasProvider, hasOwnBot }) !== undefined
 
   function next(after: SetupStep | null): void {
     // A fact not read yet counts as not done: its step shows, and every step can be skipped.
@@ -53,7 +56,9 @@ export function SetupFlow({
       <main className="scroll-y-stable min-h-0 flex-1">
         <div key={screen} className="animate-arrive flex min-h-full justify-center px-6 py-8">
           <div className="flex w-full flex-col items-center justify-center">
-            {screen === 'welcome' && <WelcomeScreen onStart={() => next(null)} />}
+            {screen === 'welcome' && (
+              <WelcomeScreen onStart={factsKnown ? () => next(null) : null} />
+            )}
             {screen === 'engine' && (
               <InstallEngine backend={setup} onReady={() => next('engine')} />
             )}

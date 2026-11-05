@@ -27,7 +27,8 @@ export const useSetup = create<SetupState>((set) => ({
   },
   restart: async () => {
     await settingsApi.set({ setupDone: false })
-    set({ setupDone: false, forced: true })
+    // Unknown until read again: a provider or bot may have come or gone since the last read.
+    set({ setupDone: false, forced: true, hasProvider: null, hasOwnBot: null })
   },
   setHasProvider: (value) => set({ hasProvider: value }),
   setHasOwnBot: (value) => set({ hasOwnBot: value })

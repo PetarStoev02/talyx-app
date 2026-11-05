@@ -138,9 +138,12 @@ describe('useSetup', () => {
 
   it('should force the flow open from restart until finish', async () => {
     settings.set.mockResolvedValue({})
-    useSetup.setState({ setupDone: true, forced: false })
+    useSetup.setState({ setupDone: true, forced: false, hasProvider: true, hasOwnBot: true })
     await useSetup.getState().restart()
     expect(useSetup.getState().forced).toBe(true)
+    // Unknown again, so Get started waits for a fresh read.
+    expect(useSetup.getState().hasProvider).toBeNull()
+    expect(useSetup.getState().hasOwnBot).toBeNull()
     await useSetup.getState().finish()
     expect(useSetup.getState().forced).toBe(false)
   })
