@@ -34,6 +34,13 @@ export default defineConfig(({ isSsrBuild }) => ({
   base: '/',
   // The prerendered footer and the hydrating client must print the same year.
   define: { __BUILD_YEAR__: JSON.stringify(new Date().getFullYear()) },
+  // Fixed, so esbuild never reads the repo root's tsconfigs: they extend a package Vercel does
+  // not install (only website/node_modules), and the demo pulls in files under tests/.
+  esbuild: {
+    tsconfigRaw: JSON.stringify({
+      compilerOptions: { jsx: 'react-jsx', useDefineForClassFields: true }
+    })
+  },
   resolve: {
     alias: [
       // Both trees spell their own root `@/` and both have a `shared/`, so the
