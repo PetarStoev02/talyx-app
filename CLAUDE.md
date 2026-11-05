@@ -20,7 +20,7 @@ is answering, approvals, create, pin, delete), "Talyx needs its engine" when the
 missing, an Engine (debug) page that sends "ping" and prints raw session events, and Settings
 (providers: API keys, account sign-ins and custom endpoints, Talyx's default model; appearance).
 
-- **Version:** 1.0.0-alpha.1
+- **Version:** 1.0.0
 - **Stack:** Electron 44 + React 19 + TypeScript 5.9 + TailwindCSS 4
 - **State:** Zustand | **UI:** shadcn/ui (New York) | **Settings:** JSON file
 - **Build:** electron-vite + electron-builder | **Tests:** Vitest
@@ -54,20 +54,19 @@ npm run typecheck        # TypeScript check (node + web)
 npm run format           # Prettier format all files
 npm run build            # Typecheck + production build
 npm run build:mac        # Build macOS DMG (ARM64 + x64)
+npm run build:linux      # Build Linux AppImage + deb (x64)
 npm run release          # Ad-hoc signed DMGs, then a draft GitHub release
 npm run reset            # Delete local app data (settings.json)
 ```
 
 ### Builds
 
-Talyx targets macOS, Windows and Linux. No build is signed or notarized (no Apple account, no
-Windows certificate). Talyx cannot replace itself: the app checks GitHub for a newer release and,
+Talyx 1.0 ships for macOS and Linux (no Windows build yet). No build is signed or notarized (no
+Apple account). Talyx cannot replace itself: the app checks GitHub for a newer release and,
 on the user's click, downloads this computer's installer and the release's `SHA256SUMS`, verifies
 the installer against it, and opens it for the user to run. A download made by Talyx has no
 quarantine attribute, so the "Open Anyway" step below is not needed for in-app updates; the
-SHA-256 check is the integrity guarantee. Today electron-builder only has the macOS DMG target
-(`build:mac`); the Windows installer and Linux AppImage/deb targets are added with the 1.0
-release work.
+SHA-256 check is the integrity guarantee.
 
 On macOS a downloaded build is blocked the first time it is opened: dismiss the warning, then
 click Open Anyway in System Settings → Privacy & Security, or run
@@ -299,7 +298,7 @@ try {
   delivery, group rooms and routines run in the engine, not in the app.
 - Settings are a JSON file (`settings.json` in userData). No local database.
 - Old features are deleted, not kept dormant; git history and `legacy/file-organizer` keep them.
-- Builds for macOS, Windows and Linux, none signed. No auto-update.
+- Builds for macOS and Linux, none signed. No auto-update.
 - Free and open source (MIT). No account, no server, no telemetry.
 - Website (`website/`) on Vercel, updated for the pivot in its own PR. Releases: GitHub
   Releases on `PetarStoev02/talyx-app` (`npm run release` creates a draft).

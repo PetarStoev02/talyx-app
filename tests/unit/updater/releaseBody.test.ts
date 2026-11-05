@@ -96,6 +96,12 @@ describe('pickAsset', () => {
     ['linux', 'x64', ['Talyx-x86_64.AppImage', 'Talyx-arm64.AppImage'], 'Talyx-x86_64.AppImage'],
     [
       'linux',
+      'x64',
+      ['Talyx-amd64.deb', 'Talyx-x86_64.AppImage', 'SHA256SUMS'],
+      'Talyx-x86_64.AppImage'
+    ],
+    [
+      'linux',
       'arm64',
       ['Talyx-x86_64.AppImage', 'Talyx-aarch64.AppImage'],
       'Talyx-aarch64.AppImage'
