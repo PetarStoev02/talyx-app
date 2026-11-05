@@ -4,7 +4,7 @@
 // Never log CLI output here: it names the engine. Failures name the check, scrubbed of that name.
 import { execFile } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { userInfo } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { z } from 'zod'
@@ -157,9 +157,11 @@ describe.skipIf(INSTALL_FILE === null)('real engine smoke', () => {
     try {
       if (home) await check('teardown', () => tearDown(home!))
     } finally {
-      console.log(
+      // stderr, not console.log: vitest hides the log of a passing run, and the README asks for
+      // this line to be pasted in the PR.
+      process.stderr.write(
         `Smoke summary: install file sha256 ${installHash ?? 'unread'}; rooms protocol_version ` +
-          `${roomsProtocol ?? 'unread'}; passed: ${passed.join(', ')}`
+          `${roomsProtocol ?? 'unread'}; passed: ${passed.join(', ')}\n`
       )
     }
   })
@@ -393,8 +395,8 @@ async function deleteThrowawayProfile(engine: Engine, rpc: Rpc): Promise<void> {
 // Reads the real directories' names only; never prints them (a unit's name may name the engine).
 function serviceUnits(): string[] {
   const dirs = [
-    join(homedir(), 'Library', 'LaunchAgents'),
-    join(homedir(), '.config', 'systemd', 'user')
+    join(userInfo().homedir, 'Library', 'LaunchAgents'),
+    join(userInfo().homedir, '.config', 'systemd', 'user')
   ]
   return dirs.flatMap((dir) => (existsSync(dir) ? readdirSync(dir).map((n) => join(dir, n)) : []))
 }

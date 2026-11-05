@@ -17,6 +17,7 @@ const SETTINGS = { theme: 'system', sidebarCollapsed: false }
 const ENGINE_STATUS = {
   state: 'attached',
   version: EXPECTED_ENGINE_VERSION,
+  path: '/demo/talyx-engine',
   commit: null,
   home: '/demo',
   stale: false,

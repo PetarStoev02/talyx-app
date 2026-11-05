@@ -21,7 +21,7 @@ Talyx checks GitHub for a newer release and opens the release page. It installs 
 
 ## Engine
 
-Talyx runs its bots on the engine, a separate agent backend you install yourself. Talyx needs **engine 0.22.7**.
+Talyx runs its bots on the engine, a separate agent backend that Talyx's setup screen installs for you. Talyx needs **engine 0.22.7**.
 
 - The engine's command must be reachable as `talyx-engine`: on your `PATH`, in `~/.local/bin/talyx-engine` (on Windows, `%USERPROFILE%\.local\bin\talyx-engine.exe`), or picked with **Choose file** on the first-run screen. The setup screen installs the engine and links it as `talyx-engine`.
 - Talyx attaches to the engine's gateway on this machine with `talyx-engine gateway ensure --json`. The gateway runs on its own and outlives Talyx: quitting Talyx never stops it, and the next launch attaches to the same process.

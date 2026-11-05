@@ -49,11 +49,13 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
     )
   if (status?.state === 'attached') {
     // Once open, a drop is a reconnect the banner shows (ConnectionBanner), not a gate.
-    if (everConnected && isEngineCurrent(status)) return <>{children}</>
+    // The wrapper is the same either way, so the page does not remount when the notice comes or goes.
     if (everConnected)
       return (
         <div className="flex h-full min-h-0 flex-1 flex-col">
-          <OlderNotice version={status.version} onUpdate={() => setInstalling(true)} />
+          {!isEngineCurrent(status) && (
+            <OlderNotice version={status.version} onUpdate={() => setInstalling(true)} />
+          )}
           <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         </div>
       )

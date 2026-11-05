@@ -11,7 +11,7 @@ import { centeredPanelClass, linkClass, rowClass } from './screenStyles'
 // Talyx never restarts the gateway itself: main does not own it.
 const RESTART_COMMAND = 'talyx-engine gateway restart'
 
-// Where a newer engine's user finds a Talyx that speaks its protocol, when the steps did not load.
+// Where a newer engine's user finds a Talyx that speaks its protocol.
 const LATEST_RELEASE_URL = 'https://github.com/PetarStoev02/talyx-app/releases/latest'
 
 const logo = <TalyxLogo size={40} className="text-foreground" />
@@ -135,11 +135,9 @@ function RestartHint({
  */
 export function ProtocolMismatch({
   fit,
-  releaseUrl,
   actions
 }: {
   fit: 'newer' | 'same'
-  releaseUrl: string | null
   actions: { recheck: () => void }
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
@@ -152,8 +150,9 @@ export function ProtocolMismatch({
         {fit === 'newer' && (
           <Button
             className="px-5"
-            // The window guard opens https links in the browser.
-            onClick={() => window.open(releaseUrl ?? LATEST_RELEASE_URL)}
+            // The window guard opens https links in the browser. Never the running app's own tag:
+            // a newer engine needs a newer Talyx than this one.
+            onClick={() => window.open(LATEST_RELEASE_URL)}
           >
             {t('engine.getLatest')}
           </Button>
@@ -251,7 +250,7 @@ export function EngineStillOlder({
 }: {
   path: string
   version: string
-  actions: { useInstalled: () => void; chooseFile: () => void }
+  actions: { useInstalled: () => void; chooseFile: () => void; continueAnyway: () => void }
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   return (
@@ -267,6 +266,9 @@ export function EngineStillOlder({
         </Button>
         <button className={linkClass} onClick={actions.chooseFile}>
           {t('engine.chooseFile')}
+        </button>
+        <button className={linkClass} onClick={actions.continueAnyway}>
+          {t('setup.continueAnyway')}
         </button>
       </div>
     </div>

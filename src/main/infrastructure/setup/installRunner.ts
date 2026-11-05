@@ -49,8 +49,8 @@ export function runInstall(
 
   function runOne(command: string, emit: (text: string) => void): Promise<number> {
     return new Promise((resolve) => {
-      // A login shell so the command sees the user's PATH; detached so the whole process group
-      // can be killed on cancel; stdin closed so a command that prompts reads EOF instead of hanging.
+      // A login shell by default so the command sees the user's PATH (a plain `-c` when options
+      // say so); detached so the whole process group can be killed on cancel; stdin closed so a command that prompts reads EOF instead of hanging.
       const child = spawn(shell, [options?.login === false ? '-c' : '-lc', command], {
         env: options?.env,
         detached: true,

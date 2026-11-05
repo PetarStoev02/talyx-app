@@ -70,9 +70,10 @@ export function InstallEngine({
     useEngine
       .getState()
       .useInstalled()
-      .catch((error: unknown) =>
-        toast.error(error instanceof Error ? error.message : String(error))
-      )
+      .catch((error: unknown) => {
+        reportError('setup', error)
+        toast.error(t('setup.noInstalledEngine'))
+      })
   }
 
   function showCommands(): void {
@@ -97,13 +98,7 @@ export function InstallEngine({
         />
       )
     case 'protocol':
-      return (
-        <ProtocolMismatch
-          fit={screen.fit}
-          releaseUrl={steps?.releaseUrl ?? null}
-          actions={{ recheck }}
-        />
-      )
+      return <ProtocolMismatch fit={screen.fit} actions={{ recheck }} />
     case 'commands':
       return <InstallCommands steps={screen.steps} onInstall={install} onChooseFile={chooseFile} />
     case 'stepsFailed':
@@ -143,7 +138,7 @@ export function InstallEngine({
         <EngineStillOlder
           path={screen.path}
           version={screen.version}
-          actions={{ useInstalled: runInstalled, chooseFile }}
+          actions={{ useInstalled: runInstalled, chooseFile, continueAnyway: onReady }}
         />
       )
     case 'older':

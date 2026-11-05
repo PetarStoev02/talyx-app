@@ -81,6 +81,7 @@ const en = {
   'setup.update': 'Update to {version}',
   'setup.stillOlder': 'Talyx still runs the engine at {path}, which is {version}.',
   'setup.useInstalled': 'Use the newly installed engine',
+  'setup.noInstalledEngine': 'Talyx found no installed engine in ~/.local/bin.',
   'setup.continue': 'Continue',
   'setup.continueAnyway': 'Continue anyway',
   'setup.providerTitle': 'Connect a model provider',
