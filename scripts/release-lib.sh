@@ -29,6 +29,18 @@ check_install_file() {
   check_install_file_content "$file"
 }
 
+# CI: writes the install file from the ENGINE_INSTALL_JSON secret (base64 of the file's exact bytes)
+# to $1 and checks it. Never echoes the secret.
+write_install_file_from_secret() {
+  local dest="$1"
+  if [ -z "${ENGINE_INSTALL_JSON:-}" ]; then
+    echo "::error::Add the ENGINE_INSTALL_JSON secret (base64 of engine-install.json)"
+    return 1
+  fi
+  printf '%s' "$ENGINE_INSTALL_JSON" | base64 -d > "$dest" || return 1
+  check_install_file "$dest"
+}
+
 check_install_file_content() {
   local file="$1" expected declared commits
   expected=$(grep -oE "EXPECTED_ENGINE_VERSION = '[0-9.]+'" "$ENGINE_VERSION_FILE" | grep -oE "[0-9.]+'" | tr -d "'" || true)

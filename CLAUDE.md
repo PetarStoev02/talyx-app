@@ -72,6 +72,8 @@ On macOS a downloaded build is blocked the first time it is opened: dismiss the 
 click Open Anyway in System Settings → Privacy & Security, or run
 `xattr -dr com.apple.quarantine /Applications/Talyx.app` once.
 
+Electron 44 needs macOS 13 or newer.
+
 Releases come from the Release workflow (`.github/workflows/release.yml`, Actions → Release → Run
 workflow): macOS DMGs, Linux AppImage + deb, the real-engine smoke test on Linux, then a draft
 release `v<version>` with `engine-install.json` and `SHA256SUMS`. Its body is the optional
@@ -79,13 +81,11 @@ release `v<version>` with `engine-install.json` and `SHA256SUMS`. Its body is th
 releasing; no engine name), then GitHub's generated notes. It needs the secret
 `ENGINE_INSTALL_JSON` (base64 of `engine-install.json`), set once per file change with
 `gh secret set ENGINE_INSTALL_JSON < <(base64 -i engine-install.json)`; each job checks it with
-`scripts/release-lib.sh`, which `release.sh` shares. `npm run release` is the local, macOS-only path.
+`scripts/release-lib.sh`, which `release.sh` shares.
 
-Before `npm run release`, write the gitignored `release-highlights.md` at the repo root: 1-3 lines
-`- **Lead.** Text.`. The script puts them under `## Highlights` above GitHub's generated notes; the
-update button shows them. Without the file the script warns and the release has no highlights.
-
-Electron 44 needs macOS 13 or newer.
+`npm run release` (`scripts/release.sh`) is the local path, macOS DMGs only. Before it, write the
+gitignored `release-highlights.md` at the repo root: 1-3 lines `- **Lead.** Text.`. The script puts
+them under `## Highlights` above GitHub's generated notes; the update button shows them. Without the file the script warns and the release has no highlights.
 
 `npm run release` needs `engine-install.json` (the engine install steps the app fetches from the
 release) at the repo root. It is gitignored, and its SHA-256 must equal `ENGINE_INSTALL_SHA256` in
