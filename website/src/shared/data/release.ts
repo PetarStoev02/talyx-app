@@ -1,5 +1,7 @@
-/** Kept in step with the app's package.json version at release time. */
-export const APP_VERSION = '1.0.0'
+// The app's own version, so the site cannot drift from it. A named import bundles only this field.
+import { version } from '../../../../package.json'
+
+export const APP_VERSION = version
 
 export const REPO_URL = 'https://github.com/PetarStoev02/talyx-app'
 export const ISSUES_URL = `${REPO_URL}/issues`
