@@ -28,7 +28,11 @@ export function MessageBubble({
   loadImage: (path: string) => Promise<string>
 }): React.JSX.Element {
   if (message.kind === 'notice')
-    return <p className="text-sm text-muted-foreground whitespace-pre-wrap">{message.text}</p>
+    return (
+      <p className="text-sm text-muted-foreground whitespace-pre-wrap wrap-anywhere">
+        {message.text}
+      </p>
+    )
   if (message.kind === 'user')
     return (
       <div className="ml-auto flex max-w-[80%] flex-col items-end gap-2">
@@ -36,14 +40,14 @@ export function MessageBubble({
           <ChatImage key={path} path={path} loadImage={loadImage} />
         ))}
         {message.text && (
-          <p className="rounded-3xl bg-secondary px-4 py-2 text-base whitespace-pre-wrap">
+          <p className="rounded-3xl bg-secondary px-4 py-2 text-base whitespace-pre-wrap wrap-anywhere">
             {message.text}
           </p>
         )}
       </div>
     )
   const reply = (
-    <div className="chat-markdown chat-bubble max-w-[85%] self-start rounded-3xl bg-secondary px-4 py-3 text-base">
+    <div className="chat-markdown chat-bubble max-w-[85%] self-start rounded-3xl bg-secondary px-4 py-3 text-base wrap-anywhere">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
         {message.text}
       </ReactMarkdown>

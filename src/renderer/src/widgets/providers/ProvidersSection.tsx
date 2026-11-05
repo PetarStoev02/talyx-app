@@ -17,14 +17,12 @@ import type {
   ProvidersOverview
 } from '@features/providers/providers'
 import { Button } from '@shared/ui/button'
-import { Card, CardContent } from '@shared/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
 import { AddProviderDialog } from './AddProviderDialog'
 import { DefaultModelSection } from './DefaultModelSection'
 import { failureText, reportSpread } from './feedback'
 
-const dialogClass = 'border-0 bg-card shadow-none backdrop-blur-none'
 const linkClass = 'text-sm underline underline-offset-4 disabled:opacity-50'
 
 type Removal =
@@ -116,95 +114,90 @@ export function ProvidersSection({
 
   return (
     <>
-      <Card>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-sm font-semibold text-foreground">{t('providers.title')}</h2>
-            <Button
-              className="rounded-full text-base"
-              disabled={!overview}
-              onClick={() => setEditing('new')}
-            >
-              {t('providers.add')}
-            </Button>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-sm font-semibold text-foreground">{t('providers.title')}</h2>
+          <Button disabled={!overview} onClick={() => setEditing('new')}>
+            {t('providers.add')}
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">{t('providers.hint')}</p>
+        {problem ? (
+          <div role="alert" className="text-base">
+            <p>{problem}</p>
+            <button className="mt-2 underline" onClick={() => void load()}>
+              {t('roster.retry')}
+            </button>
           </div>
-          <p className="text-sm text-muted-foreground">{t('providers.hint')}</p>
-          {problem ? (
-            <div role="alert" className="text-base">
-              <p>{problem}</p>
-              <button className="mt-2 underline" onClick={() => void load()}>
-                {t('roster.retry')}
-              </button>
-            </div>
-          ) : !overview ? (
-            <p role="status" className="text-sm text-muted-foreground">
-              {t('providers.loading')}
-            </p>
-          ) : empty ? (
-            <p className="text-base">{t('providers.empty')}</p>
-          ) : (
-            <ul className="space-y-2">
-              {overview.endpoints.map((endpoint) => (
-                <Row
-                  key={`endpoint:${endpoint.id}`}
-                  title={endpoint.name}
-                  badge={endpoint.is_current ? t('providers.active') : null}
-                  lines={[
-                    endpoint.base_url,
-                    t('providers.models').replace('{models}', endpoint.models.join(', '))
-                  ]}
-                >
-                  <button className={linkClass} onClick={() => setEditing(endpoint)}>
-                    {t('providers.edit')}
-                  </button>
-                  {canRemoveEndpoint(endpoint) && (
-                    <button
-                      className={linkClass}
-                      onClick={() => setRemoving({ kind: 'endpoint', endpoint })}
-                    >
-                      {t('providers.remove')}
-                    </button>
-                  )}
-                </Row>
-              ))}
-              {keys.map((slot) => (
-                <Row
-                  key={`key:${slot.provider}`}
-                  title={slot.provider}
-                  lines={[
-                    revealed[slot.key] ??
-                      t('providers.keySaved').replace('{preview}', slot.preview ?? '')
-                  ]}
-                  secret={revealed[slot.key] !== undefined}
-                >
-                  <button className={linkClass} onClick={() => void reveal(slot)}>
-                    {revealed[slot.key] !== undefined ? t('providers.hide') : t('providers.reveal')}
-                  </button>
-                  <button className={linkClass} onClick={() => setRemoving({ kind: 'key', slot })}>
+        ) : !overview ? (
+          <p role="status" className="text-sm text-muted-foreground">
+            {t('providers.loading')}
+          </p>
+        ) : empty ? (
+          <p className="text-base">{t('providers.empty')}</p>
+        ) : (
+          <ul className="space-y-2">
+            {overview.endpoints.map((endpoint) => (
+              <Row
+                key={`endpoint:${endpoint.id}`}
+                title={endpoint.name}
+                badge={endpoint.is_current ? t('providers.active') : null}
+                lines={[
+                  endpoint.base_url,
+                  t('providers.models').replace('{models}', endpoint.models.join(', '))
+                ]}
+              >
+                <button className={linkClass} onClick={() => setEditing(endpoint)}>
+                  {t('providers.edit')}
+                </button>
+                {canRemoveEndpoint(endpoint) && (
+                  <button
+                    className={linkClass}
+                    onClick={() => setRemoving({ kind: 'endpoint', endpoint })}
+                  >
                     {t('providers.remove')}
                   </button>
-                </Row>
-              ))}
-              {accounts.map((account) => (
-                <Row
-                  key={`account:${account.id}`}
-                  title={account.name}
-                  badge={t('providers.signedIn')}
-                  lines={account.disconnectable ? [] : [t('providers.signedInElsewhere')]}
-                >
-                  {account.disconnectable && (
-                    <button
-                      className={linkClass}
-                      onClick={() => setRemoving({ kind: 'account', account })}
-                    >
-                      {t('providers.disconnect')}
-                    </button>
-                  )}
-                </Row>
-              ))}
-            </ul>
-          )}
-        </CardContent>
+                )}
+              </Row>
+            ))}
+            {keys.map((slot) => (
+              <Row
+                key={`key:${slot.provider}`}
+                title={slot.provider}
+                lines={[
+                  revealed[slot.key] ??
+                    t('providers.keySaved').replace('{preview}', slot.preview ?? '')
+                ]}
+                secret={revealed[slot.key] !== undefined}
+              >
+                <button className={linkClass} onClick={() => void reveal(slot)}>
+                  {revealed[slot.key] !== undefined ? t('providers.hide') : t('providers.reveal')}
+                </button>
+                <button className={linkClass} onClick={() => setRemoving({ kind: 'key', slot })}>
+                  {t('providers.remove')}
+                </button>
+              </Row>
+            ))}
+            {accounts.map((account) => (
+              <Row
+                key={`account:${account.id}`}
+                title={account.name}
+                badge={t('providers.signedIn')}
+                lines={account.disconnectable ? [] : [t('providers.signedInElsewhere')]}
+              >
+                {account.disconnectable && (
+                  <button
+                    className={linkClass}
+                    onClick={() => setRemoving({ kind: 'account', account })}
+                  >
+                    {t('providers.disconnect')}
+                  </button>
+                )}
+              </Row>
+            ))}
+          </ul>
+        )}
+
         {editing && overview && (
           <AddProviderDialog
             backend={backend}
@@ -215,28 +208,23 @@ export function ProvidersSection({
           />
         )}
         <Dialog open={!!removing} onOpenChange={(open) => !open && setRemoving(null)}>
-          <DialogContent className={dialogClass}>
+          <DialogContent>
             {removing && <RemovalCopy removal={removing} />}
             <div className="flex gap-2">
               <Button
                 variant="destructive"
-                className="rounded-full text-base"
                 disabled={busy}
                 onClick={() => removing && void remove(removing)}
               >
                 {removing?.kind === 'account' ? t('providers.disconnect') : t('providers.remove')}
               </Button>
-              <Button
-                variant="ghost"
-                className="rounded-full text-base"
-                onClick={() => setRemoving(null)}
-              >
+              <Button variant="ghost" onClick={() => setRemoving(null)}>
                 {t('roster.cancel')}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
-      </Card>
+      </section>
       <DefaultModelSection
         key={loads}
         backend={backend}

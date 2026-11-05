@@ -19,8 +19,8 @@ import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { failureText, reportSpread } from './feedback'
 import { SignIn } from './SignIn'
+import { Input, NativeSelect, Textarea } from '@shared/ui/input'
 
-const fieldClass = 'mt-2 block w-full rounded-lg bg-secondary px-3 py-2 text-base'
 const linkClass = 'text-base underline underline-offset-4 disabled:opacity-50'
 type Kind = 'key' | 'account' | 'endpoint'
 const KINDS: Array<[Kind, TranslationKey]> = [
@@ -45,7 +45,7 @@ export function AddProviderDialog({
   const [kind, setKind] = useState<Kind>('key')
   return (
     <Dialog open onOpenChange={(open) => !open && form.onClose()}>
-      <DialogContent className="border-0 bg-card shadow-none backdrop-blur-none">
+      <DialogContent>
         <DialogTitle>
           {editing
             ? t('providers.editTitle').replace('{name}', editing.name)
@@ -134,30 +134,28 @@ function KeyForm({ backend, overview, onChanged, onClose }: FormProps): React.JS
     >
       <label className="block text-base">
         {t('providers.provider')}
-        <select
+        <NativeSelect
           value={provider}
           onChange={(event) => {
             setProvider(event.target.value)
             setNote(null)
           }}
-          className={fieldClass}
         >
           {slots.map((item) => (
             <option key={item.provider} value={item.provider}>
               {item.provider}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </label>
       <label className="block text-base">
         {t('providers.apiKey')}
-        <input
+        <Input
           type="password"
           autoComplete="off"
           spellCheck={false}
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          className={fieldClass}
         />
         {slot?.docsUrl && (
           <a
@@ -172,7 +170,7 @@ function KeyForm({ backend, overview, onChanged, onClose }: FormProps): React.JS
       </label>
       <Note text={note} />
       <div className="flex items-center gap-4">
-        <Button className="rounded-full text-base" type="submit" disabled={!!busy || !value.trim()}>
+        <Button type="submit" disabled={!!busy || !value.trim()}>
           {busy === 'save' ? t('providers.saving') : t('providers.save')}
         </Button>
         <button
@@ -282,33 +280,26 @@ function EndpointForm({
       {!editing && <p className="text-base">{t('providers.endpointHint')}</p>}
       <label className="block text-base">
         {t('providers.name')}
-        <input
-          value={name}
-          maxLength={100}
-          onChange={(event) => setName(event.target.value)}
-          className={fieldClass}
-        />
+        <Input value={name} maxLength={100} onChange={(event) => setName(event.target.value)} />
       </label>
       <label className="block text-base">
         {t('providers.baseUrl')}
-        <input
+        <Input
           type="url"
           value={baseUrl}
           placeholder="http://127.0.0.1:8000/v1"
           spellCheck={false}
           onChange={(event) => setBaseUrl(event.target.value)}
-          className={fieldClass}
         />
       </label>
       <label className="block text-base">
         {t('providers.apiKey')}
-        <input
+        <Input
           type="password"
           autoComplete="off"
           spellCheck={false}
           value={apiKey}
           onChange={(event) => setApiKey(event.target.value)}
-          className={fieldClass}
         />
         {(keyNeeded || editing?.has_api_key) && (
           <span className="mt-1 block text-sm text-muted-foreground">
@@ -318,12 +309,11 @@ function EndpointForm({
       </label>
       <label className="block text-base">
         {t(editing ? 'providers.endpointModelsAdd' : 'providers.endpointModels')}
-        <textarea
+        <Textarea
           value={models}
           rows={3}
           spellCheck={false}
           onChange={(event) => setModels(event.target.value)}
-          className={fieldClass}
         />
         <span className="mt-1 block text-sm text-muted-foreground">
           {editing
@@ -333,11 +323,7 @@ function EndpointForm({
       </label>
       <Note text={note} />
       <div className="flex items-center gap-4">
-        <Button
-          className="rounded-full text-base"
-          type="submit"
-          disabled={!!busy || (keyNeeded && !apiKey.trim())}
-        >
+        <Button type="submit" disabled={!!busy || (keyNeeded && !apiKey.trim())}>
           {busy === 'save' ? t('providers.saving') : t('providers.save')}
         </Button>
         <button

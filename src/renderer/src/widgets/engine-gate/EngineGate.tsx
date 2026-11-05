@@ -34,7 +34,7 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
         {status.state === 'missing' ? t('engine.missingBody') : status.message}
       </p>
       <div className="flex items-center gap-4">
-        <Button className="rounded-full px-5" disabled={checking} onClick={() => void check()}>
+        <Button className="px-5" disabled={checking} onClick={() => void check()}>
           {t('engine.retry')}
         </Button>
         <button

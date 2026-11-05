@@ -19,8 +19,7 @@ import {
   DialogDescription,
   DialogTitle
 } from '@shared/ui/dialog'
-
-const fieldClass = 'mt-2 block w-full rounded-lg bg-secondary px-3 py-2 text-base'
+import { Input, NativeSelect } from '@shared/ui/input'
 
 // Mounted only while open, so the form starts empty each time and survives a failed create.
 export function CreateRoomDialog({
@@ -84,7 +83,7 @@ export function CreateRoomDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="border-0 bg-card shadow-none backdrop-blur-none">
+      <DialogContent>
         <DialogTitle>{t('rooms.createTitle')}</DialogTitle>
         <DialogDescription>{t('rooms.createHint')}</DialogDescription>
         <form
@@ -96,12 +95,11 @@ export function CreateRoomDialog({
         >
           <label className="block text-base">
             {t('rooms.name')}
-            <input
+            <Input
               autoFocus
               value={name}
               maxLength={100}
               onChange={(event) => setName(event.target.value)}
-              className={fieldClass}
             />
           </label>
           <fieldset className="text-base">
@@ -138,18 +136,14 @@ export function CreateRoomDialog({
           </fieldset>
           <label className="block text-base">
             {t('create.folder')}
-            <select
-              value={folderId}
-              onChange={(event) => setFolderId(event.target.value)}
-              className={fieldClass}
-            >
+            <NativeSelect value={folderId} onChange={(event) => setFolderId(event.target.value)}>
               <option value="">{t('roster.unassigned')}</option>
               {snapshot.folders.map((folder) => (
                 <option key={folder.id} value={folder.id}>
                   {folderPath(snapshot.folders, folder)}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           {error && (
             <div role="alert">
@@ -157,11 +151,11 @@ export function CreateRoomDialog({
             </div>
           )}
           <div className="flex gap-2">
-            <Button className="rounded-full text-base" type="submit" disabled={!ready || saving}>
+            <Button type="submit" disabled={!ready || saving}>
               {t('rooms.create')}
             </Button>
             <DialogClose asChild>
-              <Button className="rounded-full text-base" type="button" variant="ghost">
+              <Button type="button" variant="ghost">
                 {t('roster.cancel')}
               </Button>
             </DialogClose>

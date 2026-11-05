@@ -25,6 +25,7 @@ import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { ModelField } from '@shared/ui/ModelPicker'
 import { RoutinesSection } from './RoutinesSection'
+import { Input, Textarea } from '@shared/ui/input'
 
 type Tab = 'details' | 'look' | 'soul'
 const TABS: Array<[Tab, TranslationKey]> = [
@@ -32,7 +33,6 @@ const TABS: Array<[Tab, TranslationKey]> = [
   ['look', 'details.tabLook'],
   ['soul', 'details.tabSoul']
 ]
-const fieldClass = 'mt-2 block w-full rounded-lg bg-secondary px-3 py-2 text-base'
 
 export type ModelOptions = (profile: string) => Promise<ModelOptionProvider[]>
 
@@ -127,7 +127,7 @@ export function DetailsPanel({
   return (
     <aside
       aria-label={t('agents.details')}
-      className="flex w-[340px] max-w-[50%] shrink-0 flex-col border-l bg-card"
+      className="tone-step flex w-[340px] max-w-[50%] shrink-0 flex-col"
     >
       <header className="relative flex flex-col items-center gap-2 px-6 pt-6 pb-4 text-center">
         <button
@@ -161,7 +161,9 @@ export function DetailsPanel({
             onClick={() => setTab(id)}
             className={cn(
               'flex-1 rounded-full px-3 py-1.5 text-sm font-medium',
-              tab === id ? 'bg-card' : 'text-muted-foreground hover:text-foreground'
+              tab === id
+                ? 'bg-foreground text-background'
+                : 'text-muted-foreground hover:text-foreground'
             )}
           >
             {t(label)}
@@ -189,23 +191,21 @@ export function DetailsPanel({
             {bot.name !== 'default' && (
               <label className="block text-base">
                 {t('details.title')}
-                <input
+                <Input
                   value={draft.title}
                   maxLength={100}
                   placeholder={botTitle({ ...bot, meta: { ...bot.meta, title: undefined } })}
                   onChange={(event) => setTitle(event.target.value)}
-                  className={fieldClass}
                 />
               </label>
             )}
             <label className="block text-base">
               {t('details.description')}
-              <textarea
+              <Textarea
                 value={draft.description}
                 rows={3}
                 placeholder={t('details.descriptionHint')}
                 onChange={(event) => update({ description: event.target.value })}
-                className={cn(fieldClass, 'resize-none')}
               />
             </label>
             <div className="text-base">
@@ -228,11 +228,11 @@ export function DetailsPanel({
         ) : (
           <label className="flex flex-1 flex-col text-base">
             {t('details.soul')}
-            <textarea
+            <Textarea
               value={draft.soul}
               spellCheck={false}
               onChange={(event) => update({ soul: event.target.value })}
-              className={cn(fieldClass, 'min-h-64 flex-1 resize-none font-mono text-sm')}
+              className="min-h-64 flex-1 font-mono text-sm"
             />
           </label>
         )}
@@ -242,20 +242,16 @@ export function DetailsPanel({
           <ProblemMessage problem={error} />
         </div>
       )}
-      <footer className="flex justify-end gap-2 border-t px-6 py-3">
-        <Button
-          variant="ghost"
-          className="rounded-full text-base"
-          onClick={() => editProfile(null)}
-        >
+      <footer className="flex justify-end gap-2 px-6 py-3">
+        <Button variant="ghost" onClick={() => editProfile(null)}>
           {t('roster.cancel')}
         </Button>
-        <Button className="rounded-full text-base" disabled={!changed || saving} onClick={save}>
+        <Button disabled={!changed || saving} onClick={save}>
           {saving ? t('details.saving') : t('details.save')}
         </Button>
       </footer>
       <Dialog open={!!confirm} onOpenChange={(open) => !open && keepModel()}>
-        <DialogContent className="border-0 bg-card shadow-none backdrop-blur-none">
+        <DialogContent>
           <DialogTitle>{t('details.confirmTitle')}</DialogTitle>
           <DialogDescription>{confirm?.message}</DialogDescription>
           {error && (
@@ -264,14 +260,10 @@ export function DetailsPanel({
             </div>
           )}
           <div className="flex gap-2">
-            <Button
-              className="rounded-full text-base"
-              disabled={saving}
-              onClick={() => confirm && applyModel(confirm.model)}
-            >
+            <Button disabled={saving} onClick={() => confirm && applyModel(confirm.model)}>
               {t('details.confirmUse')}
             </Button>
-            <Button variant="ghost" className="rounded-full text-base" onClick={keepModel}>
+            <Button variant="ghost" onClick={keepModel}>
               {t('details.confirmKeep')}
             </Button>
           </div>

@@ -138,7 +138,7 @@ export function Composer({
           className="field-sizing-content resize-none bg-transparent px-2 py-1 text-base outline-none"
           style={{ maxHeight: `calc(${MAX_ROWS}lh + 0.5rem)` }}
         />
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           <button
             type="button"
             aria-label={t('chat.addImage')}
@@ -159,50 +159,52 @@ export function Composer({
             }}
           />
           {children}
-          <span className="ml-auto" />
-          <button
-            type="button"
-            aria-label={
-              dictation.state === 'recording'
-                ? t('chat.dictating')
-                : dictation.state === 'transcribing'
-                  ? t('chat.transcribing')
-                  : t('chat.dictate')
-            }
-            aria-pressed={dictation.state === 'recording'}
-            disabled={dictation.state === 'transcribing' || dictation.state === 'starting'}
-            onClick={dictation.toggle}
-            className={cn(
-              'rounded-full p-2 hover:bg-accent',
-              dictation.state === 'recording' &&
-                'bg-primary text-primary-foreground hover:bg-primary'
-            )}
-          >
-            {dictation.state === 'transcribing' ? (
-              <LoaderCircle size={18} className="animate-spin" />
-            ) : (
-              <Mic size={18} />
-            )}
-          </button>
-          {running ? (
+          {/* Mic and send wrap together, so a narrow window never pushes Send out of reach. */}
+          <div className="ml-auto flex items-center gap-1">
             <button
               type="button"
-              aria-label={t('chat.stop')}
-              onClick={target.stop}
-              className="rounded-full bg-primary p-2 text-primary-foreground"
+              aria-label={
+                dictation.state === 'recording'
+                  ? t('chat.dictating')
+                  : dictation.state === 'transcribing'
+                    ? t('chat.transcribing')
+                    : t('chat.dictate')
+              }
+              aria-pressed={dictation.state === 'recording'}
+              disabled={dictation.state === 'transcribing' || dictation.state === 'starting'}
+              onClick={dictation.toggle}
+              className={cn(
+                'rounded-full p-2 hover:bg-accent',
+                dictation.state === 'recording' &&
+                  'bg-primary text-primary-foreground hover:bg-primary'
+              )}
             >
-              <Square size={16} fill="currentColor" />
+              {dictation.state === 'transcribing' ? (
+                <LoaderCircle size={18} className="animate-spin" />
+              ) : (
+                <Mic size={18} />
+              )}
             </button>
-          ) : (
-            <button
-              type="submit"
-              aria-label={t('chat.send')}
-              disabled={!text.trim() && !files.length}
-              className="rounded-full bg-primary p-2 text-primary-foreground disabled:opacity-50"
-            >
-              <ArrowUp size={16} />
-            </button>
-          )}
+            {running ? (
+              <button
+                type="button"
+                aria-label={t('chat.stop')}
+                onClick={target.stop}
+                className="rounded-full bg-primary p-2 text-primary-foreground"
+              >
+                <Square size={16} fill="currentColor" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                aria-label={t('chat.send')}
+                disabled={!text.trim() && !files.length}
+                className="rounded-full bg-primary p-2 text-primary-foreground disabled:opacity-50"
+              >
+                <ArrowUp size={16} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </form>
@@ -273,7 +275,7 @@ function ReasoningMenu({
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           sideOffset={4}
-          className="z-50 min-w-40 rounded-xl bg-popover p-2 text-base text-popover-foreground"
+          className="z-50 min-w-40 rounded-xl bg-popover p-2 text-base text-popover-foreground shadow-lg"
         >
           {REASONING_LEVELS.map(([level, label]) => (
             <MenuItem

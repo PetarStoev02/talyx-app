@@ -35,10 +35,7 @@ function registerIpc(): void {
   void devBridge?.start(Number(process.env['TALYX_BRIDGE_PORT'] ?? 5175))
 }
 
-/**
- * Keep the OS-rendered window material in the same appearance as the app theme;
- * otherwise a light app over a dark-mode system gets a dark frost behind it.
- */
+/** Keep native chrome (menus, dialogs, scrollbars) in the same appearance as the app theme. */
 function syncNativeTheme(theme: unknown): void {
   if (theme === 'light' || theme === 'dark' || theme === 'system') {
     nativeTheme.themeSource = theme
@@ -64,10 +61,8 @@ function createWindow(): BrowserWindow {
     frame: false,
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
-    // macOS blurs the desktop behind the window; the renderer keeps a translucent background.
-    vibrancy: 'sidebar',
-    visualEffectState: 'active',
-    backgroundColor: '#00000000',
+    // The theme's ground (--background), so a resize never flashes another colour.
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0a0a0c' : '#ffffff',
     icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
