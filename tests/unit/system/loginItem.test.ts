@@ -58,13 +58,23 @@ describe('autostartEntry', () => {
     )
   })
 
-  it('should quote a path with spaces and escape quotes, backticks, dollars and backslashes', () => {
-    const entry = autostartEntry('/home/me/My "Apps"/a`b$c\\d.AppImage')
-    expect(entry).toContain('Exec="/home/me/My \\"Apps\\"/a\\`b\\$c\\\\d.AppImage"\n')
+  it.each([
+    ['a space', 'a b', 'a b'],
+    ['a double quote', 'a"b', 'a\\\\"b'],
+    ['a backtick', 'a`b', 'a\\\\`b'],
+    ['a dollar sign', 'a$b', 'a\\\\$b'],
+    ['a backslash', 'a\\b', 'a\\\\\\\\b'],
+    ['a percent sign', 'a%b', 'a%%b']
+  ])('should write %s in the path as a quoted, escaped Exec value', (_case, path, written) => {
+    expect(autostartEntry(path)).toContain(`Exec="${written}"\n`)
   })
 
-  it('should keep a percent sign from being read as a field code', () => {
-    expect(autostartEntry('/home/me/100%/talyx')).toContain('Exec="/home/me/100%%/talyx"\n')
+  it.each([
+    ['a newline', '/home/me/a\nb'],
+    ['a tab', '/home/me/a\tb'],
+    ['a NUL', '/home/me/a\0b']
+  ])('should refuse a path with %s', (_case, path) => {
+    expect(() => autostartEntry(path)).toThrow(LaunchAtLoginError)
   })
 })
 
@@ -91,6 +101,12 @@ describe('setLaunchAtLogin on Linux', () => {
     const { deps, files } = fakeDeps()
     await setLaunchAtLogin(true, deps)
     await setLaunchAtLogin(false, deps)
+    expect(files.size).toBe(0)
+  })
+
+  it('should write nothing for a path with a newline', async () => {
+    const { deps, files } = fakeDeps({ env: { APPIMAGE: '/home/me/a\nb.AppImage' } })
+    await expect(setLaunchAtLogin(true, deps)).rejects.toBeInstanceOf(LaunchAtLoginError)
     expect(files.size).toBe(0)
   })
 

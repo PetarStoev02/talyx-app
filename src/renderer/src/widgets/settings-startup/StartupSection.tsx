@@ -5,13 +5,17 @@ import { settingsApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
 import { Switch } from '@shared/ui/switch'
 
+// Main registers a login item on these only; elsewhere the switch would do nothing.
+const LOGIN_ITEM_PLATFORMS = ['darwin', 'linux']
+
 /** The switch for starting Talyx at login. A dev run is not the installed app, so it shows nothing. */
 export function StartupSection(): React.JSX.Element | null {
   const t = useLanguage((s) => s.t)
   const [enabled, setEnabled] = useState<boolean | null>(null)
 
   useEffect(() => {
-    if (import.meta.env.DEV) return
+    if (import.meta.env.DEV || !LOGIN_ITEM_PLATFORMS.includes(window.electron?.platform ?? ''))
+      return
     settingsApi
       .get()
       .then((settings) => setEnabled(settings.launchAtLogin))

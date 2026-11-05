@@ -52,13 +52,30 @@ export function systemLoginItemDeps(): LoginItemDeps {
   }
 }
 
-/** The Desktop Entry spec's quoting for an `Exec` argument, plus `%%` so a literal `%` is not a field code. */
+// A newline would end the Exec line and let the rest of the path become more entry keys.
+const DELETE_CHARACTER = 0x7f
+const SPACE_CHARACTER = 0x20
+
+function hasControlCharacter(text: string): boolean {
+  return [...text].some((char) => {
+    const code = char.charCodeAt(0)
+    return code < SPACE_CHARACTER || code === DELETE_CHARACTER
+  })
+}
+
+/**
+ * The Desktop Entry spec's Exec quoting, then its string-value escaping on top: a backslash
+ * before `"`, backtick, `$` and `\`, then every backslash doubled; `%%` so a literal `%` is not
+ * a field code.
+ */
 function quoteExec(path: string): string {
-  return `"${path.replace(/[\\"`$]/g, '\\$&').replace(/%/g, '%%')}"`
+  const quoted = path.replace(/[\\"`$]/g, '\\$&')
+  return `"${quoted.replace(/\\/g, '\\\\').replace(/%/g, '%%')}"`
 }
 
 /** The `.desktop` file a Linux session runs at login. */
 export function autostartEntry(execPath: string): string {
+  if (hasControlCharacter(execPath)) throw new LaunchAtLoginError('path has control characters')
   return [
     '[Desktop Entry]',
     'Type=Application',
@@ -87,7 +104,7 @@ export async function setLaunchAtLogin(enabled: boolean, deps: LoginItemDeps): P
     if (deps.platform === 'darwin') deps.app.setLoginItemSettings({ openAtLogin: enabled })
     else if (deps.platform === 'linux') await setOnLinux(enabled, deps)
   } catch (error) {
-    throw new LaunchAtLoginError(error)
+    throw error instanceof LaunchAtLoginError ? error : new LaunchAtLoginError(error)
   }
 }
 
