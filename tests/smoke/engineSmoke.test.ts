@@ -25,14 +25,17 @@ import { metaPatch } from '../../src/renderer/src/shared/engine/botMeta'
 import {
   EXPECTED_ENGINE_VERSION,
   parseEngineVersion,
+  type EngineHttpRequest,
   type EngineStatus
 } from '../../src/shared/engine'
 import { insideHome, isolatedEnv, isolatedRun, makeTempHome } from './isolation'
 
 const INSTALL_FILE = process.env.TALYX_SMOKE_INSTALL_FILE ?? null
-// The `groups.capabilities` protocol_version of the vendored client's last re-sync; update it with
-// the client. null: recorded at the next real smoke run; until then the check prints it.
-const ROOMS_PROTOCOL_VERSION: number | null = null
+// The `groups.capabilities` protocol_version of the vendored client's last re-sync (observed on
+// engine 0.22.7); update it with the client.
+const ROOMS_PROTOCOL_VERSION = 2
+// The manager bot's profile, which the providers page reads (useProvidersBackend's HOME_PROFILE).
+const HOME_PROFILE = 'default'
 const SMOKE_PROFILE = 'talyx-smoke-1'
 const SMOKE_SOUL = '# Smoke\n\nA throwaway bot the smoke test creates and deletes.'
 const SMOKE_META = { title: 'Smoke' }
@@ -48,7 +51,9 @@ const CHECKS = [
   'socket profiles.list',
   'rooms protocol',
   'throwaway profile',
-  'REST shapes',
+  'routines',
+  'roster REST',
+  'providers REST',
   'delete throwaway profile',
   'no service unit'
 ] as const
@@ -73,7 +78,7 @@ const ProfileRowsSchema = z.object({
     })
   )
 })
-// REST fields Talyx reads (providers keys, the roster's profile names, routines).
+// The fields Talyx reads from each call: the roster's profile names, the providers page, routines.
 const RestProfilesSchema = z.object({ profiles: z.array(z.object({ name: z.string() })) })
 const RestEnvSchema = z.record(
   z.string(),
@@ -88,7 +93,55 @@ const RestEnvSchema = z.record(
     redacted_value: z.string().nullish()
   })
 )
-const RestCronJobsSchema = z.array(z.object({ id: z.string(), enabled: z.boolean() }))
+const RestCustomEndpointsSchema = z.object({
+  endpoints: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      base_url: z.string(),
+      models: z.array(z.string()),
+      has_api_key: z.boolean(),
+      source: z.string().nullish()
+    })
+  )
+})
+const RestOAuthSchema = z.object({
+  providers: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      flow: z.string(),
+      cli_command: z.string(),
+      disconnectable: z.boolean().nullish(),
+      status: z
+        .object({ logged_in: z.boolean().nullish(), free_tier: z.boolean().nullish() })
+        .nullish()
+    })
+  )
+})
+const RestModelInfoSchema = z.object({
+  model: z.string().nullish(),
+  provider: z.string().nullish()
+})
+// routines.ts: `cron.manage` reports its own failures inside a successful result.
+const CronOutcomeSchema = z.object({
+  success: z.boolean().nullish(),
+  error: z.string().nullish()
+})
+const CronListSchema = z.object({
+  jobs: z
+    .array(
+      z.object({
+        job_id: z.string(),
+        name: z.string().nullish(),
+        schedule: z.string().nullish(),
+        deliver: z.string().nullish(),
+        enabled: z.boolean().nullish(),
+        state: z.string().nullish()
+      })
+    )
+    .nullish()
+})
 
 const passed: (Check | 'teardown')[] = []
 let engineName: string | null = null
@@ -137,7 +190,9 @@ describe.skipIf(INSTALL_FILE === null)('real engine smoke', () => {
     const rpc = await check('socket profiles.list', () => checkProfilesList(sockets!))
     roomsProtocol = await check('rooms protocol', () => checkRoomsProtocol(rpc))
     await check('throwaway profile', () => checkThrowawayProfile(rpc, status.botMetaKey))
-    await check('REST shapes', () => checkRestShapes(engine))
+    await check('routines', () => checkRoutines(rpc))
+    await check('roster REST', () => checkRosterRest(engine))
+    await check('providers REST', () => checkProvidersRest(engine))
     await check('delete throwaway profile', () => deleteThrowawayProfile(engine, rpc))
     await check('no service unit', async () => checkNoNewServiceUnit(units))
     // A check that did not run is a failure, not a pass.
@@ -242,7 +297,7 @@ async function checkRoomsProtocol(rpc: Rpc): Promise<number> {
   const { protocol_version: version } = z
     .object({ protocol_version: z.number() })
     .parse(await rpc('default', 'groups.capabilities', {}))
-  if (ROOMS_PROTOCOL_VERSION !== null && version !== ROOMS_PROTOCOL_VERSION)
+  if (version !== ROOMS_PROTOCOL_VERSION)
     throw new SmokeFailure(`protocol_version ${version}, expected ${ROOMS_PROTOCOL_VERSION}`)
   return version
 }
@@ -282,17 +337,48 @@ async function profileRow(rpc: Rpc): Promise<z.infer<typeof ProfileRowsSchema>['
   return row
 }
 
-async function checkRestShapes(engine: Engine): Promise<void> {
-  const { profiles } = RestProfilesSchema.parse(await engine.http({ path: '/api/profiles' }))
+// routines.ts `listRoutines`: the bot's own cron store over the `cron.manage` RPC.
+async function checkRoutines(rpc: Rpc): Promise<void> {
+  const result = await rpc(SMOKE_PROFILE, 'cron.manage', { action: 'list', include_disabled: true })
+  const outcome = CronOutcomeSchema.safeParse(result)
+  if (outcome.success && (outcome.data.success === false || outcome.data.error))
+    throw new SmokeFailure('cron.manage list reported a failure')
+  CronListSchema.parse(result)
+}
+
+// useProvidersBackend.ts `listProfiles`: unscoped.
+async function checkRosterRest(engine: Engine): Promise<void> {
+  const { profiles } = RestProfilesSchema.parse(await rest(engine, { path: '/api/profiles' }))
   const names = profiles.map((profile) => profile.name)
   if (!names.includes('default') || !names.includes(SMOKE_PROFILE))
     throw new SmokeFailure('/api/profiles is missing a profile')
-  RestEnvSchema.parse(await engine.http({ path: '/api/env', profile: 'default' }))
-  RestCronJobsSchema.parse(await engine.http({ path: '/api/cron/jobs' }))
+}
+
+// providers.ts `loadProviders`: each path scoped to the home profile, which also rides the request.
+async function checkProvidersRest(engine: Engine): Promise<void> {
+  const read = (path: string): Promise<unknown> =>
+    rest(engine, { path: scoped(path, HOME_PROFILE), profile: HOME_PROFILE })
+  RestEnvSchema.parse(await read('/api/env'))
+  RestCustomEndpointsSchema.parse(await read('/api/providers/custom-endpoints'))
+  RestOAuthSchema.parse(await read('/api/providers/oauth'))
+  RestModelInfoSchema.parse(await read('/api/model/info'))
+}
+
+function scoped(path: string, profile: string): string {
+  return `${path}?${new URLSearchParams({ profile })}`
+}
+
+/** One REST call; a failure names the call. */
+async function rest(engine: Engine, request: EngineHttpRequest): Promise<unknown> {
+  try {
+    return await engine.http(request)
+  } catch (error) {
+    throw new SmokeFailure(`${request.method ?? 'GET'} ${request.path}: ${safeDetail(error)}`)
+  }
 }
 
 async function deleteThrowawayProfile(engine: Engine, rpc: Rpc): Promise<void> {
-  await engine.http({ path: `/api/profiles/${SMOKE_PROFILE}`, method: 'DELETE' })
+  await rest(engine, { path: `/api/profiles/${SMOKE_PROFILE}`, method: 'DELETE' })
   const { profiles } = ProfileRowsSchema.parse(
     await rpc('default', 'profiles.list', { include_sessions: false })
   )
@@ -317,7 +403,10 @@ function checkNoNewServiceUnit(before: string[]): void {
 
 /** JSON-RPC over one gateway socket opened by main's own EngineSockets, as the app does. */
 async function openRpc(engineSockets: EngineSockets): Promise<Rpc> {
-  const pending = new Map<number, { settle: (error: Error | null, result?: unknown) => void }>()
+  const pending = new Map<
+    number,
+    { method: string; settle: (error: Error | null, result?: unknown) => void }
+  >()
   let nextId = 1
   await engineSockets.open(SOCKET_ID, 'default', (channel, _id, text) => {
     if (channel === 'engine:socket-closed') {
@@ -333,7 +422,10 @@ async function openRpc(engineSockets: EngineSockets): Promise<Rpc> {
     }
     const waiter = typeof frame.id === 'number' ? pending.get(frame.id) : undefined
     if (!waiter) return
-    if (frame.error) waiter.settle(new SmokeFailure(`RPC error ${frame.error.code ?? 'unknown'}`))
+    if (frame.error)
+      waiter.settle(
+        new SmokeFailure(`${waiter.method}: RPC error ${frame.error.code ?? 'unknown'}`)
+      )
     else waiter.settle(null, frame.result)
   })
   return (profile, method, params) =>
@@ -349,7 +441,7 @@ async function openRpc(engineSockets: EngineSockets): Promise<Rpc> {
         if (error) reject(error)
         else resolve(result)
       }
-      pending.set(id, { settle })
+      pending.set(id, { method, settle })
       engineSockets.send(
         SOCKET_ID,
         JSON.stringify({ jsonrpc: '2.0', id, method, params: { ...params, profile } })
