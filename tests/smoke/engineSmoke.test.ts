@@ -14,9 +14,13 @@ import {
   type Engine
 } from '../../src/main/infrastructure/engine/engine'
 import { EngineSockets } from '../../src/main/infrastructure/engine/engineSockets'
-import { readEnsureResult } from '../../src/main/infrastructure/engine/gateway'
+import {
+  mintLocalGatewayTicket,
+  readEnsureResult,
+  type GatewayEndpoint
+} from '../../src/main/infrastructure/engine/gateway'
 import { ENGINE_INSTALL_SHA256, sha256Hex } from '../../src/main/infrastructure/setup/installPin'
-import { runInstall } from '../../src/main/infrastructure/setup/installRunner'
+import { runInstall, type InstallRun } from '../../src/main/infrastructure/setup/installRunner'
 import { metaPatch } from '../../src/renderer/src/shared/engine/botMeta'
 import {
   EXPECTED_ENGINE_VERSION,
@@ -90,6 +94,7 @@ const passed: (Check | 'teardown')[] = []
 let engineName: string | null = null
 let home: string | null = null
 let sockets: EngineSockets | null = null
+let installRun: InstallRun | null = null
 let installHash: string | null = null
 let roomsProtocol: number | null = null
 
@@ -118,7 +123,12 @@ describe.skipIf(INSTALL_FILE === null)('real engine smoke', () => {
       home,
       run,
       platform: process.platform,
-      pathEnv: isolatedEnv(home).PATH
+      pathEnv: isolatedEnv(home).PATH,
+      // Every endpoint Talyx mints for, a stale re-ensure's included, must be inside the temp home.
+      mintTicket: (endpoint, purpose) => {
+        assertInsideHome(endpoint)
+        return mintLocalGatewayTicket(endpoint, purpose)
+      }
     })
     const status = await check('attach inside the temp home', () =>
       checkAttach(engine, run, enginePath)
@@ -151,7 +161,8 @@ function safeDetail(error: unknown): string {
   if (error instanceof SmokeFailure) return error.message
   if (!(error instanceof Error)) return 'a non-error was thrown'
   if (!engineName) return error.name
-  return error.message.replace(new RegExp(engineName, 'gi'), 'the engine')
+  const name = engineName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return error.message.replace(new RegExp(name, 'gi'), 'the engine')
 }
 
 function readInstallFile(path: string): { commands: string[]; version: string; commit: string } {
@@ -169,7 +180,8 @@ function readInstallFile(path: string): { commands: string[]; version: string; c
 
 async function install(home: string, commands: string[]): Promise<void> {
   const env = isolatedEnv(home)
-  const exit = await runInstall(commands, () => undefined, '/bin/bash', { env, login: false }).done
+  installRun = runInstall(commands, () => undefined, '/bin/bash', { env, login: false })
+  const exit = await installRun.done
   if (exit.kind === 'failed')
     throw new SmokeFailure(`command ${exit.index + 1} exited with ${exit.code}`)
   if (exit.kind !== 'ok') throw new SmokeFailure(exit.kind)
@@ -198,10 +210,7 @@ async function checkAttach(
 ): Promise<Attached> {
   const ensureArgs = ['--profile', 'default', 'gateway', 'ensure', '--json']
   const { endpoint } = readEnsureResult(await run(enginePath, ensureArgs))
-  for (const path of [endpoint.profile_id, endpoint.control_home]) {
-    if (path && !insideHome(home!, path))
-      throw new SmokeFailure('the gateway endpoint is outside the temp home')
-  }
+  assertInsideHome(endpoint)
   const status = await engine.status()
   if (status.state !== 'attached')
     throw new SmokeFailure(
@@ -210,6 +219,13 @@ async function checkAttach(
   if (status.stale) throw new SmokeFailure('the gateway is stale')
   if (status.home !== endpoint.profile_id) throw new SmokeFailure('status names another home')
   return status
+}
+
+function assertInsideHome(endpoint: GatewayEndpoint): void {
+  for (const path of [endpoint.profile_id, endpoint.control_home]) {
+    if (path && !insideHome(home!, path))
+      throw new SmokeFailure('a gateway endpoint is outside the temp home')
+  }
 }
 
 async function checkProfilesList(engineSockets: EngineSockets): Promise<Rpc> {
@@ -308,10 +324,12 @@ async function openRpc(engineSockets: EngineSockets): Promise<Rpc> {
       for (const waiter of pending.values()) waiter.settle(new SmokeFailure('the socket closed'))
       return
     }
-    const frame = JSON.parse(String(text)) as {
-      id?: unknown
-      result?: unknown
-      error?: { code?: number }
+    let frame: { id?: unknown; result?: unknown; error?: { code?: number } }
+    try {
+      frame = JSON.parse(String(text))
+    } catch {
+      // Not a JSON-RPC frame, so no waiter's; its parse error would quote engine text.
+      return
     }
     const waiter = typeof frame.id === 'number' ? pending.get(frame.id) : undefined
     if (!waiter) return
@@ -339,18 +357,29 @@ async function openRpc(engineSockets: EngineSockets): Promise<Rpc> {
     })
 }
 
-// Always runs (afterAll): close the socket, stop the temp home's gateway, require that no process
-// still references the temp home, then delete it. Touches nothing outside it.
+// Always runs (afterAll): close the socket, stop an unfinished install, stop the temp home's
+// gateway, require that no process still references the temp home, then delete it. A failed stop
+// still gets the leftover-process check. Touches nothing outside the temp home.
 async function tearDown(tempHome: string): Promise<void> {
+  const problems: string[] = []
   try {
     sockets?.closeAll()
+    if (installRun) {
+      installRun.cancel()
+      await installRun.done
+    }
     const enginePath = userBinEngine(process.platform, tempHome)
-    if (existsSync(enginePath)) await isolatedRun(tempHome)(enginePath, ['gateway', 'stop'])
+    if (existsSync(enginePath)) {
+      await isolatedRun(tempHome)(enginePath, ['gateway', 'stop']).catch((error: unknown) => {
+        problems.push(`gateway stop failed (${safeDetail(error)})`)
+      })
+    }
     const left = await processesReferencing(tempHome)
-    if (left) throw new SmokeFailure(`${left} process(es) still reference the temp home`)
+    if (left) problems.push(`${left} process(es) still reference the temp home`)
   } finally {
     rmSync(tempHome, { recursive: true, force: true })
   }
+  if (problems.length) throw new SmokeFailure(problems.join('; '))
 }
 
 async function processesReferencing(tempHome: string): Promise<number> {
