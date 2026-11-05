@@ -191,6 +191,8 @@ const en = {
   'create.name': 'Name',
   'create.profileId': 'ID: {id}',
   'create.folder': 'Folder',
+  'create.purpose': 'What it does',
+  'create.purposeHint': 'Finds sources and sums them up',
   'create.look': 'Look',
   'create.submit': 'Create bot',
   'roster.newFolderHint': 'Keep bots for the same project together.',

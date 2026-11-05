@@ -13,6 +13,8 @@ export interface NewBot {
   /** Null leaves the model the engine gives a new profile. */
   model: ModelChoice | null
   look: Look
+  /** What the bot does, written into its SOUL. Blank counts as none. */
+  purpose: string | null
 }
 
 /** The profile exists but a step after creating it failed; `profile` is its id. */
@@ -60,7 +62,7 @@ export async function createBot(
   const title = bot.name.trim()
   await backend.request('default', 'profiles.create', {
     name: id,
-    soul: soulFor(title, id),
+    soul: soulFor(title, id, bot.purpose?.trim() || null),
     ...(bot.model ? { model: bot.model.model, provider: bot.model.provider } : {})
   })
   try {
@@ -82,11 +84,12 @@ export async function createBot(
 }
 
 // The engine adds the teammate-messaging protocol itself; the SOUL only says who the bot is.
-function soulFor(title: string, id: string): string {
-  return [
+function soulFor(title: string, id: string, purpose: string | null): string {
+  const soul = [
     `# ${title}`,
     '',
     `You are ${title}, a persistent named agent (profile \`${id}\`) on this machine.`,
     'You keep your own memory, skills, and conversation history across sessions.'
   ].join('\n')
+  return purpose ? `${soul}\n\nWhat you do: ${purpose}` : soul
 }
