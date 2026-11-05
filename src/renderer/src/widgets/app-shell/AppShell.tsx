@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
 import { useLanguage } from '@app/providers/useLanguage'
-import { useAutoUpdater } from '@shared/hooks/useAutoUpdater'
 import { settingsApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
 import { SIDEBAR_WIDTH, clampSidebarWidth } from '../../../../shared/sidebar'
@@ -23,11 +22,10 @@ export function AppShell({
   roster: React.ReactNode | null
   // The far end of the title row: the roster's `+`.
   titleEnd: React.ReactNode
-  // The far end of the footer row: the roster's refresh.
+  // The far end of the footer row: the roster's refresh (the update button while one is pending).
   footerEnd: React.ReactNode
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const release = useAutoUpdater()
   const [width, setWidth] = useState<number>(SIDEBAR_WIDTH.initial)
 
   useEffect(() => {
@@ -56,7 +54,7 @@ export function AppShell({
           </span>
         </div>
         {roster ?? <div className="flex-1" />}
-        <SidebarFooter release={release} withRoster={!!roster} end={footerEnd} />
+        <SidebarFooter withRoster={!!roster} end={footerEnd} />
         <SidebarResizer
           width={width}
           label={t('sidebar.resize')}
