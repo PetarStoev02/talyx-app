@@ -27,6 +27,8 @@ const ENGINE_STATUS = {
 
 const fixtures: Record<string, unknown> = {
   getEngineStatus: () => Promise.resolve({ ...ENGINE_STATUS }),
+  // The footer reads the update state on mount; the demo never has an update.
+  getUpdateState: () => Promise.resolve({ kind: 'none' }),
   getSettings: () => Promise.resolve({ ...SETTINGS }),
   setSettings: (partial: Record<string, unknown>) => {
     Object.assign(SETTINGS, partial)

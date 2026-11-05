@@ -17,7 +17,8 @@ chat (transcript, clarify and approval cards, a composer with model, reasoning, 
 dictation), the details panel from the name pill (title, description, model, routines, look, SOUL),
 the create-bot dialog from the roster's `+`, group rooms hosted by the engine (history, send, who
 is answering, approvals, create, pin, delete), "Talyx needs its engine" when the engine is
-missing, an Engine (debug) page that sends "ping" and prints raw session events, and Settings
+missing, a first-run setup (install the engine, a provider, a first bot), a footer update button
+(Talyx releases and engine updates), an Engine (debug) page that sends "ping" and prints raw session events, and Settings
 (providers: API keys, account sign-ins and custom endpoints, Talyx's default model; the engine:
 where it is, check again, choose its file; launch at login; appearance).
 
@@ -107,19 +108,21 @@ During `npm run dev` the renderer is also usable in a plain browser at
 src/main/
 ├── index.ts                    # Entry point: splash, main window, IPC, release check
 ├── lib/electronUtils.ts        # is.dev, window shortcuts
+├── lib/appMenu.ts              # the packaged app's menu (no dev tools)
 └── infrastructure/
     ├── bridge/DevBridge.ts     # Dev-only HTTP+SSE bridge for the browser renderer
     ├── engine/                 # engine.ts (Engine: CLI, attach, tickets, REST),
     │                           # gateway.ts (vendored attach + ticket mint), engineSockets.ts
     ├── ipc/                    # settings.ipc.ts, engine.ipc.ts, setup.ipc.ts (the engine install),
     │                           # updater.ipc.ts (update download and open), validation.ts (zod at the boundary)
-    ├── security/               # webContentsGuard: no new windows, no navigation away
+    ├── security/               # webContentsGuard (no new windows, no navigation away),
+    │                           # appProtocol.ts (serves the packaged renderer over app://)
     ├── setup/                  # installPin.ts (the hash pin), installSteps.ts (loads the install file), installRunner.ts (runs it)
     ├── storage/SettingsStore.ts # settings.json in userData
     ├── system/loginItem.ts     # launch at login: macOS login item, Linux autostart .desktop
     └── updater/                # releaseCheck.ts (GitHub latest-release check), releaseDownload.ts
                                 # (installer download, checked against SHA256SUMS), updateState.ts
-                                # (the update state machine; the user runs the installer)
+                                # (the update state machine), openInstaller.ts (the user runs it)
 ```
 
 `src/shared/api.ts` is the single definition of `window.api`; the preload builds it over

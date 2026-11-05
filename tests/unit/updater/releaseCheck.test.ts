@@ -107,7 +107,7 @@ describe('fetchLatestRelease', () => {
 
   describe('release details', () => {
     const DOWNLOAD = 'https://github.com/PetarStoev02/talyx-app/releases/download/v1.0.0/'
-    const mac = { platform: 'darwin', arch: 'arm64' } as const
+    const mac = { platform: 'darwin', arch: 'arm64', appImage: false } as const
     const release = (assets: unknown[], extra: object = {}): unknown => ({
       tag_name: 'v1.0.0',
       html_url: `${RELEASE_PAGE}v1.0.0`,
@@ -186,6 +186,22 @@ describe('fetchLatestRelease', () => {
       expect(r.asset?.name).toBe('Talyx-arm64.dmg')
       expect(r.summary.highlights).toEqual([])
       expect(r.summary.changes).toBe(0)
+    })
+
+    it.each([
+      [true, 'Talyx-x86_64.AppImage'],
+      [false, null]
+    ])('should download on Linux only for an AppImage (appImage %s)', async (appImage, name) => {
+      const linux = { platform: 'linux', arch: 'x64', appImage } as const
+      const body = release([
+        asset('Talyx-x86_64.AppImage'),
+        asset('Talyx-amd64.deb'),
+        asset('SHA256SUMS')
+      ])
+      const check = await fetchLatestRelease(respond(body), '0.11.0', linux)
+      if (check.kind !== 'available') throw new Error('expected an available release')
+      expect(check.release.asset?.name ?? null).toBe(name)
+      expect(check.release.summary.downloadable).toBe(appImage)
     })
 
     it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])(

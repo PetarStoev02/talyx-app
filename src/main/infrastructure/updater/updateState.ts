@@ -20,7 +20,13 @@ export function next(state: UpdateState, event: UpdateEvent): UpdateState {
       // A running download is never swapped out; the next check sees the newer release.
       if (state.kind === 'downloading') return state
       if (!event.release) return state.kind === 'none' ? state : NONE
-      if (state.kind !== 'none' && state.release.version === event.release.version) return state
+      if (state.kind !== 'none' && state.release.version === event.release.version) {
+        // Assets or notes added after publishing reach an idle state; a finished download stays.
+        const idle = state.kind === 'available' || state.kind === 'failed'
+        return idle && !sameRelease(state.release, event.release)
+          ? { kind: 'available', release: event.release }
+          : state
+      }
       return { kind: 'available', release: event.release }
     case 'download':
       if ((state.kind !== 'available' && state.kind !== 'failed') || !state.release.downloadable)
@@ -38,6 +44,10 @@ export function next(state: UpdateState, event: UpdateEvent): UpdateState {
     case 'cancelled':
       return state.kind === 'downloading' ? { kind: 'available', release: state.release } : state
   }
+}
+
+function sameRelease(a: ReleaseSummary, b: ReleaseSummary): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
 }
 
 export interface UpdateStoreDeps {

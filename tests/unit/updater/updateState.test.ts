@@ -64,6 +64,30 @@ describe('next', () => {
     ],
     ['failed finds the same version', failed, { kind: 'found', release: v1 }, failed],
     [
+      'available finds the same version with an installer added',
+      unavailable,
+      { kind: 'found', release: v1 },
+      available
+    ],
+    [
+      'failed finds the same version changed',
+      failed,
+      { kind: 'found', release: summary('1.0.0', false) },
+      unavailable
+    ],
+    [
+      'downloading finds the same version changed',
+      downloading,
+      { kind: 'found', release: summary('1.0.0', false) },
+      downloading
+    ],
+    [
+      'ready finds the same version changed',
+      ready,
+      { kind: 'found', release: summary('1.0.0', false) },
+      ready
+    ],
+    [
       'failed finds a newer one',
       failed,
       { kind: 'found', release: v2 },

@@ -31,6 +31,8 @@ export type ReleaseCheck =
 export interface InstallTarget {
   platform: NodeJS.Platform
   arch: string
+  /** On Linux, whether this Talyx runs as an AppImage; a deb install gets the release page. */
+  appImage: boolean
 }
 
 interface Version {
@@ -156,7 +158,11 @@ function readAssets(raw: unknown): ReleaseAsset[] {
 export async function fetchLatestRelease(
   fetchFn: typeof fetch,
   currentVersion: string,
-  target: InstallTarget = { platform: process.platform, arch: process.arch }
+  target: InstallTarget = {
+    platform: process.platform,
+    arch: process.arch,
+    appImage: Boolean(process.env['APPIMAGE'])
+  }
 ): Promise<ReleaseCheck> {
   try {
     const response = await fetchFn(LATEST_RELEASE_API, {
@@ -182,7 +188,11 @@ export async function fetchLatestRelease(
     }
     if (!isNewerVersion(body.tag_name, currentVersion)) return { kind: 'up-to-date' }
     const assets = readAssets(body.assets)
-    const asset = pickAsset(assets, target.platform, target.arch)
+    // The in-app download replaces an AppImage; a deb install updates from the release page.
+    const asset =
+      target.platform === 'linux' && !target.appImage
+        ? null
+        : pickAsset(assets, target.platform, target.arch)
     const checksums = assets.find((a) => a.name === CHECKSUMS_ASSET_NAME) ?? null
     const notes = typeof body.body === 'string' ? body.body : ''
     return {
