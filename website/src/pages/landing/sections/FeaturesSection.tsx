@@ -13,7 +13,7 @@ interface Feature {
 
 const FEATURES: Feature[] = [
   {
-    view: 'assistant',
+    view: 'chat',
     wallpaper: '20% 30%',
     title: `${ABILITY_COUNT} abilities, each with a fixed shape`,
     paragraphs: [
@@ -22,7 +22,7 @@ const FEATURES: Feature[] = [
     ]
   },
   {
-    view: 'sort',
+    view: 'details',
     wallpaper: '80% 20%',
     title: 'Sorts by what the file is',
     paragraphs: [
@@ -31,7 +31,7 @@ const FEATURES: Feature[] = [
     ]
   },
   {
-    view: 'history',
+    view: 'room',
     wallpaper: '40% 90%',
     title: 'Undo a whole batch',
     paragraphs: [
@@ -40,7 +40,7 @@ const FEATURES: Feature[] = [
     ]
   },
   {
-    view: 'watch',
+    view: 'chat',
     wallpaper: '90% 60%',
     title: 'Downloads sorts itself',
     paragraphs: [
@@ -58,7 +58,7 @@ export function FeaturesSection() {
 
       <div className="mt-16 space-y-24 md:space-y-32">
         {FEATURES.map(({ view, wallpaper, title, paragraphs }) => (
-          <article key={view} className="grid items-start gap-6 md:grid-cols-12 md:gap-8">
+          <article key={title} className="grid items-start gap-6 md:grid-cols-12 md:gap-8">
             <div
               data-reveal
               className="relative isolate overflow-hidden rounded-2xl p-4 md:col-span-7 md:p-8"

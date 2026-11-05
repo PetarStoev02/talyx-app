@@ -4,5 +4,7 @@
    tailwind from the renderer folder (Vercel only installs website deps). */
 @import '../../../src/renderer/src/assets/fonts.css';
 @import '../../../src/renderer/src/assets/theme.css';
+@import '../../../src/renderer/src/assets/chat.css';
+@import '../../../src/renderer/src/assets/avatar.css';
 
 @source '../../../src/renderer/src';

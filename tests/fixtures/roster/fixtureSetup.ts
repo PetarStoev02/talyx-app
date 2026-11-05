@@ -2,6 +2,7 @@ import { useEngine } from '../../../src/renderer/src/app/providers/useEngine'
 import type { SetupBackend } from '../../../src/renderer/src/features/setup/install'
 import { EXPECTED_ENGINE_VERSION, type EngineStatus } from '../../../src/shared/engine'
 import type { InstallExit, InstallSteps } from '../../../src/shared/setup'
+import { attachedEngine } from './engineDouble'
 
 const MODES = [
   'missing',
@@ -20,9 +21,8 @@ const CHECK_MS = 600
 const OLD_VERSION = '0.21.0'
 // An engine just below the pin, as after an app update.
 const OLD_AFTER_VERSION = '0.22.5'
-// An older copy earlier on PATH, and the one the install links in the user bin.
+// An older copy earlier on PATH (the install links its own in the user bin).
 const OLD_PATH = '/usr/local/bin/talyx-engine'
-const INSTALLED_PATH = '/Users/fixture/.local/bin/talyx-engine'
 // Newer than the pin, so the protocol screen offers the latest Talyx.
 const PROTOCOL_VERSION = '0.22.9'
 const RELEASE_URL = 'https://example.com/releases/v1.0.0-fixture'
@@ -63,24 +63,6 @@ export function setupMode(search: string): SetupMode | null {
 /** `&stuck=1`: an install leaves the older engine running (another copy comes first on PATH). */
 export function setupStuck(search: string): boolean {
   return new URLSearchParams(search).get('stuck') === '1'
-}
-
-/** An attached engine as the fixture's pages need it. */
-export function attachedEngine(
-  version: string,
-  path: string = INSTALLED_PATH
-): Extract<EngineStatus, { state: 'attached' }> {
-  return {
-    state: 'attached',
-    version,
-    commit: null,
-    home: '/fixture/engine',
-    path,
-    stale: false,
-    botMetaKey: 'acme-bots',
-    botGroupsMetaKey: 'acme-bots-groups',
-    managerHandle: 'acme'
-  }
 }
 
 /**

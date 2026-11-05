@@ -7,15 +7,20 @@ import tailwindcss from '@tailwindcss/vite'
 const renderer = path.resolve(__dirname, '../src/renderer/src')
 const site = path.resolve(__dirname, 'src')
 const websitePkg = path.resolve(__dirname, 'package.json')
-const rendererSegment = `${path.sep}src${path.sep}renderer${path.sep}`
+// The renderer, and the roster fixture's engine double the demo runs on (and the unit double it uses).
+const borrowedSegments = [
+  ['src', 'renderer'],
+  ['tests', 'fixtures'],
+  ['tests', 'unit', 'providers']
+].map((parts) => path.sep + parts.join(path.sep) + path.sep)
 
-/** Vercel installs only website/node_modules; renderer imports must not walk the repo root. */
+/** Vercel installs only website/node_modules; borrowed files' imports must not walk the repo root. */
 function resolveRendererDepsFromWebsite(): Plugin {
   return {
     name: 'resolve-renderer-deps-from-website',
     enforce: 'pre',
     async resolveId(source, importer, options) {
-      if (!importer?.includes(rendererSegment)) return null
+      if (!borrowedSegments.some((segment) => importer?.includes(segment))) return null
       if (source.startsWith('.') || path.isAbsolute(source)) return null
       if (/^@(app|pages|widgets|features|entities|shared|renderer)(\/|$)/.test(source)) return null
       if (source.startsWith('@/')) return null

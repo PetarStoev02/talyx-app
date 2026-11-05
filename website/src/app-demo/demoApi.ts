@@ -1,33 +1,24 @@
 /**
  * A `window.api` good enough to render the real renderer in a browser tab.
  *
- * Settings, the engine status and the update state have fixtures; every other
+ * Settings, the engine status and the update state have stubs (the bots, chats and rooms run on
+ * the roster fixture's engine double); every other
  * call falls through to the proxy below and answers `undefined`, so a new IPC
  * channel in the app degrades to a quiet no-op here rather than a crash in the
  * landing page.
  */
 
 import { EXPECTED_ENGINE_VERSION } from '../../../src/shared/engine'
+import { attachedEngine } from '../../../tests/fixtures/roster/engineDouble'
 
 const noop = (): (() => void) => () => {}
 
-const SETTINGS = { theme: 'system', sidebarCollapsed: false }
-
-// The landing page has no engine; it shows the attached shell on the expected version (so no
-// update notice). The keys are placeholders.
-const ENGINE_STATUS = {
-  state: 'attached',
-  version: EXPECTED_ENGINE_VERSION,
-  path: '/demo/talyx-engine',
-  commit: null,
-  home: '/demo',
-  stale: false,
-  botMetaKey: 'demo-bots',
-  botGroupsMetaKey: 'demo-bots-groups'
-}
+// In memory only: the demo persists nothing.
+const SETTINGS: Record<string, unknown> = { theme: 'system' }
 
 const fixtures: Record<string, unknown> = {
-  getEngineStatus: () => Promise.resolve({ ...ENGINE_STATUS }),
+  // The double attaches before the first render; a later check finds the same engine.
+  getEngineStatus: () => Promise.resolve(attachedEngine(EXPECTED_ENGINE_VERSION)),
   // The footer reads the update state on mount; the demo never has an update.
   getUpdateState: () => Promise.resolve({ kind: 'none' }),
   getSettings: () => Promise.resolve({ ...SETTINGS }),

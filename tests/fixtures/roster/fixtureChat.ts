@@ -4,6 +4,7 @@ import type { ProvidersBackend } from '../../../src/renderer/src/features/provid
 import { handleEvent, handlePrompt } from '../../../src/renderer/src/features/chat/events'
 import type { ChatUpdate } from '../../../src/renderer/src/features/chat/events'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
+import { DEFAULT_MODEL, PROVIDER } from './fixtureProviders'
 import type { GatewayEvent, ServerRequest } from '../../../src/renderer/src/shared/engine/shared'
 
 // Deliberately in-memory: a scripted bot per profile. Words in your message pick the script:
@@ -16,7 +17,7 @@ const FIXTURE_IMAGE =
   )
 const history: Record<string, Array<Record<string, unknown>>> = {
   default: [
-    { id: 1, role: 'user', content: 'Summarise Q3 margins' },
+    { id: 1, role: 'user', content: 'How did Q3 margins do?' },
     {
       id: 2,
       role: 'assistant',
@@ -26,11 +27,27 @@ const history: Record<string, Array<Record<string, unknown>>> = {
       ]
     },
     { id: 3, role: 'tool', content: 'sent', tool_call_id: 'c1' },
-    { id: 4, role: 'user', content: 'Message from 🤖 Analyst (@analyst): margins up 4%.' },
+    {
+      id: 4,
+      role: 'user',
+      content:
+        'Message from 🤖 Analyst (@analyst): Q3 gross margin is 41%, up 4 points on Q2. Costs held flat and the September price change did the rest.'
+    },
     {
       id: 5,
       role: 'assistant',
-      content: '**Q3 margins** are up *4%*.\n\n- Costs flat\n- Prices up'
+      content:
+        '**Q3 margins are up 4 points**, to 41%.\n\n- Costs held flat\n- The September price change did the rest\n\nAnalyst can split it by region next.'
+    }
+  ],
+  // Waiting on you: its last answer is a question.
+  analyst: [
+    { id: 1, role: 'user', content: 'Turn the Q3 margin numbers into a one-page report.' },
+    {
+      id: 2,
+      role: 'assistant',
+      content:
+        'Happy to. **Which regions should the report cover?** North and South are ready; West is still closing its books.'
     }
   ]
 }
@@ -66,7 +83,7 @@ export function fixtureChat(providers: ProvidersBackend): ChatActions {
 
   // Streams a short reply word by word, then stores it as the engine would.
   function finish(profile: string): Array<() => void> {
-    const text = 'Here is a **short** reply, streamed word by word.'
+    const text = 'On it. I will look into this and post a **short summary** here when it is ready.'
     return [
       ...text.split(' ').map((word) => () => emit(profile, 'message.delta', { text: `${word} ` })),
       () => {
@@ -160,7 +177,7 @@ export function fixtureChat(providers: ProvidersBackend): ChatActions {
           return {
             running: false,
             last_sequence: seq,
-            info: { model: '9-route-provider', provider: 'custom', reasoning_effort: 'medium' }
+            info: { model: DEFAULT_MODEL, provider: PROVIDER, reasoning_effort: 'medium' }
           }
         case 'prompt.submit':
           history[profile].push({ id: Date.now(), role: 'user', content: String(params.text) })
@@ -185,7 +202,7 @@ export function fixtureChat(providers: ProvidersBackend): ChatActions {
     if (path.startsWith('/api/chat/image-upload'))
       return { path: '/images/fixture.png', mime_type: 'image/png' } as T
     if (path.startsWith('/api/audio/transcribe'))
-      return { transcript: 'Dictated in the fixture.' } as T
+      return { transcript: 'Sum up this week in three lines.' } as T
     if (path.startsWith('/api/media')) return { data_url: FIXTURE_IMAGE } as T
     throw new Error('Unsupported fixture call')
   }
