@@ -10,8 +10,7 @@ the right, and a manager bot (called Talyx) that delegates to the other bots and
 The bots run on **the engine**, a separate agent backend the user installs; Talyx is a client
 of it and holds no orchestration logic of its own.
 
-Talyx is in the middle of that pivot. The file organizer it used to be is gone; the agents app
-is built one pull request at a time. Today the app is attached to the engine: a roster of bots in
+Talyx 1.0 is that app; the file organizer it used to be is gone. It attaches to the engine: a roster of bots in
 the sidebar (pins, folders, unread and activity marks, each bot an isometric block avatar), the Agents page with the selected bot's
 chat (transcript, clarify and approval cards, a composer with model, reasoning, images and
 dictation), the details panel from the name pill (title, description, model, routines, look, SOUL),
@@ -27,13 +26,14 @@ where it is, check again, choose its file; launch at login; appearance).
 - **State:** Zustand | **UI:** shadcn/ui (New York) | **Settings:** JSON file
 - **Build:** electron-vite + electron-builder | **Tests:** Vitest
 
-### The pivot
+### History and plans
 
 - Design (decisions 1–20): `docs/superpowers/specs/2026-11-04-talyx-agents-pivot-design.md`.
 - Plan (twelve PRs): `docs/superpowers/specs/2026-11-04-talyx-pivot-plan.html`.
 - `docs/superpowers/` is gitignored: specs and plans are local working notes, not in the repo.
-- Work lands as a stack of PRs on branch `pivot`, one branch per PR named `pr/NN-<name>`.
-  Each PR targets `pivot`; `pivot` merges into `main` only when 1.0 is in daily use.
+- The pivot was built as a stack of PRs on a `pivot` branch, squash-merged into `main` at 1.0.
+  Work now lands as PRs against `main`. The plan's PR 11 (website) and PR 12 (remote machines)
+  are still to come.
 - The file organizer (0.11.0) is preserved on branch `legacy/file-organizer` and tag
   `v0.11.0-legacy`. Never modify them.
 - The engine's upstream project is named in one place only: the small credit line at the end of the README, which
@@ -269,7 +269,7 @@ one more table in that file.
 | IPC handlers     | `kebab-case.ipc.ts` | `settings.ipc.ts`                                                   |
 | Utilities        | `camelCase.ts`      | `utils.ts`                                                          |
 | IPC channels     | `namespace:action`  | `settings:get`, `settings:set`, `theme:set-native`, `updater:state` |
-| Branches         | `type/kebab-case`   | `feat/roster`; pivot PRs use `pr/NN-<name>`                         |
+| Branches         | `type/kebab-case`   | `feat/roster`                                                       |
 
 ## Git Conventions
 
