@@ -88,11 +88,7 @@ function DebugConsole(): React.JSX.Element {
             ))}
           </select>
         </label>
-        <Button
-          className="rounded-full px-5"
-          disabled={connection !== 'open'}
-          onClick={() => void ping()}
-        >
+        <Button className="px-5" disabled={connection !== 'open'} onClick={() => void ping()}>
           {t('engine.debugPing')}
         </Button>
         <button className="text-sm underline underline-offset-4" onClick={() => host.dropSocket()}>

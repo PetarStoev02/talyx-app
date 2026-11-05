@@ -45,10 +45,9 @@ export function AppShell({
 
   return (
     <div className="flex h-screen">
-      {/* No background of its own — inherits the window vibrancy + ambient glow */}
       <aside
         className={cn(
-          'flex h-full shrink-0 flex-col border-r border-border/60 transition-[width] duration-150',
+          'tone-step flex h-full shrink-0 flex-col transition-[width] duration-150',
           collapsed ? 'w-[52px]' : roster ? 'w-[320px] max-w-[85vw]' : 'w-[240px]'
         )}
       >
@@ -83,7 +82,7 @@ export function AppShell({
             <CollapseToggle
               onToggle={toggleSidebar}
               label={t('sidebar.expand')}
-              className="size-9 rounded-md [&_svg]:size-[18px]"
+              className="size-9 [&_svg]:size-[18px]"
             />
           </div>
         )}
@@ -113,7 +112,7 @@ function CollapseToggle({
           aria-label={label}
           style={noDragRegion}
           className={cn(
-            'flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground',
+            'flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground',
             className
           )}
         >

@@ -20,12 +20,11 @@ import type { Bot } from '@features/bots/types'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
+import { Input, NativeSelect, Textarea } from '@shared/ui/input'
 import { Switch } from '@shared/ui/switch'
 
 type Translate = (key: TranslationKey) => string
 
-const dialogClass = 'border-0 bg-card shadow-none backdrop-blur-none'
-const fieldClass = 'mt-2 block w-full rounded-lg bg-secondary px-3 py-2 text-base'
 const KINDS: Array<[ScheduleKind, TranslationKey]> = [
   ['daily', 'routines.kindDaily'],
   ['weekdays', 'routines.kindWeekdays'],
@@ -158,24 +157,16 @@ export function RoutinesSection({
         />
       )}
       <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent className={dialogClass}>
+        <DialogContent>
           <DialogTitle>
             {t('routines.deleteTitle').replace('{name}', deleting?.name ?? '')}
           </DialogTitle>
           <DialogDescription>{t('routines.deleteWarning')}</DialogDescription>
           <div className="flex gap-2">
-            <Button
-              variant="destructive"
-              className="rounded-full text-base"
-              onClick={() => deleting && void remove(deleting)}
-            >
+            <Button variant="destructive" onClick={() => deleting && void remove(deleting)}>
               {t('routines.deleteConfirm')}
             </Button>
-            <Button
-              variant="ghost"
-              className="rounded-full text-base"
-              onClick={() => setDeleting(null)}
-            >
+            <Button variant="ghost" onClick={() => setDeleting(null)}>
               {t('roster.cancel')}
             </Button>
           </div>
@@ -225,7 +216,7 @@ function NewRoutineDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
-      <DialogContent className={dialogClass}>
+      <DialogContent>
         <DialogTitle>{t('routines.new')}</DialogTitle>
         <DialogDescription>{t('routines.newHint')}</DialogDescription>
         <form
@@ -237,70 +228,65 @@ function NewRoutineDialog({
         >
           <label className="block text-base">
             {t('routines.name')}
-            <input
+            <Input
               autoFocus
               value={draft.name}
               maxLength={100}
               onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-              className={fieldClass}
             />
           </label>
           <label className="block text-base">
             {t('routines.instruction')}
-            <textarea
+            <Textarea
               value={draft.instruction}
               rows={3}
               placeholder={t('routines.instructionHint')}
               onChange={(event) => setDraft({ ...draft, instruction: event.target.value })}
-              className={fieldClass + ' resize-none'}
             />
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="block text-base">
               {t('routines.schedule')}
-              <select
+              <NativeSelect
                 value={schedule.kind}
                 onChange={(event) => setSchedule({ kind: event.target.value as ScheduleKind })}
-                className={fieldClass}
               >
                 {KINDS.map(([kind, label]) => (
                   <option key={kind} value={kind}>
                     {t(label)}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             {schedule.kind === 'weekly' && (
               <label className="block text-base">
                 {t('routines.day')}
-                <select
+                <NativeSelect
                   value={schedule.weekday}
                   onChange={(event) => setSchedule({ weekday: Number(event.target.value) })}
-                  className={fieldClass}
                 >
                   {WEEK.map((day) => (
                     <option key={day} value={day}>
                       {weekdayName(day)}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </label>
             )}
             {timed && (
               <label className="block text-base">
                 {t('routines.time')}
-                <input
+                <Input
                   type="time"
                   value={schedule.time}
                   onChange={(event) => setSchedule({ time: event.target.value })}
-                  className={fieldClass}
                 />
               </label>
             )}
             {schedule.kind === 'hours' && (
               <label className="block text-base">
                 {t('routines.hours')}
-                <input
+                <Input
                   type="number"
                   min={1}
                   max={MAX_HOURS}
@@ -313,7 +299,6 @@ function NewRoutineDialog({
                       )
                     })
                   }
-                  className={fieldClass}
                 />
               </label>
             )}
@@ -321,11 +306,11 @@ function NewRoutineDialog({
           {schedule.kind === 'custom' && (
             <label className="block text-base">
               {t('routines.custom')}
-              <input
+              <Input
                 value={schedule.custom}
                 placeholder={t('routines.customHint')}
                 onChange={(event) => setSchedule({ custom: event.target.value })}
-                className={fieldClass + ' font-mono'}
+                className="font-mono"
               />
             </label>
           )}
@@ -343,16 +328,10 @@ function NewRoutineDialog({
             </div>
           )}
           <div className="flex gap-2">
-            <Button className="rounded-full text-base" type="submit" disabled={!ready || busy}>
+            <Button type="submit" disabled={!ready || busy}>
               {t('routines.create')}
             </Button>
-            <Button
-              className="rounded-full text-base"
-              type="button"
-              variant="ghost"
-              disabled={busy}
-              onClick={onClose}
-            >
+            <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
               {t('roster.cancel')}
             </Button>
           </div>

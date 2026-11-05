@@ -250,9 +250,9 @@ export function Fixture(): React.JSX.Element {
   const [page, setPage] = useState<'agents' | 'settings'>('agents')
   const online = useRoster((state) => state.online)
   return (
-    <div className="flex h-screen bg-card">
+    <div className="flex h-screen bg-background">
       <Toaster position="bottom-right" closeButton />
-      <aside className="flex w-[320px] max-w-[85vw] shrink-0 flex-col bg-sidebar">
+      <aside className="tone-step flex w-[320px] max-w-[85vw] shrink-0 flex-col">
         <h1 className="px-5 pt-4 text-xl font-semibold">Talyx</h1>
         <span className="px-5 text-xs">Interaction fixture · synthetic data</span>
         <Roster backend={backend} models={chat.models} onSelect={() => setPage('agents')} />

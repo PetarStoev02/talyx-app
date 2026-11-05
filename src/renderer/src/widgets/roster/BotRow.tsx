@@ -55,8 +55,9 @@ export function BotRow({
       }}
       className={cn(
         'group flex min-w-0 rounded-xl',
-        selected && 'bg-accent',
-        pinned && 'relative flex-col bg-secondary'
+        pinned && 'relative flex-col bg-secondary',
+        // After the tile's tone step, so a selected pinned bot still shows it is selected.
+        selected && 'bg-accent'
       )}
     >
       <button

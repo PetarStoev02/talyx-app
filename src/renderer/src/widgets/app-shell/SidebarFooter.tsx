@@ -52,7 +52,7 @@ function UpdateButton({
           onClick={onOpen}
           aria-label={collapsed ? label : undefined}
           className={cn(
-            'flex items-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground',
+            'flex items-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground',
             collapsed ? 'mx-auto size-9 justify-center' : 'h-8 w-full gap-2.5 px-2 text-[13px]'
           )}
         >

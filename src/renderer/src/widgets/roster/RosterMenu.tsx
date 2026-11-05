@@ -32,7 +32,7 @@ export function RosterMenu({
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           sideOffset={4}
-          className="z-50 max-h-80 min-w-48 overflow-y-auto rounded-xl bg-popover p-2 text-base text-popover-foreground"
+          className="z-50 max-h-80 min-w-48 overflow-y-auto rounded-xl bg-popover p-2 text-base text-popover-foreground shadow-lg"
         >
           {actions.map((action, index) => (
             <DropdownMenu.Item

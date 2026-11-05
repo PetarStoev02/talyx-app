@@ -43,7 +43,7 @@ export function ModelPicker({
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           sideOffset={4}
-          className="z-50 max-h-80 min-w-56 overflow-y-auto rounded-xl bg-popover p-2 text-base text-popover-foreground"
+          className="z-50 max-h-80 min-w-56 overflow-y-auto rounded-xl bg-popover p-2 text-base text-popover-foreground shadow-lg"
         >
           {!providers && <p className="px-3 py-2 text-muted-foreground">{loadingLabel}</p>}
           {providers?.map((provider) => (

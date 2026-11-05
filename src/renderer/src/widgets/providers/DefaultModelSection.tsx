@@ -5,7 +5,6 @@ import { confirmDefaultModel, setDefaultModel } from '@features/providers/provid
 import type { ModelConfirm, ModelPick, ProvidersBackend } from '@features/providers/providers'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
 import { Button } from '@shared/ui/button'
-import { Card, CardContent } from '@shared/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { ModelField } from '@shared/ui/ModelPicker'
 import { failureText } from './feedback'
@@ -41,28 +40,26 @@ export function DefaultModelSection({
   }
 
   return (
-    <Card>
-      <CardContent className="space-y-2">
-        <h2 className="text-sm font-semibold text-foreground">{t('providers.defaultTitle')}</h2>
-        <p className="text-sm text-muted-foreground">{t('providers.defaultHint')}</p>
-        <ModelField
-          labels={{
-            field: t('providers.defaultTitle'),
-            empty: t('details.modelDefault'),
-            loading: t('chat.modelsLoading')
-          }}
-          value={model}
-          load={models && (() => models(backend.home))}
-          onSelect={(next) => void apply(next, () => setDefaultModel(backend, next))}
-        />
-      </CardContent>
+    <section className="space-y-2">
+      <h2 className="text-sm font-semibold text-foreground">{t('providers.defaultTitle')}</h2>
+      <p className="text-sm text-muted-foreground">{t('providers.defaultHint')}</p>
+      <ModelField
+        labels={{
+          field: t('providers.defaultTitle'),
+          empty: t('details.modelDefault'),
+          loading: t('chat.modelsLoading')
+        }}
+        value={model}
+        load={models && (() => models(backend.home))}
+        onSelect={(next) => void apply(next, () => setDefaultModel(backend, next))}
+      />
+
       <Dialog open={!!confirm} onOpenChange={(open) => !open && setConfirm(null)}>
-        <DialogContent className="border-0 bg-card shadow-none backdrop-blur-none">
+        <DialogContent>
           <DialogTitle>{t('details.confirmTitle')}</DialogTitle>
           <DialogDescription>{confirm?.message}</DialogDescription>
           <div className="flex gap-2">
             <Button
-              className="rounded-full text-base"
               onClick={() =>
                 confirm &&
                 void apply(confirm.model, async () => {
@@ -73,16 +70,12 @@ export function DefaultModelSection({
             >
               {t('details.confirmUse')}
             </Button>
-            <Button
-              variant="ghost"
-              className="rounded-full text-base"
-              onClick={() => setConfirm(null)}
-            >
+            <Button variant="ghost" onClick={() => setConfirm(null)}>
               {t('details.confirmKeep')}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-    </Card>
+    </section>
   )
 }

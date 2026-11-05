@@ -15,6 +15,7 @@ import type {
   SignInResult
 } from '@features/providers/providers'
 import { Button } from '@shared/ui/button'
+import { Input } from '@shared/ui/input'
 import { failureText } from './feedback'
 
 const linkClass = 'text-base underline underline-offset-4'
@@ -122,11 +123,7 @@ export function SignIn({
           {account.command}
         </code>
         <div className="flex items-center gap-4">
-          <Button
-            className="rounded-full text-base"
-            disabled={busy}
-            onClick={() => void checkAgain()}
-          >
+          <Button disabled={busy} onClick={() => void checkAgain()}>
             {t('providers.checkAgain')}
           </Button>
           <button
@@ -188,16 +185,15 @@ export function SignIn({
       </a>
       <label className="block text-base">
         {t('providers.signInPaste')}
-        <input
+        <Input
           autoFocus
           autoComplete="off"
           spellCheck={false}
           value={code}
           onChange={(event) => setCode(event.target.value)}
-          className="mt-2 block w-full rounded-lg bg-secondary px-3 py-2 text-base"
         />
       </label>
-      <Button className="rounded-full text-base" type="submit" disabled={busy || !code.trim()}>
+      <Button type="submit" disabled={busy || !code.trim()}>
         {t('providers.signInSubmit')}
       </Button>
     </form>

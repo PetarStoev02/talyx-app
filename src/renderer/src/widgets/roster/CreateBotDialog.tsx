@@ -19,9 +19,8 @@ import {
   DialogDescription,
   DialogTitle
 } from '@shared/ui/dialog'
+import { Input, NativeSelect } from '@shared/ui/input'
 import { ModelField } from '@shared/ui/ModelPicker'
-
-const fieldClass = 'mt-2 block w-full rounded-lg bg-secondary px-3 py-2 text-base'
 
 // Mounted only while open, so the form starts empty each time and survives a failed create.
 export function CreateBotDialog({
@@ -74,7 +73,7 @@ export function CreateBotDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-0 bg-card shadow-none backdrop-blur-none">
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogTitle>{t('create.title')}</DialogTitle>
         <DialogDescription>{t('create.hint')}</DialogDescription>
         <form
@@ -86,13 +85,12 @@ export function CreateBotDialog({
         >
           <label className="block text-base">
             {t('create.name')}
-            <input
+            <Input
               autoFocus
               value={name}
               maxLength={100}
               aria-describedby="create-profile-id"
               onChange={(event) => setName(event.target.value)}
-              className={fieldClass}
             />
             <span id="create-profile-id" className="mt-1 block text-sm text-muted-foreground">
               {id.text && (id.ok ? t('create.profileId').replace('{id}', id.text) : t(id.text))}
@@ -100,18 +98,14 @@ export function CreateBotDialog({
           </label>
           <label className="block text-base">
             {t('create.folder')}
-            <select
-              value={folderId}
-              onChange={(event) => setFolderId(event.target.value)}
-              className={fieldClass}
-            >
+            <NativeSelect value={folderId} onChange={(event) => setFolderId(event.target.value)}>
               <option value="">{t('roster.unassigned')}</option>
               {snapshot.folders.map((folder) => (
                 <option key={folder.id} value={folder.id}>
                   {folderPath(snapshot.folders, folder)}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           <div className="text-base">
             {t('details.model')}
@@ -138,11 +132,11 @@ export function CreateBotDialog({
             </div>
           )}
           <div className="flex gap-2">
-            <Button className="rounded-full text-base" type="submit" disabled={!id.ok || saving}>
+            <Button type="submit" disabled={!id.ok || saving}>
               {t('create.submit')}
             </Button>
             <DialogClose asChild>
-              <Button className="rounded-full text-base" type="button" variant="ghost">
+              <Button type="button" variant="ghost">
                 {t('roster.cancel')}
               </Button>
             </DialogClose>

@@ -33,7 +33,7 @@ export function NavButton({
           aria-label={collapsed ? label : undefined}
           aria-current={active ? 'page' : undefined}
           className={cn(
-            'flex items-center rounded-md transition-colors',
+            'flex items-center rounded-full transition-colors',
             collapsed ? 'mx-auto size-9 justify-center' : 'h-8 w-full gap-2.5 px-2 text-[13px]',
             active
               ? 'bg-accent text-foreground'

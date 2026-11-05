@@ -35,14 +35,16 @@ function registerIpc(): void {
   void devBridge?.start(Number(process.env['TALYX_BRIDGE_PORT'] ?? 5175))
 }
 
-/**
- * Keep the OS-rendered window material in the same appearance as the app theme;
- * otherwise a light app over a dark-mode system gets a dark frost behind it.
- */
+/** Keep native chrome (menus, dialogs, scrollbars) in the same appearance as the app theme. */
 function syncNativeTheme(theme: unknown): void {
   if (theme === 'light' || theme === 'dark' || theme === 'system') {
     nativeTheme.themeSource = theme
   }
+}
+
+/** The theme's ground (--background in theme.css), so a resize never flashes another colour. */
+function groundColor(): string {
+  return nativeTheme.shouldUseDarkColors ? '#0a0a0c' : '#ffffff'
 }
 
 function loadPage(win: BrowserWindow, page: 'index' | 'splash'): void {
@@ -64,10 +66,7 @@ function createWindow(): BrowserWindow {
     frame: false,
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
-    // macOS blurs the desktop behind the window; the renderer keeps a translucent background.
-    vibrancy: 'sidebar',
-    visualEffectState: 'active',
-    backgroundColor: '#00000000',
+    backgroundColor: groundColor(),
     icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -183,6 +182,10 @@ app.whenReady().then(async () => {
   await new Promise((resolve) => setTimeout(resolve, SPLASH_MIN_VISIBLE_MS))
 
   registerIpc()
+  // A theme switch (in Talyx or, on System, in the OS) repaints the window's ground too.
+  nativeTheme.on('updated', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setBackgroundColor(groundColor())
+  })
   syncNativeTheme(settingsStore.store.theme)
   showMainWindow(splash)
   scheduleUpdateChecks()
