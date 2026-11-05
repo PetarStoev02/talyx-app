@@ -64,7 +64,16 @@ function startInstall(owner: Sender): void {
 
 function finish(started: RunningInstall, exit: InstallExit): void {
   if (running === started) running = null
+  logExit(exit)
   emit(started.owner, 'setup:install-exit', exit)
+}
+
+// Only the index and the code: the commands and their output stay out of the log.
+function logExit(exit: InstallExit): void {
+  if (exit.kind === 'failed')
+    log.warn(`[Setup] Install command ${exit.index} failed with exit ${exit.code}`)
+  else if (exit.kind === 'cancelled') log.info('[Setup] Install cancelled')
+  else log.info('[Setup] Install finished')
 }
 
 /** A reload or a closed window leaves no page to watch the install, so it stops. */

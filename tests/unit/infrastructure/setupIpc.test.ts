@@ -12,7 +12,8 @@ const setup = vi.hoisted(() => ({
 vi.mock('electron', () => ({
   ipcMain: { handle: (channel: string, fn: Handler) => handlers.set(channel, fn) }
 }))
-vi.mock('electron-log', () => ({ default: { warn: vi.fn() } }))
+const logger = vi.hoisted(() => ({ warn: vi.fn(), info: vi.fn() }))
+vi.mock('electron-log', () => ({ default: logger }))
 vi.mock('../../../src/main/infrastructure/setup/installSteps', () => ({
   loadInstallSteps: setup.loadInstallSteps,
   installStepsSource: () => ({})
@@ -145,6 +146,29 @@ describe('setup IPC', () => {
     })
     expect(other.sender.send).not.toHaveBeenCalled()
   })
+
+  it.each([
+    ['ok', { kind: 'ok' }, 'info', '[Setup] Install finished'],
+    ['cancelled', { kind: 'cancelled' }, 'info', '[Setup] Install cancelled'],
+    [
+      'failed',
+      { kind: 'failed', index: 1, code: 2 },
+      'warn',
+      '[Setup] Install command 1 failed with exit 2'
+    ]
+  ] as const)(
+    'should log the %s exit without commands or output',
+    async (_k, exit, level, line) => {
+      const owner = page()
+      const run = await startRun(owner)
+      run.sink()(0, 'secret output')
+      await run.finish(exit)
+
+      expect(logger[level]).toHaveBeenCalledWith(line)
+      const logged = JSON.stringify([...logger.info.mock.calls, ...logger.warn.mock.calls])
+      for (const text of ['one', 'two', 'secret output']) expect(logged).not.toContain(text)
+    }
+  )
 
   it('should not throw when the page is gone or refuses a send', async () => {
     const owner = page()
