@@ -3,12 +3,13 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('electron', () => ({ app: {}, session: {}, shell: {} }))
 
 import {
+  checkedRequest,
   isAllowedPermission,
   isAppUrl,
   isSafeExternalUrl
 } from '../../../src/main/infrastructure/security/webContentsGuard'
 
-const PACKAGED = 'file:///Applications/Talyx.app/Contents/Resources/app.asar/out/renderer/'
+const PACKAGED = 'app://talyx/'
 const DEV = 'http://localhost:5173/'
 
 describe('isSafeExternalUrl', () => {
@@ -29,9 +30,10 @@ describe('isSafeExternalUrl', () => {
 describe('isAppUrl', () => {
   it.each([
     [`${PACKAGED}index.html`, PACKAGED, true],
-    [`${PACKAGED}assistant.html#x`, PACKAGED, true],
+    [`${PACKAGED}splash.html#x`, PACKAGED, true],
     ['file:///Users/v/Downloads/evil.html', PACKAGED, false],
-    [`${DEV}assistant.html`, DEV, true],
+    ['app://talyx.evil/index.html', PACKAGED, false],
+    [`${DEV}splash.html`, DEV, true],
     ['http://localhost:51730/', DEV, false],
     ['https://evil.example/', DEV, false]
   ])('should judge %s inside %s as %s', (url, root, expected) => {
@@ -40,15 +42,71 @@ describe('isAppUrl', () => {
 })
 
 describe('isAllowedPermission', () => {
-  it('should let the app itself use the microphone', () => {
-    expect(isAllowedPermission('media', `${PACKAGED}assistant.html`, PACKAGED)).toBe(true)
+  it("should allow the microphone for the app's own pages only", () => {
+    const app = `${PACKAGED}index.html`
+    expect(
+      isAllowedPermission('media', { requestingUrl: app, mediaTypes: ['audio'] }, PACKAGED)
+    ).toBe(true)
+    expect(
+      isAllowedPermission('media', { requestingUrl: app, mediaTypes: ['video'] }, PACKAGED)
+    ).toBe(false)
+    expect(
+      isAllowedPermission('media', { requestingUrl: app, mediaTypes: ['audio', 'video'] }, PACKAGED)
+    ).toBe(false)
+    expect(
+      isAllowedPermission(
+        'media',
+        { requestingUrl: 'https://evil.example/', mediaTypes: ['audio'] },
+        PACKAGED
+      )
+    ).toBe(false)
   })
 
-  it('should refuse the microphone to any other page', () => {
-    expect(isAllowedPermission('media', 'https://evil.example/', PACKAGED)).toBe(false)
+  it('should allow writing to the clipboard for the Copy buttons', () => {
+    expect(
+      isAllowedPermission(
+        'clipboard-sanitized-write',
+        { requestingUrl: `${PACKAGED}index.html` },
+        PACKAGED
+      )
+    ).toBe(true)
+  })
+
+  it.each(['clipboard-read', 'notifications'])(
+    'should refuse %s while no feature of the app needs it',
+    (permission) => {
+      expect(
+        isAllowedPermission(permission, { requestingUrl: `${PACKAGED}index.html` }, PACKAGED)
+      ).toBe(false)
+    }
+  )
+
+  it('should refuse any permission to a page outside the app', () => {
+    expect(isAllowedPermission('media', { requestingUrl: 'https://evil.example/' }, PACKAGED)).toBe(
+      false
+    )
   })
 
   it('should refuse permissions the app never needs', () => {
-    expect(isAllowedPermission('geolocation', `${PACKAGED}index.html`, PACKAGED)).toBe(false)
+    expect(
+      isAllowedPermission('geolocation', { requestingUrl: `${PACKAGED}index.html` }, PACKAGED)
+    ).toBe(false)
+  })
+})
+
+describe('checkedRequest', () => {
+  it.each([
+    ['audio', true],
+    ['unknown', true],
+    [undefined, true],
+    ['video', false]
+  ])('should judge a %s microphone check from the app as %s', (mediaType, expected) => {
+    const request = checkedRequest('app://talyx', { mediaType })
+    expect(isAllowedPermission('media', request, PACKAGED)).toBe(expected)
+  })
+
+  it('should judge a check by its origin when it names no page', () => {
+    const request = checkedRequest('https://evil.example', {})
+    expect(isAllowedPermission('clipboard-sanitized-write', request, PACKAGED)).toBe(false)
   })
 })

@@ -5,51 +5,100 @@
 
 ## Project Overview
 
-**Talyx** — AI-powered desktop file organizer. macOS only as of 0.9.0 (see Builds below). Talyx is a personal harness: a hotkey overlay where the user's own Claude — an API key, or their signed-in Claude Code on a subscription — operates the computer through typed abilities with an approval gate; file sorting is one ability. Sorting uses `sorterSource` in Settings: **Smart Local** (extension + metadata, default, nothing leaves the machine) or **Your Claude** (the same account the assistant uses — the whole preview batch when Claude is reachable). Talyx does not host classification weights. Additionally exposes an MCP server so any AI assistant can operate Talyx remotely.
+**Talyx** is a desktop app to tally your AI agents: a roster of bots on the left, one chat on
+the right, and a manager bot (called Talyx) that delegates to the other bots and briefs you.
+The bots run on **the engine**, a separate agent backend the user installs; Talyx is a client
+of it and holds no orchestration logic of its own.
 
-- **Version:** 0.11.0
+Talyx 1.0 is that app; the file organizer it used to be is gone. It attaches to the engine: a roster of bots in
+the sidebar (pins, folders, unread and activity marks, each bot an isometric block avatar), the Agents page with the selected bot's
+chat (transcript, clarify and approval cards, a composer with model, reasoning, images and
+dictation), the details panel from the name pill (title, description, model, routines, look, SOUL),
+the create-bot dialog from the roster's `+`, group rooms hosted by the engine (history, send, who
+is answering, approvals, create, pin, delete), "Talyx needs its engine" when the engine is
+missing, a first-run setup (install the engine, a provider, a first bot), a footer update button
+(Talyx releases and engine updates), an Engine (debug) page that sends "ping" and prints raw session events, and Settings
+(providers: API keys, account sign-ins and custom endpoints, Talyx's default model; the engine:
+where it is, check again, choose its file; launch at login; appearance).
+
+- **Version:** 1.0.0
 - **Stack:** Electron 44 + React 19 + TypeScript 5.9 + TailwindCSS 4
-- **State:** Zustand | **UI:** shadcn/ui (New York) | **DB:** better-sqlite3
+- **State:** Zustand | **UI:** shadcn/ui (New York) | **Settings:** JSON file
 - **Build:** electron-vite + electron-builder | **Tests:** Vitest
-- **AI:** `@anthropic-ai/sdk` (assistant + Claude sorting, user's API key) | `@anthropic-ai/claude-agent-sdk` (assistant + Claude sorting, user's installed Claude Code) | local ONNX (voice: whisper / Kokoro only — not used for sorting)
-- **MCP:** `@modelcontextprotocol/sdk` (stdio transport)
+
+### History and plans
+
+- Design (decisions 1–20): `docs/superpowers/specs/2026-11-04-talyx-agents-pivot-design.md`.
+- Plan (twelve PRs): `docs/superpowers/specs/2026-11-04-talyx-pivot-plan.html`.
+- `docs/superpowers/` is gitignored: specs and plans are local working notes, not in the repo.
+- The pivot was built as a stack of PRs on a `pivot` branch, squash-merged into `main` at 1.0.
+  Work now lands as PRs against `main`. The plan's PR 11 (website) and PR 12 (remote machines)
+  are still to come.
+- The file organizer (0.11.0) is preserved on branch `legacy/file-organizer` and tag
+  `v0.11.0-legacy`. Never modify them.
+- The engine's upstream project is named in one place only: the small credit line at the end of the README, which
+  credits it. Everywhere else (code, other docs, specs, commits, PR text) it is never named. It
+  is "the engine" (`shared/engine/`, `infrastructure/engine/`, `EngineStatus`, `talyx-engine`); its CLI, paths and data keys are written as `talyx`.
+  Strings the engine's wire protocol needs with the name in them (socket subprotocols, the
+  ticket header, the `ui_meta` bot keys) are built at runtime by `engineWire()` in
+  `src/shared/engine.ts` from the first word of `talyx-engine --version`. Never write them as
+  literals; tests use a fake name. `tests/unit/engineName.test.ts` fails on any hit.
 
 ## Commands
 
 ```bash
 npm run dev              # Start dev mode (Electron + Vite HMR)
 npm test                 # Run unit tests (Vitest)
+npm run test:smoke       # Real-engine smoke test (opt-in: TALYX_SMOKE_INSTALL_FILE=engine-install.json)
 npm run test:watch       # Tests in watch mode
 npm run lint             # ESLint on src/ and tests/
 npm run typecheck        # TypeScript check (node + web)
 npm run format           # Prettier format all files
 npm run build            # Typecheck + production build
 npm run build:mac        # Build macOS DMG (ARM64 + x64)
-npm run release          # Ad-hoc signed DMGs (no Apple account), then a draft GitHub release
+npm run build:linux      # Build Linux AppImage + deb (x64)
+npm run release          # Ad-hoc signed DMGs, then a draft GitHub release
+npm run reset            # Delete local app data (settings.json)
 ```
 
 ### Builds
 
-Talyx is macOS only: there is no Windows or Linux build.
+Talyx 1.0 ships for macOS and Linux (no Windows build yet). No build is signed or notarized (no
+Apple account). Talyx cannot replace itself: the app checks GitHub for a newer release and,
+on the user's click, downloads this computer's installer and the release's `SHA256SUMS`, verifies
+the installer against it, and opens it for the user to run. A download made by Talyx has no
+quarantine attribute, so the "Open Anyway" step below is not needed for in-app updates; the
+SHA-256 check is the integrity guarantee.
 
-Releases are ad-hoc signed, not notarized (no Apple account), and there is no in-app update, so
-macOS blocks every downloaded version the first time it is opened. Users try to open Talyx,
-dismiss the warning, then click Open Anyway in System Settings → Privacy & Security (it asks for
-the Mac password), or run `xattr -dr com.apple.quarantine /Applications/Talyx.app` once. After
-installing a new version, Automation and Files & Folders prompts appear again; for Accessibility
-and Screen Recording the old Talyx entry stays on but stops working: remove it with "−" and add
-Talyx again. Talyx is not hardened or notarized, so software already running as you could inject
-code into it; grant permissions accordingly.
-
-Voice needs Apple Silicon. `onnxruntime-node` publishes no `darwin/x64` binary,
-so whisper and Kokoro cannot load on Intel Macs; sorting
-and the assistant are unaffected.
+On macOS a downloaded build is blocked the first time it is opened: dismiss the warning, then
+click Open Anyway in System Settings → Privacy & Security, or run
+`xattr -dr com.apple.quarantine /Applications/Talyx.app` once.
 
 Electron 44 needs macOS 13 or newer.
 
+Releases come from the Release workflow (`.github/workflows/release.yml`, Actions → Release → Run
+workflow): macOS DMGs, Linux AppImage + deb, the real-engine smoke test on Linux, then a draft
+release `v<version>` with `engine-install.json` and `SHA256SUMS`. Its body is the optional
+`highlights` input under `## Highlights`, then `docs/release-notes/<version>.md` (write it before
+releasing; no engine name), then GitHub's generated notes. It needs the secret
+`ENGINE_INSTALL_JSON` (base64 of `engine-install.json`), set once per file change with
+`gh secret set ENGINE_INSTALL_JSON < <(base64 -i engine-install.json)`; each job checks it with
+`scripts/release-lib.sh`, which `release.sh` shares.
+
+`npm run release` (`scripts/release.sh`) is the local path, macOS DMGs only. Before it, write the
+gitignored `release-highlights.md` at the repo root: 1-3 lines `- **Lead.** Text.`. The script puts
+them under `## Highlights`, then `docs/release-notes/<version>.md`, then GitHub's generated
+notes, the same body as the workflow; the update button shows the highlights. Without the file
+the script warns and the release has no highlights.
+
+`npm run release` needs `engine-install.json` (the engine install steps the app fetches from the
+release) at the repo root. It is gitignored, and its SHA-256 must equal `ENGINE_INSTALL_SHA256` in
+`src/main/infrastructure/setup/installPin.ts`; the script also requires the file's `engineVersion` to equal
+`EXPECTED_ENGINE_VERSION` and exactly one commit hash in it, and refuses to release otherwise. Changing
+the commands means updating that pin in the same commit.
+
 During `npm run dev` the renderer is also usable in a plain browser at
-`http://localhost:5173` (dev bridge → real main process). Use the folder
-picker — drag-and-drop of OS files has no absolute paths in a browser.
+`http://localhost:5173` (dev bridge → real main process).
 
 ## Architecture
 
@@ -57,61 +106,54 @@ picker — drag-and-drop of OS files has no absolute paths in a browser.
 
 ```
 src/main/
-├── index.ts                    # Entry point — wires services, creates window
-├── mcp/                        # MCP server (standalone process, stdio transport)
-│   ├── server.ts               # Entry point — compiled to out/main/mcp/server.js
-│   ├── types.ts                # McpServices interface, FileEntry type
-│   └── tools/                  # 9 MCP tools (scan, classify, sort, undo, search, etc.)
-├── domain/                     # Business logic (no framework deps)
-│   ├── classification/         # AI + Smart Local pipeline
-│   │   ├── services/           # ExtensionClassifier, MetadataClassifier, ClassificationPipeline,
-│   │   │                       # TextExtractor, Sorter (SmartLocalSorter/ClaudeSorter/
-│   │   │                       # ClaudeSorter — resolved from sorterSource), redactForClassification
-│   │   ├── model/              # Category
-│   │   └── repository/         # ClassificationCacheRepo (SQLite)
-│   ├── sorting/
-│   │   ├── services/           # SortExecutor, UndoService, RenameEngine
-│   │   └── repository/         # SortHistoryRepo (SQLite)
-│   ├── watching/
-│   │   ├── services/           # WatchService (chokidar)
-│   │   └── repository/         # WatchFolderRepo (SQLite)
-│   ├── instruction/            # Typed abilities the agent can call
-│   │   ├── model/              # Capability, Effect, CapabilityRegistry, errors
-│   │   └── capabilities/       # files, system, dev, desktop, everyday, mail, messages,
-│   │                           # briefing, recall, triage, screen, focus, undo — 35 abilities
-│   └── agent/                  # Brain seam, AgentSession (API key loop), CapabilityDispatcher,
-│                               # ApprovalGate, ApprovalPolicy, BuiltinToolPolicy
+├── index.ts                    # Entry point: splash, main window, IPC, release check
+├── lib/electronUtils.ts        # is.dev, window shortcuts
+├── lib/appMenu.ts              # the packaged app's menu (no dev tools)
 └── infrastructure/
-    ├── ipc/                    # IPC handlers (folder, sort, watch, settings, agent)
-    ├── agent/                  # ActionLogRepo, ApiKeyStore, capabilityDeps, systemPrompt
-    ├── ai-providers/           # AnthropicProvider (user's own Claude API key), ClaudeCodeProvider
-    │                           # (user's installed Claude Code as a plain completer, no tools) —
-    │                           # both also back Claude sorting via resolveSorter.ts
-    ├── brains/                 # ClaudeCodeBrain (Agent SDK over the user's claude binary), findClaudeCode
-    ├── assistant/              # AssistantWindowManager — hotkey overlay + kill switch
-    ├── voice/                  # SttWorker, VoiceModelInstaller, Speaker, VoiceNarrator, wav,
-    │                           # KokoroSpeaker, SpeechRouter, TtsWorker, AfplayPlayer
-    ├── workers/                # stt.worker, tts.worker
-    ├── database/               # SQLite init + migrations
-    └── storage/                # SettingsStore (JSON file)
+    ├── bridge/DevBridge.ts     # Dev-only HTTP+SSE bridge for the browser renderer
+    ├── engine/                 # engine.ts (Engine: CLI, attach, tickets, REST),
+    │                           # gateway.ts (vendored attach + ticket mint), engineSockets.ts
+    ├── ipc/                    # settings.ipc.ts, engine.ipc.ts, setup.ipc.ts (the engine install),
+    │                           # updater.ipc.ts (update download and open), validation.ts (zod at the boundary)
+    ├── security/               # webContentsGuard (no new windows, no navigation away),
+    │                           # appProtocol.ts (serves the packaged renderer over app://)
+    ├── setup/                  # installPin.ts (the hash pin), installSteps.ts (loads the install file), installRunner.ts (runs it)
+    ├── storage/SettingsStore.ts # settings.json in userData
+    ├── system/loginItem.ts     # launch at login: macOS login item, Linux autostart .desktop
+    └── updater/                # releaseCheck.ts (GitHub latest-release check), releaseDownload.ts
+                                # (installer download, checked against SHA256SUMS), updateState.ts
+                                # (the update state machine), openInstaller.ts (the user runs it)
 ```
+
+`src/shared/api.ts` is the single definition of `window.api`; the preload builds it over
+`ipcRenderer`, the browser dev bridge over HTTP.
+
+`infrastructure/engine/` runs the engine CLI (`talyx-engine`: the `enginePath` setting, then
+PATH, then `~/.local/bin`), attaches with `gateway ensure --json` and mints one-use tickets
+through the profile's control socket. Main opens the gateway websocket itself (the gateway
+admits no Origin header and takes the ticket in a subprotocol) and relays frames over
+`engine:socket-*` IPC; REST goes through `engine:http`. Main never owns or kills the gateway.
 
 ### Renderer Process (React Frontend — Feature-Sliced Design)
 
 ```
 src/renderer/src/
-├── app/              # Providers, global state (Zustand stores)
-├── pages/            # Full pages: SortPage, WatchPage, HistoryPage, SettingsPage
-├── widgets/          # Self-contained UI blocks: AppShell (sidebar + page shell), WelcomeOverlay
-│                     # (steps: WelcomeStep, ConnectClaudeStep)
-├── features/         # User interactions: drop-to-sort, ai-search, file-preview, feedback, assistant
-└── shared/           # Reusable: ui/ (shadcn), hooks/, api/ (IPC wrappers), lib/
+├── app/              # Global state, browser dev bridge, the hooks that wire `host` into
+│                     # features (useRosterBackend, useChatBackend, useProvidersBackend)
+├── pages/            # AgentsPage (the selected bot's chat or room, and details), SettingsPage
+├── widgets/          # AppShell, Roster (sidebar bots and rooms, create dialogs), Chat (transcript,
+│                     # cards, composer, RoomPane), BotDetails (the details panel and routines),
+│                     # Providers (the settings sections, add-provider dialog, sign-in),
+│                     # settings-engine (Settings: the engine's state and path),
+│                     # settings-startup (Settings: launch at login),
+│                     # Setup (the first-run flow: welcome, engine, provider, bot steps)
+├── features/         # bots (roster data, folders, pins, unread, details, routines, create, rooms),
+│                     # chat (transcript, use cases, hosted rooms polled over `groups.*`),
+│                     # providers (keys, endpoints and sign-ins over REST; writes go to every bot),
+│                     # setup (which step comes first, the engine install and its screens)
+└── shared/           # Reusable: ui/ (shadcn), hooks/, api/ (IPC wrappers), lib/,
+                      # engine/ (vendored engine client; host.ts is the facade features use)
 ```
-
-`features/assistant/` holds the hotkey overlay's chat UI (`useAgent` store, `ApprovalCard`,
-`Transcript`, `InstructionInput`), shared by the overlay and the Ask page. Its own entry
-point, `src/renderer/assistant/` (outside `src/renderer/src/`), is a small standalone React
-app loaded via `assistant.html` — not part of the main window's FSD tree.
 
 **FSD Layer Rules** (strict top-down dependency):
 
@@ -127,8 +169,8 @@ Always use aliases for cross-layer imports, never relative paths across layers:
 
 ```typescript
 import { Button } from '@shared/ui/button'
-import { useSortSession } from '@app/providers/useSortSession'
-import { DropZone } from '@features/drop-to-sort/DropZone'
+import { useNavigation } from '@app/providers/useNavigation'
+import { AppShell } from '@widgets/app-shell'
 ```
 
 | Alias         | Path                          |
@@ -151,26 +193,22 @@ import { DropZone } from '@features/drop-to-sort/DropZone'
 ### TypeScript
 
 - **Strict mode** enabled
-- Never use `any` — prefer `unknown` with type guards
+- Never use `any`; prefer `unknown` with type guards
 - Always type IPC return values explicitly
 - Use `string | null` not optional for nullable values
+- Exception: the vendored engine files (listed in `eslint.config.mjs`) keep upstream's code as
+  written so re-syncs stay clean diffs; see README → Engine → Re-syncing the vendored client
 
 ### React Components
 
 ```typescript
 // Named exports, explicit return type
-export function SortPage(): React.JSX.Element {
+export function AgentsPage(): React.JSX.Element {
   // 1. Zustand stores
-  const { sourceFolder, setSourceFolder } = useSortSession()
+  const t = useLanguage((s) => s.t)
   // 2. Local state
-  const [loading, setLoading] = useState(false)
   // 3. Effects
-  useEffect(() => { /* ... */ }, [])
   // 4. Handlers (async functions with explicit Promise<void>)
-  async function handleSelectSource(): Promise<void> {
-    const path = await folderApi.select()
-    if (path) setSourceFolder(path)
-  }
   // 5. JSX
   return <div>...</div>
 }
@@ -194,57 +232,50 @@ export const useStore = create<StoreState>((set) => ({
 
 ### IPC Patterns
 
-**Channels:** `namespace:action` (e.g., `folder:select`, `sort:preview`, `watch:add`)
+**Channels:** `namespace:action` (e.g., `settings:get`, `settings:set`, `theme:set-native`)
 
-**Handler registration:**
+**Handler registration** (validate input with zod at the boundary):
 
 ```typescript
-export function registerSortIpc(pipeline: ClassificationPipeline, ...deps): void {
-  ipcMain.handle('sort:preview', async (_event, files, options) => {
-    return pipeline.classifyFiles(files, options)
+export function registerSettingsIpc(): void {
+  ipcMain.handle('settings:set', (_event, rawPartial: unknown) => {
+    settingsStore.set(validateInput(UserSettingsPartialSchema, rawPartial))
+    return settingsStore.store
   })
 }
 ```
 
-**Renderer API wrapper:**
+**API surface:** add the call to `buildApi` in `src/shared/api.ts`, then a typed wrapper in
+`src/renderer/src/shared/api/ipc.ts`:
 
 ```typescript
-export const sortApi = {
-  preview: (files: FileEntry[]): Promise<ClassifiedFile[]> =>
-    window.api.previewSort(files) as Promise<ClassifiedFile[]>
+export const settingsApi = {
+  get: (): Promise<AppSettings> => window.api.getSettings() as Promise<AppSettings>
 }
 ```
 
-### Domain Services
+### Copy
 
-- Services are classes with dependency injection via constructor
-- Repositories handle SQLite access (end with `Repo`)
-- Use `Result<T, E>` pattern for expected failures (not exceptions)
+English only for now (`shared/lib/i18n.ts`, via `useLanguage((s) => s.t)`). Another language is
+one more table in that file.
 
 ## Naming Conventions
 
-| Thing            | Convention          | Example                                                                                                                                                                                                                     |
-| ---------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| React components | `PascalCase.tsx`    | `SortPage.tsx`, `DropZone.tsx`                                                                                                                                                                                              |
-| Hooks            | `useCamelCase.ts`   | `useSortSession.ts`, `useTheme.ts`                                                                                                                                                                                          |
-| Services/Classes | `PascalCase.ts`     | `SortExecutor.ts`, `ClassificationPipeline.ts`                                                                                                                                                                              |
-| Repositories     | `PascalCaseRepo.ts` | `SortHistoryRepo.ts`                                                                                                                                                                                                        |
-| IPC handlers     | `kebab-case.ipc.ts` | `folder.ipc.ts`, `sort.ipc.ts`                                                                                                                                                                                              |
-| Utilities        | `camelCase.ts`      | `utils.ts`                                                                                                                                                                                                                  |
-| IPC channels     | `namespace:action`  | `sort:execute`, `watch:toggle`, `agent:run`, `agent:approve`, `agent:abort`, `agent:event`, `voice:transcribe`, `voice:permission`, `voice:download-model`, `voice:tts-status`, `voice:download-tts`, `voice:preview-voice` |
-| Branches         | `type/kebab-case`   | `feat/keyboard-shortcuts`                                                                                                                                                                                                   |
+| Thing            | Convention          | Example                                                             |
+| ---------------- | ------------------- | ------------------------------------------------------------------- |
+| React components | `PascalCase.tsx`    | `AgentsPage.tsx`, `AppShell.tsx`                                    |
+| Hooks            | `useCamelCase.ts`   | `useTheme.ts`, `useNavigation.ts`                                   |
+| Services/Classes | `PascalCase.ts`     | `SettingsStore.ts`, `DevBridge.ts`                                  |
+| IPC handlers     | `kebab-case.ipc.ts` | `settings.ipc.ts`                                                   |
+| Utilities        | `camelCase.ts`      | `utils.ts`                                                          |
+| IPC channels     | `namespace:action`  | `settings:get`, `settings:set`, `theme:set-native`, `updater:state` |
+| Branches         | `type/kebab-case`   | `feat/roster`                                                       |
 
 ## Git Conventions
 
 **Commit format:** `type: imperative description`
 
 Types: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `ci:`, `test:`
-
-```
-feat: add keyboard shortcuts for page navigation
-fix: resolve path traversal in sort executor
-test: unit tests for classification pipeline
-```
 
 - Keep subject under 72 characters, no period at end
 - Use imperative mood ("add" not "added")
@@ -254,24 +285,12 @@ test: unit tests for classification pipeline
 
 **Framework:** Vitest | **Location:** `tests/unit/` | **Pattern:** `*.test.ts`
 
-```typescript
-import { describe, it, expect } from 'vitest'
-
-describe('ExtensionClassifier', () => {
-  const classifier = new ExtensionClassifier()
-
-  it('should classify jpg as Images/Photos', () => {
-    const result = classifier.classify('photo.jpg')
-    expect(result.category).toBe('Images')
-    expect(result.subcategory).toBe('Photos')
-  })
-})
-```
-
 - Group with nested `describe` blocks
 - Name tests: "should [expected behavior]"
 - Test success path + edge cases
+- Drive behavior through use cases, not the transport (IPC, websocket) or the DOM
 - Use factory functions for test data
+- `tests/smoke/` holds the opt-in real-engine smoke test; run it before merging an engine bump
 
 ## Key Patterns
 
@@ -283,84 +302,20 @@ describe('ExtensionClassifier', () => {
 
 ```typescript
 try {
-  const result = await sortApi.preview(files)
+  await settingsApi.set({ theme })
 } catch (err) {
   toast.error(err instanceof Error ? err.message : 'Operation failed')
 }
 ```
 
-**Progress callbacks:**
-
-```typescript
-const batch = await executor.executeBatch(files, outputDir, mode, (progress) => {
-  sender.send('sort:progress', progress)
-})
-```
-
-## MCP Server
-
-Talyx exposes an MCP server (`src/main/mcp/server.ts`) with 9 tools:
-
-| Tool                | Purpose                                |
-| ------------------- | -------------------------------------- |
-| `scan_folder`       | List files with metadata               |
-| `get_file_metadata` | EXIF, audio tags, extension category   |
-| `extract_text`      | Text from PDF, DOCX, XLSX, etc.        |
-| `classify_files`    | Accept AI classifications → sort plan  |
-| `execute_sort`      | Move/copy files into organized folders |
-| `undo_sort`         | Restore files to original locations    |
-| `sort_history`      | View past operations                   |
-| `search_files`      | Keyword search                         |
-| `watch_folder`      | Manage auto-sort directories           |
-
-The server runs as a standalone Node.js process via stdio transport. AI clients (Claude Desktop, Cursor) spawn it and call tools via JSON-RPC. The Electron app works independently with its built-in AI classification and Smart Local fallback.
-
-## AI Classification
-
-Sorting picks its model via `sorterSource` in `UserSettings` (`'smart-local' | 'claude'`,
-default `'smart-local'`), resolved once per preview by `resolveSorter.ts`. **Smart Local**
-(extension + metadata) is the default and the floor — no model, no download, no network, ever.
-**Your Claude** classifies the **whole batch** when Claude is reachable (names, metadata, and
-extracted text when available — first 2000 characters, with common currency amounts, dates and legally-suffixed company names masked first, best-effort (other names and places are not) — see
-`redactForClassification.ts` and `ClaudeSorter.ts`). If Claude is unreachable or fails, Smart
-Local remains the answer and the Sort page says so. Stored `talyx-models` settings migrate
-silently to `smart-local`. Talyx does not download or run owned classification weights.
-(The assistant itself is unchanged: with an API key it sends the conversation and tool results
-to Anthropic; with Claude Code the user's own signed-in binary does, on their subscription.)
-
-**Key files:**
-
-- `src/main/infrastructure/ipc/resolveSorter.ts` — Claude when chosen and reachable, else Smart Local
-- `src/main/infrastructure/ipc/escalateAndMerge.ts` — whole-batch Claude escalation
-- `src/main/domain/classification/services/ClaudeSorter.ts` — Claude classification
-- `src/main/domain/classification/services/Sorter.ts` — Smart Local floor
-- `src/main/domain/ai/voicePresets.ts` — whisper choices (fast/accurate) + the Kokoro model and its voices
-
-**Voice:** hold-to-talk dictation via whisper (`@huggingface/transformers` on `onnxruntime-node`)
-in a worker. Spoken replies via Kokoro-82M (`StyleTextToSpeech2Model` on the same transformers and
-ONNX runtime, phonemes from `phonemizer`, sentence by sentence through `afplay`), with macOS `say`
-as the fallback and as the Bulgarian voice. Whisper and Kokoro models are downloaded from Hugging Face
-on first use, only when voice is turned on. Voice is a separate install path from sorting — not a
-Brain picker.
-
-**AI classification features:**
-
-- Semantic classification (with Claude): invoices go to `Documents/Invoices`, not just `Documents`
-- Smart rename suggestions following Harvard file naming conventions
-- Content-aware sorting when Claude reads the batch
-- Language-aware renaming: Bulgarian content gets Cyrillic names, English gets English
-- First run is the Welcome overlay (`widgets/welcome/`): welcome, connect your Claude (optional),
-  done — no hardware detection, no classification model download
-
 ## Key Decisions
 
-- Harness: abilities, approval, memory, notices. The user brings the brain (Claude today;
-  other providers later — not Ollama for now).
-- Privacy-first by default: Smart Local sorting (extension + metadata) makes zero network calls
-  and is what a fresh install uses. Choosing Your Claude is the path that may send data
-  off-device — the whole batch (names/metadata plus truncated text with currency amounts, dates and suffixed company names masked, when
-  extracted) — and it is opt-in, never the default.
-- Voice stays on-device (whisper / Kokoro); not a sorting Brain.
-- MCP server: exposes tools so external AI assistants can also operate Talyx
-- Free and open source (MIT). No account, nothing to buy.
-- Website on Vercel. Releases: GitHub Releases on `PetarStoev02/talyx-app` (`npm run release` creates a draft). The app checks the GitHub latest-release API and opens the page — it does not install updates (unsigned). No server.
+- One app, one purpose: tally agents, chat with them, configure them.
+- The engine is stock and never patched; Talyx is a client of its gateway. Bot-to-bot
+  delivery, group rooms and routines run in the engine, not in the app.
+- Settings are a JSON file (`settings.json` in userData). No local database.
+- Old features are deleted, not kept dormant; git history and `legacy/file-organizer` keep them.
+- Builds for macOS and Linux, none signed. No auto-update.
+- Free and open source (MIT). No account, no server, no telemetry.
+- Website (`website/`) on Vercel, updated for the pivot in its own PR. Releases: GitHub
+  Releases on `PetarStoev02/talyx-app` (the Release workflow creates a draft).

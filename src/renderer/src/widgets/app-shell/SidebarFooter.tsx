@@ -1,125 +1,46 @@
-import { useState } from 'react'
-import { MessageSquarePlus, Settings, Sparkles } from 'lucide-react'
-import { cn } from '@shared/lib/utils'
-import { Tooltip, TooltipTrigger, TooltipContent } from '@shared/ui/tooltip'
-import { useNavigation } from '@app/providers/useNavigation'
-import { useLanguage } from '@app/providers/useLanguage'
-import { FeedbackDialog } from '@features/feedback/FeedbackDialog'
-import type { UpdateStatus } from '@shared/hooks/useAutoUpdater'
+import { useEffect } from 'react'
+import { Bot, Bug, Settings } from 'lucide-react'
+import { useEngine } from '@app/providers/useEngine'
+import { updateItems } from '@features/updates/items'
+import { useUpdates } from '@features/updates/store'
+import { reportError } from '@shared/lib/report'
+import { NavButton } from './NavButton'
+import { UpdateButton } from './UpdateButton'
 
-export interface UpdaterControls {
-  status: UpdateStatus
-  version: string | null
-  onOpen: () => void
-}
+const isMac = navigator.platform.toLowerCase().includes('mac')
+const mod = isMac ? '⌘' : 'Ctrl+'
 
+/**
+ * One row of icon buttons: the pages on the left, `end` (the roster's refresh) on the right.
+ * While a Talyx or engine update is pending, the update button takes `end`'s place.
+ * Without a roster (no engine yet) the Agents page gets a button too, as the way back to it.
+ */
 export function SidebarFooter({
-  collapsed,
-  updater
+  withRoster,
+  end
 }: {
-  collapsed: boolean
-  updater: UpdaterControls
+  withRoster: boolean
+  end: React.ReactNode
 }): React.JSX.Element {
-  const currentView = useNavigation((s) => s.currentView)
-  const navigate = useNavigation((s) => s.navigate)
-  const t = useLanguage((s) => s.t)
+  const engine = useEngine((s) => s.status)
+  const update = useUpdates((s) => s.state)
+  const items = updateItems(engine, update)
 
-  const [feedbackOpen, setFeedbackOpen] = useState(false)
-
-  const updateLabel = t('nav.updateVersion').replace('{version}', updater.version ?? '')
-
-  const feedbackDialog = <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
-
-  if (collapsed) {
-    return (
-      <>
-        {feedbackDialog}
-        <div className="flex flex-col items-center gap-1 px-2 pb-2">
-          {updater.status === 'available' && (
-            <Tooltip delayDuration={300}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={updater.onOpen}
-                  aria-label={updateLabel}
-                  className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-                >
-                  <Sparkles className="size-[18px]" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">{updateLabel}</TooltipContent>
-            </Tooltip>
-          )}
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <button
-                data-tour="feedback"
-                onClick={() => setFeedbackOpen(true)}
-                aria-label={t('sidebar.feedback')}
-                className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-              >
-                <MessageSquarePlus className="size-[18px]" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">{t('sidebar.feedback')}</TooltipContent>
-          </Tooltip>
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => navigate('settings')}
-                aria-label={t('sidebar.settings')}
-                className={cn(
-                  'flex size-9 items-center justify-center rounded-md transition-colors',
-                  currentView === 'settings'
-                    ? 'bg-accent text-foreground'
-                    : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
-                )}
-              >
-                <Settings className="size-[18px]" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">{t('sidebar.settings')}</TooltipContent>
-          </Tooltip>
-        </div>
-      </>
-    )
-  }
+  useEffect(() => {
+    useUpdates
+      .getState()
+      .load()
+      .catch((error: unknown) => reportError('updater', error))
+  }, [])
 
   return (
-    <>
-      {feedbackDialog}
-      <div className="flex flex-col gap-0.5 px-2 pb-2">
-        {updater.status === 'available' && (
-          <button
-            onClick={updater.onOpen}
-            className="flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-          >
-            <Sparkles className="size-4 shrink-0" />
-            <span className="flex-1 truncate text-left">{updateLabel}</span>
-          </button>
-        )}
-
-        <button
-          data-tour="feedback"
-          onClick={() => setFeedbackOpen(true)}
-          className="flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-        >
-          <MessageSquarePlus className="size-4 shrink-0" />
-          <span className="flex-1 truncate text-left">{t('sidebar.feedback')}</span>
-        </button>
-
-        <button
-          onClick={() => navigate('settings')}
-          className={cn(
-            'flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors',
-            currentView === 'settings'
-              ? 'bg-accent text-foreground'
-              : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
-          )}
-        >
-          <Settings className="size-4 shrink-0" />
-          <span className="flex-1 truncate text-left">{t('sidebar.settings')}</span>
-        </button>
-      </div>
-    </>
+    <div className="flex items-center gap-1 px-3 pt-3 pb-4">
+      {!withRoster && (
+        <NavButton view="agents" labelKey="nav.agents" icon={Bot} shortcut={`${mod}1`} />
+      )}
+      <NavButton view="settings" labelKey="nav.settings" icon={Settings} shortcut={`${mod},`} />
+      <NavButton view="engine-debug" labelKey="nav.engineDebug" icon={Bug} shortcut={`${mod}2`} />
+      <span className="ml-auto">{items.length > 0 ? <UpdateButton items={items} /> : end}</span>
+    </div>
   )
 }

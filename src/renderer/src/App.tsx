@@ -1,128 +1,142 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Toaster } from 'sonner'
+import { ErrorBoundary } from '@app/ErrorBoundary'
 import { AppShell } from '@widgets/app-shell'
 import { useNavigation } from '@app/providers/useNavigation'
-import { useSortSession } from '@app/providers/useSortSession'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useRosterBackend } from '@app/providers/useRosterBackend'
+import { useChatBackend } from '@app/providers/useChatBackend'
+import { useProvidersBackend } from '@app/providers/useProvidersBackend'
+import { useSetupBackend } from '@app/providers/useSetupBackend'
+import { useFirstSetupStep } from '@app/providers/useFirstSetupStep'
 import { useTheme } from '@shared/hooks/useTheme'
 import { useKeyboardShortcuts } from '@shared/hooks/useKeyboardShortcuts'
-import { appApi, settingsApi } from '@shared/api/ipc'
-import { WelcomeOverlay } from '@widgets/welcome'
-import { TourOverlay } from '@widgets/tour'
-import { useTour } from '@app/providers/useTour'
-import { useAgent } from '@features/assistant/useAgent'
-import { AskPage } from '@pages/ask'
-import { SortPage } from '@pages/sort'
-import { WatchPage } from '@pages/watch'
-import { HistoryPage } from '@pages/history'
+import { reportError } from '@shared/lib/report'
+import { AgentsPage } from '@pages/agents'
 import { SettingsPage } from '@pages/settings'
-import { SearchPage } from '@pages/search'
+import { EngineDebugPage } from '@pages/engine-debug'
 import { TooltipProvider } from '@shared/ui/tooltip'
+import { Roster, RosterAdd, RosterRefresh } from '@widgets/roster'
+import { ConnectionBanner, EngineSplash } from '@widgets/engine-gate'
+import { SetupFlow } from '@widgets/setup'
+import { ProvidersSection } from '@widgets/providers'
+import { MANAGER } from '@features/bots/details'
+import { useRoster } from '@features/bots/store'
+import { setupVisibility } from '@features/setup/steps'
+import { useSetup } from '@features/setup/store'
+import { useEngine } from '@app/providers/useEngine'
+import { useSelectionMemory } from '@app/providers/useSelectionMemory'
 
 function App(): React.JSX.Element {
   useKeyboardShortcuts()
+  useSelectionMemory()
   const { effectiveTheme } = useTheme()
   const currentView = useNavigation((s) => s.currentView)
-  const [showWelcome, setShowWelcome] = useState(false)
-  const [tourPending, setTourPending] = useState(false)
-
-  const setLanguage = useLanguage((s) => s.setLanguage)
-
-  useEffect(() => {
-    settingsApi.get().then((s) => {
-      if (!s.hasSeenOnboarding) setShowWelcome(true)
-      if (!s.hasSeenTour) setTourPending(true)
-      if (s.appLanguage) setLanguage(s.appLanguage)
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const startTour = useTour((s) => s.start)
-  // A ref guard (not state) marks the tour as launched: launching is a one-shot
-  // side effect on an external store, not something the component needs to
-  // re-render for, so there's no setState to run synchronously in this effect.
-  const tourStartedRef = useRef(false)
-  useEffect(() => {
-    if (tourStartedRef.current) return
-    if (tourPending && !showWelcome) {
-      tourStartedRef.current = true
-      startTour()
-    }
-  }, [tourPending, showWelcome, startTour])
-
   const navigate = useNavigation((s) => s.navigate)
-  const subscribeAgent = useAgent((s) => s.subscribe)
-  const agentPhase = useAgent((s) => s.phase)
-
-  // Subscribed for the window's whole life, not just while Ask is mounted: an
-  // approval raised while the owner is on another page has to reach them.
-  useEffect(() => subscribeAgent(), [subscribeAgent])
-  useEffect(() => {
-    if (agentPhase === 'approval') navigate('ask')
-  }, [agentPhase, navigate])
-  const setSourceFolder = useSortSession((s) => s.setSourceFolder)
-  const setStatus = useSortSession((s) => s.setStatus)
-  const setClassified = useSortSession((s) => s.setClassified)
-  const setFiles = useSortSession((s) => s.setFiles)
-  const setError = useSortSession((s) => s.setError)
-  const setOutputFolder = useSortSession((s) => s.setOutputFolder)
-  const setMode = useSortSession((s) => s.setMode)
-
-  useEffect(() => {
-    const cleanup = appApi.onOpenFolderForSort((folderPath) => {
-      // Reset sort state and navigate to sort page with folder pre-loaded
-      setClassified([])
-      setFiles([])
-      setStatus('idle')
-      setError(null)
-      // Mirror the browse/drop path: sort in place, so output = source
-      setSourceFolder(folderPath)
-      setOutputFolder(folderPath)
-      setMode('move')
-      navigate('sort')
-    })
-    return cleanup
-  }, [
-    navigate,
-    setSourceFolder,
-    setOutputFolder,
-    setMode,
-    setStatus,
-    setClassified,
-    setFiles,
-    setError
-  ])
-
-  // Listen for navigation requests from Quick Search overlay
-  useEffect(() => {
-    const cleanup = appApi.onNavigate((view) => {
-      navigate(view as 'sort' | 'watch' | 'history' | 'search' | 'settings')
-    })
-    return cleanup
-  }, [navigate])
-
+  const rosterBackend = useRosterBackend()
+  // Here, not in the page: replies keep marking bots unread while another page is open.
+  const chat = useChatBackend()
+  const providers = useProvidersBackend()
+  const setup = useSetupBackend()
+  const engineKnown = useEngine((s) => s.status !== null)
+  const setupDone = useSetup((s) => s.setupDone)
+  const forced = useSetup((s) => s.forced)
+  const firstSetupStep = useFirstSetupStep(providers)
+  const visibility = setupVisibility(setupDone, firstSetupStep)
+  // Once shown, setup stays until its Done, even when a step it ran completes everything.
+  const [inSetup, setInSetup] = useState(false)
+  if ((visibility === 'show' || forced) && !inSetup) setInSetup(true)
   const pages = {
-    ask: <AskPage />,
-    sort: <SortPage />,
-    watch: <WatchPage />,
-    history: <HistoryPage />,
-    search: <SearchPage />,
-    settings: <SettingsPage />
+    agents: <AgentsPage chat={chat} roster={rosterBackend} />,
+    'engine-debug': <EngineDebugPage />,
+    settings: <SettingsPage providers={providers} chat={chat} />
   }
+
+  useEffect(() => {
+    useSetup
+      .getState()
+      .load()
+      .catch((error: unknown) => {
+        reportError('setup', error)
+        // Unreadable settings must not hold the splash; the engine gate still covers a missing engine.
+        useSetup.setState({ setupDone: true })
+      })
+  }, [])
+
+  // Everything was already done (an existing setup): setup counts as finished without showing.
+  useEffect(() => {
+    if (visibility === 'hidden' && setupDone === false && !inSetup)
+      useSetup
+        .getState()
+        .finish()
+        .catch((error: unknown) => reportError('setup', error))
+  }, [visibility, setupDone, inSetup])
+
+  function finishSetup(): void {
+    // The app opens on Talyx's chat once setup is done.
+    useRoster.getState().select({ kind: 'bot', id: MANAGER })
+    navigate('agents')
+    useSetup
+      .getState()
+      .finish()
+      .catch((error: unknown) => {
+        reportError('setup', error)
+        // Unsaved, setup shows again at the next launch; this session goes on to the app.
+        useSetup.setState({ setupDone: true, forced: false })
+      })
+      // Only once setupDone is true, or the flow would open again at Welcome.
+      .finally(() => setInSetup(false))
+  }
+
+  if (!engineKnown || (visibility === 'loading' && !inSetup)) return <EngineSplash />
 
   return (
     <TooltipProvider>
-      {/* No bg here — the body paints the ambient glow that glass panels blur */}
-      {showWelcome && <WelcomeOverlay onDismiss={() => setShowWelcome(false)} />}
-      <TourOverlay />
-      <Toaster position="bottom-right" richColors closeButton theme={effectiveTheme} />
-      <AppShell>
-        <main
-          key={currentView}
-          className="min-h-0 flex-1 overflow-hidden animate-in fade-in duration-200"
+      <Toaster
+        // Top right: at the bottom, toasts cover the composer's Send and Stop.
+        position="top-right"
+        closeButton
+        // Errors wait to be dismissed; the rest go after 6 s, and hovering keeps any one open.
+        duration={6000}
+        theme={effectiveTheme}
+        // Important: sonner's own border rule sits outside the CSS layers, so a layered utility loses.
+        toastOptions={{ className: 'border-0!' }}
+      />
+      {inSetup ? (
+        <SetupFlow
+          providersForm={
+            providers &&
+            ((onOverview) => (
+              <ProvidersSection backend={providers} chat={chat} onOverview={onOverview} />
+            ))
+          }
+          roster={rosterBackend}
+          chat={chat}
+          setup={setup}
+          onDone={finishSetup}
+        />
+      ) : (
+        <AppShell
+          titleEnd={rosterBackend && <RosterAdd />}
+          footerEnd={rosterBackend && <RosterRefresh backend={rosterBackend} />}
+          roster={
+            rosterBackend && (
+              <ErrorBoundary scope="roster">
+                <Roster
+                  backend={rosterBackend}
+                  models={chat?.models ?? null}
+                  onSelect={() => navigate('agents')}
+                />
+              </ErrorBoundary>
+            )
+          }
         >
-          {pages[currentView]}
-        </main>
-      </AppShell>
+          <ConnectionBanner />
+          {/* A page you switch to fades in; the one you left is gone at once. */}
+          <main key={currentView} className="animate-arrive min-h-0 flex-1 overflow-hidden">
+            <ErrorBoundary scope={currentView}>{pages[currentView]}</ErrorBoundary>
+          </main>
+        </AppShell>
+      )}
     </TooltipProvider>
   )
 }

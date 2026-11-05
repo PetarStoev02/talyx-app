@@ -19,7 +19,12 @@ function TooltipProvider({
 function Tooltip({
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>): React.JSX.Element {
-  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+  // Its own provider, so a tooltip also works in a tree without the app's (the roster fixture).
+  return (
+    <TooltipProvider>
+      <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+    </TooltipProvider>
+  )
 }
 
 function TooltipTrigger({
@@ -40,7 +45,7 @@ function TooltipContent({
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          'z-50 w-fit origin-(--radix-tooltip-content-transform-origin) animate-in rounded-md bg-foreground px-3 py-1.5 text-xs text-balance text-background fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
+          'z-50 w-fit max-w-xs origin-(--radix-tooltip-content-transform-origin) rounded-2xl bg-foreground px-3 py-1.5 text-xs text-balance wrap-break-word text-background',
           className
         )}
         {...props}
@@ -52,4 +57,38 @@ function TooltipContent({
   )
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+// How long a pointer rests on a cut-off name before its full text shows.
+const OVERFLOW_DELAY_MS = 500
+
+/**
+ * The full text of a name cut off inside `children` (the trigger, one element), on hover and on
+ * keyboard focus. It opens only while some `.truncate` text in the trigger is actually cut off.
+ */
+function OverflowTooltip({
+  text,
+  children
+}: {
+  text: string
+  children: React.ReactElement
+}): React.JSX.Element {
+  const trigger = React.useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = React.useState(false)
+  const cutOff = (): boolean =>
+    [...(trigger.current?.querySelectorAll<HTMLElement>('.truncate') ?? [])].some(
+      (element) => element.scrollWidth > element.clientWidth
+    )
+  return (
+    <Tooltip
+      open={open}
+      delayDuration={OVERFLOW_DELAY_MS}
+      onOpenChange={(next) => setOpen(next && cutOff())}
+    >
+      <TooltipTrigger asChild ref={trigger}>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{text}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, OverflowTooltip }

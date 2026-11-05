@@ -57,6 +57,11 @@ export class DevBridge {
   private sseClients = new Set<ServerResponse>()
   private server: Server | null = null
   private bridgePort = 0
+  /** One stand-in for every browser tab, so the sockets a tab opens stay its own to use. */
+  private readonly sender = {
+    send: (channel: string, ...args: unknown[]): void => this.broadcast(channel, ...args),
+    isDestroyed: (): boolean => false
+  }
 
   constructor(private readonly rendererPort: number) {}
 
@@ -84,19 +89,10 @@ export class DevBridge {
     channel: string,
     args: unknown[]
   ): Promise<{ ok: boolean; result?: unknown; error?: string }> {
-    if (channel === 'agent:set-api-key') {
-      return { ok: false, error: 'agent:set-api-key is not available over the dev bridge' }
-    }
     const handler = this.handlers.get(channel)
     if (!handler) return { ok: false, error: `No ipcMain handler registered for "${channel}"` }
-    const fakeEvent = {
-      sender: {
-        send: (ch: string, ...a: unknown[]) => this.broadcast(ch, ...a),
-        isDestroyed: () => false
-      }
-    }
     try {
-      const result = await handler(fakeEvent, ...args)
+      const result = await handler({ sender: this.sender }, ...args)
       return { ok: true, result }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) }
@@ -106,7 +102,9 @@ export class DevBridge {
   start(port: number): Promise<void> {
     this.bridgePort = port
     this.server = createServer((req, res) => this.route(req, res))
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      // A taken port (another dev run) rejects instead of crashing main.
+      this.server!.once('error', reject)
       this.server!.listen(port, '127.0.0.1', () => {
         log.info(`[DevBridge] Browser dev bridge on http://127.0.0.1:${port}`)
         resolve()

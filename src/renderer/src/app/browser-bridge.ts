@@ -49,11 +49,6 @@ export function createBrowserTransport(deps: BrowserTransportDeps): ApiTransport
       }
       set.add(listener)
       return () => set.delete(listener)
-    },
-    getPathForFile: () => {
-      throw new Error(
-        'OS file paths are not available in browser dev mode — use the folder picker instead'
-      )
     }
   }
 }
@@ -65,13 +60,9 @@ export function installBrowserBridge(): void {
     fetchFn: (input, init) => fetch(input, init),
     eventSource: () => new EventSource('/bridge/events')
   })
-  const electronStub = {
-    platform: 'darwin',
-    systemVersion: 'unknown'
-  }
   Object.assign(window, {
     api: buildApi(transport),
-    electron: electronStub
+    electron: { platform: 'darwin' }
   })
   console.info(
     '[Talyx] Browser dev bridge active — window.api forwards to the Electron main process'

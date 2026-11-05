@@ -1,44 +1,43 @@
 # Talyx
 
-Talyx is a hotkey overlay for macOS where your own Claude (an Anthropic API key, or your signed-in Claude Code) operates your Mac through typed abilities. Anything that changes something shows an approval card first; you decide. File sorting is one of the abilities: Smart Local (file extension and metadata, the default, nothing leaves your Mac) or Your Claude (the same account the assistant uses).
+Talyx is a desktop app to tally your AI agents: a roster of bots on the left, one chat on the right, and a manager bot that hands work to the other bots and briefs you. The bots run on an agent engine that Talyx's first-run setup installs for you; Talyx is the window onto them. It runs on macOS and Linux.
 
-## Why Talyx is open source
+## Status
 
-I built Talyx on my own for almost two years. It started as a file organizer and grew into
-a personal harness: your own Claude operating your Mac through typed abilities, with every
-action behind an approval gate.
+Talyx 1.0 is the first build meant for daily use. It runs on macOS and Linux and attaches to the engine on the same computer, which its first-run setup installs. You get a roster of bots with pins, folders and unread marks; a chat with each bot, with approval and question cards, images and dictation; bot details with routines and a look of its own; group rooms the engine hosts; and Settings for model providers, the engine, launch at login and the theme. Not in 1.0: Windows, remote engines, the model's reasoning in the transcript, voice mode and other languages. The [release notes](docs/release-notes/1.0.0.md) have the details.
 
-Big tech companies now ship assistants like this with their own models, their own
-distribution, and teams of hundreds. One person can't compete with that, and I'd rather
-Talyx be used than sit behind a paywall. So it's free and MIT-licensed. Use it, fork it,
-learn from it, build on it.
+## Before the pivot
 
-Petar
+Until version 0.11.0 Talyx was a file organizer and a hotkey assistant for macOS. That app is kept, unchanged, on the branch [`legacy/file-organizer`](https://github.com/PetarStoev02/talyx-app/tree/legacy/file-organizer) and the tag [`v0.11.0-legacy`](https://github.com/PetarStoev02/talyx-app/tree/v0.11.0-legacy). Build it from there if you want it; it gets no further changes.
 
 ## Install
 
-Download the DMG for your Mac from the [latest GitHub release](https://github.com/PetarStoev02/talyx-app/releases/latest):
+Builds come from the [GitHub releases](https://github.com/PetarStoev02/talyx-app/releases). None of them is signed or notarized: there is no Apple developer account. Your system warns you the first time you open each new version.
 
-- Apple Silicon (M1 or newer): [Talyx-arm64.dmg](https://github.com/PetarStoev02/talyx-app/releases/latest/download/Talyx-arm64.dmg)
-- Intel: [Talyx-x64.dmg](https://github.com/PetarStoev02/talyx-app/releases/latest/download/Talyx-x64.dmg)
+- **macOS 13 or newer.** Open the DMG and drag Talyx to Applications. Open Talyx and dismiss the warning. Then go to System Settings → Privacy & Security, scroll down and click **Open Anyway**; macOS asks for your password. Or run once in Terminal: `xattr -dr com.apple.quarantine /Applications/Talyx.app`
+- **Linux (x64).** Download `Talyx-x86_64.AppImage`, make it executable (`chmod +x`) and run it, or install `Talyx-amd64.deb` with `sudo apt install ./Talyx-amd64.deb`. There is no Windows build yet: it comes once the engine runs there.
 
-Not sure which Mac you have? Apple menu → About This Mac. "Chip: Apple M…" means Apple Silicon; "Processor: Intel…" means Intel.
+Talyx checks GitHub for a newer release. When you click Download, it fetches the installer for your computer and the release's `SHA256SUMS`, checks the installer against it, and opens it for you to run. It never installs anything itself. A download made by Talyx has no quarantine attribute, so macOS's **Open Anyway** step is not needed for in-app updates; the SHA-256 check is the integrity guarantee.
 
-Talyx is not notarized by Apple, so macOS blocks it:
+## Engine
 
-1. Open the DMG and drag Talyx to Applications. Then open Talyx. macOS blocks it; dismiss the warning.
-2. Go to System Settings → Privacy & Security, scroll down and click **Open Anyway**. macOS asks for your Mac password. Or run once in Terminal: `xattr -dr com.apple.quarantine /Applications/Talyx.app`
-3. Every new version you download is blocked the same way the first time you open it.
-4. After installing a new version, macOS asks again for Automation and Files & Folders. For Accessibility and Screen Recording, the old Talyx entry stays switched on but stops working: remove it with "−" and add Talyx again.
-5. Talyx is not hardened or notarized, so software already running as you could inject code into it. Grant permissions accordingly.
+Talyx runs its bots on the engine, a separate agent backend that Talyx's setup screen installs for you. Talyx needs **engine 0.22.7**.
 
-Updates: Talyx checks GitHub for a newer release and opens the release page. It installs nothing itself.
+- The engine's command must be reachable as `talyx-engine`: on your `PATH`, in `~/.local/bin/talyx-engine` (on Windows, `%USERPROFILE%\.local\bin\talyx-engine.exe`), or picked with **Choose file** on the first-run screen. The setup screen installs the engine and links it as `talyx-engine`.
+- Talyx attaches to the engine's gateway on this machine with `talyx-engine gateway ensure --json`. The gateway runs on its own and outlives Talyx: quitting Talyx never stops it, and the next launch attaches to the same process.
+- Talyx reads every path and port from the engine's own output; it never assumes where the engine keeps its data.
+- Windows cannot attach yet: minting a gateway ticket there goes through the engine's own runtime, so a Windows build comes once the engine runs there.
 
-Requirements:
+### Re-syncing the vendored client
 
-- macOS 13 (Ventura) or newer.
-- Voice (dictation and spoken replies) needs Apple Silicon.
-- Your own Claude (an Anthropic API key or Claude Code) for the assistant and for Your Claude sorting. Smart Local sorting needs neither.
+`src/renderer/src/shared/engine/` is the engine desktop app's protocol client and API wrappers, cut from tag `v0.22.7` (its MIT licence is in that folder). `src/main/infrastructure/engine/gateway.ts` is its gateway attach and ticket code. When the engine moves to a new version:
+
+1. Take the same files from the engine desktop app at the new tag: `src/api/{canonical-protocol,client,profiles,sessions,cron,models,config}.ts`, `src/types/` (the engine types file, as `types.ts`), `src/lib/{gateway-rpc,session-owner-stamp}.ts`, `src/store/transcript-tail.ts`, the shared package's `{json-rpc-gateway,json-rpc-channel,gateway-events,gateway-contract.generated,reconnect-backoff,session-http-mutations}.ts`, and `electron/local-gateway.ts` for `gateway.ts`. Take the protocol tests the same way into `tests/unit/engine/`.
+2. Rename every word that carries the engine's name to `engine` (types, functions, comments, messages), point imports at the local files, and run `npx prettier --write` on them.
+3. Diff against this folder and keep Talyx's changes, each marked `Talyx:` in a comment: main opens the gateway socket (`socket.ts`, `socketFactory`); REST goes through `http.ts`; wire strings and metadata keys come from `engineWire()` in `src/shared/engine.ts` at runtime; the remote-registry code paths are cut.
+4. Run `npm run typecheck`, `npm run lint` and `npm test`, then send "ping" from the Engine (debug) page.
+
+Before merging an engine bump, run `TALYX_SMOKE_INSTALL_FILE=engine-install.json npm run test:smoke` and paste its summary in the PR.
 
 ## Build from source
 
@@ -49,38 +48,23 @@ npm ci
 npm run dev          # Electron + Vite with hot reload
 npm test             # unit tests
 npm run build:mac    # ad-hoc signed DMGs in dist/, no Apple account needed
+npm run build:linux  # AppImage and deb in dist/ (x64)
 ```
 
-`npm run dev` downloads Electron the first time it runs. Native modules ship prebuilt binaries, so the same install serves the app, the tests and the MCP server with no rebuild step.
+`npm run dev` downloads Electron the first time it runs.
+
+## Release
+
+Releases are built by the **Release** workflow on GitHub Actions: Actions → Release → Run workflow. It builds the macOS DMGs and the Linux AppImage and deb, runs the real-engine smoke test on Linux, and creates a **draft** release `v<version>` with the installers, `engine-install.json` and `SHA256SUMS`. Review the draft, then publish it.
+
+- The release body is the optional **highlights** input (lines like `- **Lead.** Text.`, shown by the update button) above `docs/release-notes/<version>.md` and GitHub's generated notes. The form takes one line; for several, run `gh workflow run release.yml -f highlights="$(cat release-highlights.md)"`.
+- The workflow needs the secret `ENGINE_INSTALL_JSON`, the base64 of `engine-install.json`. Add it once, and again whenever the file changes: `gh secret set ENGINE_INSTALL_JSON < <(base64 -i engine-install.json)`. Each job checks it against `ENGINE_INSTALL_SHA256` and fails when it is missing or does not match.
+
+`npm run release` (`scripts/release.sh`) is the local path: macOS DMGs only, from your own machine, with the same install-file check.
 
 ## Privacy
 
-Your files stay on this Mac unless you choose Your Claude for sorting. The network is used only for:
-
-- What you send to Claude when you use the assistant (the conversation and tool results; a screenshot only when you ask it to look at the screen), through your own API key or Claude Code.
-- Your Claude sorting, if you turn it on: file names, metadata and the first 2000 characters of extracted text. Common formats of currency amounts and dates, and company names ending in a legal suffix, are masked first on a best-effort basis; anything not recognised, including other names and places, is sent as written.
-- Installing Claude Code, if you ask Talyx to.
-- Voice models (Whisper and Kokoro), downloaded from Hugging Face when you turn voice on.
-- The update check against GitHub (can be set to manual in Settings).
-
-Talyx has no server, no account and no telemetry. Third-party components and model licences are listed in [CREDITS.md](CREDITS.md).
-
-## MCP server
-
-Talyx includes a Model Context Protocol server over stdio, so another AI client such as Claude Desktop or Cursor can operate it. It works on the same database as the app, so launch Talyx once first. Tools: `scan_folder`, `get_file_metadata`, `extract_text`, `classify_files`, `execute_sort`, `undo_sort`, `sort_history`, `search_files`, `watch_folder`.
-
-Run `npm run build`, then point your client at the built server with Node:
-
-```json
-{
-  "mcpServers": {
-    "talyx": {
-      "command": "node",
-      "args": ["/absolute/path/to/talyx/out/main/mcp/server.js"]
-    }
-  }
-}
-```
+Talyx has no server, no account and no telemetry. The only network calls Talyx makes itself are three to GitHub: the update check; the installer and its `SHA256SUMS` from the release, when you click Download; and, at first-run setup, the release's `engine-install.json`, the steps that install the engine. What your bots send to their model providers is between the engine and those providers; Talyx itself sends nothing anywhere else. Third-party components are listed in [CREDITS.md](CREDITS.md).
 
 ## Contributing
 
@@ -97,3 +81,5 @@ cd website && npm ci && npm run build
 ## License
 
 MIT, see [LICENSE](LICENSE). Third-party credits are in [CREDITS.md](CREDITS.md).
+
+<sub>The engine is [Hermes Agent](https://github.com/NousResearch/hermes-agent) by Nous Research (MIT), used as it ships.</sub>

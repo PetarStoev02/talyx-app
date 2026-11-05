@@ -1,459 +1,130 @@
-import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
 import log from 'electron-log'
-import { randomUUID } from 'crypto'
-import { join, dirname } from 'path'
-import { homedir } from 'os'
-import { pathToFileURL } from 'url'
-import { existsSync, statSync } from 'fs'
+import { join } from 'path'
 import { optimizer, is } from './lib/electronUtils'
+import { setProductionMenu } from './lib/appMenu'
 import { installWebContentsGuard } from './infrastructure/security/webContentsGuard'
+import { APP_ROOT, registerAppScheme, serveRenderer } from './infrastructure/security/appProtocol'
+import { registerSettingsIpc } from './infrastructure/ipc/settings.ipc'
+import { cancelInstall, registerSetupIpc } from './infrastructure/ipc/setup.ipc'
+import { registerLogIpc } from './infrastructure/ipc/log.ipc'
+import { closeEngineSockets, registerEngineIpc } from './infrastructure/ipc/engine.ipc'
+import { registerUpdaterIpc, updates } from './infrastructure/ipc/updater.ipc'
+import { fetchLatestRelease } from './infrastructure/updater/releaseCheck'
+import { settingsStore } from './infrastructure/storage/SettingsStore'
+import { syncLaunchAtLogin, systemLoginItemDeps } from './infrastructure/system/loginItem'
+import { ThemeSchema, validateInput, type Theme } from './infrastructure/ipc/validation'
+import { DevBridge } from './infrastructure/bridge/DevBridge'
 import icon from '../../resources/talyx-icon.png?asset'
 
-import { getDatabase, closeDatabase } from './infrastructure/database'
-import { SortHistoryRepo } from './domain/sorting/repository/SortHistoryRepo'
-import { SortExecutor } from './domain/sorting/services/SortExecutor'
-import { UndoService } from './domain/sorting/services/UndoService'
-import { WatchFolderRepo } from './domain/watching/repository/WatchFolderRepo'
-import { WatchService } from './domain/watching/services/WatchService'
-import { ExtensionClassifier } from './domain/classification/services/ExtensionClassifier'
-import { MetadataClassifier } from './domain/classification/services/MetadataClassifier'
-import { ClassificationPipeline } from './domain/classification/services/ClassificationPipeline'
-import { ClassificationCacheRepo } from './domain/classification/repository/ClassificationCacheRepo'
-import { registerFolderIpc } from './infrastructure/ipc/folder.ipc'
-import { registerSortIpc } from './infrastructure/ipc/sort.ipc'
-import { registerWatchIpc } from './infrastructure/ipc/watch.ipc'
-import { registerSettingsIpc } from './infrastructure/ipc/settings.ipc'
-import { TextExtractor } from './domain/classification/services/TextExtractor'
-import { checkForUpdate } from './infrastructure/updater/releaseCheck'
-
-/** Long enough for the window and services to settle; short enough to land in the first minute. */
+/** Long enough for the window to settle; short enough to land in the first minute. */
 const STARTUP_UPDATE_CHECK_DELAY_MS = 15_000
-import { settingsStore } from './infrastructure/storage/SettingsStore'
-import { contextMenuService } from './infrastructure/os/ContextMenuService'
-import { ScheduledSortRepo } from './domain/scheduling/repository/ScheduledSortRepo'
-import { SchedulerService } from './domain/scheduling/services/SchedulerService'
-import { registerScheduleIpc } from './infrastructure/ipc/schedule.ipc'
-import { SearchIndexRepo } from './domain/search/repository/SearchIndexRepo'
-import { SearchService } from './domain/search/services/SearchService'
-import { RecallService } from './domain/search/services/RecallService'
-import { DeepScanService } from './domain/search/services/DeepScanService'
-import { registerSearchIpc } from './infrastructure/ipc/search.ipc'
-import { postNotification } from './infrastructure/notices/postNotification'
-import { AssistantWindowManager } from './infrastructure/assistant/AssistantWindowManager'
-import { registerAgentIpc } from './infrastructure/ipc/agent.ipc'
-import { registerVoiceIpc } from './infrastructure/ipc/voice.ipc'
-import { VoiceNarrator } from './infrastructure/voice/VoiceNarrator'
-import { Speaker } from './infrastructure/voice/Speaker'
-import { TtsWorker } from './infrastructure/voice/TtsWorker'
-import { KokoroSpeaker } from './infrastructure/voice/KokoroSpeaker'
-import { AfplayPlayer } from './infrastructure/voice/AfplayPlayer'
-import { SpeechRouter } from './infrastructure/voice/SpeechRouter'
-import { KOKORO_MODEL } from './domain/ai/voicePresets'
-import { ActionLogRepo } from './infrastructure/agent/ActionLogRepo'
-import { CaptureLogRepo } from './domain/capture/CaptureLogRepo'
-import { ApiKeyStore } from './infrastructure/agent/ApiKeyStore'
-import { ConversationRepo } from './domain/conversation/repository/ConversationRepo'
-import { ConversationRecorder } from './domain/conversation/services/ConversationRecorder'
-import { buildCapabilities } from './infrastructure/agent/capabilityDeps'
-import { screenDeps } from './infrastructure/agent/screenDeps'
-import { CapabilityRegistry } from './domain/instruction/model/CapabilityRegistry'
-import { BriefingService } from './domain/briefing/services/BriefingService'
-import { NoticeWatcher } from './domain/briefing/services/NoticeWatcher'
-import { TriageService } from './domain/briefing/services/TriageService'
-import { ProactiveScheduler } from './domain/briefing/services/ProactiveScheduler'
-import { capabilityReader } from './domain/briefing/services/readCapability'
-import { noticeDelivery } from './infrastructure/notices/NoticeDelivery'
-import { registerNoticesIpc } from './infrastructure/ipc/notices.ipc'
-import { isAllDayPause, resolveKillAction } from './domain/briefing/model/noticePause'
-import { pauseNoticesForToday } from './infrastructure/notices/pauseNotices'
-import { readdir } from 'fs/promises'
+const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60_000
+const SPLASH_LOAD_TIMEOUT_MS = 5_000
+const SPLASH_MIN_VISIBLE_MS = 500
+const WINDOW_SHOW_TIMEOUT_MS = 8_000
 
-import { createTray, destroyTray } from './infrastructure/tray/TrayService'
-import { DevBridge } from './infrastructure/bridge/DevBridge'
+const isMac = process.platform === 'darwin'
+const rendererUrl = is.dev ? process.env['ELECTRON_RENDERER_URL'] : undefined
 
-const CONVERSATION_RETENTION_DAYS = 30
+// A dev run must never be mistaken for the installed app: it gets its own name and a night-sky
+// icon (build/ is not packaged). userData is pinned first, so both runs share one settings.json.
+const DEV_NAME = 'Talyx Dev'
+if (is.dev) {
+  app.setPath('userData', app.getPath('userData'))
+  app.setName(DEV_NAME)
+}
+const appIcon = is.dev ? join(app.getAppPath(), 'build/talyx-icon-dev.png') : icon
 
 let mainWindow: BrowserWindow | null = null
 
-// Browser dev bridge — lets a plain browser tab at localhost:5173 drive the app in dev
-const devBridge =
-  is.dev && process.env['ELECTRON_RENDERER_URL']
-    ? new DevBridge(Number(new URL(process.env['ELECTRON_RENDERER_URL']).port))
-    : null
-let schedulerService: SchedulerService | null = null
-let proactiveScheduler: ProactiveScheduler | null = null
+registerAppScheme()
 
-// Tracks a sort URL received before app is ready (cold launch via protocol)
-let pendingSortPath: string | null = null
+// Browser dev bridge: lets a plain browser tab at localhost:5173 drive the app in dev
+const devBridge = rendererUrl ? new DevBridge(Number(new URL(rendererUrl).port)) : null
 
-function resolveSortFolder(inputPath: string): string {
-  try {
-    const stats = statSync(inputPath)
-    if (stats.isFile()) return dirname(inputPath)
-  } catch {
-    // path doesn't exist or is inaccessible — pass as-is
-  }
-  return inputPath
-}
-
-function handleSortPath(inputPath: string): void {
-  if (!mainWindow) return
-  mainWindow.show()
-  mainWindow.focus()
-  mainWindow.webContents.send('app:open-folder-for-sort', resolveSortFolder(inputPath))
-  devBridge?.broadcast('app:open-folder-for-sort', resolveSortFolder(inputPath))
-}
-
-function extractSortPath(argv: string[]): string | null {
-  const arg = argv.find((a) => a.startsWith('--sort-path='))
-  if (arg) return arg.split('=').slice(1).join('=').replace(/^"|"$/g, '')
-  return null
-}
-
-function extractSortPathFromUrl(url: string): string | null {
-  try {
-    const parsed = new URL(url)
-    if (parsed.protocol === 'talyx:' && parsed.hostname === 'sort') {
-      return parsed.searchParams.get('path')
-    }
-  } catch {
-    // not a valid URL
-  }
-  return null
-}
-
-function extractSortPathFromCliArgs(argv: string[]): string | null {
-  // Support both --sort-path and legacy --quicksort-path
-  const arg = argv.find((a) => a.startsWith('--sort-path=') || a.startsWith('--quicksort-path='))
-  if (arg) return arg.split('=').slice(1).join('=').replace(/^"|"$/g, '')
-  return null
-}
-
-function extractSortPathFromProtocol(url: string): string | null {
-  try {
-    const parsed = new URL(url)
-    if (
-      parsed.protocol === 'talyx:' &&
-      (parsed.hostname === 'sort' || parsed.hostname === 'quicksort')
-    ) {
-      return parsed.searchParams.get('path')
-    }
-  } catch {
-    // not a valid URL
-  }
-  return null
-}
-
-let watchService: WatchService | null = null
-let assistantWindow: AssistantWindowManager | null = null
-let agentAbort: () => void = () => {}
-let voiceDispose: () => void = () => {}
-
-function initializeServices(): void {
-  const db = getDatabase()
-
-  // Repositories
-  const historyRepo = new SortHistoryRepo(db)
-  const watchFolderRepo = new WatchFolderRepo(db)
-
-  // Shared services
-  const textExtractor = new TextExtractor()
-
-  // Content-addressed classification cache — re-sorts skip the AI for known files
-  const classificationCacheRepo = new ClassificationCacheRepo(db)
-
-  // Search infrastructure
-  const searchIndexRepo = new SearchIndexRepo(db)
-  const searchService = new SearchService(searchIndexRepo)
-  const conversations = new ConversationRepo(db)
-  const recallService = new RecallService(searchIndexRepo, conversations)
-  const deepScanService = new DeepScanService(
-    searchIndexRepo,
-    textExtractor,
-    new ExtensionClassifier()
-  )
-
-  // Classification pipeline (Smart Local: extension + metadata)
-  const pipeline = new ClassificationPipeline(new ExtensionClassifier(), new MetadataClassifier())
-
-  // Load custom classification rules from settings
-  const settings = settingsStore.store
-  pipeline.setCustomRules(settings.classificationRules ?? [])
-
-  // Sorting services
-  const executor = new SortExecutor(historyRepo, deepScanService)
-  const undoService = new UndoService(historyRepo)
-
-  // Watch service with event forwarding to renderer + native notifications
-  watchService = new WatchService(watchFolderRepo, pipeline, executor, (event) => {
-    const windows = BrowserWindow.getAllWindows()
-    for (const win of windows) {
-      win.webContents.send('watch:event', event)
-    }
-    devBridge?.broadcast('watch:event', event)
-
-    // Native OS notification
-    if (event.type === 'file-sorted') {
-      const fileName = event.filePath.split('/').pop() ?? event.filePath
-      postNotification({
-        title: 'File Sorted',
-        body: `${fileName} → ${event.category ?? 'Unknown'}`
-      })
-    } else if (event.type === 'error') {
-      postNotification({
-        title: 'Watch Error',
-        body: event.error ?? 'Failed to sort file'
-      })
-    }
-  })
-
-  // Scheduled sorts
-  const scheduledSortRepo = new ScheduledSortRepo(db)
-  schedulerService = new SchedulerService(scheduledSortRepo, pipeline, executor, (event) => {
-    if (event.type === 'sort-completed') {
-      postNotification({
-        title: 'Scheduled Sort Complete',
-        body: `"${event.scheduleName}" sorted ${event.fileCount ?? 0} files`
-      })
-    } else if (event.type === 'sort-failed') {
-      postNotification({
-        title: 'Scheduled Sort Failed',
-        body: `"${event.scheduleName}": ${event.error ?? 'Unknown error'}`
-      })
-    }
-  })
-
-  // Register all IPC handlers (bridge tap first — it must see every registration)
+function registerIpc(): void {
+  // Bridge tap first: it must see every registration
   devBridge?.installTap(ipcMain)
-  registerFolderIpc()
-  // Holds the voice models (whisper, Kokoro).
-  const modelsDir = join(app.getPath('userData'), 'models')
-
-  // One account, one place: the assistant and the sorter ask the same store.
-  const apiKeyStore = new ApiKeyStore(app.getPath('userData'))
-
-  registerSortIpc({
-    pipeline,
-    executor,
-    undoService,
-    historyRepo,
-    settingsStore,
-    textExtractor,
-    classificationCacheRepo,
-    apiKeyStore
-  })
-  registerWatchIpc(watchFolderRepo, watchService)
-  registerSettingsIpc(pipeline)
-  registerScheduleIpc(scheduledSortRepo, schedulerService)
-  registerSearchIpc(searchService, searchIndexRepo, deepScanService)
-
-  // Assistant overlay
-  const overlayPreload = join(__dirname, '../preload/index.js')
-  assistantWindow = new AssistantWindowManager(
-    (settingsStore.store as unknown as Record<string, unknown>)['quickSearchShortcut'] as
-      | string
-      | undefined
+  registerSettingsIpc()
+  registerEngineIpc()
+  registerSetupIpc()
+  registerLogIpc()
+  registerUpdaterIpc()
+  ipcMain.handle('theme:set-native', (_event, theme: unknown) =>
+    syncNativeTheme(validateInput(ThemeSchema, theme))
   )
-  assistantWindow.createWindow(overlayPreload)
-
-  const actionLog = new ActionLogRepo(db)
-  const captureLog = new CaptureLogRepo(db)
-  // One sweep at launch is impossible to get wrong, and the app is opened often.
-  conversations.removeOlderThan(CONVERSATION_RETENTION_DAYS)
-  actionLog.removeOlderThan(CONVERSATION_RETENTION_DAYS)
-  const recorder = new ConversationRecorder(conversations, () => randomUUID())
-  // Read once: the registry is built now, so a later Settings change must not
-  // let the Ask page offer abilities that were never registered.
-  const hasProjects = existsSync(settingsStore.store.projectsRoot ?? join(homedir(), 'Code'))
-  // Nothing that speaks first may change anything, so the reader refuses any
-  // ability that is not read-only. The signal never aborts: a briefing has no
-  // kill switch of its own, it simply asks four questions and stops.
-  const readCapability = capabilityReader(
-    () => registry,
-    () => ({
-      home: homedir(),
-      projectsRoot: settingsStore.store.projectsRoot ?? join(homedir(), 'Code'),
-      signal: new AbortController().signal,
-      logger: { info: (m: string) => log.info(m), warn: (m: string) => log.warn(m) }
-    })
-  )
-  const briefing = new BriefingService({ read: readCapability, now: () => new Date() })
-  const noticeWatcher = new NoticeWatcher({
-    read: readCapability,
-    now: () => new Date(),
-    // One readdir, no recursion: the count runs every minute and only ever
-    // asks how crowded the top of the folder is.
-    countLooseFiles: async (folderPath) => {
-      const entries = await readdir(folderPath, { withFileTypes: true })
-      return entries.filter((e) => e.isFile() && !e.name.startsWith('.')).length
-    },
-    downloadsPath: join(homedir(), 'Downloads'),
-    warn: (message) => log.warn(message)
-  })
-  const triageService = new TriageService(noticeWatcher)
-  const registry: CapabilityRegistry = new CapabilityRegistry(
-    buildCapabilities({
-      hasProjects,
-      pipeline,
-      searchIndexRepo,
-      actionLog,
-      textExtractor,
-      historyRepo,
-      recallService,
-      triageService,
-      registry: () => registry,
-      briefing,
-      screen: screenDeps(),
-      pausedUntil: () => settingsStore.store.noticesPausedUntil,
-      setPausedUntil: (noticesPausedUntil) => settingsStore.set({ noticesPausedUntil })
-    })
-  )
-  const voice = registerVoiceIpc({ settingsStore, modelsDir })
-  /** Drives the orb in both windows: Talyx is talking, or it is not. */
-  const reportSpeaking = (speaking: boolean): void => {
-    for (const win of [assistantWindow?.getWindow(), mainWindow]) {
-      if (win && !win.isDestroyed()) win.webContents.send('voice:speaking', { speaking })
-    }
-    devBridge?.broadcast('voice:speaking', { speaking })
-  }
-  const systemSpeaker = new Speaker(reportSpeaking)
-  const tts = new TtsWorker({ modelId: KOKORO_MODEL.modelId, modelsDir: voice.voiceModelsDir })
-  const kokoroSpeaker = new KokoroSpeaker({
-    synth: tts,
-    player: new AfplayPlayer(),
-    fallback: systemSpeaker,
-    tempDir: app.getPath('temp'),
-    onSpeaking: reportSpeaking
-  })
-  voice.setPreviewSpeaker(kokoroSpeaker)
-  const speech = new SpeechRouter({
-    kokoro: kokoroSpeaker,
-    system: systemSpeaker,
-    settings: () => ({
-      voiceTtsEngine: settingsStore.store.voiceTtsEngine,
-      voiceTtsVoice: settingsStore.store.voiceTtsVoice,
-      appLanguage: settingsStore.store.appLanguage
-    }),
-    kokoroReady: voice.kokoroReady,
-    ensureVoice: voice.ensureVoice
-  })
-  const narrator = new VoiceNarrator(speech, () => ({
-    voiceSpeakReplies: settingsStore.store.voiceSpeakReplies,
-    voiceMode: settingsStore.store.voiceMode,
-    appLanguage: settingsStore.store.appLanguage
-  }))
-  voiceDispose = () => {
-    voice.dispose()
-    tts.dispose()
-    narrator.stop()
-  }
-  const agent = registerAgentIpc({
-    registry,
-    hasProjects,
-    actionLog,
-    captureLog,
-    apiKeyStore,
-    settingsStore,
-    conversations,
-    recorder,
-    narrator,
-    windows: {
-      overlay: () => assistantWindow!.getWindow(),
-      main: () => mainWindow,
-      showOverlay: (options) => assistantWindow!.show(options),
-      showOverlayForApproval: () => assistantWindow!.showForApproval(),
-      hideOverlay: () => assistantWindow!.hide(),
-      hideOverlayWindowOnly: () => assistantWindow!.hideWindowOnly(),
-      fitOverlayHeight: (height) => assistantWindow!.fitHeight(height),
-      setApprovalPending: (pending) => assistantWindow!.setApprovalPending(pending)
-    },
-    quietBriefingVisible: () => assistantWindow!.isQuietBriefingVisible(),
-    pauseNoticesForToday: () => pauseNoticesForToday(settingsStore),
-    broadcast: (channel, payload) => devBridge?.broadcast(channel, payload)
-  })
-  assistantWindow.registerKillShortcut(() => {
-    const settings = settingsStore.store
-    const action = resolveKillAction({
-      busy: agent.busy(),
-      noticesEnabled: settings.noticesEnabled,
-      // A focus pause ends with the meeting; ⌘⇧Esc during one still means "the rest of the day".
-      paused: isAllDayPause(settings.noticesPausedUntil, new Date()),
-      overlayVisible: assistantWindow!.isOverlayVisible()
-    })
-    if (action === 'abort') agent.abort()
-    else if (action === 'pause-notices') pauseNoticesForToday(settingsStore)
-    else if (action === 'hide') assistantWindow!.hide()
-  })
-  agentAbort = agent.abort
-
-  proactiveScheduler = new ProactiveScheduler({
-    now: () => new Date(),
-    settings: () => ({
-      noticesEnabled: settingsStore.store.noticesEnabled,
-      briefingTime: settingsStore.store.briefingTime,
-      briefingStyle: settingsStore.store.briefingStyle,
-      noticeKinds: settingsStore.store.noticeKinds
-    }),
-    marks: () => settingsStore.store.noticeMarks,
-    saveMarks: (noticeMarks) => settingsStore.set({ noticeMarks }),
-    pausedUntil: () => settingsStore.store.noticesPausedUntil,
-    savePausedUntil: (noticesPausedUntil) => settingsStore.set({ noticesPausedUntil }),
-    briefing,
-    watcher: noticeWatcher,
-    deliver: noticeDelivery({
-      push: agent.push,
-      showQuietly: () => assistantWindow!.showQuietly(),
-      show: () => assistantWindow!.show()
-    }),
-    speak: async (instruction) => agent.runAlone(instruction),
-    busy: agent.busy,
-    warn: (message) => log.warn(message)
-  })
-  registerNoticesIpc(proactiveScheduler)
-
-  void devBridge?.start(Number(process.env['TALYX_BRIDGE_PORT'] ?? 5175))
-
-  // Start watching enabled folders and scheduled sorts
-  watchService.startAll()
-  schedulerService.start()
-  proactiveScheduler.start()
-
-  // Window material follows the app theme (see syncNativeTheme)
-  syncNativeTheme(settingsStore.store.theme ?? 'system')
-  ipcMain.handle('theme:set-native', (_event, theme: unknown) => {
-    syncNativeTheme(theme)
-  })
+  devBridge
+    ?.start(Number(process.env['TALYX_BRIDGE_PORT'] ?? 5175))
+    .catch((error: unknown) => log.error('[DevBridge] Could not start', error))
 }
+
+/** Keep native chrome (menus, dialogs, scrollbars) in the same appearance as the app theme. */
+function syncNativeTheme(theme: Theme): void {
+  nativeTheme.themeSource = theme
+}
+
+/** The theme's ground (--background in theme.css), so a resize never flashes another colour. */
+function groundColor(): string {
+  return nativeTheme.shouldUseDarkColors ? '#0a0a0c' : '#ffffff'
+}
+
+// A failed load is reported by did-fail-load (see watchWindowFailures); the promise only logs.
+function loadPage(win: BrowserWindow, page: 'index' | 'splash'): void {
+  const loading = rendererUrl
+    ? win.loadURL(page === 'index' ? rendererUrl : `${rendererUrl}/splash.html`)
+    : win.loadURL(`${APP_ROOT}${page}.html`)
+  loading.catch((error: unknown) => log.warn(`[Main] ${page} page did not load`, error))
+}
+
+// Chromium's code for a load cut short by another navigation: not a failure.
+const LOAD_ABORTED = -3
 
 /**
- * Keep the OS-rendered window material (vibrancy blur) in the same
- * appearance as the app theme — otherwise a light app over a dark-mode
- * system gets a dark frost behind it and reads as gray mud.
+ * The main window must never sit blank: a page that fails to load, or a renderer that dies, is
+ * logged and offered a reload.
  */
-function syncNativeTheme(theme: unknown): void {
-  if (theme === 'light' || theme === 'dark' || theme === 'system') {
-    nativeTheme.themeSource = theme
-  }
+function watchWindowFailures(win: BrowserWindow): void {
+  win.webContents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
+    if (!isMainFrame || code === LOAD_ABORTED) return
+    log.error(`[Main] Window failed to load ${url} (${code} ${description})`)
+    void offerReload(win, 'Talyx could not load its window.', `${description} (${code})`)
+  })
+  win.webContents.on('render-process-gone', (_event, details) => {
+    log.error('[Main] Renderer process gone', details)
+    void offerReload(win, 'Talyx’s window stopped working.', details.reason)
+  })
+}
+
+async function offerReload(win: BrowserWindow, message: string, reason: string): Promise<void> {
+  if (win.isDestroyed()) return
+  const { response } = await dialog.showMessageBox(win, {
+    type: 'error',
+    message,
+    detail: `${reason}\n\nThe log has the details: ${log.transports.file.getFile().path}`,
+    buttons: ['Reload', 'Quit'],
+    defaultId: 0,
+    cancelId: 1
+  })
+  if (response === 1) app.quit()
+  else if (!win.isDestroyed()) loadPage(win, 'index')
 }
 
 function createWindow(): BrowserWindow {
-  const mainWindow = new BrowserWindow({
+  const win = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 600,
     minHeight: 500,
+    title: app.name,
     show: false,
     autoHideMenuBar: true,
     frame: false,
     titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 16, y: 16 },
-    transparent: false,
-    // Real glass: macOS blurs the desktop behind the window. The renderer keeps a
-    // translucent background so it shows through.
-    vibrancy: 'sidebar',
-    visualEffectState: 'active',
-    backgroundColor: '#00000000',
-    icon,
+    // Centered on the 56px title row (h-14 in AppShell and PageHeader).
+    trafficLightPosition: { x: 16, y: 22 },
+    backgroundColor: groundColor(),
+    icon: appIcon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -461,14 +132,11 @@ function createWindow(): BrowserWindow {
       sandbox: true
     }
   })
-
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
-  } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
-  }
-
-  return mainWindow
+  watchWindowFailures(win)
+  // The page's <title> would otherwise rename the window back to Talyx.
+  if (is.dev) win.on('page-title-updated', (event) => event.preventDefault())
+  loadPage(win, 'index')
+  return win
 }
 
 function createSplashWindow(): BrowserWindow {
@@ -477,7 +145,6 @@ function createSplashWindow(): BrowserWindow {
     height: 380,
     frame: false,
     resizable: false,
-    transparent: false,
     backgroundColor: '#0a0a0a',
     alwaysOnTop: true,
     center: true,
@@ -489,212 +156,149 @@ function createSplashWindow(): BrowserWindow {
       sandbox: true
     }
   })
-
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    splash.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/splash.html`)
-  } else {
-    splash.loadFile(join(__dirname, '../renderer/splash.html'))
-  }
-
+  loadPage(splash, 'splash')
   return splash
 }
 
-app.whenReady().then(async () => {
-  const gotTheLock = app.requestSingleInstanceLock()
-
-  if (!gotTheLock) {
-    log.warn('[Main] Another instance holds the single-instance lock — quitting')
-    app.quit()
-    return
-  }
-
-  installWebContentsGuard(
-    is.dev && process.env['ELECTRON_RENDERER_URL']
-      ? `${new URL(process.env['ELECTRON_RENDERER_URL']).origin}/`
-      : `${pathToFileURL(join(__dirname, '../renderer')).href}/`
-  )
-
-  app.on('second-instance', (_event, argv) => {
-    // Check CLI args for sort path
-    const cliSortPath = extractSortPathFromCliArgs(argv)
-    if (cliSortPath) {
-      handleSortPath(cliSortPath)
-      return
-    }
-
-    // Check URL args (talyx://sort?path=...)
-    const urlArg = argv.find((a) => a.startsWith('talyx://'))
-    if (urlArg) {
-      const urlSortPath = extractSortPathFromProtocol(urlArg) ?? extractSortPathFromUrl(urlArg)
-      if (urlSortPath) {
-        handleSortPath(urlSortPath)
-        return
-      }
-    }
-
-    // Legacy --sort-path opens full window
-    const sortPath = extractSortPath(argv)
-    if (sortPath) {
-      handleSortPath(sortPath)
-      return
-    }
-
-    if (mainWindow) {
-      mainWindow.show()
-      mainWindow.focus()
-    }
-  })
-
-  if (!is.dev) {
-    app.setAsDefaultProtocolClient('talyx')
-  }
-
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
-
-  ipcMain.handle('updater:check', () => checkForUpdate(mainWindow))
-
-  // Context menu integration
-  ipcMain.handle('context-menu:install', () => {
-    contextMenuService.install()
-    return contextMenuService.status()
-  })
-
-  // --- Splash-first startup flow ---
-  const splash = createSplashWindow()
-
-  // Wait for splash to load before sending IPC — but never let a failed or
-  // stalled window load block backend startup (headless/agent environments,
-  // corrupt splash assets). Services must come up regardless.
-  await new Promise<void>((resolve) => {
+/** A failed or stalled splash load must never block startup (headless runs, corrupt assets). */
+function waitForSplash(splash: BrowserWindow): Promise<void> {
+  return new Promise((resolve) => {
     const proceed = (): void => {
       clearTimeout(timer)
       resolve()
     }
     const timer = setTimeout(() => {
-      log.warn('[Main] Splash did not load within 5s — continuing startup without it')
+      log.warn('[Main] Splash did not load in time; continuing without it')
       proceed()
-    }, 5000)
+    }, SPLASH_LOAD_TIMEOUT_MS)
     splash.webContents.once('did-finish-load', () => {
       splash.show()
       proceed()
     })
     splash.webContents.once('did-fail-load', (_e, code, desc) => {
-      log.warn(`[Main] Splash failed to load (${code} ${desc}) — continuing startup`)
+      log.warn(`[Main] Splash failed to load (${code} ${desc}); continuing`)
       proceed()
     })
   })
+}
 
-  splash.webContents.send('splash:version', app.getVersion())
-
-  if (!is.dev) {
-    // Production: brief splash, updates handled after app starts via sidebar
-    splash.webContents.send('splash:status', 'Starting...')
-    await new Promise((resolve) => setTimeout(resolve, 800))
-  } else {
-    // Dev mode: show splash briefly
-    splash.webContents.send('splash:status', 'Starting (dev)...')
-    await new Promise((resolve) => setTimeout(resolve, 500))
-  }
-
-  splash.webContents.send('splash:status', 'Starting...')
-
-  // Initialize backend services and IPC
-  try {
-    initializeServices()
-  } catch (err) {
-    console.error('[Talyx] initializeServices failed:', err)
-    splash.webContents.send(
-      'splash:status',
-      `Error: ${err instanceof Error ? err.message : String(err)}`
-    )
-    return
-  }
-
+function showMainWindow(splash: BrowserWindow): void {
   const win = createWindow()
   mainWindow = win
-
-  // Drain any sort path received before services were ready (cold protocol launch)
-  if (pendingSortPath) {
-    handleSortPath(pendingSortPath)
-    pendingSortPath = null
+  const swap = (): void => {
+    if (!splash.isDestroyed()) splash.close()
+    if (!win.isDestroyed()) win.show()
   }
-
-  // Wait for main window to be ready, then swap splash for main
-  win.once('ready-to-show', () => {
-    splash.close()
-    win.show()
-  })
-
-  // Fallback: force show after 8s in case ready-to-show never fires
+  win.once('ready-to-show', swap)
+  // ready-to-show can fail to fire; never leave the user with only the splash
   setTimeout(() => {
     if (!win.isDestroyed() && !win.isVisible()) {
-      console.warn('[Talyx] ready-to-show timeout — forcing window show')
-      if (!splash.isDestroyed()) splash.close()
-      win.show()
+      log.warn('[Main] ready-to-show timeout; forcing window show')
+      swap()
     }
-  }, 8000)
+  }, WINDOW_SHOW_TIMEOUT_MS)
+}
 
-  if (settingsStore.store.assistantHotkeyEnabled !== false) assistantWindow?.registerShortcut()
-
-  // Release check: tells the user about a newer release (skip in dev mode)
-  if (!is.dev) {
-    // Check once shortly after launch, then on the user's interval. Without the
-    // launch check, a user who quits the app every day never sees an update.
-    const freq = settingsStore.store.updateFrequency ?? 'daily'
-    if (freq !== 'manual') {
-      const intervalMs = freq === 'daily' ? 24 * 60 * 60_000 : 7 * 24 * 60 * 60_000
-      const checkUnlessManual = (): void => {
-        const current = settingsStore.store.updateFrequency ?? 'daily'
-        if (current !== 'manual') void checkForUpdate(mainWindow)
-      }
-      setTimeout(checkUnlessManual, STARTUP_UPDATE_CHECK_DELAY_MS)
-      setInterval(checkUnlessManual, intervalMs)
-    }
+/** On macOS the window can be closed while the app keeps running; reopen it then. */
+function bringMainWindowForward(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    const win = createWindow()
+    mainWindow = win
+    win.once('ready-to-show', () => win.show())
+    return
   }
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
 
-  // System tray for background operation
-  createTray(
-    () => mainWindow,
-    () => agentAbort()
-  )
+/** Feeds the newest release to the update button; a failed check keeps what it shows. */
+function scheduleUpdateChecks(): void {
+  if (is.dev) return
+  const check = async (): Promise<void> => {
+    const result = await fetchLatestRelease(fetch, app.getVersion())
+    if (result.kind === 'available') updates.found(result.release)
+    else if (result.kind === 'up-to-date') updates.found(null)
+  }
+  setTimeout(() => void check(), STARTUP_UPDATE_CHECK_DELAY_MS)
+  setInterval(() => void check(), UPDATE_CHECK_INTERVAL_MS)
+}
 
-  // Handle macOS deep links (talyx://sort?path=...)
-  app.on('open-url', (_event, url) => {
-    const path = extractSortPathFromProtocol(url) ?? extractSortPathFromUrl(url)
-    if (path) handleSortPath(path)
-  })
+/** The OS is the truth: a login item removed in System Settings must show as off in Talyx. */
+async function adoptLoginItemState(): Promise<void> {
+  if (is.dev) return
+  try {
+    const enabled = await syncLaunchAtLogin(systemLoginItemDeps())
+    if (enabled !== settingsStore.store.launchAtLogin) settingsStore.set({ launchAtLogin: enabled })
+  } catch (error) {
+    log.warn('[Main] Could not read the launch-at-login state', error)
+  }
+}
 
-  // Check if launched with --sort-path or --quicksort-path CLI arg
-  const sortPathFromArgs = extractSortPathFromCliArgs(process.argv) ?? extractSortPath(process.argv)
-  if (sortPathFromArgs) {
-    win.webContents.once('did-finish-load', () => {
-      handleSortPath(sortPathFromArgs)
+// Logged rather than left to Electron's default dialog, which would stop at the first one.
+process.on('uncaughtException', (error) => log.error('[Main] Uncaught exception', error))
+process.on('unhandledRejection', (reason) => log.error('[Main] Unhandled rejection', reason))
+
+app
+  .whenReady()
+  .then(async () => {
+    if (!app.requestSingleInstanceLock()) {
+      log.warn('[Main] Another instance holds the single-instance lock; quitting')
+      app.quit()
+      return
+    }
+
+    installWebContentsGuard(rendererUrl ? `${new URL(rendererUrl).origin}/` : APP_ROOT)
+    if (!rendererUrl) serveRenderer(join(__dirname, '../renderer'))
+    if (!is.dev) setProductionMenu(process.platform)
+    if (is.dev) app.dock?.setIcon(appIcon)
+
+    app.on('browser-window-created', (_, window) =>
+      optimizer.watchWindowShortcuts(window, { zoom: true })
+    )
+
+    const splash = createSplashWindow()
+    await waitForSplash(splash)
+    // The splash can be closed by then (a crash, a click); startup goes on without it.
+    if (!splash.isDestroyed()) {
+      splash.webContents.send('splash:version', app.getVersion())
+      splash.webContents.send('splash:status', 'Starting...')
+    }
+    await new Promise((resolve) => setTimeout(resolve, SPLASH_MIN_VISIBLE_MS))
+
+    registerIpc()
+    // A theme switch (in Talyx or, on System, in the OS) repaints the window's ground too.
+    nativeTheme.on('updated', () => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setBackgroundColor(groundColor())
     })
-  }
+    syncNativeTheme(settingsStore.store.theme)
+    await adoptLoginItemState()
+    showMainWindow(splash)
+    scheduleUpdateChecks()
 
-  app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      mainWindow = createWindow()
-      mainWindow.once('ready-to-show', () => mainWindow!.show())
-    }
+    // Registered only now: a launch during the splash must not race showMainWindow
+    app.on('second-instance', bringMainWindowForward)
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) bringMainWindowForward()
+    })
+  })
+  .catch((error: unknown) => {
+    // Nothing is on screen yet to show this, so it gets a native box before Talyx quits.
+    log.error('[Main] Startup failed', error)
+    dialog.showErrorBox(
+      'Talyx could not start',
+      `${error instanceof Error ? error.message : String(error)}\n\nThe log has the details: ${log.transports.file.getFile().path}`
+    )
+    app.quit()
   })
 
-  // No quit here: the app stays alive for scheduled sorts and the tray.
-  app.on('window-all-closed', () => {})
+// Only Talyx's sockets close; the engine gateway outlives the app and is never stopped here.
+app.on('before-quit', () => {
+  closeEngineSockets()
+  cancelInstall()
+  updates.cancel()
+})
 
-  app.on('will-quit', async () => {
-    proactiveScheduler?.stop()
-    if (schedulerService) {
-      schedulerService.stop()
-    }
-    if (watchService) {
-      await watchService.stopAll()
-    }
-    voiceDispose()
-    assistantWindow?.destroy()
-    destroyTray()
-    closeDatabase()
-  })
+app.on('window-all-closed', () => {
+  if (!isMac) app.quit()
 })

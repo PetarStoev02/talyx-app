@@ -12,3 +12,11 @@ export function formatBytes(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
 }
+
+/**
+ * Equal as JSON, for data read twice from the engine. ponytail: key order counts, which holds
+ * for what the engine sends; a deep compare if it ever reorders keys.
+ */
+export function sameJson(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
+}

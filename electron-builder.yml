@@ -1,9 +1,5 @@
 appId: com.talyx.app
 productName: Talyx
-protocols:
-  - name: Talyx
-    schemes:
-      - talyx
 # Talyx does not use electron-updater; without this electron-builder detects a GitHub
 # target from package.json and writes app-update.yml, latest-mac.yml and blockmaps.
 publish: null
@@ -11,15 +7,9 @@ directories:
   buildResources: build
 files:
   # Allowlist: electron-vite output and runtime assets only. electron-builder adds
-  # package.json and production node_modules itself; for node_modules only the `!`
-  # patterns below apply.
+  # package.json and production node_modules itself.
   - out/**
   - resources/**
-  - '!node_modules/@anthropic-ai/claude-agent-sdk-*/**'
-  # onnxruntime-node and better-sqlite3 ship every platform's binaries; this app is macOS only.
-  - '!node_modules/onnxruntime-node/bin/napi-v6/{win32,linux}/**'
-  - '!node_modules/better-sqlite3/prebuilds/{win32,linux,linuxmusl}-*'
-  - '!node_modules/better-sqlite3/{deps,src}/**'
 extraResources:
   - from: LICENSE
     to: LICENSE
@@ -27,15 +17,6 @@ extraResources:
     to: CREDITS.md
 asarUnpack:
   - resources/**
-  - node_modules/better-sqlite3/**
-  # onnxruntime-node and sharp each dlopen a sibling dylib next to their .node
-  # binding. Electron extracts a .node from the asar, but not the dylib beside it,
-  # so both must live on real disk. @huggingface/transformers is the ESM module
-  # that imports them, and resolves from its own location.
-  - node_modules/onnxruntime-node/**
-  - node_modules/sharp/**
-  - node_modules/@img/**
-  - node_modules/@huggingface/transformers/**
 mac:
   # Only build/icon.icns is found by convention; without this the app gets Electron's icon.
   icon: build/talyx-icon.icns
@@ -47,29 +28,29 @@ mac:
   # No Apple account: ad-hoc signature ('-'). Apple Silicon refuses an unsigned binary,
   # and flipping the fuses below invalidates any earlier signature, so sign last.
   identity: '-'
-  hardenedRuntime: false
-  # A YAML list here is silently ignored by electron-builder; extendInfo is a map.
+  # macOS asks for the microphone with this line the first time you dictate.
   extendInfo:
-    NSDocumentsFolderUsageDescription: Talyx reads the folders you point it at, to sort them.
-    NSDownloadsFolderUsageDescription: Talyx reads the folders you point it at, to sort them.
-    NSDesktopFolderUsageDescription: Talyx looks on your Desktop for the screenshot you last took.
-    NSMicrophoneUsageDescription: Talyx listens only while you hold the voice key, and transcribes on this Mac.
-    # Every ability that drives Calendar, Reminders, Notes, Mail, Messages, Contacts or
-    # Music sends an Apple Event. macOS kills an app that sends one with no reason given.
-    NSAppleEventsUsageDescription: Talyx asks the apps you already use — Calendar, Reminders, Notes, Mail, Messages — to do what you told it to.
-    NSCalendarsUsageDescription: Talyx reads your agenda and adds the events you ask for.
-    NSCalendarsFullAccessUsageDescription: Talyx reads your agenda and adds the events you ask for.
-    NSRemindersUsageDescription: Talyx adds the reminders and timers you ask for.
-    NSRemindersFullAccessUsageDescription: Talyx adds the reminders and timers you ask for.
-    NSContactsUsageDescription: Talyx looks up a contact only to work out who a message you asked for should go to.
+    NSMicrophoneUsageDescription: Talyx uses the microphone to turn what you say into a message.
+  hardenedRuntime: false
   notarize: false
 dmg:
   artifactName: ${productName}-${arch}.${ext}
-# Every native dependency ships N-API prebuilds (better-sqlite3 13, onnxruntime-node,
-# sharp, @napi-rs/canvas), so nothing is compiled against Electron's headers.
+linux:
+  icon: build/talyx-icon.png
+  category: Utility
+  target:
+    - target: AppImage
+      arch: x64
+    - target: deb
+      arch: x64
+  # AppImage becomes Talyx-x86_64.AppImage and deb Talyx-amd64.deb (electron-builder maps ${arch}
+  # per target); no spaces, so the release asset names match what the updater looks for.
+  artifactName: ${productName}-${arch}.${ext}
+deb:
+  packageName: talyx
+# No native dependencies, so nothing is compiled against Electron's headers.
 npmRebuild: false
-# Any local process could otherwise run code as Talyx and inherit its macOS
-# permissions (Automation, Accessibility, Screen Recording, Microphone).
+# Any local process could otherwise run code as Talyx and inherit its permissions.
 electronFuses:
   runAsNode: false
   enableCookieEncryption: true
@@ -77,3 +58,5 @@ electronFuses:
   enableNodeCliInspectArguments: false
   enableEmbeddedAsarIntegrityValidation: true
   onlyLoadAppFromAsar: true
+  # The renderer is served over app:// (appProtocol.ts), so file:// pages need no extra reach.
+  grantFileProtocolExtraPrivileges: false

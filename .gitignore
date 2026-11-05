@@ -16,7 +16,7 @@ Thumbs.db
 # Logs
 *.log
 
-# Local env (Apple credentials, secrets)
+# Local env (secrets)
 .env.local
 
 # Editor
@@ -32,22 +32,22 @@ Thumbs.db
 .env
 .env.*
 
-# License keys (private keys)
-scripts/.keys/
-
-# AI model files (downloaded separately, ~1.1GB)
-models/
-
 # Claude Code
 .claude/
 
 # Brainstorming mockups
 .superpowers/
-docs/superpowers/plans/
-tests/eval/corpus/
+# Design docs, plans and specs stay local (they are working notes, not part of the app)
+docs/superpowers/
 
 # Local CDP driver scripts for verifying a packaged build
 /drive*.mjs
 
 # design-taste-frontend skill screenshots and reports
 .taste-skill/
+
+# Engine install commands (name the engine; uploaded by a release, never committed)
+/engine-install.json
+
+# Release highlights for the update button (written by hand before a release)
+/release-highlights.md
