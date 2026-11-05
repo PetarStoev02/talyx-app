@@ -19,8 +19,8 @@ import {
   DialogDescription,
   DialogTitle
 } from '@shared/ui/dialog'
-import { ModelField } from '@shared/ui/ModelPicker'
 import { Input, NativeSelect } from '@shared/ui/input'
+import { ModelField } from '@shared/ui/ModelPicker'
 
 // Mounted only while open, so the form starts empty each time and survives a failed create.
 export function CreateBotDialog({

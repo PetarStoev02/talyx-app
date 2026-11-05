@@ -42,6 +42,11 @@ function syncNativeTheme(theme: unknown): void {
   }
 }
 
+/** The theme's ground (--background in theme.css), so a resize never flashes another colour. */
+function groundColor(): string {
+  return nativeTheme.shouldUseDarkColors ? '#0a0a0c' : '#ffffff'
+}
+
 function loadPage(win: BrowserWindow, page: 'index' | 'splash'): void {
   if (rendererUrl) {
     void win.loadURL(page === 'index' ? rendererUrl : `${rendererUrl}/splash.html`)
@@ -61,8 +66,7 @@ function createWindow(): BrowserWindow {
     frame: false,
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
-    // The theme's ground (--background), so a resize never flashes another colour.
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0a0a0c' : '#ffffff',
+    backgroundColor: groundColor(),
     icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -178,6 +182,10 @@ app.whenReady().then(async () => {
   await new Promise((resolve) => setTimeout(resolve, SPLASH_MIN_VISIBLE_MS))
 
   registerIpc()
+  // A theme switch (in Talyx or, on System, in the OS) repaints the window's ground too.
+  nativeTheme.on('updated', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setBackgroundColor(groundColor())
+  })
   syncNativeTheme(settingsStore.store.theme)
   showMainWindow(splash)
   scheduleUpdateChecks()

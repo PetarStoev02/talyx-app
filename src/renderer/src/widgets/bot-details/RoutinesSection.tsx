@@ -20,8 +20,8 @@ import type { Bot } from '@features/bots/types'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
-import { Switch } from '@shared/ui/switch'
 import { Input, NativeSelect, Textarea } from '@shared/ui/input'
+import { Switch } from '@shared/ui/switch'
 
 type Translate = (key: TranslationKey) => string
 

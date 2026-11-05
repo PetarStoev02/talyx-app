@@ -15,8 +15,8 @@ import type {
   SignInResult
 } from '@features/providers/providers'
 import { Button } from '@shared/ui/button'
-import { failureText } from './feedback'
 import { Input } from '@shared/ui/input'
+import { failureText } from './feedback'
 
 const linkClass = 'text-base underline underline-offset-4'
 

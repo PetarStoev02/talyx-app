@@ -6,7 +6,6 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
@@ -18,29 +17,14 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --color-brand: var(--brand);
-  --color-brand-foreground: var(--brand-foreground);
   --color-success: var(--success);
   --color-success-subtle: var(--success-subtle);
   --color-warning: var(--warning);
@@ -51,25 +35,25 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 0.5rem;
   --brand: oklch(0.55 0.16 285);
-  --brand-foreground: oklch(0.98 0 0);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0.004 285);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.09 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.09 0 0);
   --primary: oklch(0 0 0);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.965 0 0);
+  /* The one tone step: bands, bubbles, fields, and the sidebar and details panel. */
+  --tone-step: oklch(0.965 0 0);
+  --secondary: var(--tone-step);
   --secondary-foreground: oklch(0.09 0 0);
-  --muted: oklch(0.955 0.003 285);
+  --muted: var(--tone-step);
   --muted-foreground: oklch(0.45 0.006 285);
   --accent: oklch(0 0 0 / 0.05);
   --accent-foreground: oklch(0.145 0.004 285);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.98 0 0);
   --destructive-subtle: oklch(0.577 0.245 27.325 / 0.1);
   --success: oklch(0.55 0.15 150);
   --success-subtle: oklch(0.55 0.15 150 / 0.1);
@@ -79,41 +63,25 @@
   --info-subtle: oklch(0.55 0.12 240 / 0.1);
   --border: oklch(0 0 0 / 0.09);
   --input: oklch(0 0 0 / 0.12);
-  --ring: oklch(0 0 0 / 0.35);
-  --chart-1: oklch(0.35 0 0);
-  --chart-2: oklch(0.45 0 0);
-  --chart-3: oklch(0.55 0 0);
-  --chart-4: oklch(0.65 0 0);
-  --chart-5: oklch(0.75 0 0);
-  --sidebar: oklch(0.972 0.003 285);
-  --sidebar-foreground: oklch(0.145 0.004 285);
-  --sidebar-primary: oklch(0 0 0);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0 0 0 / 0.05);
-  --sidebar-accent-foreground: oklch(0.145 0.004 285);
-  --sidebar-border: oklch(0 0 0 / 0.09);
-  --sidebar-ring: oklch(0 0 0 / 0.35);
+  --ring: oklch(0 0 0 / 0.6);
 }
 
 .dark {
+  color-scheme: dark;
   --brand: oklch(0.68 0.14 285);
-  --brand-foreground: oklch(0.15 0.004 285);
   --background: oklch(0.146 0.004 285);
   --foreground: oklch(0.93 0.004 285);
   --card: oklch(0.192 0.005 285);
-  --card-foreground: oklch(0.93 0.004 285);
   --popover: oklch(0.21 0.006 285);
   --popover-foreground: oklch(0.93 0.004 285);
   --primary: oklch(0.97 0.002 285);
   --primary-foreground: oklch(0.15 0.004 285);
-  --secondary: oklch(0.24 0.006 285);
+  --tone-step: oklch(0.24 0.006 285);
   --secondary-foreground: oklch(0.93 0.004 285);
-  --muted: oklch(0.24 0.006 285);
   --muted-foreground: oklch(0.64 0.01 285);
   --accent: oklch(1 0 0 / 0.06);
   --accent-foreground: oklch(0.93 0.004 285);
   --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.97 0.002 285);
   --destructive-subtle: oklch(0.396 0.141 25.723 / 0.15);
   --success: oklch(0.72 0.14 150);
   --success-subtle: oklch(0.72 0.14 150 / 0.12);
@@ -123,20 +91,7 @@
   --info-subtle: oklch(0.72 0.11 240 / 0.12);
   --border: oklch(1 0 0 / 0.08);
   --input: oklch(1 0 0 / 0.1);
-  --ring: oklch(1 0 0 / 0.4);
-  --chart-1: oklch(0.75 0 0);
-  --chart-2: oklch(0.65 0 0);
-  --chart-3: oklch(0.55 0 0);
-  --chart-4: oklch(0.45 0 0);
-  --chart-5: oklch(0.35 0 0);
-  --sidebar: oklch(0.19 0.005 285);
-  --sidebar-foreground: oklch(0.93 0.004 285);
-  --sidebar-primary: oklch(0.97 0.002 285);
-  --sidebar-primary-foreground: oklch(0.15 0.004 285);
-  --sidebar-accent: oklch(1 0 0 / 0.06);
-  --sidebar-accent-foreground: oklch(0.93 0.004 285);
-  --sidebar-border: oklch(1 0 0 / 0.08);
-  --sidebar-ring: oklch(1 0 0 / 0.4);
+  --ring: oklch(1 0 0 / 0.6);
 }
 
 @layer base {
@@ -168,12 +123,16 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+  }
 }
 
 /* The tone step as a surface (sidebar, details panel). What sits on it takes the ground in place
    of the tone step, so a field or tile still reads one step away from its surface. */
-.tone-step {
-  background-color: var(--sidebar);
+@utility tone-step {
+  background-color: var(--tone-step);
   --secondary: var(--background);
 }
 
@@ -183,11 +142,6 @@
 
 .dark ::selection {
   background-color: oklch(1 0 0 / 0.2);
-}
-
-:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 1px;
 }
 
 @media (prefers-reduced-motion: reduce) {

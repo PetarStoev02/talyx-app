@@ -119,7 +119,7 @@ export function CreateRoomDialog({
                   const checked = picked.includes(bot.name)
                   return (
                     <li key={bot.name}>
-                      <label className="flex items-center gap-3 rounded-md px-2 py-1 hover:bg-accent">
+                      <label className="flex items-center gap-3 rounded-lg px-2 py-1 hover:bg-accent">
                         <input
                           type="checkbox"
                           checked={checked}

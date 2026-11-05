@@ -23,9 +23,9 @@ import { cn } from '@shared/lib/utils'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
+import { Input, Textarea } from '@shared/ui/input'
 import { ModelField } from '@shared/ui/ModelPicker'
 import { RoutinesSection } from './RoutinesSection'
-import { Input, Textarea } from '@shared/ui/input'
 
 type Tab = 'details' | 'look' | 'soul'
 const TABS: Array<[Tab, TranslationKey]> = [

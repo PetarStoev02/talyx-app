@@ -47,7 +47,7 @@ export function MessageBubble({
       </div>
     )
   const reply = (
-    <div className="chat-markdown chat-bubble max-w-[85%] self-start rounded-3xl bg-secondary px-4 py-3 text-base wrap-anywhere">
+    <div className="chat-markdown chat-bubble max-w-[85%] self-start rounded-3xl bg-secondary px-4 py-3 text-base break-words">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
         {message.text}
       </ReactMarkdown>

@@ -34,7 +34,12 @@ function App(): React.JSX.Element {
 
   return (
     <TooltipProvider>
-      <Toaster position="bottom-right" richColors closeButton theme={effectiveTheme} />
+      <Toaster
+        position="bottom-right"
+        closeButton
+        theme={effectiveTheme}
+        toastOptions={{ className: 'border-0' }}
+      />
       <AppShell
         roster={
           rosterBackend && (
