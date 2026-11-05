@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import { folderCount, folderItems, isWithin, itemKey, itemRef } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { useLanguage } from '@app/providers/useLanguage'
@@ -10,11 +10,10 @@ import { DropSlot } from './DropSlot'
 import type { DropEdge } from './DropSlot'
 import { draggedItem, endRosterDrag, startRosterDrag } from './drag'
 import type { RosterDragItem } from './drag'
-import { RoomRow } from './RoomRow'
+import { ROW_AVATAR_BOX, RoomRow } from './RoomRow'
 import type { RosterDrops } from './rosterControls'
 import { ContextMenuArea } from '@shared/ui/menu'
 import type { MenuAction } from '@shared/ui/menu'
-import { Button } from '@shared/ui/button'
 import { useCreating } from './creating'
 import { RosterMenu } from './RosterMenu'
 
@@ -99,24 +98,33 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
               <FolderGroup {...props} folder={child} />
             </div>
           ))}
-          {items.length + children.length === 0 && (
-            <div className="flex items-center justify-between gap-2 px-3 py-1">
-              <p className="text-sm text-muted-foreground">{t('roster.emptyFolder')}</p>
-              {folder && (
-                <Button
-                  variant="ghost"
-                  className="h-8 px-3 text-sm"
-                  disabled={saving}
-                  onClick={() => {
-                    useRoster.getState().clearError()
-                    useCreating.getState().createBotIn(folder.id)
-                  }}
+          {items.length + children.length === 0 &&
+            (folder ? (
+              // Laid out like a bot's row, so the empty folder reads as a place a bot will go.
+              <button
+                disabled={saving}
+                onClick={() => {
+                  useRoster.getState().clearError()
+                  useCreating.getState().createBotIn(folder.id)
+                }}
+                className="flex w-full items-center gap-3 rounded-xl border border-dashed border-foreground/15 p-2 text-left transition-colors hover:border-foreground/30 hover:bg-accent disabled:opacity-50"
+              >
+                <span
+                  className="flex shrink-0 items-center justify-center text-muted-foreground"
+                  style={{ width: ROW_AVATAR_BOX, height: ROW_AVATAR_BOX }}
                 >
-                  {t('create.title')}
-                </Button>
-              )}
-            </div>
-          )}
+                  <Plus size={18} aria-hidden="true" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-base font-medium">{t('create.title')}</span>
+                  <span className="block text-sm text-muted-foreground">
+                    {t('roster.emptyFolderHint')}
+                  </span>
+                </span>
+              </button>
+            ) : (
+              <p className="px-3 py-2 text-sm text-muted-foreground">{t('roster.emptyFolder')}</p>
+            ))}
         </div>
       )}
     </section>

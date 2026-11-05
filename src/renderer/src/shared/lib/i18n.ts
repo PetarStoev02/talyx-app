@@ -200,6 +200,7 @@ const en = {
   'roster.show': 'Show {name}',
   'roster.unassigned': 'Unassigned',
   'roster.emptyFolder': 'No bots here',
+  'roster.emptyFolderHint': 'Or drag a bot or room here.',
   'roster.oneBot': '1 bot',
   'roster.bots': '{count} bots',
   'roster.statusWaiting': 'Waiting on you',

@@ -222,7 +222,10 @@ useEngine.setState({
     botMetaKey: 'acme-bots',
     botGroupsMetaKey: 'acme-bots-groups',
     managerHandle: 'acme'
-  }
+  },
+  // Nor a socket: it counts as open, or the page would wait for one and say it cannot connect.
+  connection: 'open',
+  everConnected: true
 })
 useRoster.getState().setActivity('researcher', 'working')
 useRoster.getState().setActivity('analyst', 'waiting')
