@@ -37,7 +37,8 @@ Thumbs.db
 
 # Brainstorming mockups
 .superpowers/
-docs/superpowers/plans/
+# Design docs, plans and specs stay local (they are working notes, not part of the app)
+docs/superpowers/
 
 # Local CDP driver scripts for verifying a packaged build
 /drive*.mjs
