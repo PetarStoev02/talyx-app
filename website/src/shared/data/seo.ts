@@ -7,8 +7,9 @@ export interface PageMeta {
   jsonLd?: object[]
 }
 
-import { features } from './navigation'
-import { DOWNLOADS, REPO_URL } from './release'
+import { MIN_MACOS } from './offer'
+import { features, type FeatureSlug } from './navigation'
+import { APP_VERSION, REPO_URL } from './release'
 
 const BASE_URL = 'https://talyx.app'
 const PRODUCT_IMAGE = `${BASE_URL}/og-image.png`
@@ -29,8 +30,9 @@ const softwareJsonLd = {
   '@type': 'SoftwareApplication',
   name: 'Talyx',
   image: PRODUCT_IMAGE,
-  applicationCategory: 'UtilitiesApplication',
-  operatingSystem: 'macOS',
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: `${MIN_MACOS} or later, Linux`,
+  softwareVersion: APP_VERSION,
   brand,
   offers: {
     '@type': 'Offer',
@@ -42,8 +44,8 @@ const softwareJsonLd = {
   license: 'https://opensource.org/license/mit',
   codeRepository: REPO_URL,
   description:
-    'Personal AI assistant for macOS powered by your own Claude. Asks before it changes anything; file sorting defaults to on-device, with your own Claude as an optional upgrade. Free and open source.',
-  downloadUrl: DOWNLOADS.appleSilicon
+    'A free, open-source desktop app for your AI bots: one roster, one chat, and a manager bot that hands work to the other bots and briefs you. The bots run on the engine, which first-run setup installs.',
+  downloadUrl: `${REPO_URL}/releases/latest`
 }
 
 /**
@@ -73,7 +75,7 @@ export const faqEntries = [
   },
   {
     q: 'Which computers does it run on?',
-    a: 'Macs with macOS 13 or newer, Apple Silicon or Intel, and Linux x64, as an AppImage or a deb. Windows comes later.'
+    a: `Macs with ${MIN_MACOS} or newer, Apple Silicon or Intel, and Linux x64, as an AppImage or a deb. Windows comes later.`
   }
 ]
 
@@ -90,27 +92,74 @@ const faqJsonLd = {
   }))
 }
 
+const featureMeta: Record<FeatureSlug, Pick<PageMeta, 'title' | 'description'>> = {
+  roster: {
+    title: 'Roster: Talyx | Every Bot in One List',
+    description:
+      'Pin the bots you use most, file the rest in folders, and see which are working, waiting on you or have a reply you have not read.'
+  },
+  manager: {
+    title: 'Manager Bot: Talyx | Hands Out the Work, Then Briefs You',
+    description:
+      'Ask Talyx for something and it passes the work to the bot that fits, reads the reply and sums it up for you in a few lines.'
+  },
+  rooms: {
+    title: 'Group Rooms: Talyx | Two to Six Bots in One Chat',
+    description:
+      'Write once and each bot in the room answers in turn, while Talyx shows who is answering now and who is next. The engine hosts the room.'
+  },
+  routines: {
+    title: 'Routines: Talyx | Scheduled Jobs for Your Bots',
+    description:
+      'A routine is an instruction a bot carries out on a schedule, such as a report every Monday morning. The engine runs it, even with Talyx closed.'
+  },
+  'bot-details': {
+    title: 'Bot Details: Talyx | Title, Model, Look and SOUL',
+    description:
+      'Open a bot\u2019s name to set its title, description and model, choose its look and write its SOUL, all in one panel.'
+  },
+  'models-and-keys': {
+    title: 'Models and Keys: Talyx | Bring Your Own Provider',
+    description:
+      'Talyx runs no model of its own. Add a provider with an API key, an account sign-in or a custom endpoint, and every bot can use it.'
+  },
+  privacy: {
+    title: 'Privacy: Talyx | No Account, No Server, No Telemetry',
+    description:
+      'Chats pass from Talyx to the engine on your computer, then to the model provider each bot uses. Talyx has no server and no telemetry.'
+  }
+}
+
+const breadcrumb = (title: string, path: string) => ({
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Talyx', item: BASE_URL },
+    { '@type': 'ListItem', position: 2, name: title, item: `${BASE_URL}${path}` }
+  ]
+})
+
 export const seoData: Record<string, PageMeta> = {
   '/': {
-    title: 'Talyx: Tell your Mac what to do | Free and open source',
+    title: 'Talyx: Your bots, in one place | Free and open source',
     description:
-      'Press \u2318\u21e7Space and say it in your own words. Your own Claude plans it, shows you a card before it changes anything. Sorting runs on-device by default. Free and open source (MIT).',
-    ogTitle: 'Talyx: Tell your Mac what to do',
+      'Talyx is a free desktop app for your AI bots, on macOS and Linux. One roster, one chat, and a manager bot that hands out the work and briefs you.',
+    ogTitle: 'Talyx: Your bots, in one place',
     ogDescription:
-      'One shortcut, your own Claude, approval before anything changes. Free and open source.',
+      'A free, open-source desktop app: one roster, one chat, and a manager bot that briefs you. macOS and Linux.',
     canonical: '/',
     jsonLd: [orgJsonLd, softwareJsonLd, faqJsonLd]
   },
   '/roadmap': {
-    title: 'Roadmap: Talyx | What Is Shipped and What Is Next',
+    title: 'Roadmap: Talyx | What 1.0 Ships and What Comes Next',
     description:
-      'What Talyx has shipped and what comes next. Free and open source; suggest changes with a GitHub issue.',
+      'What Talyx 1.0 ships and what comes next. Free and open source; suggest a change with a GitHub issue.',
     canonical: '/roadmap'
   },
   '/contact': {
     title: 'Contact: Talyx | Issues, Questions and Security Reports',
     description:
-      'Report a bug or ask a question in a public GitHub issue, or send a private security report. Talyx has no accounts and no support desk.',
+      'Report a bug or share an idea in a public GitHub issue, or send a private security report. Talyx has no accounts and no support desk.',
     canonical: '/contact'
   },
   '/legal/terms': {
@@ -120,26 +169,23 @@ export const seoData: Record<string, PageMeta> = {
     canonical: '/legal/terms'
   },
   '/legal/privacy': {
-    title: 'Privacy Policy: Talyx | No Accounts, No Analytics',
+    title: 'Privacy Policy: Talyx | No Server, No Telemetry in the App',
     description:
-      'What Talyx sends and where: nothing for Smart Local sorting, your own Anthropic account for the assistant, GitHub for update checks, Hugging Face for voice models.',
+      'The app collects nothing and has no server. Bots send what they need to the model provider you chose, and this website counts page views without cookies.',
     canonical: '/legal/privacy'
   },
   '/press': {
-    title: 'Press Kit: Talyx | Logo, Icon and Facts',
+    title: 'Press Kit: Talyx | Logo, Screenshots and Facts',
     description:
-      'Talyx press kit: logo (SVG), app icon (PNG), short and long descriptions, and key facts for covering Talyx in your publication.',
+      'The Talyx 1.0 press kit: logo (SVG), app icon (PNG), screenshots, short and long descriptions, and key facts for writing about Talyx.',
     canonical: '/press'
   },
 
   ...Object.fromEntries(
-    features.map(({ slug, title, shortDescription }) => [
-      `/features/${slug}`,
-      {
-        title: `${title}: Talyx`,
-        description: shortDescription,
-        canonical: `/features/${slug}`
-      }
-    ])
+    features.map(({ slug, title: name }) => {
+      const path = `/features/${slug}`
+      const { title, description } = featureMeta[slug]
+      return [path, { title, description, canonical: path, jsonLd: [breadcrumb(name, path)] }]
+    })
   )
 }
