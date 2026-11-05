@@ -4,7 +4,13 @@ import type { EngineStatus } from '../../../src/shared/engine'
 const settings = vi.hoisted(() => ({ get: vi.fn(), set: vi.fn() }))
 vi.mock('@shared/api/ipc', () => ({ settingsApi: settings }))
 
-import { firstUndoneStep, hasProvider, setupVisibility } from '@features/setup/steps'
+import {
+  firstUndoneStep,
+  hasProvider,
+  knownFirstStep,
+  setupVisibility,
+  stepAfter
+} from '@features/setup/steps'
 import { useSetup } from '@features/setup/store'
 
 const missing: EngineStatus = { state: 'missing', enginePath: null }
@@ -36,6 +42,45 @@ describe('firstUndoneStep', () => {
       expect(firstUndoneStep({ engine, hasProvider: hasProv, hasOwnBot: hasBot })).toBe(step)
     }
   )
+})
+
+describe('stepAfter', () => {
+  const engine = attached('0.22.5')
+
+  it.each([
+    ['the engine, with nothing else done', 'engine', false, false, 'provider'],
+    ['the engine, with a provider saved', 'engine', true, false, 'bot'],
+    ['the engine, with everything else done', 'engine', true, true, null],
+    ['the provider step, with no own bot', 'provider', true, false, 'bot'],
+    ['the provider step skipped, with an own bot', 'provider', false, true, null],
+    ['the last step', 'bot', false, false, null]
+  ] as const)('should skip what is done after %s', (_name, current, hasProv, hasBot, next) => {
+    expect(stepAfter(current, { engine, hasProvider: hasProv, hasOwnBot: hasBot })).toBe(next)
+  })
+
+  it('should move past an older engine the user chose to keep', () => {
+    expect(
+      stepAfter('engine', { engine: attached('0.21.0'), hasProvider: false, hasOwnBot: false })
+    ).toBe('provider')
+  })
+})
+
+describe('knownFirstStep', () => {
+  it('should name the engine before the other facts can be read', () => {
+    expect(knownFirstStep({ engine: missing, hasProvider: null, hasOwnBot: null })).toBe('engine')
+  })
+
+  it('should wait for the provider and bot facts once the engine is done', () => {
+    const engine = attached('0.22.5')
+    expect(knownFirstStep({ engine, hasProvider: null, hasOwnBot: false })).toBeUndefined()
+    expect(knownFirstStep({ engine, hasProvider: true, hasOwnBot: null })).toBeUndefined()
+  })
+
+  it('should name the first undone step once every fact is known', () => {
+    const engine = attached('0.22.5')
+    expect(knownFirstStep({ engine, hasProvider: true, hasOwnBot: false })).toBe('bot')
+    expect(knownFirstStep({ engine, hasProvider: true, hasOwnBot: true })).toBeNull()
+  })
 })
 
 describe('hasProvider', () => {
@@ -98,8 +143,10 @@ describe('useSetup', () => {
     expect(useSetup.getState().setupDone).toBe(false)
   })
 
-  it('should remember whether a provider exists', () => {
+  it('should remember whether a provider and an own bot exist', () => {
     useSetup.getState().setHasProvider(true)
+    useSetup.getState().setHasOwnBot(false)
     expect(useSetup.getState().hasProvider).toBe(true)
+    expect(useSetup.getState().hasOwnBot).toBe(false)
   })
 })

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useEngine } from '@app/providers/useEngine'
 import { useLanguage } from '@app/providers/useLanguage'
+import { useSetupBackend } from '@app/providers/useSetupBackend'
+import { InstallEngine } from '@features/setup/InstallEngine'
+import { linkClass } from '@features/setup/screenStyles'
 import { host } from '@shared/engine/host'
 import { useElapsed } from '@shared/hooks/useElapsed'
 import { reportError } from '@shared/lib/report'
@@ -22,6 +25,9 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
   const check = useEngine((s) => s.check)
   const pickPath = useEngine((s) => s.pickPath)
   const everConnected = useEngine((s) => s.everConnected)
+  const setup = useSetupBackend()
+  // Install the engine: the setup's engine screens, until their Continue.
+  const [installing, setInstalling] = useState(false)
   // The first open is given a grace period, restarted by each Try again.
   const [waitStart, setWaitStart] = useState(() => Date.now())
   const waitedLong = useElapsed(waitStart, FIRST_CONNECT_GRACE_MS)
@@ -30,6 +36,14 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
     if (!useEngine.getState().status) void check()
   }, [check])
 
+  if (installing)
+    return (
+      <div className="scroll-y-stable flex h-full flex-1 flex-col items-center px-6 py-8">
+        <div className="my-auto flex w-full flex-col items-center">
+          <InstallEngine backend={setup} onReady={() => setInstalling(false)} />
+        </div>
+      </div>
+    )
   if (status?.state === 'attached') {
     // Once open, a drop is a reconnect the banner shows (ConnectionBanner), not a gate.
     if (everConnected) return <>{children}</>
@@ -68,14 +82,21 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
         </div>
       )}
       <div className="flex flex-wrap items-center justify-center gap-4">
-        <Button className="px-5" disabled={checking} onClick={() => void check()}>
-          {t('action.tryAgain')}
-        </Button>
-        <button
-          className="text-base text-foreground underline underline-offset-4 hover:decoration-2 disabled:opacity-50"
-          disabled={checking}
-          onClick={() => void pickPath()}
-        >
+        {status.state === 'missing' ? (
+          <>
+            <Button className="px-5" disabled={checking} onClick={() => setInstalling(true)}>
+              {t('setup.installEngine')}
+            </Button>
+            <button className={linkClass} disabled={checking} onClick={() => void check()}>
+              {t('action.tryAgain')}
+            </button>
+          </>
+        ) : (
+          <Button className="px-5" disabled={checking} onClick={() => void check()}>
+            {t('action.tryAgain')}
+          </Button>
+        )}
+        <button className={linkClass} disabled={checking} onClick={() => void pickPath()}>
           {t('engine.chooseFile')}
         </button>
       </div>

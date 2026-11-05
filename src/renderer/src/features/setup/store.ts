@@ -4,10 +4,12 @@ import { settingsApi } from '@shared/api/ipc'
 interface SetupState {
   setupDone: boolean | null
   hasProvider: boolean | null
+  hasOwnBot: boolean | null
   load: () => Promise<void>
   finish: () => Promise<void>
   restart: () => Promise<void>
   setHasProvider: (value: boolean) => void
+  setHasOwnBot: (value: boolean) => void
 }
 
 export const useSetup = create<SetupState>((set) => {
@@ -18,9 +20,11 @@ export const useSetup = create<SetupState>((set) => {
   return {
     setupDone: null,
     hasProvider: null,
+    hasOwnBot: null,
     load: async () => set({ setupDone: (await settingsApi.get()).setupDone }),
     finish: () => save(true),
     restart: () => save(false),
-    setHasProvider: (value) => set({ hasProvider: value })
+    setHasProvider: (value) => set({ hasProvider: value }),
+    setHasOwnBot: (value) => set({ hasOwnBot: value })
   }
 })

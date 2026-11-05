@@ -29,7 +29,7 @@ export function SettingsPage({
       {/* The whole page scrolls, so the scrollbar sits at the window's edge, not the column's. */}
       <div className="scroll-y-stable min-h-0 flex-1">
         <div className="mx-auto w-full max-w-2xl space-y-10 p-6">
-          {providers && <ProvidersSection backend={providers} chat={chat} />}
+          {providers && <ProvidersSection backend={providers} chat={chat} onOverview={null} />}
           <section className="space-y-4">
             <h2 className="text-xl font-semibold text-foreground">{t('settings.appearance')}</h2>
             <div role="group" aria-labelledby="settings-theme" className="space-y-2">
