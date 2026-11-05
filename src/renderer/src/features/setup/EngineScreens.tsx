@@ -98,7 +98,7 @@ export function StepsFailed({
  * command: an older copy earlier on PATH would otherwise be the one restarted. Without one (Talyx
  * could not attach) it names the bare command. `recheck` is null where the screen has its own.
  */
-function RestartHint({
+export function RestartHint({
   path,
   recheck
 }: {
