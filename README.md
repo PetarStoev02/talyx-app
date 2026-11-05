@@ -4,7 +4,7 @@ Talyx is a desktop app to tally your AI agents: a roster of bots on the left, on
 
 ## Status
 
-Talyx is being rebuilt. Version 1.0.0-alpha.1 is an empty shell: the sidebar, an Agents page with nothing on it yet, Settings with the theme, and an Engine (debug) page that proves Talyx can talk to the engine. The roster, chat, bot details, group rooms and providers arrive in the next releases, one at a time. 1.0 is the first build meant for daily use.
+Talyx 1.0 is the first build meant for daily use. It runs on macOS and Linux and attaches to the engine on the same computer, which its first-run setup installs. You get a roster of bots with pins, folders and unread marks; a chat with each bot, with approval and question cards, images and dictation; bot details with routines and a look of its own; group rooms the engine hosts; and Settings for model providers, the engine, launch at login and the theme. Not in 1.0: Windows, remote engines, the model's reasoning in the transcript, voice mode and other languages. The [release notes](docs/release-notes/1.0.0.md) have the details.
 
 ## Before the pivot
 
@@ -52,6 +52,15 @@ npm run build:linux  # AppImage and deb in dist/ (x64)
 ```
 
 `npm run dev` downloads Electron the first time it runs.
+
+## Release
+
+Releases are built by the **Release** workflow on GitHub Actions: Actions → Release → Run workflow. It builds the macOS DMGs and the Linux AppImage and deb, runs the real-engine smoke test on Linux, and creates a **draft** release `v<version>` with the installers, `engine-install.json` and `SHA256SUMS`. Review the draft, then publish it.
+
+- The release body is the optional **highlights** input (lines like `- **Lead.** Text.`, shown by the update button) above `docs/release-notes/<version>.md` and GitHub's generated notes. The form takes one line; for several, run `gh workflow run release.yml -f highlights="$(cat release-highlights.md)"`.
+- The workflow needs the secret `ENGINE_INSTALL_JSON`, the base64 of `engine-install.json`. Add it once, and again whenever the file changes: `gh secret set ENGINE_INSTALL_JSON < <(base64 -i engine-install.json)`. Each job checks it against `ENGINE_INSTALL_SHA256` and fails when it is missing or does not match.
+
+`npm run release` (`scripts/release.sh`) is the local path: macOS DMGs only, from your own machine, with the same install-file check.
 
 ## Privacy
 

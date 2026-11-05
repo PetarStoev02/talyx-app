@@ -72,6 +72,15 @@ On macOS a downloaded build is blocked the first time it is opened: dismiss the 
 click Open Anyway in System Settings → Privacy & Security, or run
 `xattr -dr com.apple.quarantine /Applications/Talyx.app` once.
 
+Releases come from the Release workflow (`.github/workflows/release.yml`, Actions → Release → Run
+workflow): macOS DMGs, Linux AppImage + deb, the real-engine smoke test on Linux, then a draft
+release `v<version>` with `engine-install.json` and `SHA256SUMS`. Its body is the optional
+`highlights` input under `## Highlights`, then `docs/release-notes/<version>.md` (write it before
+releasing; no engine name), then GitHub's generated notes. It needs the secret
+`ENGINE_INSTALL_JSON` (base64 of `engine-install.json`), set once per file change with
+`gh secret set ENGINE_INSTALL_JSON < <(base64 -i engine-install.json)`; each job checks it with
+`scripts/release-lib.sh`, which `release.sh` shares. `npm run release` is the local, macOS-only path.
+
 Before `npm run release`, write the gitignored `release-highlights.md` at the repo root: 1-3 lines
 `- **Lead.** Text.`. The script puts them under `## Highlights` above GitHub's generated notes; the
 update button shows them. Without the file the script warns and the release has no highlights.
@@ -301,4 +310,4 @@ try {
 - Builds for macOS and Linux, none signed. No auto-update.
 - Free and open source (MIT). No account, no server, no telemetry.
 - Website (`website/`) on Vercel, updated for the pivot in its own PR. Releases: GitHub
-  Releases on `PetarStoev02/talyx-app` (`npm run release` creates a draft).
+  Releases on `PetarStoev02/talyx-app` (the Release workflow creates a draft).
