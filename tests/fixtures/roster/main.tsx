@@ -5,13 +5,18 @@ import { Roster } from '../../../src/renderer/src/widgets/roster/Roster'
 import { RosterAdd } from '../../../src/renderer/src/widgets/roster/RosterAdd'
 import { AgentsPage } from '../../../src/renderer/src/pages/agents/AgentsPage'
 import { ProvidersSection } from '../../../src/renderer/src/widgets/providers'
+import { SetupFlow } from '../../../src/renderer/src/widgets/setup'
+import { MANAGER } from '../../../src/renderer/src/features/bots/details'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
+import { reportProvider, useSetup } from '../../../src/renderer/src/features/setup/store'
 import { useEngine } from '../../../src/renderer/src/app/providers/useEngine'
+import { useNavigation } from '../../../src/renderer/src/app/providers/useNavigation'
 import type { RosterRequest } from '../../../src/renderer/src/features/bots/data'
 import { blockPng } from '../../../src/renderer/src/shared/ui/blockPng'
 import { fixtureChat } from './fixtureChat'
 import { fixtureProviders } from './fixtureProviders'
 import { roomRequest, roomSessionRequest } from './fixtureRooms'
+import { attachedEngine, fixtureSetup, setupMode } from './fixtureSetup'
 import './fixture.css'
 
 // Saved looks: one in today's values, one from an older client (read as the nearest block).
@@ -213,16 +218,7 @@ const backend = {
 }
 // The agents page waits for an attached engine; this page has no engine, so it says it has one.
 useEngine.setState({
-  status: {
-    state: 'attached',
-    version: 'fixture',
-    commit: null,
-    home: '',
-    stale: false,
-    botMetaKey: 'acme-bots',
-    botGroupsMetaKey: 'acme-bots-groups',
-    managerHandle: 'acme'
-  },
+  status: attachedEngine('fixture'),
   // Nor a socket: it counts as open, or the page would wait for one and say it cannot connect.
   connection: 'open',
   everConnected: true
@@ -232,6 +228,11 @@ useRoster.getState().setActivity('analyst', 'waiting')
 useRoster.getState().markUnread('writer')
 const providers = fixtureProviders(profiles.map((bot) => bot.name))
 const chat = fixtureChat(providers)
+// `?setup=<mode>` opens the setup flow first, against a scripted install; it replaces the engine.
+const mode = setupMode(location.search)
+const setup = mode && fixtureSetup(mode)
+// `?nudge`: no provider read yet, so Talyx's chat asks for one until Settings reads the router.
+if (new URLSearchParams(location.search).has('nudge')) useSetup.getState().setHasProvider(false)
 
 // The newest exported avatar image, so the PNG can be checked without an engine.
 function ExportedAvatar(): React.JSX.Element | null {
@@ -250,8 +251,33 @@ function ExportedAvatar(): React.JSX.Element | null {
   )
 }
 
+// The setup flow until its Done, then the fixture with Talyx's chat open, as the app does.
+function Root(): React.JSX.Element {
+  const [inSetup, setInSetup] = useState(setup !== null)
+  if (!setup || !inSetup) return <Fixture />
+  return (
+    <div className="h-screen bg-background">
+      <Toaster position="bottom-right" closeButton />
+      <SetupFlow
+        providersForm={(onOverview) => (
+          <ProvidersSection backend={providers} chat={chat} onOverview={onOverview} />
+        )}
+        roster={backend}
+        chat={chat}
+        setup={setup}
+        onDone={() => {
+          useRoster.getState().select({ kind: 'bot', id: MANAGER })
+          setInSetup(false)
+        }}
+      />
+    </div>
+  )
+}
+
 export function Fixture(): React.JSX.Element {
-  const [page, setPage] = useState<'agents' | 'settings'>('agents')
+  // The app's navigation store, so the chat's "Open Settings" works here too.
+  const page = useNavigation((state) => state.currentView)
+  const navigate = useNavigation((state) => state.navigate)
   const online = useRoster((state) => state.online)
   return (
     <div className="flex h-screen bg-background">
@@ -263,11 +289,11 @@ export function Fixture(): React.JSX.Element {
           <RosterAdd />
         </div>
         <span className="px-5 text-xs">Interaction fixture · synthetic data</span>
-        <Roster backend={backend} models={chat.models} onSelect={() => setPage('agents')} />
+        <Roster backend={backend} models={chat.models} onSelect={() => navigate('agents')} />
         <button
           className="m-3 rounded-full px-3 py-2 text-left text-sm hover:bg-accent"
           aria-pressed={page === 'settings'}
-          onClick={() => setPage(page === 'settings' ? 'agents' : 'settings')}
+          onClick={() => navigate(page === 'settings' ? 'agents' : 'settings')}
         >
           {page === 'settings' ? 'Back to agents' : 'Settings'}
         </button>
@@ -284,7 +310,7 @@ export function Fixture(): React.JSX.Element {
         {page === 'settings' ? (
           // The settings page's own sections, without Appearance: it needs the desktop bridge.
           <div className="mx-auto w-full max-w-2xl space-y-4 overflow-y-auto p-6">
-            <ProvidersSection backend={providers} chat={chat} onOverview={null} />
+            <ProvidersSection backend={providers} chat={chat} onOverview={reportProvider} />
           </div>
         ) : (
           <AgentsPage chat={chat} roster={backend} />
@@ -294,4 +320,4 @@ export function Fixture(): React.JSX.Element {
   )
 }
 
-createRoot(document.getElementById('root')!).render(<Fixture />)
+createRoot(document.getElementById('root')!).render(<Root />)

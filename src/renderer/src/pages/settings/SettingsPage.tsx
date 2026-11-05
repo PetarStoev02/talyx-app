@@ -1,10 +1,14 @@
 import { Sun, Moon, Monitor } from 'lucide-react'
+import { toast } from 'sonner'
 import { PageHeader } from '@shared/ui/page-header'
+import { Button } from '@shared/ui/button'
 import { cn } from '@shared/lib/utils'
+import { reportError } from '@shared/lib/report'
 import { useTheme } from '@shared/hooks/useTheme'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { ProvidersBackend } from '@features/providers/providers'
 import type { ModelLists } from '@features/chat/chat'
+import { reportProvider, useSetup } from '@features/setup/store'
 import { ProvidersSection } from '@widgets/providers'
 
 export function SettingsPage({
@@ -23,13 +27,25 @@ export function SettingsPage({
     { value: 'system' as const, label: t('settings.system'), Icon: Monitor }
   ]
 
+  function runSetupAgain(): void {
+    useSetup
+      .getState()
+      .restart()
+      .catch((error: unknown) => {
+        reportError('setup', error)
+        toast.error(t('settings.errorRunSetup'))
+      })
+  }
+
   return (
     <div className="flex h-full flex-col">
       <PageHeader title={t('nav.settings')} />
       {/* The whole page scrolls, so the scrollbar sits at the window's edge, not the column's. */}
       <div className="scroll-y-stable min-h-0 flex-1">
         <div className="mx-auto w-full max-w-2xl space-y-10 p-6">
-          {providers && <ProvidersSection backend={providers} chat={chat} onOverview={null} />}
+          {providers && (
+            <ProvidersSection backend={providers} chat={chat} onOverview={reportProvider} />
+          )}
           <section className="space-y-4">
             <h2 className="text-xl font-semibold text-foreground">{t('settings.appearance')}</h2>
             <div role="group" aria-labelledby="settings-theme" className="space-y-2">
@@ -56,6 +72,17 @@ export function SettingsPage({
                 ))}
               </div>
             </div>
+          </section>
+          <section className="space-y-2">
+            <h2 className="text-xl font-semibold text-foreground">{t('settings.setup')}</h2>
+            <p className="text-base">{t('settings.setupDesc')}</p>
+            <Button
+              variant="secondary"
+              className="mt-2 bg-secondary hover:bg-foreground/10"
+              onClick={runSetupAgain}
+            >
+              {t('settings.runSetup')}
+            </Button>
           </section>
         </div>
       </div>

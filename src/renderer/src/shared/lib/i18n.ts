@@ -105,6 +105,8 @@ const en = {
   'chat.errorAnswer': 'Your answer did not reach the bot. Answer the card again.',
   'chat.errorModel': 'The model did not change. Pick it again.',
   'chat.errorReasoning': 'The reasoning level did not change. Pick it again.',
+  'chat.noProvider': 'Add a model provider so bots can answer.',
+  'chat.openSettings': 'Open Settings',
   'chat.placeholder': 'Message {name}',
   'chat.send': 'Send',
   'chat.stop': 'Stop',
@@ -347,6 +349,11 @@ const en = {
   'settings.light': 'Light',
   'settings.dark': 'Dark',
   'settings.system': 'System',
+  'settings.setup': 'Setup',
+  'settings.setupDesc':
+    'Walk through the engine, a model provider and a first bot again. Steps already done are skipped.',
+  'settings.runSetup': 'Run setup again',
+  'settings.errorRunSetup': 'Talyx could not start setup again. Try again.',
   'providers.title': 'Providers',
   'providers.hint':
     'Where your bots get their models. Keys and endpoints you add here go to every bot; a sign-in is shared by all of them.',

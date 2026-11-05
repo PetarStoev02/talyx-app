@@ -136,6 +136,15 @@ describe('useSetup', () => {
     expect(useSetup.getState().setupDone).toBe(false)
   })
 
+  it('should force the flow open from restart until finish', async () => {
+    settings.set.mockResolvedValue({})
+    useSetup.setState({ setupDone: true, forced: false })
+    await useSetup.getState().restart()
+    expect(useSetup.getState().forced).toBe(true)
+    await useSetup.getState().finish()
+    expect(useSetup.getState().forced).toBe(false)
+  })
+
   it('should keep setupDone when saving fails', async () => {
     settings.set.mockRejectedValue(new Error('disk full'))
     useSetup.setState({ setupDone: false })

@@ -2,8 +2,7 @@ import { useLanguage } from '@app/providers/useLanguage'
 import type { ProvidersOverview } from '@features/providers/providers'
 import { ScreenTitle } from '@features/setup/ScreenParts'
 import { linkClass, panelClass, rowClass } from '@features/setup/screenStyles'
-import { hasProvider } from '@features/setup/steps'
-import { useSetup } from '@features/setup/store'
+import { reportProvider, useSetup } from '@features/setup/store'
 import { cn } from '@shared/lib/utils'
 import { Button } from '@shared/ui/button'
 
@@ -45,8 +44,4 @@ export function ProviderStep({
       </div>
     </div>
   )
-}
-
-function reportProvider(overview: ProvidersOverview): void {
-  useSetup.getState().setHasProvider(hasProvider(overview))
 }

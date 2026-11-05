@@ -19,14 +19,12 @@ import { Roster, RosterAdd, RosterRefresh } from '@widgets/roster'
 import { ConnectionBanner, EngineSplash } from '@widgets/engine-gate'
 import { SetupFlow } from '@widgets/setup'
 import { ProvidersSection } from '@widgets/providers'
+import { MANAGER } from '@features/bots/details'
 import { useRoster } from '@features/bots/store'
 import { setupVisibility } from '@features/setup/steps'
 import { useSetup } from '@features/setup/store'
 import { useEngine } from '@app/providers/useEngine'
 import { useSelectionMemory } from '@app/providers/useSelectionMemory'
-
-/** Talyx's own profile: the app opens on its chat once setup is done. */
-const MANAGER_BOT = 'default'
 
 function App(): React.JSX.Element {
   useKeyboardShortcuts()
@@ -41,11 +39,12 @@ function App(): React.JSX.Element {
   const setup = useSetupBackend()
   const engineKnown = useEngine((s) => s.status !== null)
   const setupDone = useSetup((s) => s.setupDone)
+  const forced = useSetup((s) => s.forced)
   const firstSetupStep = useFirstSetupStep(providers)
   const visibility = setupVisibility(setupDone, firstSetupStep)
   // Once shown, setup stays until its Done, even when a step it ran completes everything.
   const [inSetup, setInSetup] = useState(false)
-  if (visibility === 'show' && !inSetup) setInSetup(true)
+  if ((visibility === 'show' || forced) && !inSetup) setInSetup(true)
   const pages = {
     agents: <AgentsPage chat={chat} roster={rosterBackend} />,
     'engine-debug': <EngineDebugPage />,
@@ -73,7 +72,8 @@ function App(): React.JSX.Element {
   }, [visibility, setupDone, inSetup])
 
   function finishSetup(): void {
-    useRoster.getState().select({ kind: 'bot', id: MANAGER_BOT })
+    // The app opens on Talyx's chat once setup is done.
+    useRoster.getState().select({ kind: 'bot', id: MANAGER })
     navigate('agents')
     useSetup
       .getState()
@@ -81,7 +81,7 @@ function App(): React.JSX.Element {
       .catch((error: unknown) => {
         reportError('setup', error)
         // Unsaved, setup shows again at the next launch; this session goes on to the app.
-        useSetup.setState({ setupDone: true })
+        useSetup.setState({ setupDone: true, forced: false })
       })
       // Only once setupDone is true, or the flow would open again at Welcome.
       .finally(() => setInSetup(false))
