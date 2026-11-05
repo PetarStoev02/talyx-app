@@ -79,13 +79,16 @@ export function fixtureUpdates(mode: UpdateMode | null): Record<string, unknown>
   }
   if (state.kind === 'downloading') run()
 
-  // The release page link: no real browser window in the fixture.
-  window.open = (url) => {
-    toast(`Would open ${String(url)}`)
-    return null
-  }
+  // The release page link: no real browser window, but only when an update mode is scripted.
+  if (mode)
+    window.open = (url) => {
+      toast(`Would open ${String(url)}`)
+      return null
+    }
 
   return {
+    // `reportError` calls it; the fixture has no log to write.
+    logError: async () => undefined,
     getUpdateState: async () => state,
     downloadUpdate: async () => {
       if (state.kind !== 'available' && state.kind !== 'failed') return
@@ -102,7 +105,9 @@ export function fixtureUpdates(mode: UpdateMode | null): Record<string, unknown>
     },
     onUpdateState: (callback: (state: UpdateState) => void) => {
       listeners.add(callback)
-      return () => listeners.delete(callback)
+      return () => {
+        listeners.delete(callback)
+      }
     }
   }
 }
