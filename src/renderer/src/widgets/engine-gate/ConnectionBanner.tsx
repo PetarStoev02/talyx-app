@@ -4,6 +4,7 @@ import { useEngine } from '@app/providers/useEngine'
 import { useLanguage } from '@app/providers/useLanguage'
 import { host } from '@shared/engine/host'
 import { useElapsed } from '@shared/hooks/useElapsed'
+import { Reveal } from '@shared/ui/Reveal'
 import { reportError } from '@shared/lib/report'
 
 // After this long without the socket, the engine itself is checked again: it may have stopped.
@@ -28,27 +29,29 @@ export function ConnectionBanner(): React.JSX.Element | null {
   const shown = attached && lostAt !== null
   return (
     // Always mounted, so a screen reader hears the bar appear.
-    <div role="status" className="empty:hidden">
-      {shown && (
-        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-secondary px-4 py-2 text-sm">
-          <LoaderCircle
-            size={16}
-            className="animate-spin motion-reduce:animate-none"
-            aria-hidden="true"
-          />
-          <span>{t(longLost ? 'engine.stillReconnecting' : 'engine.reconnecting')}</span>
-          {longLost && (
-            <button
-              className="underline underline-offset-4 hover:decoration-2"
-              onClick={() =>
-                host.retryNow().catch((error: unknown) => reportError('engine', error))
-              }
-            >
-              {t('engine.tryNow')}
-            </button>
-          )}
-        </div>
-      )}
+    <div role="status">
+      <Reveal value={shown}>
+        {() => (
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-secondary px-4 py-2 text-sm">
+            <LoaderCircle
+              size={16}
+              className="animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+            <span>{t(longLost ? 'engine.stillReconnecting' : 'engine.reconnecting')}</span>
+            {longLost && (
+              <button
+                className="underline underline-offset-4 hover:decoration-2"
+                onClick={() =>
+                  host.retryNow().catch((error: unknown) => reportError('engine', error))
+                }
+              >
+                {t('engine.tryNow')}
+              </button>
+            )}
+          </div>
+        )}
+      </Reveal>
     </div>
   )
 }

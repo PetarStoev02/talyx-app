@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useRosterConnection } from '@features/bots/useRosterConnection'
 import type { RosterBackend } from '@features/bots/data'
 import { rosterActions, runRosterMutation } from '@features/bots/actions'
 import { botTitle, pinnedBots, pinnedRooms } from '@features/bots/roster'
+import type { RosterProblem } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot, Folder, Room } from '@features/bots/types'
 import { BotRow } from './BotRow'
@@ -22,6 +23,10 @@ import {
 import { rosterControls } from './rosterControls'
 import { useCreating } from './creating'
 import { Loading, Skeleton, SkeletonRows } from '@shared/ui/skeleton'
+import { useFlip } from '@shared/hooks/useFlip'
+import { Reveal } from '@shared/ui/Reveal'
+import { useArrival } from '@shared/hooks/useStayMounted'
+import { cn } from '@shared/lib/utils'
 import type { MenuAction } from './RosterMenu'
 
 // `backend` must be a stable reference (see useRosterConnection).
@@ -37,6 +42,12 @@ export function Roster({
   const t = useLanguage((s) => s.t)
   const state = useRoster()
   const { creating, setCreating } = useCreating()
+  // Pins and rows glide to their new place after a reorder, a pin or a drop.
+  const pinnedArea = useRef<HTMLDivElement>(null)
+  const folderArea = useRef<HTMLDivElement>(null)
+  useFlip(pinnedArea)
+  useFlip(folderArea)
+  const arrival = useArrival(state.loading)
   const closeCreate = (): void => setCreating(null)
   const [deleting, setDeleting] = useState<Bot | null>(null)
   const [deletingRoom, setDeletingRoom] = useState<Room | null>(null)
@@ -100,9 +111,14 @@ export function Roster({
     >
       {/* Problems and the pinned tiles stay put; only the folders scroll under them. The same
           gutter as the scrolling part keeps the tiles lined up with the rows. */}
-      <div className="shrink-0 overflow-y-hidden px-3 pt-2 pb-3 [scrollbar-gutter:stable]">
+      <div
+        ref={pinnedArea}
+        className="shrink-0 overflow-y-hidden px-3 pt-2 pb-3 [scrollbar-gutter:stable]"
+      >
         {/* A dialog or the details panel shows the roster's error itself; one place is enough. */}
-        {!dialogOpen && !state.editingProfile && <ProblemBanner retry={reload} />}
+        <Reveal value={!dialogOpen && !state.editingProfile && state.error}>
+          {(problem) => <ProblemBanner problem={problem} retry={reload} />}
+        </Reveal>
         {state.loading && <RosterSkeleton label={t('roster.loading')} />}
         <PinnedGrid
           botActions={botActions}
@@ -112,7 +128,7 @@ export function Roster({
           orderPin={(from, to) => run(() => actions.orderPin(from, to))}
         />
       </div>
-      <div className="scroll-y-stable min-h-0 flex-1 px-3 pb-3">
+      <div ref={folderArea} className={cn('scroll-y-stable min-h-0 flex-1 px-3 pb-3', arrival)}>
         {/* Until the first read, the skeleton above stands in for the folders too. */}
         {!state.loading &&
           [...state.snapshot.folders.filter((folder) => !folder.parentId), null].map((folder) => (
@@ -218,13 +234,18 @@ export function Roster({
   )
 }
 
-function ProblemBanner({ retry }: { retry: () => void }): React.JSX.Element | null {
+// Given the problem by its Reveal, so it keeps its words while it closes.
+function ProblemBanner({
+  problem,
+  retry
+}: {
+  problem: RosterProblem
+  retry: () => void
+}): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const error = useRoster((state) => state.error)
-  if (!error) return null
   return (
-    <div role="alert" className="rounded-xl bg-secondary p-3 text-base">
-      <ProblemMessage problem={error} />
+    <div role="alert" className="mb-2 rounded-xl bg-secondary p-3 text-base">
+      <ProblemMessage problem={problem} />
       <button className="mt-2 underline underline-offset-4 hover:decoration-2" onClick={retry}>
         {t('action.tryAgain')}
       </button>
@@ -259,25 +280,27 @@ function PinnedGrid({
       style={{ '--tile': tile } as React.CSSProperties}
     >
       {pins.map((bot) => (
-        <BotRow
-          key={bot.name}
-          bot={bot}
-          pinned
-          avatarSize={large ? 44 : 32}
-          actions={botActions(bot)}
-          onSelect={() => selectBot(bot)}
-          onDropPin={(from) => orderPin(from, bot.name)}
-        />
+        <div key={bot.name} data-flip={`bot:${bot.name}`}>
+          <BotRow
+            bot={bot}
+            pinned
+            avatarSize={large ? 44 : 32}
+            actions={botActions(bot)}
+            onSelect={() => selectBot(bot)}
+            onDropPin={(from) => orderPin(from, bot.name)}
+          />
+        </div>
       ))}
       {rooms.map((room) => (
-        <RoomRow
-          key={room.room_id}
-          room={room}
-          pinned
-          avatarSize={large ? 44 : 32}
-          actions={roomActions(room)}
-          onSelect={() => selectRoom(room)}
-        />
+        <div key={room.room_id} data-flip={`room:${room.room_id}`}>
+          <RoomRow
+            room={room}
+            pinned
+            avatarSize={large ? 44 : 32}
+            actions={roomActions(room)}
+            onSelect={() => selectRoom(room)}
+          />
+        </div>
       ))}
     </div>
   )

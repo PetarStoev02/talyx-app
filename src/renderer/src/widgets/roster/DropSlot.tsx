@@ -15,8 +15,11 @@ const BEFORE_SHARE = 0.3
 export function DropSlot({
   edges,
   onDrop,
+  flip,
   children
 }: {
+  // The key a reorder animates it by (useFlip); none for a slot that never moves.
+  flip?: string
   edges: (item: RosterDragItem) => DropEdge[] | null
   onDrop: (item: RosterDragItem, edge: DropEdge) => void
   children: React.ReactNode
@@ -33,6 +36,7 @@ export function DropSlot({
 
   return (
     <div
+      data-flip={flip}
       className={cn('relative rounded-xl', edge === 'inside' && 'bg-foreground/10')}
       onDragOver={(event) => {
         const item = draggedItem()

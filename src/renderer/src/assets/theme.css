@@ -174,21 +174,43 @@
   background-color: oklch(1 0 0 / 0.2);
 }
 
-/* Dialogs and tooltips fade and settle in; Radix waits for the exit animation before unmounting. */
+/* Motion: quick and quiet. Appearing eases out (fast start, soft stop), leaving eases in and is
+   shorter, moving or resizing on screen eases both ways. Reduced motion turns all of it off. */
+:root {
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-in: 180ms;
+  --duration-out: 120ms;
+  --duration-move: 200ms;
+  /* Lets height and width animate to and from `auto` (folders, banners, panels). */
+  interpolate-size: allow-keywords;
+}
+
+/* Dialogs, tooltips and menus fade and settle in; Radix waits for the exit animation before
+   unmounting. Menus grow from the side they open on. */
 [data-slot='dialog-overlay'][data-state='open'] {
-  animation: talyx-fade-in 150ms ease-out;
+  animation: talyx-fade-in var(--duration-in) var(--ease-out);
 }
 [data-slot='dialog-overlay'][data-state='closed'] {
-  animation: talyx-fade-out 100ms ease-in forwards;
+  animation: talyx-fade-out var(--duration-out) var(--ease-in) forwards;
 }
 [data-slot='dialog-content'][data-state='open'],
 [data-slot='tooltip-content'][data-state='delayed-open'],
-[data-slot='tooltip-content'][data-state='instant-open'] {
-  animation: talyx-pop-in 150ms ease-out;
+[data-slot='tooltip-content'][data-state='instant-open'],
+.talyx-menu[data-state='open'] {
+  animation: talyx-pop-in var(--duration-in) var(--ease-out);
 }
 [data-slot='dialog-content'][data-state='closed'],
-[data-slot='tooltip-content'][data-state='closed'] {
-  animation: talyx-pop-out 100ms ease-in forwards;
+[data-slot='tooltip-content'][data-state='closed'],
+.talyx-menu[data-state='closed'] {
+  animation: talyx-pop-out var(--duration-out) var(--ease-in) forwards;
+}
+.talyx-menu {
+  transform-origin: var(
+    --radix-dropdown-menu-content-transform-origin,
+    var(--radix-context-menu-content-transform-origin)
+  );
 }
 @keyframes talyx-fade-in {
   from {
@@ -211,6 +233,44 @@
     opacity: 0;
     scale: 0.96;
   }
+}
+
+/* Content arriving where a skeleton was, and a page you switch to. */
+@utility animate-arrive {
+  animation: talyx-fade-in var(--duration-in) var(--ease-out);
+}
+
+/* A part that opens and closes by height (a folder, a banner, an error line); see Reveal. */
+.reveal {
+  overflow: clip;
+  transition:
+    height var(--duration-move) var(--ease-in-out),
+    opacity var(--duration-move) var(--ease-in-out);
+  @starting-style {
+    height: 0;
+    opacity: 0;
+  }
+}
+.reveal-no-appear {
+  @starting-style {
+    height: auto;
+    opacity: 1;
+  }
+}
+.reveal[data-open='false'] {
+  height: 0;
+  opacity: 0;
+}
+
+/* The details and room panels: they slide in from the right edge while the chat narrows. */
+.slide-panel {
+  transition: width var(--duration-move) var(--ease-in-out);
+  @starting-style {
+    width: 0;
+  }
+}
+.slide-panel[data-open='false'] {
+  width: 0;
 }
 
 /* A theme switch repaints at once; per-control transitions would smear it. */

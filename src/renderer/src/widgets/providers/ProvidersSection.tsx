@@ -23,6 +23,8 @@ import type { ModelOptionProvider } from '@shared/engine/gateway-events'
 import { AddProviderDialog } from './AddProviderDialog'
 import { DefaultModelSection } from './DefaultModelSection'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
+import { useArrival } from '@shared/hooks/useStayMounted'
+import { cn } from '@shared/lib/utils'
 import { failureText, reportSpread } from './feedback'
 
 const linkClass =
@@ -60,6 +62,7 @@ export function ProvidersSection({
   const [removeProblem, setRemoveProblem] = useState<string | null>(null)
   const [revealed, setRevealed] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
+  const arrival = useArrival(!overview && !problem)
   const [loads, setLoads] = useState(0)
 
   const load = useCallback(
@@ -162,7 +165,7 @@ export function ProvidersSection({
             <Button onClick={() => setEditing('new')}>{t('providers.add')}</Button>
           </div>
         ) : (
-          <ul className="space-y-2">
+          <ul className={cn('space-y-2', arrival)}>
             {overview.endpoints.map((endpoint) => (
               <Row
                 key={`endpoint:${endpoint.id}`}

@@ -15,6 +15,7 @@ import type { RosterDrops } from './rosterControls'
 import { ContextMenuArea } from '@shared/ui/menu'
 import type { MenuAction } from '@shared/ui/menu'
 import { useCreating } from './creating'
+import { Reveal } from '@shared/ui/Reveal'
 import { RosterMenu } from './RosterMenu'
 
 export interface FolderGroupProps {
@@ -31,6 +32,8 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
   const { folder, botActions, roomActions, selectBot, selectRoom, drops } = props
   const t = useLanguage((s) => s.t)
   const [collapsed, setCollapsed] = useState(false)
+  // Folders are open when the roster loads without unfolding; only a click animates them.
+  const [toggled, setToggled] = useState(false)
   const snapshot = useRoster((state) => state.snapshot)
   const saving = useRoster((state) => state.saving)
   const id = folder?.id ?? null
@@ -48,6 +51,7 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
   return (
     <section
       aria-label={folder?.name ?? t('roster.unassigned')}
+      data-flip={`folder:${id ?? ''}`}
       className="min-w-0 py-2"
       // The folder's empty space (its "No bots here" line, the gaps) takes a drop as "into, last".
       onDragOver={(event) => {
@@ -69,64 +73,72 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
       <FolderHeader
         folder={folder}
         collapsed={collapsed}
-        toggle={() => setCollapsed(!collapsed)}
+        toggle={() => {
+          setCollapsed(!collapsed)
+          setToggled(true)
+        }}
         folderActions={props.folderActions}
         drops={drops}
       />
-      {!collapsed && (
-        // Indented so a row's avatar lines up under the folder's name, past its chevron.
-        <div className="mt-1 space-y-1 pl-6">
-          {items.map((item, index) => (
-            <DropSlot key={keys[index]} edges={rowEdges} onDrop={dropOnRow(index)}>
-              {item.kind === 'bot' ? (
-                <BotRow
-                  bot={item.bot}
-                  actions={botActions(item.bot)}
-                  onSelect={() => selectBot(item.bot)}
-                />
-              ) : (
-                <RoomRow
-                  room={item.room}
-                  actions={roomActions(item.room)}
-                  onSelect={() => selectRoom(item.room)}
-                />
-              )}
-            </DropSlot>
-          ))}
-          {children.map((child) => (
-            <div key={child.id}>
-              <FolderGroup {...props} folder={child} />
-            </div>
-          ))}
-          {items.length + children.length === 0 &&
-            (folder ? (
-              // Laid out like a bot's row, so the empty folder reads as a place a bot will go.
-              <button
-                disabled={saving}
-                onClick={() => {
-                  useRoster.getState().clearError()
-                  useCreating.getState().createBotIn(folder.id)
-                }}
-                className="flex w-full items-center gap-3 rounded-xl border border-dashed border-foreground/15 p-2 text-left transition-colors hover:border-foreground/30 hover:bg-accent disabled:opacity-50"
+      <Reveal value={!collapsed} className={toggled ? undefined : 'reveal-no-appear'}>
+        {() => (
+          // Indented so a row's avatar lines up under the folder's name, past its chevron.
+          <div className="mt-1 space-y-1 pl-6">
+            {items.map((item, index) => (
+              <DropSlot
+                key={keys[index]}
+                flip={keys[index]}
+                edges={rowEdges}
+                onDrop={dropOnRow(index)}
               >
-                <span
-                  className="flex shrink-0 items-center justify-center text-muted-foreground"
-                  style={{ width: ROW_AVATAR_BOX, height: ROW_AVATAR_BOX }}
-                >
-                  <Plus size={18} aria-hidden="true" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-base font-medium">{t('create.title')}</span>
-                  <span className="block text-sm text-muted-foreground">
-                    {t('roster.emptyFolderHint')}
-                  </span>
-                </span>
-              </button>
-            ) : (
-              <p className="px-3 py-2 text-sm text-muted-foreground">{t('roster.emptyFolder')}</p>
+                {item.kind === 'bot' ? (
+                  <BotRow
+                    bot={item.bot}
+                    actions={botActions(item.bot)}
+                    onSelect={() => selectBot(item.bot)}
+                  />
+                ) : (
+                  <RoomRow
+                    room={item.room}
+                    actions={roomActions(item.room)}
+                    onSelect={() => selectRoom(item.room)}
+                  />
+                )}
+              </DropSlot>
             ))}
-        </div>
-      )}
+            {children.map((child) => (
+              <FolderGroup key={child.id} {...props} folder={child} />
+            ))}
+            {items.length + children.length === 0 &&
+              (folder ? (
+                // Laid out like a bot's row, so the empty folder reads as a place a bot will go.
+                <button
+                  disabled={saving}
+                  onClick={() => {
+                    useRoster.getState().clearError()
+                    useCreating.getState().createBotIn(folder.id)
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl border border-dashed border-foreground/15 p-2 text-left transition-colors hover:border-foreground/30 hover:bg-accent disabled:opacity-50"
+                >
+                  <span
+                    className="flex shrink-0 items-center justify-center text-muted-foreground"
+                    style={{ width: ROW_AVATAR_BOX, height: ROW_AVATAR_BOX }}
+                  >
+                    <Plus size={18} aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-base font-medium">{t('create.title')}</span>
+                    <span className="block text-sm text-muted-foreground">
+                      {t('roster.emptyFolderHint')}
+                    </span>
+                  </span>
+                </button>
+              ) : (
+                <p className="px-3 py-2 text-sm text-muted-foreground">{t('roster.emptyFolder')}</p>
+              ))}
+          </div>
+        )}
+      </Reveal>
     </section>
   )
 }

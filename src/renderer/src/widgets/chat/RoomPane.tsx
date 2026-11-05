@@ -25,6 +25,9 @@ import { Chip, Composer } from './Composer'
 import type { ComposerTarget } from './Composer'
 import { ChatSkeleton } from './ChatSkeleton'
 import { Starters } from './ChatIntro'
+import { Reveal } from '@shared/ui/Reveal'
+import { useArrival } from '@shared/hooks/useStayMounted'
+import { cn } from '@shared/lib/utils'
 import { Transcript } from './Transcript'
 
 /** A hosted room: its log with who is answering below, then a composer with the room's model. */
@@ -84,8 +87,9 @@ export function RoomPane({
     [actions, roomId]
   )
 
-  if (!actions || !chat || !view || (view.loading && !view.events.length))
-    return <ChatSkeleton label={t('chat.loading')} />
+  const loading = !actions || !chat || !view || (view.loading && !view.events.length)
+  const arrival = useArrival(loading)
+  if (loading) return <ChatSkeleton label={t('chat.loading')} />
 
   const target: ComposerTarget = {
     placeholder: t('rooms.placeholder'),
@@ -115,30 +119,32 @@ export function RoomPane({
 
   return (
     <>
-      {items.length || view.tasks.length ? (
-        <Transcript items={items} loadImage={loadImage}>
-          {view.tasks.map((task) => (
-            <li key={`${task.kind}:${task.task_id}:${task.execution_generation}`}>
-              <TaskCard
-                task={task}
-                name={nameOf(task.member_id)}
-                onApprove={(choice) => void actions.approve(roomId, task, choice)}
-                onSettle={() => void actions.settle(roomId, task)}
-              />
-            </li>
-          ))}
-        </Transcript>
-      ) : (
-        <div className="grid flex-1 place-content-center justify-items-center gap-3 px-8 text-center">
-          <RoomAvatars room={room} bots={bots} cluster={64} />
-          <h1 className="text-2xl font-semibold">{room.name}</h1>
-          <p className="max-w-md text-base">
-            {listOf(room.members.map((member) => nameOf(member.member_id ?? member.profile)))}
-          </p>
-          <p className="max-w-md text-sm text-muted-foreground">{t('rooms.empty')}</p>
-          <Starters starters={roomStarters(room, t)} onStart={start} />
-        </div>
-      )}
+      <div className={cn('flex min-h-0 flex-1 flex-col', arrival)}>
+        {items.length || view.tasks.length ? (
+          <Transcript items={items} loadImage={loadImage}>
+            {view.tasks.map((task) => (
+              <li key={`${task.kind}:${task.task_id}:${task.execution_generation}`}>
+                <TaskCard
+                  task={task}
+                  name={nameOf(task.member_id)}
+                  onApprove={(choice) => void actions.approve(roomId, task, choice)}
+                  onSettle={() => void actions.settle(roomId, task)}
+                />
+              </li>
+            ))}
+          </Transcript>
+        ) : (
+          <div className="grid flex-1 place-content-center justify-items-center gap-3 px-8 text-center">
+            <RoomAvatars room={room} bots={bots} cluster={64} />
+            <h1 className="text-2xl font-semibold">{room.name}</h1>
+            <p className="max-w-md text-base">
+              {listOf(room.members.map((member) => nameOf(member.member_id ?? member.profile)))}
+            </p>
+            <p className="max-w-md text-sm text-muted-foreground">{t('rooms.empty')}</p>
+            <Starters starters={roomStarters(room, t)} onStart={start} />
+          </div>
+        )}
+      </div>
       <p
         role="status"
         className="mx-auto flex w-full max-w-3xl items-center gap-2 px-6 pb-2 text-sm text-muted-foreground empty:hidden"
@@ -154,30 +160,34 @@ export function RoomPane({
         {activityLine(view, nameOf, t)}
       </p>
       {/* The composer's Send or the card's own button is the retry for these. */}
-      {view.actionError && (
-        <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
-          <p className="text-destructive-text">{t(view.actionError.key)}</p>
-          {view.actionError.detail && (
-            <p className="text-sm text-muted-foreground wrap-anywhere">{view.actionError.detail}</p>
-          )}
-        </div>
-      )}
-      {view.error && (
-        <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
-          <p className="text-destructive-text">
-            {t(view.error.key)}{' '}
-            <button
-              className="underline underline-offset-4 hover:decoration-2"
-              onClick={() => void actions.refresh(roomId)}
-            >
-              {t('action.tryAgain')}
-            </button>
-          </p>
-          {view.error.detail && (
-            <p className="text-sm text-muted-foreground wrap-anywhere">{view.error.detail}</p>
-          )}
-        </div>
-      )}
+      <Reveal value={view.actionError}>
+        {(failure) => (
+          <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
+            <p className="text-destructive-text">{t(failure.key)}</p>
+            {failure.detail && (
+              <p className="text-sm text-muted-foreground wrap-anywhere">{failure.detail}</p>
+            )}
+          </div>
+        )}
+      </Reveal>
+      <Reveal value={view.error}>
+        {(error) => (
+          <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
+            <p className="text-destructive-text">
+              {t(error.key)}{' '}
+              <button
+                className="underline underline-offset-4 hover:decoration-2"
+                onClick={() => void actions.refresh(roomId)}
+              >
+                {t('action.tryAgain')}
+              </button>
+            </p>
+            {error.detail && (
+              <p className="text-sm text-muted-foreground wrap-anywhere">{error.detail}</p>
+            )}
+          </div>
+        )}
+      </Reveal>
       {view.live ? (
         <Composer target={target} inputRef={composer} seed={seed}>
           <RoomModelMenu room={room} view={view} actions={actions} chat={chat} nameOf={nameOf} />

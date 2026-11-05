@@ -15,7 +15,12 @@ import { answering, roomActions } from '@features/chat/room'
 import { useRooms } from '@features/chat/roomStore'
 import { DetailsPanel, RoomDetailsPanel } from '@widgets/bot-details'
 import type { ChatActions } from '@features/chat/chat'
+import { SlidePanel } from '@shared/ui/Reveal'
 import type { RosterBackend } from '@features/bots/data'
+
+// Where the details and room panels sit: see their SlidePanel.
+const PANEL_PLACE =
+  'absolute inset-y-0 right-0 z-10 max-w-full shadow-xl @3xl:static @3xl:max-w-[50%] @3xl:shadow-none'
 
 const pillClass =
   'flex max-w-full items-center gap-2 rounded-full bg-secondary px-4 py-2 text-base font-medium'
@@ -109,12 +114,22 @@ export function AgentsPage({
             )}
           </ErrorBoundary>
         </section>
-        {bot && roster && detailsOpen && (
-          <DetailsPanel key={bot.name} bot={bot} backend={roster} models={chat?.models ?? null} />
-        )}
-        {room && detailsOpen && (
-          <RoomDetailsPanel room={room} onClose={() => setRoomPanel(false)} />
-        )}
+        {/* Beside the chat when the page has room for both; over it, from the right edge, when
+            not. Either way it slides in and out. */}
+        <SlidePanel value={roster && detailsOpen && bot} className={PANEL_PLACE}>
+          {(shown) => (
+            <ErrorBoundary key={shown.name} scope="details">
+              <DetailsPanel bot={shown} backend={roster!} models={chat?.models ?? null} />
+            </ErrorBoundary>
+          )}
+        </SlidePanel>
+        <SlidePanel value={detailsOpen && room} className={PANEL_PLACE}>
+          {(shown) => (
+            <ErrorBoundary key={shown.room_id} scope="details">
+              <RoomDetailsPanel room={shown} onClose={() => setRoomPanel(false)} />
+            </ErrorBoundary>
+          )}
+        </SlidePanel>
       </div>
     </EngineGate>
   )

@@ -26,6 +26,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/u
 import { Input, Textarea } from '@shared/ui/input'
 import { ModelField } from '@shared/ui/ModelPicker'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
+import { useArrival } from '@shared/hooks/useStayMounted'
+import { cn } from '@shared/lib/utils'
 import { RoutinesSection } from './RoutinesSection'
 
 type Tab = 'details' | 'look' | 'soul'
@@ -65,6 +67,7 @@ export function DetailsPanel({
     ...loaded
   }
   const draft: DetailsDraft | null = fields && { title, look, ...fields }
+  const arrival = useArrival(!draft && !loadError)
 
   useEffect(() => {
     let current = true
@@ -128,8 +131,8 @@ export function DetailsPanel({
   return (
     <aside
       aria-label={t('agents.details')}
-      // Beside the chat when the page has room for both; over it, from the right edge, when not.
-      className="tone-step absolute inset-y-0 right-0 z-10 flex w-[340px] max-w-full shrink-0 flex-col shadow-xl @3xl:static @3xl:max-w-[50%] @3xl:shadow-none"
+      // Placed and slid in by the page (AgentsPage's SlidePanel); its own width never changes.
+      className="tone-step flex h-full w-[340px] shrink-0 flex-col"
     >
       <header className="relative flex flex-col items-center gap-2 px-6 pt-6 pb-4 text-center">
         <button
@@ -172,7 +175,7 @@ export function DetailsPanel({
         {/* One panel for the selected tab; Radix names it after its tab. */}
         <Tabs.Content
           value={tab}
-          className="scroll-y-stable flex min-h-0 flex-1 flex-col px-6 py-4"
+          className={cn('scroll-y-stable flex min-h-0 flex-1 flex-col px-6 py-4', arrival)}
         >
           {loadError ? (
             <div role="alert">

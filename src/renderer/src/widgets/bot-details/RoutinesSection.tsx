@@ -23,6 +23,8 @@ import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { Input, NativeSelect, Textarea } from '@shared/ui/input'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
+import { useArrival } from '@shared/hooks/useStayMounted'
+import { cn } from '@shared/lib/utils'
 import { Switch } from '@shared/ui/switch'
 
 type Translate = (key: TranslationKey) => string
@@ -51,6 +53,7 @@ export function RoutinesSection({
   const [problem, setProblem] = useState<RosterProblem | null>(null)
   const [adding, setAdding] = useState(false)
   const [deleting, setDeleting] = useState<Routine | null>(null)
+  const arrival = useArrival(!routines && !problem)
   // A failed delete shows in its dialog: a toast would sit under the dialog, out of reach.
   const [deleteProblem, setDeleteProblem] = useState<RosterProblem | null>(null)
 
@@ -138,7 +141,7 @@ export function RoutinesSection({
           <Button onClick={() => setAdding(true)}>{t('routines.new')}</Button>
         </div>
       ) : (
-        <ul className="space-y-2">
+        <ul className={cn('space-y-2', arrival)}>
           {routines.map((routine) => (
             <li key={routine.id} className="flex items-center gap-2 rounded-xl bg-secondary p-3">
               <div className="min-w-0 flex-1">

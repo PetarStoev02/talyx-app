@@ -27,8 +27,8 @@ export function RoomDetailsPanel({
   return (
     <aside
       aria-label={t('rooms.details')}
-      // Beside the chat when the page has room for both; over it, from the right edge, when not.
-      className="tone-step absolute inset-y-0 right-0 z-10 flex w-[340px] max-w-full shrink-0 flex-col shadow-xl @3xl:static @3xl:max-w-[50%] @3xl:shadow-none"
+      // Placed and slid in by the page (AgentsPage's SlidePanel); its own width never changes.
+      className="tone-step flex h-full w-[340px] shrink-0 flex-col"
     >
       <header className="relative flex flex-col items-center gap-2 px-6 pt-6 pb-4 text-center">
         <button

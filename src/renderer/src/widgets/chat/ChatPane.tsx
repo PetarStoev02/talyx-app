@@ -15,6 +15,9 @@ import { ChatChips, Composer } from './Composer'
 import type { ComposerTarget } from './Composer'
 import { ChatIntro } from './ChatIntro'
 import { ChatSkeleton } from './ChatSkeleton'
+import { Reveal } from '@shared/ui/Reveal'
+import { useArrival } from '@shared/hooks/useStayMounted'
+import { cn } from '@shared/lib/utils'
 import { Transcript } from './Transcript'
 
 /** A bot's chat: its transcript with any open cards below, then the composer. */
@@ -51,8 +54,10 @@ export function ChatPane({
       void actions.open(bot.name, chatId)
   }, [actions, bot.name, chatId])
 
-  if (!actions || !chat || (chat.loading && !chat.transcript))
-    return <ChatSkeleton label={t('chat.loading')} />
+  const loading = !actions || !chat || (chat.loading && !chat.transcript)
+  // A chat that had to load fades in; one already loaded shows at once when you switch to it.
+  const arrival = useArrival(loading)
+  if (loading) return <ChatSkeleton label={t('chat.loading')} />
 
   const items = chat.transcript?.items ?? []
   const prompts = chat.transcript?.prompts ?? []
@@ -76,47 +81,51 @@ export function ChatPane({
 
   return (
     <>
-      {items.length || prompts.length ? (
-        <Transcript items={items} loadImage={loadImage}>
-          {prompts.map((prompt) => (
-            <li key={prompt.id}>
-              {prompt.kind === 'clarify' ? (
-                <ClarifyCard
-                  prompt={prompt}
-                  onAnswer={(answers) => actions.answerClarify(bot.name, prompt.id, answers)}
-                />
-              ) : (
-                <ApprovalCard
-                  prompt={prompt}
-                  botName={title}
-                  onAnswer={(choice) => actions.answerApproval(bot.name, prompt.id, choice)}
-                />
+      <div className={cn('flex min-h-0 flex-1 flex-col', arrival)}>
+        {items.length || prompts.length ? (
+          <Transcript items={items} loadImage={loadImage}>
+            {prompts.map((prompt) => (
+              <li key={prompt.id}>
+                {prompt.kind === 'clarify' ? (
+                  <ClarifyCard
+                    prompt={prompt}
+                    onAnswer={(answers) => actions.answerClarify(bot.name, prompt.id, answers)}
+                  />
+                ) : (
+                  <ApprovalCard
+                    prompt={prompt}
+                    botName={title}
+                    onAnswer={(choice) => actions.answerApproval(bot.name, prompt.id, choice)}
+                  />
+                )}
+              </li>
+            ))}
+          </Transcript>
+        ) : (
+          <ChatIntro bot={bot} roster={roster} onStart={start} />
+        )}
+      </div>
+      <Reveal value={chat.error}>
+        {(error) => (
+          <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
+            <p className="text-destructive-text">
+              {t(error.key)}{' '}
+              {/* Only a failed load is undone by loading again; the rest are redone where they were. */}
+              {error.key === 'chat.errorLoad' && (
+                <button
+                  className="underline underline-offset-4 hover:decoration-2"
+                  onClick={() => void actions.open(bot.name, chat.sessionId ?? chatId)}
+                >
+                  {t('action.tryAgain')}
+                </button>
               )}
-            </li>
-          ))}
-        </Transcript>
-      ) : (
-        <ChatIntro bot={bot} roster={roster} onStart={start} />
-      )}
-      {chat.error && (
-        <div className="mx-auto w-full max-w-3xl px-6 pb-2 text-base" role="alert">
-          <p className="text-destructive-text">
-            {t(chat.error.key)}{' '}
-            {/* Only a failed load is undone by loading again; the rest are redone where they were. */}
-            {chat.error.key === 'chat.errorLoad' && (
-              <button
-                className="underline underline-offset-4 hover:decoration-2"
-                onClick={() => void actions.open(bot.name, chat.sessionId ?? chatId)}
-              >
-                {t('action.tryAgain')}
-              </button>
+            </p>
+            {error.detail && (
+              <p className="text-sm text-muted-foreground wrap-anywhere">{error.detail}</p>
             )}
-          </p>
-          {chat.error.detail && (
-            <p className="text-sm text-muted-foreground wrap-anywhere">{chat.error.detail}</p>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </Reveal>
       {target.running && !prompts.length && (
         <p className="mx-auto flex w-full max-w-3xl items-center gap-2 px-6 pb-2 text-sm text-muted-foreground">
           <BotAvatar bot={bot} place="row" speaking />

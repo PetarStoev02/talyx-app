@@ -63,7 +63,8 @@ function App(): React.JSX.Element {
         }
       >
         <ConnectionBanner />
-        <main key={currentView} className="min-h-0 flex-1 overflow-hidden">
+        {/* A page you switch to fades in; the one you left is gone at once. */}
+        <main key={currentView} className="animate-arrive min-h-0 flex-1 overflow-hidden">
           <ErrorBoundary scope={currentView}>{pages[currentView]}</ErrorBoundary>
         </main>
       </AppShell>

@@ -21,7 +21,7 @@ export interface MenuAction {
 
 // Every menu in the app: a raised card, 14px rows with a 16px icon, groups split by a line.
 export const menuContentClass =
-  'z-50 max-h-80 min-w-48 overflow-y-auto rounded-2xl bg-popover p-1.5 text-sm text-popover-foreground shadow-lg ring-1 ring-border'
+  'talyx-menu z-50 max-h-80 min-w-48 overflow-y-auto rounded-2xl bg-popover p-1.5 text-sm text-popover-foreground shadow-lg ring-1 ring-border'
 export const menuItemClass =
   'flex cursor-default items-center gap-2.5 rounded-lg px-2.5 py-1.5 select-none data-[disabled]:opacity-40 data-[highlighted]:bg-foreground/10 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground'
 export const menuLabelClass = 'px-2.5 pt-2 pb-1 text-xs text-muted-foreground'
