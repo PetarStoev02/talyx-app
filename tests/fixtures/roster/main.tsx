@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Toaster } from 'sonner'
+import { SidebarFooter } from '../../../src/renderer/src/widgets/app-shell/SidebarFooter'
 import { Roster } from '../../../src/renderer/src/widgets/roster/Roster'
 import { RosterAdd } from '../../../src/renderer/src/widgets/roster/RosterAdd'
+import { RosterRefresh } from '../../../src/renderer/src/widgets/roster/RosterRefresh'
 import { AgentsPage } from '../../../src/renderer/src/pages/agents/AgentsPage'
 import { ProvidersSection } from '../../../src/renderer/src/widgets/providers'
 import { SetupFlow } from '../../../src/renderer/src/widgets/setup'
@@ -17,6 +19,7 @@ import { fixtureChat } from './fixtureChat'
 import { fixtureProviders } from './fixtureProviders'
 import { roomRequest, roomSessionRequest } from './fixtureRooms'
 import { attachedEngine, fixtureSetup, setupMode, setupStuck } from './fixtureSetup'
+import { fixtureUpdates, updateMode, updateNeedsOlderEngine } from './fixtureUpdates'
 import './fixture.css'
 
 // Saved looks: one in today's values, one from an older client (read as the nearest block).
@@ -229,19 +232,25 @@ useRoster.getState().markUnread('writer')
 const providers = fixtureProviders(profiles.map((bot) => bot.name))
 const chat = fixtureChat(providers)
 // `?setup=<mode>` opens the setup flow first, against a scripted install; it replaces the engine.
-const mode = setupMode(location.search)
+// `?update=engine|both` is `old-after` too: an engine below the pin whose update the footer offers.
+const update = updateMode(location.search)
+const mode = setupMode(location.search) ?? (updateNeedsOlderEngine(update) ? 'old-after' : null)
 const setup = mode && fixtureSetup(mode, { stuck: setupStuck(location.search) })
 // `old-after`: setup is done; the Agents page's engine gate runs its update through `window.api`.
-if (setup && mode === 'old-after')
-  Object.assign(window, {
-    api: {
-      getInstallSteps: setup.installSteps,
-      runInstall: setup.run,
-      cancelInstall: setup.cancel,
-      onInstallOutput: setup.onOutput,
-      onInstallExit: setup.onExit
-    }
-  })
+// `?update=<mode>` scripts the Talyx update the footer button offers; without it nothing is pending.
+Object.assign(window, {
+  api: {
+    ...(setup &&
+      mode === 'old-after' && {
+        getInstallSteps: setup.installSteps,
+        runInstall: setup.run,
+        cancelInstall: setup.cancel,
+        onInstallOutput: setup.onOutput,
+        onInstallExit: setup.onExit
+      }),
+    ...fixtureUpdates(update)
+  }
+})
 // `?nudge`: no provider read yet, so Talyx's chat asks for one until Settings reads the router.
 if (new URLSearchParams(location.search).has('nudge')) useSetup.getState().setHasProvider(false)
 
@@ -316,6 +325,8 @@ export function Fixture(): React.JSX.Element {
           {online ? 'Drop the engine socket (offline)' : 'Reconnect the engine socket'}
         </button>
         <ExportedAvatar />
+        {/* The app's footer row: its update button takes the refresh button's place. */}
+        <SidebarFooter withRoster end={<RosterRefresh backend={backend} />} />
       </aside>
       <main className="min-w-0 flex-1">
         {page === 'settings' ? (
