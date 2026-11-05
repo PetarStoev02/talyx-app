@@ -11,13 +11,13 @@ function ScatteredFilesAnimation() {
       aria-hidden="true"
     >
       <defs>
-        {/* Shared file shape — document with folded corner */}
+        {/* Shared file shape: document with folded corner */}
         <clipPath id="file-clip">
           <path d="M4 0h40l16 16v60a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" />
         </clipPath>
       </defs>
 
-      {/* ── Folder (destination) — pulsing at center-bottom ── */}
+      {/* ── Folder (destination), pulsing at center-bottom ── */}
       <g transform="translate(155, 190)">
         <animateTransform
           attributeName="transform"
@@ -93,7 +93,7 @@ function ScatteredFilesAnimation() {
         />
       </g>
 
-      {/* ── File 1 — floats from top-left, drifts around ── */}
+      {/* ── File 1, floats from top-left, drifts around ── */}
       <g opacity="0">
         <animateTransform
           attributeName="transform"
@@ -165,7 +165,7 @@ function ScatteredFilesAnimation() {
         </g>
       </g>
 
-      {/* ── File 2 — floats from top-right ── */}
+      {/* ── File 2, floats from top-right ── */}
       <g opacity="0">
         <animateTransform
           attributeName="transform"
@@ -227,7 +227,7 @@ function ScatteredFilesAnimation() {
         </g>
       </g>
 
-      {/* ── File 3 — center-top, drifts gently ── */}
+      {/* ── File 3, center-top, drifts gently ── */}
       <g opacity="0">
         <animateTransform
           attributeName="transform"
@@ -298,7 +298,7 @@ function ScatteredFilesAnimation() {
         </g>
       </g>
 
-      {/* ── File 4 (small) — left side ── */}
+      {/* ── File 4 (small), left side ── */}
       <g opacity="0">
         <animateTransform
           attributeName="transform"
@@ -360,7 +360,7 @@ function ScatteredFilesAnimation() {
         </g>
       </g>
 
-      {/* ── File 5 (small) — right side ── */}
+      {/* ── File 5 (small), right side ── */}
       <g opacity="0">
         <animateTransform
           attributeName="transform"

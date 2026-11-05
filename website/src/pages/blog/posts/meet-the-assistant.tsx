@@ -28,7 +28,7 @@ export function MeetTheAssistant() {
 
       <p>
         A model picker sits inside the input. On Claude Code it lists whatever your subscription can
-        run — Opus, Sonnet, Haiku, and newer models as they appear — because Talyx asks the binary
+        run (Opus, Sonnet, Haiku, and newer models as they appear) because Talyx asks the binary
         instead of guessing. Switch mid-conversation; the next reply uses the new model and the
         transcript stays.
       </p>
@@ -59,11 +59,11 @@ export function MeetTheAssistant() {
       <h2>Nothing changes until you approve</h2>
 
       <p>
-        Every ability declares what it touches. Reads — listing a folder, checking the calendar —
-        run without asking. Anything that changes a file or your system shows a card first: the
-        exact command, the exact paths, the exact reminder text. You approve, deny, or approve the
-        rest of the task. Cmd+Shift+Esc is the kill switch; it stops the assistant and any running
-        command in under a second.
+        Every ability declares what it touches. Reads (listing a folder, checking the calendar) run
+        without asking. Anything that changes a file or your system shows a card first: the exact
+        command, the exact paths, the exact reminder text. You approve, deny, or approve the rest of
+        the task. Cmd+Shift+Esc is the kill switch; it stops the assistant and any running command
+        in under a second.
       </p>
 
       <p>
@@ -85,8 +85,8 @@ export function MeetTheAssistant() {
       <p>
         File classification stays on-device by default. Smart Local still sorts from names and
         metadata entirely on your machine, and the Sort, Watch and History pages work exactly as
-        before. Turn on Your Claude sorting and files a reader could actually open — documents,
-        spreadsheets, emails, plain text — have their text sent to your own Claude account instead;
+        before. Turn on Your Claude sorting and files a reader could actually open (documents,
+        spreadsheets, emails, plain text) have their text sent to your own Claude account instead;
         see the privacy policy for exactly what that sends. The assistant simply became the front
         door.
       </p>

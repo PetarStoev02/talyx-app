@@ -9,8 +9,8 @@ import { RootLayout } from './RootLayout'
 import { LandingPage } from '../pages/landing/LandingPage'
 import { NotFoundPage } from '../pages/not-found/NotFoundPage'
 
-// Only the landing page ships in the first chunk. Everything else — including
-// react-markdown on the legal pages — loads on demand,
+// Only the landing page ships in the first chunk. Everything else (including
+// react-markdown on the legal pages) loads on demand,
 // so a first visit downloads the page it actually asked for.
 //
 // lazyRouteComponent, not React.lazy: the router awaits these in `router.load()`,

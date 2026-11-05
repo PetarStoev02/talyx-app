@@ -5,7 +5,7 @@ export function FreelancersPage() {
     <UseCasePageLayout
       slug="freelancers"
       title="Talyx for freelancers"
-      lead="Smart Local sorts by type on your Mac; Your Claude sorts client files by what’s inside. Keep project assets organized and billing documents easy to find — without spending hours on file management."
+      lead="Smart Local sorts by type on your Mac; Your Claude sorts client files by what’s inside. Keep project assets organized and billing documents easy to find, without spending hours on file management."
       screenshot="/previews/sort.jpg"
       relatedFeatureSlugs={['ai-classification', 'watch-folders', 'drag-and-drop']}
       painPoints={[

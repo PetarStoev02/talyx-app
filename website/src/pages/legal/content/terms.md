@@ -47,7 +47,7 @@ The source code is released under the MIT licence (Section 2). The Talyx name an
 
 Sorting is controlled by a setting you choose in the App, with two options:
 
-- **Smart sorting (default):** classification looks at file names, extensions, size, and embedded metadata such as EXIF — never the document text. Nothing is sent anywhere.
+- **Smart sorting (default):** classification looks at file names, extensions, size, and embedded metadata such as EXIF, never the document text. Nothing is sent anywhere.
 - **Your Claude (opt-in):** when Claude is reachable, the whole sort batch may be sent to Anthropic through your own Claude account, as described in Section 5.3 and in our [Privacy Policy](/legal/privacy).
 
 A fresh install uses Smart sorting. Choosing Your Claude is your decision, made in Settings, and can be changed at any time. Talyx does not host classification model weights.
@@ -58,12 +58,12 @@ Extension-based classification and metadata extraction run entirely on your devi
 
 ### 5.3 The Assistant, and Your Claude Sorting
 
-The assistant is optional and is powered by your own Claude: either an Anthropic API key you enter, or the Claude Code installation already signed in on your Mac. Choosing **Your Claude** for sorting (5.1) uses that same connection. By using either you agree that the relevant content — for the assistant, your instructions, the conversation, and the results of the actions it takes; for Your Claude sorting, the file information described in our [Privacy Policy](/legal/privacy) — is sent to Anthropic under your agreement with them. You are responsible for any usage charges on your Anthropic account and for keeping your API key confidential.
+The assistant is optional and is powered by your own Claude: either an Anthropic API key you enter, or the Claude Code installation already signed in on your Mac. Choosing **Your Claude** for sorting (5.1) uses that same connection. By using either you agree that the relevant content (for the assistant, your instructions, the conversation, and the results of the actions it takes; for Your Claude sorting, the file information described in our [Privacy Policy](/legal/privacy)) is sent to Anthropic under your agreement with them. You are responsible for any usage charges on your Anthropic account and for keeping your API key confidential.
 
 Which of Anthropic's terms govern that content depends on how you connect your Claude:
 
-- **Anthropic API key:** governed by [Anthropic's commercial terms](https://www.anthropic.com/legal/commercial-terms) and Anthropic's Data Processing Addendum, which state that Anthropic may not train models on customer content from its services. For how long Anthropic retains that content, and for any arrangement about retention, read Anthropic's own terms and Data Processing Addendum — Talyx cannot state those on Anthropic's behalf.
-- **Signed-in Claude Code on a Pro or Max subscription:** governed by [Anthropic's consumer terms](https://www.anthropic.com/legal/consumer-terms) and consumer privacy policy, the same as a Claude.ai chat — including that Anthropic may use that content to improve its models if you have allowed that in your Anthropic account's privacy settings.
+- **Anthropic API key:** governed by [Anthropic's commercial terms](https://www.anthropic.com/legal/commercial-terms) and Anthropic's Data Processing Addendum, which state that Anthropic may not train models on customer content from its services. For how long Anthropic retains that content, and for any arrangement about retention, read Anthropic's own terms and Data Processing Addendum, Talyx cannot state those on Anthropic's behalf.
+- **Signed-in Claude Code on a Pro or Max subscription:** governed by [Anthropic's consumer terms](https://www.anthropic.com/legal/consumer-terms) and consumer privacy policy, the same as a Claude.ai chat, including that Anthropic may use that content to improve its models if you have allowed that in your Anthropic account's privacy settings.
 
 Talyx is not a party to your agreement with Anthropic and cannot change these terms on your behalf; read Anthropic's current terms and privacy policy before relying on any of the above.
 

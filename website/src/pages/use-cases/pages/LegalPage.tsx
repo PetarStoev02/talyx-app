@@ -29,12 +29,12 @@ export function LegalPage() {
         {
           title: 'Smart sorting, on by default',
           description:
-            'Every new install starts on Smart Local: extension and metadata analysis with zero internet connection. No AI, no cloud, no data transmitted — no setup needed for privileged files.'
+            'Every new install starts on Smart Local: extension and metadata analysis with zero internet connection. No AI, no cloud, no data transmitted, no setup needed for privileged files.'
         },
         {
           title: 'Smart Local, for sorting with no third party',
           description:
-            'Want sorting that sends nothing off the machine? Leave Your Claude off. Smart Local files contracts, filings and correspondence from their names and metadata, entirely on your device — no cloud, no servers, no third parties.'
+            'Want sorting that sends nothing off the machine? Leave Your Claude off. Smart Local files contracts, filings and correspondence from their names and metadata, entirely on your device: no cloud, no servers, no third parties.'
         },
         {
           title: 'Full operation history for audit compliance',

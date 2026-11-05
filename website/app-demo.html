@@ -16,7 +16,7 @@
     </style>
     <script>
       // Same origin as the page embedding this, so the site's theme choice is
-      // readable straight from storage — and `storage` events land here when
+      // readable straight from storage, and `storage` events land here when
       // the visitor flips the switch out there. Inline, to theme before paint.
       ;(function () {
         var media = window.matchMedia('(prefers-color-scheme: dark)')
@@ -25,7 +25,7 @@
           try {
             stored = localStorage.getItem('talyx-theme')
           } catch (e) {
-            /* storage blocked — fall back to the OS preference */
+            /* storage blocked: fall back to the OS preference */
           }
           var dark = stored === 'dark' || (stored !== 'light' && media.matches)
           document.documentElement.className = dark ? 'dark' : 'light'

@@ -17,7 +17,7 @@ export function KnowledgeWorkersPage() {
         {
           title: 'Hours wasted organizing',
           description:
-            'Manual file sorting eats into productive time. Creating folders, dragging files, renaming — it adds up to hours every week.'
+            'Manual file sorting eats into productive time. Creating folders, dragging files, renaming: it adds up to hours every week.'
         },
         {
           title: 'Lost documents',
@@ -29,7 +29,7 @@ export function KnowledgeWorkersPage() {
         {
           title: 'Drop your messy folder and sort in seconds',
           description:
-            'Drag your Downloads folder into Talyx. Your connected AI classifies every file — documents, spreadsheets, presentations, images — and organizes them into clean categories automatically.'
+            'Drag your Downloads folder into Talyx. Your connected AI classifies every file (documents, spreadsheets, presentations, images) and organizes them into clean categories automatically.'
         },
         {
           title: 'Set up Watch Folders for ongoing organization',

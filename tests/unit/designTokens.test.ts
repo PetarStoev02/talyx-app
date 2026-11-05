@@ -15,7 +15,7 @@ function walk(dir: string): string[] {
 }
 
 describe('design tokens', () => {
-  it('should not use raw Tailwind palette classes — use semantic tokens', () => {
+  it('should not use raw Tailwind palette classes: use semantic tokens', () => {
     const offenders = walk(RENDERER_SRC).flatMap((file) => {
       const matches = readFileSync(file, 'utf-8').match(BANNED)
       return matches

@@ -29,7 +29,7 @@ const completed: RoadmapItem[] = [
   {
     title: 'Bring your own brain',
     description:
-      'Talyx is the harness — abilities, approval, memory, notices. The model is yours: an API key or your Claude Code sign-in. Talyx-owned sorting models were retired.'
+      'Talyx is the harness: abilities, approval, memory, notices. The model is yours: an API key or your Claude Code sign-in. Talyx-owned sorting models were retired.'
   },
   {
     title: 'Privacy-first design',
@@ -39,7 +39,7 @@ const completed: RoadmapItem[] = [
   {
     title: 'Smart file renaming',
     description:
-      'AI-powered rename suggestions based on document content — dates, names, organizations, and topics.'
+      'AI-powered rename suggestions based on document content: dates, names, organizations, and topics.'
   },
   {
     title: 'Watch folders',
@@ -49,7 +49,7 @@ const completed: RoadmapItem[] = [
   {
     title: 'Multilingual support',
     description:
-      'Classification and renaming follow the language of the document — English gets English names, Bulgarian gets Cyrillic.'
+      'Classification and renaming follow the language of the document: English gets English names, Bulgarian gets Cyrillic.'
   },
   {
     title: 'Keyboard shortcuts',
@@ -62,12 +62,12 @@ const completed: RoadmapItem[] = [
   {
     title: 'Scheduled sorts',
     description:
-      'Automatic sorting on a schedule — daily, weekly, or monthly. Runs in the background.'
+      'Automatic sorting on a schedule: daily, weekly, or monthly. Runs in the background.'
   },
   {
     title: 'Search',
     description:
-      'Search what Talyx has indexed — files you sorted and folders you Deep Scan. A rule-based parser turns a plain-language query into keywords and a file type; no model is involved.'
+      'Search what Talyx has indexed: files you sorted and folders you Deep Scan. A rule-based parser turns a plain-language query into keywords and a file type; no model is involved.'
   },
   {
     title: 'MCP server architecture',
@@ -87,12 +87,12 @@ const completed: RoadmapItem[] = [
   {
     title: 'Voice',
     description:
-      'Hold Option+Space to dictate; replies spoken back by a neural voice. Whisper and Kokoro run on-device — audio never leaves the Mac. Apple Silicon required.'
+      'Hold Option+Space to dictate; replies spoken back by a neural voice. Whisper and Kokoro run on-device; audio never leaves the Mac. Apple Silicon required.'
   },
   {
     title: 'Everyday abilities',
     description:
-      'Calendar, reminders, notes, unread mail, Music, dark mode, Wi‑Fi, volume, image conversion, recent files, disk clutter — plus repos, shell commands, apps and URLs for developers.'
+      'Calendar, reminders, notes, unread mail, Music, dark mode, Wi‑Fi, volume, image conversion, recent files, disk clutter, plus repos, shell commands, apps and URLs for developers.'
   },
   {
     title: 'First run',
@@ -107,7 +107,7 @@ const completed: RoadmapItem[] = [
   {
     title: 'Capture',
     description:
-      'Dump a thought into the overlay and it lands as a Note, Reminder, Calendar event or file — without typing a prompt.'
+      'Dump a thought into the overlay and it lands as a Note, Reminder, Calendar event or file, without typing a prompt.'
   },
   {
     title: 'Recall',
@@ -121,7 +121,7 @@ const completed: RoadmapItem[] = [
   {
     title: 'Act: screen control',
     description:
-      'When no typed ability fits, the assistant looks at the screen and clicks, types, presses keys or scrolls — every step carded, kill switch mid-way.'
+      'When no typed ability fits, the assistant looks at the screen and clicks, types, presses keys or scrolls: every step carded, kill switch mid-way.'
   },
   {
     title: 'Focus',
@@ -147,7 +147,7 @@ const planned: RoadmapItem[] = [
   {
     title: 'Earned autonomy',
     description:
-      'Every ability starts by asking. As one proves itself, you can move it to automatic — the assistant gets quieter the longer you use it.'
+      'Every ability starts by asking. As one proves itself, you can move it to automatic: the assistant gets quieter the longer you use it.'
   },
   {
     title: 'Undo for every ability',

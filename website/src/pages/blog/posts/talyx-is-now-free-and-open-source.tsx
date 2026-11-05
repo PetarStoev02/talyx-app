@@ -47,7 +47,7 @@ export function TalyxIsNowFreeAndOpenSource(): React.JSX.Element {
         Security and click Open Anyway. The <a href="/#download">download section</a> has the full
         steps, including what to do about permissions after an update.
       </p>
-      <p>— Petar</p>
+      <p>Petar</p>
     </>
   )
 }

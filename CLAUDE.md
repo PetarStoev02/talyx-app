@@ -1,4 +1,4 @@
-# CLAUDE.md — Talyx Project Guidelines
+# CLAUDE.md: Talyx Project Guidelines
 
 > This file is automatically loaded by AI assistants working on this codebase.
 > Keep it accurate and up to date.
@@ -134,7 +134,7 @@ through the profile's control socket. Main opens the gateway websocket itself (t
 admits no Origin header and takes the ticket in a subprotocol) and relays frames over
 `engine:socket-*` IPC; REST goes through `engine:http`. Main never owns or kills the gateway.
 
-### Renderer Process (React Frontend — Feature-Sliced Design)
+### Renderer Process (React Frontend: Feature-Sliced Design)
 
 ```
 src/renderer/src/
@@ -189,6 +189,8 @@ import { AppShell } from '@widgets/app-shell'
 
 - Single quotes, no semicolons, 100 char print width, no trailing commas
 - 2-space indentation, LF line endings
+- No em dash (U+2014) in any file outside the vendored engine files: use a comma, colon, period or
+  parentheses. `tests/unit/noEmDash.test.ts` and `npm run lint` enforce it.
 
 ### TypeScript
 
