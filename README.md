@@ -17,7 +17,7 @@ Builds come from the [GitHub releases](https://github.com/PetarStoev02/talyx-app
 - **macOS 13 or newer.** Open the DMG and drag Talyx to Applications. Open Talyx and dismiss the warning. Then go to System Settings → Privacy & Security, scroll down and click **Open Anyway**; macOS asks for your password. Or run once in Terminal: `xattr -dr com.apple.quarantine /Applications/Talyx.app`
 - **Windows and Linux.** Installers come with 1.0. Until then, build from source.
 
-Talyx checks GitHub for a newer release and opens the release page. It installs nothing itself.
+Talyx checks GitHub for a newer release. When you click Download, it fetches the installer for your computer and the release's `SHA256SUMS`, checks the installer against it, and opens it for you to run. It never installs anything itself. A download made by Talyx has no quarantine attribute, so macOS's **Open Anyway** step is not needed for in-app updates; the SHA-256 check is the integrity guarantee.
 
 ## Engine
 
@@ -54,7 +54,7 @@ npm run build:mac    # ad-hoc signed DMGs in dist/, no Apple account needed
 
 ## Privacy
 
-Talyx has no server, no account and no telemetry. Today the only network call is the update check against GitHub. Once Talyx talks to the engine, what your bots send to their model providers is between the engine and those providers; Talyx itself sends nothing anywhere else. Third-party components are listed in [CREDITS.md](CREDITS.md).
+Talyx has no server, no account and no telemetry. Today the only network calls are the update check against GitHub and, when you click Download, the installer and its `SHA256SUMS` from the GitHub release. Once Talyx talks to the engine, what your bots send to their model providers is between the engine and those providers; Talyx itself sends nothing anywhere else. Third-party components are listed in [CREDITS.md](CREDITS.md).
 
 ## Contributing
 

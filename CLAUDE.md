@@ -61,8 +61,11 @@ npm run reset            # Delete local app data (settings.json)
 ### Builds
 
 Talyx targets macOS, Windows and Linux. No build is signed or notarized (no Apple account, no
-Windows certificate), and there is no in-app update: the app checks GitHub for a newer release
-and opens the release page. Today electron-builder only has the macOS DMG target
+Windows certificate). Talyx cannot replace itself: the app checks GitHub for a newer release and,
+on the user's click, downloads this computer's installer and the release's `SHA256SUMS`, verifies
+the installer against it, and opens it for the user to run. A download made by Talyx has no
+quarantine attribute, so the "Open Anyway" step below is not needed for in-app updates; the
+SHA-256 check is the integrity guarantee. Today electron-builder only has the macOS DMG target
 (`build:mac`); the Windows installer and Linux AppImage/deb targets are added with the 1.0
 release work.
 
@@ -98,11 +101,13 @@ src/main/
     ├── engine/                 # engine.ts (Engine: CLI, attach, tickets, REST),
     │                           # gateway.ts (vendored attach + ticket mint), engineSockets.ts
     ├── ipc/                    # settings.ipc.ts, engine.ipc.ts, setup.ipc.ts (the engine install),
-    │                           # validation.ts (zod at the boundary)
+    │                           # updater.ipc.ts (update download and open), validation.ts (zod at the boundary)
     ├── security/               # webContentsGuard: no new windows, no navigation away
     ├── setup/                  # installPin.ts (the hash pin), installSteps.ts (loads the install file), installRunner.ts (runs it)
     ├── storage/SettingsStore.ts # settings.json in userData
-    └── updater/releaseCheck.ts # GitHub latest-release check (announces, never installs)
+    └── updater/                # releaseCheck.ts (GitHub latest-release check), releaseDownload.ts
+                                # (installer download, checked against SHA256SUMS), updateState.ts
+                                # (the update state machine; the user runs the installer)
 ```
 
 `src/shared/api.ts` is the single definition of `window.api`; the preload builds it over
@@ -239,15 +244,15 @@ one more table in that file.
 
 ## Naming Conventions
 
-| Thing            | Convention          | Example                                                                        |
-| ---------------- | ------------------- | ------------------------------------------------------------------------------ |
-| React components | `PascalCase.tsx`    | `AgentsPage.tsx`, `AppShell.tsx`                                               |
-| Hooks            | `useCamelCase.ts`   | `useTheme.ts`, `useNavigation.ts`                                              |
-| Services/Classes | `PascalCase.ts`     | `SettingsStore.ts`, `DevBridge.ts`                                             |
-| IPC handlers     | `kebab-case.ipc.ts` | `settings.ipc.ts`                                                              |
-| Utilities        | `camelCase.ts`      | `utils.ts`                                                                     |
-| IPC channels     | `namespace:action`  | `settings:get`, `settings:set`, `theme:set-native`, `updater:update-available` |
-| Branches         | `type/kebab-case`   | `feat/roster`; pivot PRs use `pr/NN-<name>`                                    |
+| Thing            | Convention          | Example                                                             |
+| ---------------- | ------------------- | ------------------------------------------------------------------- |
+| React components | `PascalCase.tsx`    | `AgentsPage.tsx`, `AppShell.tsx`                                    |
+| Hooks            | `useCamelCase.ts`   | `useTheme.ts`, `useNavigation.ts`                                   |
+| Services/Classes | `PascalCase.ts`     | `SettingsStore.ts`, `DevBridge.ts`                                  |
+| IPC handlers     | `kebab-case.ipc.ts` | `settings.ipc.ts`                                                   |
+| Utilities        | `camelCase.ts`      | `utils.ts`                                                          |
+| IPC channels     | `namespace:action`  | `settings:get`, `settings:set`, `theme:set-native`, `updater:state` |
+| Branches         | `type/kebab-case`   | `feat/roster`; pivot PRs use `pr/NN-<name>`                         |
 
 ## Git Conventions
 
