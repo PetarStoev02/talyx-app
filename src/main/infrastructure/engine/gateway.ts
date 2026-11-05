@@ -133,6 +133,15 @@ export function readEnsureResult(result: CliResult): EnsureResult {
   }
 }
 
+/** The gateway speaks another runtime protocol than this client; says nothing about the endpoint. */
+// Talyx: split out of the invalid-endpoint error so the app can name a protocol mismatch.
+export class EngineProtocolError extends Error {
+  constructor() {
+    super('The engine speaks another gateway protocol than this version of Talyx')
+    this.name = 'EngineProtocolError'
+  }
+}
+
 /** Loopback-only, bare-origin, session-authority endpoint or throw. */
 export function assertLocalGatewayEndpoint(endpoint: GatewayEndpoint | undefined): void {
   const origin = endpoint ? safeUrl(endpoint.api_origin) : null
@@ -147,13 +156,18 @@ export function assertLocalGatewayEndpoint(endpoint: GatewayEndpoint | undefined
     origin.search ||
     origin.hash ||
     !origin.port ||
-    endpoint.runtime_protocol !== 1 ||
     !endpoint.instance_id ||
-    !endpoint.profile_id ||
+    !endpoint.profile_id
+  ) {
+    throw new Error('Invalid local gateway endpoint')
+  }
+  // Talyx: checked after the origin, so a foreign origin is never reported as a protocol problem.
+  if (
+    endpoint.runtime_protocol !== 1 ||
     !Array.isArray(endpoint.capabilities) ||
     !endpoint.capabilities.includes('session-authority-v1')
   ) {
-    throw new Error('Invalid local gateway endpoint')
+    throw new EngineProtocolError()
   }
 }
 

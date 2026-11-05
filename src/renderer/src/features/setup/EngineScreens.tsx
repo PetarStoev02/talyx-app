@@ -9,6 +9,9 @@ import { centeredPanelClass, linkClass, rowClass } from './screenStyles'
 // The command `engine.stale` names. Talyx never restarts the gateway itself: main does not own it.
 const RESTART_COMMAND = 'talyx-engine gateway restart'
 
+// Where a newer engine's user finds a Talyx that speaks its protocol, when the steps did not load.
+const LATEST_RELEASE_URL = 'https://github.com/PetarStoev02/talyx-app/releases/latest'
+
 const logo = <TalyxLogo size={40} className="text-foreground" />
 
 /** Found but cannot attach: the engine gate's error, plus a way on to the install. */
@@ -88,6 +91,57 @@ export function StepsFailed({
   )
 }
 
+function RestartHint(): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  return (
+    <div className="flex max-w-md flex-col items-center gap-2 rounded-xl bg-warning-subtle px-4 py-3">
+      <p className="text-base text-foreground">{t('engine.stale')}</p>
+      <CopyButton text={RESTART_COMMAND} label={t('providers.copy')} name={null} />
+    </div>
+  )
+}
+
+/**
+ * The engine's gateway and this Talyx speak different protocols. A newer engine needs a newer Talyx;
+ * otherwise a gateway left on old code is the likely cause, so the restart hint shows instead.
+ */
+export function ProtocolMismatch({
+  fit,
+  releaseUrl,
+  actions
+}: {
+  fit: 'newer' | 'same'
+  releaseUrl: string | null
+  actions: { recheck: () => void }
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  return (
+    <div className={centeredPanelClass}>
+      {logo}
+      <ScreenTitle level={2}>{t('engine.protocolTitle')}</ScreenTitle>
+      {fit === 'same' && <RestartHint />}
+      <div className={`${rowClass} justify-center`}>
+        {fit === 'newer' && (
+          <Button
+            className="px-5"
+            // The window guard opens https links in the browser.
+            onClick={() => window.open(releaseUrl ?? LATEST_RELEASE_URL)}
+          >
+            {t('engine.getLatest')}
+          </Button>
+        )}
+        <Button
+          variant={fit === 'newer' ? 'ghost' : 'default'}
+          className={fit === 'newer' ? 'bg-secondary px-5' : 'px-5'}
+          onClick={actions.recheck}
+        >
+          {t('action.tryAgain')}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 /** Screen 6: the engine attached, with notes for a newer engine or a gateway left on old code. */
 export function EngineReady({
   screen,
@@ -107,12 +161,7 @@ export function EngineReady({
       </p>
       <p className="text-base text-muted-foreground">{t('setup.readyBody')}</p>
       {screen.newer && <p className="text-base text-foreground">{t('setup.newer')}</p>}
-      {screen.stale && (
-        <div className="flex max-w-md flex-col items-center gap-2 rounded-xl bg-warning-subtle px-4 py-3">
-          <p className="text-base text-foreground">{t('engine.stale')}</p>
-          <CopyButton text={RESTART_COMMAND} label={t('providers.copy')} name={null} />
-        </div>
-      )}
+      {screen.stale && <RestartHint />}
       <Button className="px-5" onClick={onContinue}>
         {t('setup.continue')}
       </Button>

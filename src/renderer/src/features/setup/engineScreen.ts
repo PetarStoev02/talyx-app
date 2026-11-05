@@ -9,6 +9,8 @@ export type EngineScreen =
   | { kind: 'commands'; steps: Extract<InstallSteps, { kind: 'ready' }> }
   | { kind: 'stepsFailed'; reason: 'unavailable' | 'mismatch'; releaseUrl: string }
   | { kind: 'unsupported'; releaseUrl: string }
+  /** The gateway speaks another protocol; an older engine gets the `older` update offer instead. */
+  | { kind: 'protocol'; fit: 'newer' | 'same' }
   | { kind: 'running' }
   | { kind: 'stopped'; index: number; code: number }
   | { kind: 'notFound' }
@@ -41,9 +43,12 @@ function foundScreen(status: EngineStatus): EngineScreen {
   if (status.state === 'missing') return { kind: 'notFound' }
   if (status.state === 'error') {
     // An old engine that cannot attach is offered the update, not the generic error.
-    return status.version !== null && engineVersionFit(status.version) === 'older'
-      ? { kind: 'older', version: status.version, attached: false }
-      : { kind: 'attachError', message: status.message }
+    const fit = engineVersionFit(status.version)
+    if (status.version !== null && fit === 'older')
+      return { kind: 'older', version: status.version, attached: false }
+    if (status.reason === 'protocol')
+      return { kind: 'protocol', fit: fit === 'newer' ? 'newer' : 'same' }
+    return { kind: 'attachError', message: status.message }
   }
   const fit = engineVersionFit(status.version)
   if (fit === 'older') return { kind: 'older', version: status.version, attached: true }

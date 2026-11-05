@@ -91,7 +91,8 @@ describe('engine command', () => {
     expect(await engineWith({ run }).engine.status()).toEqual({
       state: 'error',
       message: 'spawn EACCES',
-      version: null
+      version: null,
+      reason: null
     })
   })
 
@@ -155,7 +156,8 @@ describe('engine status', () => {
     expect(await engine.status()).toEqual({
       state: 'error',
       message: 'Talyx cannot attach to the engine on Windows yet',
-      version: null
+      version: null,
+      reason: null
     })
     expect(run).not.toHaveBeenCalled()
   })
@@ -180,7 +182,8 @@ describe('engine status', () => {
     expect(await engineWith({ run }).engine.status()).toEqual({
       state: 'error',
       message: expect.any(String),
-      version: '0.21.0'
+      version: '0.21.0',
+      reason: null
     })
   })
 
@@ -189,7 +192,8 @@ describe('engine status', () => {
     expect(await engineWith({ run }).engine.status()).toEqual({
       state: 'error',
       message: expect.any(String),
-      version: null
+      version: null,
+      reason: null
     })
   })
 
@@ -213,16 +217,28 @@ describe('engine status', () => {
     expect(status).toMatchObject({ state: 'attached', stale: true })
   })
 
-  it.each([
-    ['a non-loopback origin', endpointFixture({ api_origin: 'http://10.0.0.2:4567' })],
-    ['no session authority', endpointFixture({ capabilities: [] })],
-    ['another runtime protocol', endpointFixture({ runtime_protocol: 2 })]
-  ])('should refuse an endpoint with %s', async (_case, endpoint) => {
-    const status = await engineWith({ ensure: () => ensureOutput(endpoint) }).engine.status()
+  it('should refuse a non-loopback origin as an invalid endpoint, not a protocol problem', async () => {
+    const status = await engineWith({
+      ensure: () => ensureOutput(endpointFixture({ api_origin: 'http://10.0.0.2:4567' }))
+    }).engine.status()
     expect(status).toEqual({
       state: 'error',
       message: 'Invalid local gateway endpoint',
-      version: '1.2.3'
+      version: '1.2.3',
+      reason: null
+    })
+  })
+
+  it.each([
+    ['no session authority', endpointFixture({ capabilities: [] })],
+    ['another runtime protocol', endpointFixture({ runtime_protocol: 2 })]
+  ])('should name a protocol mismatch for an endpoint with %s', async (_case, endpoint) => {
+    const status = await engineWith({ ensure: () => ensureOutput(endpoint) }).engine.status()
+    expect(status).toEqual({
+      state: 'error',
+      message: expect.stringContaining('another gateway protocol'),
+      version: '1.2.3',
+      reason: 'protocol'
     })
   })
 

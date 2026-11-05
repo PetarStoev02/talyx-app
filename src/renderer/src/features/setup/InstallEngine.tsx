@@ -4,7 +4,13 @@ import { useEngine } from '@app/providers/useEngine'
 import { useLanguage } from '@app/providers/useLanguage'
 import { reportError } from '@shared/lib/report'
 import { engineScreen } from './engineScreen'
-import { AttachError, EngineOlder, EngineReady, StepsFailed } from './EngineScreens'
+import {
+  AttachError,
+  EngineOlder,
+  EngineReady,
+  ProtocolMismatch,
+  StepsFailed
+} from './EngineScreens'
 import { useInstall, type SetupBackend } from './install'
 import { InstallCommands } from './InstallCommands'
 import { InstallRunning, InstallStopped } from './InstallOutput'
@@ -76,6 +82,14 @@ export function InstallEngine({
             install: () => setWantsInstall(true),
             chooseFile
           }}
+        />
+      )
+    case 'protocol':
+      return (
+        <ProtocolMismatch
+          fit={screen.fit}
+          releaseUrl={steps?.releaseUrl ?? null}
+          actions={{ recheck: () => void useEngine.getState().check() }}
         />
       )
     case 'commands':

@@ -29,6 +29,8 @@ const en = {
   'engine.debugWaiting': 'Events appear here.',
   'engine.stale':
     'The gateway runs older code than the engine. Run talyx-engine gateway restart when no bot is working.',
+  'engine.protocolTitle': "This engine and this version of Talyx don't speak the same protocol.",
+  'engine.getLatest': 'Get the latest Talyx',
   'setup.welcomeTitle': 'Welcome to Talyx',
   'setup.welcomeBody':
     'Talyx is where you tally your AI bots. They run on the engine, a separate program on this computer. Three short steps: the engine, a model provider, your first bot.',

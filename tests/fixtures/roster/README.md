@@ -59,14 +59,15 @@ Setup (`fixtureSetup.ts`): `?setup=<mode>` opens the first-run flow at Welcome a
 install (fake `echo` commands, one output line every 300 ms) and the providers and roster doubles
 above; its Done opens the fixture on Talyx's chat. No `?setup` keeps the fixture as it is.
 
-| Mode       | The engine step shows                                                         |
-| ---------- | ----------------------------------------------------------------------------- |
-| `missing`  | The install commands; Install runs them, then the engine is ready (0.22.5)    |
-| `offline`  | "Talyx could not get the install steps." with Try again and Choose file       |
-| `mismatch` | The same screen with the hash-mismatch sentence                               |
-| `fail`     | The install stops in command 2 (exit 1): Try again, Show the commands, Copy   |
-| `old`      | Engine 0.21.0 is older: Update runs the install, Continue anyway moves on     |
-| `windows`  | Windows' attach error; Install the engine shows the Windows sentence and link |
+| Mode       | The engine step shows                                                          |
+| ---------- | ------------------------------------------------------------------------------ |
+| `missing`  | The install commands; Install runs them, then the engine is ready (0.22.5)     |
+| `offline`  | "Talyx could not get the install steps." with Try again and Choose file        |
+| `mismatch` | The same screen with the hash-mismatch sentence                                |
+| `fail`     | The install stops in command 2 (exit 1): Try again, Show the commands, Copy    |
+| `old`      | Engine 0.21.0 is older: Update runs the install, Continue anyway moves on      |
+| `windows`  | Windows' attach error; Install the engine shows the Windows sentence and link  |
+| `protocol` | Engine 0.22.9 on another protocol: Get the latest Talyx opens the release page |
 
 Check Copy and Copy all, Install, Cancel (back to the commands), Try again, Choose file (it always
 "finds" engine 0.22.5), Continue, the provider step (Continue once the router is read, Skip), Make

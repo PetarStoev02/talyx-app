@@ -3,12 +3,14 @@ import type { SetupBackend } from '../../../src/renderer/src/features/setup/inst
 import { EXPECTED_ENGINE_VERSION, type EngineStatus } from '../../../src/shared/engine'
 import type { InstallExit, InstallSteps } from '../../../src/shared/setup'
 
-const MODES = ['missing', 'offline', 'mismatch', 'fail', 'old', 'windows'] as const
+const MODES = ['missing', 'offline', 'mismatch', 'fail', 'old', 'windows', 'protocol'] as const
 export type SetupMode = (typeof MODES)[number]
 
 const LINE_MS = 300
 const CHECK_MS = 600
 const OLD_VERSION = '0.21.0'
+// Newer than the pin, so the protocol screen offers the latest Talyx.
+const PROTOCOL_VERSION = '0.22.9'
 const RELEASE_URL = 'https://example.com/releases/v1.0.0-fixture'
 // Synthetic commands: they only name themselves, never a real installer.
 const COMMANDS = [
@@ -25,7 +27,15 @@ const OUTPUT = [
 const WINDOWS_STATUS: EngineStatus = {
   state: 'error',
   message: 'Talyx cannot attach to the engine on Windows yet',
-  version: null
+  version: null,
+  reason: null
+}
+// A gateway that answers with another runtime protocol than Talyx speaks.
+const PROTOCOL_STATUS: EngineStatus = {
+  state: 'error',
+  message: 'The engine speaks another gateway protocol than this version of Talyx',
+  version: PROTOCOL_VERSION,
+  reason: 'protocol'
 }
 // `fail` stops in the second command, as a failed download of a dependency would.
 const FAILING = { index: 1, code: 1, line: 'error: the package index could not be reached' }
@@ -65,6 +75,7 @@ export function fixtureSetup(mode: SetupMode): SetupBackend {
     if (installed) return attachedEngine(EXPECTED_ENGINE_VERSION)
     if (mode === 'old') return attachedEngine(OLD_VERSION)
     if (mode === 'windows') return WINDOWS_STATUS
+    if (mode === 'protocol') return PROTOCOL_STATUS
     return { state: 'missing', enginePath: null }
   }
   const check = async (): Promise<void> => {

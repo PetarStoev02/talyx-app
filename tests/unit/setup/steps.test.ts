@@ -14,7 +14,12 @@ import {
 import { useSetup } from '@features/setup/store'
 
 const missing: EngineStatus = { state: 'missing', enginePath: null }
-const failed: EngineStatus = { state: 'error', message: 'no socket', version: '0.21.0' }
+const failed: EngineStatus = {
+  state: 'error',
+  message: 'no socket',
+  version: '0.21.0',
+  reason: null
+}
 
 function attached(version: string): EngineStatus {
   return {

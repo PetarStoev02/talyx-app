@@ -9,6 +9,7 @@ import {
   type EngineWire
 } from '../../../shared/engine'
 import {
+  EngineProtocolError,
   isStaleLocalGatewayError,
   mintLocalGatewayTicket,
   nativeGrantProfile,
@@ -166,7 +167,7 @@ export function createEngine(deps: EngineDeps): Engine {
     async status(): Promise<EngineStatus> {
       // Windows mints tickets through the engine's own runtime, which Talyx does not drive yet.
       if (platform === 'win32')
-        return { state: 'error', message: WINDOWS_UNSUPPORTED, version: null }
+        return { state: 'error', message: WINDOWS_UNSUPPORTED, version: null, reason: null }
       attached = null
       foundVersion = null
       try {
@@ -188,7 +189,8 @@ export function createEngine(deps: EngineDeps): Engine {
         return {
           state: 'error',
           message: error instanceof Error ? error.message : String(error),
-          version: foundVersion
+          version: foundVersion,
+          reason: error instanceof EngineProtocolError ? 'protocol' : null
         }
       }
     },

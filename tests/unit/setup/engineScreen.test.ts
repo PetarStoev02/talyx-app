@@ -25,8 +25,8 @@ function attached(version: string, stale = false): EngineStatus {
   }
 }
 
-function errored(version: string | null): EngineStatus {
-  return { state: 'error', message: 'no socket', version }
+function errored(version: string | null, reason: 'protocol' | null = null): EngineStatus {
+  return { state: 'error', message: 'no socket', version, reason }
 }
 
 function facts(overrides: Partial<EngineScreenFacts>): EngineScreenFacts {
@@ -85,6 +85,27 @@ describe('engineScreen', () => {
         message: 'no socket'
       })
       expect(engineScreen(facts({ status: errored(null) })).kind).toBe('attachError')
+    })
+  })
+
+  describe('a protocol mismatch', () => {
+    it('should still offer the update to an older engine', () => {
+      expect(engineScreen(facts({ status: errored('0.21.0', 'protocol') }))).toEqual({
+        kind: 'older',
+        version: '0.21.0',
+        attached: false
+      })
+    })
+
+    it.each([
+      ['0.23.0', 'newer'],
+      ['0.22.5', 'same'],
+      [null, 'same']
+    ] as const)('should show the protocol screen for engine %s (%s)', (version, fit) => {
+      expect(engineScreen(facts({ status: errored(version, 'protocol') }))).toEqual({
+        kind: 'protocol',
+        fit
+      })
     })
   })
 

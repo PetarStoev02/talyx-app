@@ -23,8 +23,11 @@ export interface EngineWire {
 
 export type EngineStatus =
   | { state: 'missing'; enginePath: string | null }
-  /** `version` is what `--version` reported when the engine ran but could not attach. */
-  | { state: 'error'; message: string; version: string | null }
+  /**
+   * `version` is what `--version` reported when the engine ran but could not attach; `reason` is
+   * 'protocol' when the gateway speaks another protocol than this Talyx.
+   */
+  | { state: 'error'; message: string; version: string | null; reason: 'protocol' | null }
   | {
       state: 'attached'
       version: string

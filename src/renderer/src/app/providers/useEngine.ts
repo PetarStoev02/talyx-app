@@ -33,7 +33,8 @@ export const useEngine = create<EngineState>((set) => {
         status: {
           state: 'error',
           message: err instanceof Error ? err.message : String(err),
-          version: null
+          version: null,
+          reason: null
         }
       })
     } finally {
