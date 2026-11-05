@@ -66,10 +66,12 @@ We have no access to any of these.
 
 This website counts page views and download clicks with PostHog, hosted in the EU, without cookies.
 
-- **What it counts.** A page view when you open a page, a page leave when you go, and one event when you click a Download button, naming the file.
-- **How.** PostHog's EU Cloud, in cookieless mode: it sets no cookies and stores nothing in your browser. The counts are anonymous.
-- **What is off.** Autocapture of clicks and form fields, session replay, heatmaps, surveys, error capture and page-speed measurements.
-- **Where.** Only on talyx.app.
+- **What it counts.** A page view each time you open a page, a page leave when you go, and one event when you click a Download button, naming the file.
+- **What each count carries.** The page's address and title, the page you came from, your browser, operating system and device type, your screen and window size, and your browser's language and time zone. A page leave also says how long you stayed and how far you scrolled.
+- **How.** The counts go to PostHog's EU Cloud in cookieless mode. PostHog sets no cookies and keeps nothing in your browser's storage, so no ID follows you from visit to visit. To count visitors, PostHog's servers compute a privacy-preserving hash. PostHog removes the IP address from these events, so they carry no location.
+- **What is off.** Autocapture of clicks and form fields, session replay, heatmaps, dead-click tracking, surveys, error capture and page-speed measurements.
+- **Where.** Only on talyx.app. Previews of the site and the live demo on the landing page count nothing.
+- **If you block it.** The site and its downloads work the same with PostHog blocked.
 
 The site remembers your theme choice (light, dark or system) in your browser's local storage, under `talyx-theme`. It is never sent anywhere.
 
@@ -79,7 +81,7 @@ Vercel hosts the site and keeps standard server logs of requests, like any web h
 
 ## 8. Your Rights
 
-Talyx holds no data about you, and the website's counts are anonymous, so we have nothing to access, correct or delete for you. Data you send to your model providers, GitHub, Vercel or PostHog is governed by their policies. Exercise your rights (access, correction, deletion, restriction, portability) with them directly.
+Talyx holds no data about you. The website's counts carry no name, account, cookie or IP address, so we cannot tell which are yours. We have nothing to access, correct or delete for you. Data you send to your model providers, GitHub, Vercel or PostHog is governed by their policies. Exercise your rights (access, correction, deletion, restriction, portability) with them directly.
 
 ---
 

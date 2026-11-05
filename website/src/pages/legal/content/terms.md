@@ -62,7 +62,7 @@ Talyx is provided "as is", without warranty of any kind, express or implied, inc
 
 ## 8. Privacy
 
-See our [Privacy Policy](/legal/privacy) for how data moves between Talyx, the engine, your model providers and GitHub. Talyx has no server of its own.
+See our [Privacy Policy](/legal/privacy) for how data moves between Talyx, the engine, your model providers and GitHub, and for what this website counts. Talyx has no server of its own.
 
 ---
 

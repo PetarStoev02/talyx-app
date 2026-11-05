@@ -3,6 +3,7 @@ import { hydrateRoot, createRoot } from 'react-dom/client'
 import { RouterProvider } from '@tanstack/react-router'
 import { router } from './app/router'
 import { ROUTES } from './shared/data/routes'
+import { startAnalytics } from './shared/analytics'
 import './app/styles.css'
 
 declare global {
@@ -58,3 +59,5 @@ if (root.firstElementChild && ROUTES.includes(path)) {
     </StrictMode>
   )
 }
+
+startAnalytics()
