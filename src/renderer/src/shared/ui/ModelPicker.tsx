@@ -41,7 +41,10 @@ export function ModelPicker({
     setFailure(null)
     load()
       .then(setProviders)
-      .catch((error: unknown) => setFailure(error instanceof Error ? error.message : String(error)))
+      .catch((error: unknown) => {
+        setProviders(null)
+        setFailure(error instanceof Error ? error.message : String(error))
+      })
   }
 
   return (

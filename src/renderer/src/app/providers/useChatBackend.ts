@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRoster } from '@features/bots/store'
-import type { RosterState } from '@features/bots/store'
 import { chatActions } from '@features/chat/chat'
 import type { ChatActions } from '@features/chat/chat'
 import { handleEvent, promptHandler } from '@features/chat/events'
 import type { ChatUpdate } from '@features/chat/events'
-import { useRooms } from '@features/chat/roomStore'
 import { useChat } from '@features/chat/store'
+import { forgetDeleted } from './forgetDeleted'
 import { host } from '@shared/engine/host'
 import { engineHttp } from '@shared/engine/http'
 
@@ -56,17 +55,6 @@ export function useChatBackend(): ChatActions | null {
   }, [actions])
 
   return actions
-}
-
-// A bot or room gone from the roster takes its chat or view along.
-function forgetDeleted({ snapshot }: RosterState, { snapshot: previous }: RosterState): void {
-  if (snapshot === previous) return
-  const bots = new Set(snapshot.bots.map((bot) => bot.name))
-  const rooms = new Set(snapshot.rooms.map((room) => room.room_id))
-  const goneBots = previous.bots.map((bot) => bot.name).filter((name) => !bots.has(name))
-  const goneRooms = previous.rooms.map((room) => room.room_id).filter((id) => !rooms.has(id))
-  if (goneBots.length > 0) useChat.getState().forget(goneBots)
-  if (goneRooms.length > 0) useRooms.getState().forget(goneRooms)
 }
 
 function showOnRoster(update: ChatUpdate | null): void {

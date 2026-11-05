@@ -121,7 +121,8 @@ function SidebarResizer({
       }}
       onPointerUp={(event) => {
         event.currentTarget.releasePointerCapture(event.pointerId)
-        onCommit(clampSidebarWidth(event.clientX))
+        // The width the drag left, so a click without a drag changes nothing.
+        onCommit(width)
       }}
       style={noDragRegion}
       // Just past the sidebar's edge, so it never covers the roster's scrollbar.

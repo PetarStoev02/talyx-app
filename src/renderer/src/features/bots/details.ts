@@ -47,12 +47,10 @@ const configureSchema = z.object({
 })
 
 /**
- * The last details read per profile, so the chat's intro and the details panel show the same
- * ones. A save drops its profile's, so the intro reads them again.
+ * Counts saves of bot details, so a view that shows them (the chat's intro) reads them again;
+ * the details panel and the intro each read their own.
  */
-export const useProfileDetails = create<{ byProfile: Record<string, ProfileDetails> }>(() => ({
-  byProfile: {}
-}))
+export const useDetailsRevision = create<{ revision: number }>(() => ({ revision: 0 }))
 
 export async function loadDetails(
   backend: RosterBackend,
@@ -61,33 +59,16 @@ export async function loadDetails(
   const { description, soul, model } = describeSchema.parse(
     await backend.request(profile, 'profiles.describe', { name: profile })
   )
-  const details = {
+  return {
     description,
     soul,
     model:
       model.provider && model.default ? { provider: model.provider, model: model.default } : null
   }
-  useProfileDetails.setState((state) => ({
-    byProfile: { ...state.byProfile, [profile]: details }
-  }))
-  return details
 }
 
-/** Keeps only the details of `profiles`, dropping deleted bots' ones. */
-export function keepDetails(profiles: Set<string>): void {
-  const { byProfile } = useProfileDetails.getState()
-  if (Object.keys(byProfile).every((profile) => profiles.has(profile))) return
-  useProfileDetails.setState({
-    byProfile: Object.fromEntries(
-      Object.entries(byProfile).filter(([profile]) => profiles.has(profile))
-    )
-  })
-}
-
-function forgetDetails(profile: string): void {
-  useProfileDetails.setState(({ byProfile }) => ({
-    byProfile: Object.fromEntries(Object.entries(byProfile).filter(([key]) => key !== profile))
-  }))
+function detailsChanged(): void {
+  useDetailsRevision.setState(({ revision }) => ({ revision: revision + 1 }))
 }
 
 /**
@@ -104,7 +85,7 @@ export async function saveDetails(
   try {
     return await saveAll(backend, bot, change)
   } finally {
-    forgetDetails(bot.name)
+    detailsChanged()
   }
 }
 
@@ -140,7 +121,7 @@ export async function confirmModel(
       confirm_expensive_model: true
     })
   } finally {
-    forgetDetails(profile)
+    detailsChanged()
   }
 }
 

@@ -43,6 +43,7 @@ const en = {
   'starter.roomIntro': 'Each of you, introduce yourself in a line.',
   'chat.loading': 'Loading the conversation…',
   'action.tryAgain': 'Try again',
+  'action.dismiss': 'Dismiss',
   'chat.errorLoad': 'Talyx could not load this chat.',
   'chat.errorSend': 'Your message was not sent. It is back in the box; send it again.',
   'chat.errorStop': 'The reply did not stop. Press Stop again.',

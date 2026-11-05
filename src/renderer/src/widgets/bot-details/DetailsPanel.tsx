@@ -71,7 +71,6 @@ export function DetailsPanel({
 
   useEffect(() => {
     let current = true
-    useRoster.getState().clearError()
     loadDetails(backend, bot.name)
       .then((details) => {
         if (!current) return

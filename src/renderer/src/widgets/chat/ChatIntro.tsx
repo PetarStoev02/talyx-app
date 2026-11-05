@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import type { RosterBackend } from '@features/bots/data'
-import { loadDetails, useProfileDetails } from '@features/bots/details'
+import { loadDetails, useDetailsRevision } from '@features/bots/details'
+import type { ProfileDetails } from '@features/bots/details'
 import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot } from '@features/bots/types'
@@ -38,14 +39,20 @@ export function ChatIntro({
   onStart: (starter: Starter) => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const details = useProfileDetails((s) => s.byProfile[bot.name] ?? null)
-  // Read again after a save drops them, so the intro shows what was just saved.
-  const missing = !details
+  const [details, setDetails] = useState<ProfileDetails | null>(null)
+  // Read again after a save, so the intro shows what was just saved.
+  const revision = useDetailsRevision((s) => s.revision)
   useEffect(() => {
-    if (!roster || !missing) return
-    // The intro still works without them: the roster's description, no model line.
-    loadDetails(roster, bot.name).catch((error: unknown) => reportError('chat', error))
-  }, [roster, bot.name, missing])
+    if (!roster) return
+    let live = true
+    loadDetails(roster, bot.name)
+      .then((loaded) => live && setDetails(loaded))
+      // The intro still works without them: the roster's description, no model line.
+      .catch((error: unknown) => reportError('chat', error))
+    return () => {
+      live = false
+    }
+  }, [roster, bot.name, revision])
 
   // An empty profile description falls back to what the roster knows.
   const description = (details?.description || bot.meta.description || bot.description || '').trim()

@@ -45,7 +45,8 @@ export function Roster({
   const editingProfile = useRoster((s) => s.editingProfile)
   const actionError = useRoster((s) => s.actionError)
   const loadError = useRoster((s) => s.loadError)
-  const folders = useRoster((s) => s.snapshot.folders)
+  // Every new snapshot renders the roster, so useFlip also sees reorders from other clients.
+  const { folders } = useRoster((s) => s.snapshot)
   const { select, clearError } = useRoster.getState()
   const { creating, setCreating } = useCreating()
   // Pins and rows glide to their new place after a reorder, a pin or a drop.
@@ -54,7 +55,14 @@ export function Roster({
   useFlip(pinnedArea)
   useFlip(folderArea)
   const arrival = useArrival(loading)
-  const closeCreate = (): void => setCreating(null)
+  // A dialog shows its own failure; closing it takes the failure along.
+  const closing =
+    (close: () => void): (() => void) =>
+    () => {
+      clearError()
+      close()
+    }
+  const closeCreate = closing(() => setCreating(null))
   const [deleting, setDeleting] = useState<Bot | null>(null)
   const [deletingRoom, setDeletingRoom] = useState<Room | null>(null)
   const [renamingFolder, setRenamingFolder] = useState<Folder | null>(null)
@@ -122,8 +130,19 @@ export function Roster({
         className="shrink-0 overflow-y-hidden px-3 pt-2 pb-3 [scrollbar-gutter:stable]"
       >
         {/* A dialog or the details panel shows a failed action itself; one place is enough. */}
-        <Reveal value={(!dialogOpen && !editingProfile && actionError) || loadError}>
-          {(problem) => <ProblemBanner problem={problem} retry={reload} />}
+        <Reveal
+          value={
+            // A failed read offers to read again; a failed action, which a reload would not
+            // redo, to dismiss it.
+            !dialogOpen && !editingProfile && actionError
+              ? { problem: actionError, action: { label: t('action.dismiss'), run: clearError } }
+              : loadError && {
+                  problem: loadError,
+                  action: { label: t('action.tryAgain'), run: reload }
+                }
+          }
+        >
+          {(banner) => <ProblemBanner {...banner} />}
         </Reveal>
         {loading && <RosterSkeleton label={t('roster.loading')} />}
         <PinnedGrid
@@ -174,7 +193,7 @@ export function Roster({
             hint: t('roster.newFolderHint'),
             submit: t('roster.createFolder')
           }}
-          onClose={() => setSubfolderOf(null)}
+          onClose={closing(() => setSubfolderOf(null))}
           onSubmit={(name) =>
             run(async () => {
               await actions.addFolder(name, subfolderOf.id)
@@ -191,7 +210,7 @@ export function Roster({
             submit: t('roster.renameFolder')
           }}
           initialName={renamingFolder.name}
-          onClose={() => setRenamingFolder(null)}
+          onClose={closing(() => setRenamingFolder(null))}
           onSubmit={(name) =>
             run(async () => {
               await actions.renameFolder(renamingFolder.id, name)
@@ -202,7 +221,7 @@ export function Roster({
       )}
       <DeleteFolderDialog
         folder={deletingFolder}
-        onClose={() => setDeletingFolder(null)}
+        onClose={closing(() => setDeletingFolder(null))}
         onDelete={(folder) =>
           run(async () => {
             await actions.deleteFolder(folder.id)
@@ -216,7 +235,7 @@ export function Roster({
       {creating === 'room' && <CreateRoomDialog backend={backend} onClose={closeCreate} />}
       <DeleteRoomDialog
         room={deletingRoom}
-        onClose={() => setDeletingRoom(null)}
+        onClose={closing(() => setDeletingRoom(null))}
         onDelete={(room) =>
           run(async () => {
             await actions.deleteRoom(room)
@@ -228,7 +247,7 @@ export function Roster({
       />
       <DeleteProfileDialog
         bot={deleting}
-        onClose={() => setDeleting(null)}
+        onClose={closing(() => setDeleting(null))}
         onDelete={(bot) =>
           run(async () => {
             await actions.deleteProfile(bot)
@@ -243,17 +262,16 @@ export function Roster({
 // Given the problem by its Reveal, so it keeps its words while it closes.
 function ProblemBanner({
   problem,
-  retry
+  action
 }: {
   problem: RosterProblem
-  retry: () => void
+  action: { label: string; run: () => void }
 }): React.JSX.Element {
-  const t = useLanguage((s) => s.t)
   return (
     <div role="alert" className="mb-2 rounded-xl bg-secondary p-3 text-base">
       <ProblemMessage problem={problem} />
-      <button className="mt-2 underline underline-offset-4 hover:decoration-2" onClick={retry}>
-        {t('action.tryAgain')}
+      <button className="mt-2 underline underline-offset-4 hover:decoration-2" onClick={action.run}>
+        {action.label}
       </button>
     </div>
   )

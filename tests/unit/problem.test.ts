@@ -12,6 +12,7 @@ describe('problems', () => {
 
   it.each([
     'Engine gateway is not connected',
+    'Engine socket is not open',
     'fetch failed',
     'connect ECONNREFUSED 127.0.0.1:8642',
     'The operation timed out',
@@ -25,6 +26,9 @@ describe('problems', () => {
 
   it.each([
     ['an error of Talyx’s own', new Error('Canvas 2D is unavailable'), 'Canvas 2D is unavailable'],
+    // A provider's own wording is not the engine being out of reach.
+    ['a provider not signed in', new Error('Account not connected'), 'Account not connected'],
+    ['a provider down', new Error('Provider offline'), 'Provider offline'],
     ['a thrown string', 'broken', 'broken'],
     ['nothing at all', undefined, null]
   ])('should call %s unexpected and keep its text as the detail', (_case, error, detail) => {

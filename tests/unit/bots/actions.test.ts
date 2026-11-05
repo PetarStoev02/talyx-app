@@ -13,6 +13,9 @@ import {
   pinnedBots
 } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
+import { forgetDeleted } from '../../../src/renderer/src/app/providers/forgetDeleted'
+import { useRooms } from '../../../src/renderer/src/features/chat/roomStore'
+import { useChat } from '../../../src/renderer/src/features/chat/store'
 import { BOT_META_KEY, GROUPS_META_KEY, backendFor, engineDouble } from './engineDouble'
 import type { EngineDouble } from './engineDouble'
 
@@ -206,20 +209,24 @@ describe('roster polls', () => {
     await refreshRoster(backend)
     expect(useRoster.getState()).toBe(before)
   })
-  it('should keep the unchanged bots when one changes', async () => {
-    const writer = bot('writer')
-    engine.metadata.support[BOT_META_KEY] = { sectionId: 'clients', title: 'Helpdesk' }
-    await refreshRoster(backend)
-    expect(bot('support').meta.title).toBe('Helpdesk')
-    expect(bot('writer')).toBe(writer)
-  })
-  it("should drop a deleted bot's marks, so a new bot with its name starts clean", async () => {
+  it("should drop a deleted bot's marks and chat, and a deleted room's view", async () => {
+    const off = useRoster.subscribe(forgetDeleted)
     useRoster.getState().markUnread('support')
     useRoster.getState().setActivity('support', 'working')
+    useChat.getState().update('support', { sessionId: 'old-chat' })
+    useChat.getState().update('writer', { sessionId: 'kept' })
+    useRooms.getState().update('team-room', { live: true })
     delete engine.metadata.support
+    engine.rooms.splice(
+      engine.rooms.findIndex((item) => item.room_id === 'team-room'),
+      1
+    )
     await refreshRoster(backend)
+    off()
     expect(useRoster.getState().unread).not.toHaveProperty('support')
     expect(useRoster.getState().activity).not.toHaveProperty('support')
+    expect(Object.keys(useChat.getState().chats)).toEqual(['writer'])
+    expect(useRooms.getState().rooms).not.toHaveProperty('team-room')
   })
 })
 
@@ -236,31 +243,34 @@ describe('roster mutations', () => {
   })
   it('should show the error and keep the current roster when a save fails', async () => {
     await act(async () => {
-      throw new Error('Engine offline')
+      throw new Error('Engine gateway is not connected')
     })
     expect(useRoster.getState().actionError).toEqual({
       key: 'error.engineUnreachable',
-      detail: 'Engine offline'
+      detail: 'Engine gateway is not connected'
     })
     expect(roster().bots).toHaveLength(5)
   })
   it('should report a failed reload as a load problem, not as a failed action', async () => {
     backend.request = async () => {
-      throw new Error('Engine offline')
+      throw new Error('Engine gateway is not connected')
     }
     await act(() => Promise.resolve())
     expect(useRoster.getState().actionError).toBeNull()
     expect(useRoster.getState().loadError).toEqual({
       key: 'error.engineUnreachable',
-      detail: 'Engine offline'
+      detail: 'Engine gateway is not connected'
     })
   })
   it('should keep a failed action showing when a later poll succeeds', async () => {
     await act(async () => {
-      throw new Error('Engine offline')
+      throw new Error('Engine gateway is not connected')
     })
     await refreshRoster(backend)
-    expect(useRoster.getState().actionError?.detail).toBe('Engine offline')
+    expect(useRoster.getState().actionError?.detail).toBe('Engine gateway is not connected')
+    // Moving on to another bot takes it away.
+    useRoster.getState().select({ kind: 'bot', id: 'writer' })
+    expect(useRoster.getState().actionError).toBeNull()
   })
   it('should clear the selection of a bot hidden on another client', async () => {
     useRoster.getState().select({ kind: 'bot', id: 'support' })

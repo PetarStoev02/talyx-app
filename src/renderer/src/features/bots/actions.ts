@@ -24,7 +24,6 @@ import type { RosterProblem } from './roster'
 import { useRoster } from './store'
 import type { RosterState } from './store'
 import { sameJson } from '@shared/lib/utils'
-import { keepDetails } from './details'
 import type { Bot, Folder, Room, RosterItemRef, RosterSnapshot } from './types'
 
 export interface RosterActions {
@@ -71,10 +70,10 @@ export async function refreshRoster(backend: RosterBackend): Promise<void> {
 export function applySnapshot(next: RosterSnapshot): void {
   const state = useRoster.getState()
   const { selection } = state
-  const snapshot = reuseSnapshot(state.snapshot, next)
+  // A poll that read the same roster keeps the snapshot it has, so nothing redraws.
+  const snapshot = sameJson(state.snapshot, next) ? state.snapshot : next
   const bots = new Set(snapshot.bots.map((bot) => bot.name))
   const rooms = new Set(snapshot.rooms.map((room) => room.room_id))
-  keepDetails(bots)
   const unread = only(state.unread, bots)
   const roomUnread = only(state.roomUnread, rooms)
   const seen: Record<string, number> = {}
@@ -109,35 +108,7 @@ export function applySnapshot(next: RosterSnapshot): void {
     loadError: null,
     ...(selection && !exists ? { selection: null } : {})
   })
-  // A poll that finds nothing new leaves the store as it is, so nothing redraws.
   if (Object.keys(change).length > 0) useRoster.setState(change)
-}
-
-// Unchanged bots, rooms and folders keep their objects, so only rows that changed redraw.
-function reuseSnapshot(previous: RosterSnapshot, next: RosterSnapshot): RosterSnapshot {
-  const reused: RosterSnapshot = {
-    bots: reuseList(previous.bots, next.bots, (bot) => bot.name),
-    rooms: reuseList(previous.rooms, next.rooms, (room) => room.room_id),
-    folders: reuseList(previous.folders, next.folders, (folder) => folder.id),
-    roomFolders: sameJson(previous.roomFolders, next.roomFolders)
-      ? previous.roomFolders
-      : next.roomFolders,
-    roomPins: sameJson(previous.roomPins, next.roomPins) ? previous.roomPins : next.roomPins,
-    itemOrder: sameJson(previous.itemOrder, next.itemOrder) ? previous.itemOrder : next.itemOrder
-  }
-  const keys = Object.keys(reused) as Array<keyof RosterSnapshot>
-  return keys.every((key) => reused[key] === previous[key]) ? previous : reused
-}
-
-function reuseList<T>(previous: T[], next: T[], id: (item: T) => string): T[] {
-  const byId = new Map(previous.map((item) => [id(item), item]))
-  const list = next.map((item) => {
-    const old = byId.get(id(item))
-    return old && sameJson(old, item) ? old : item
-  })
-  return list.length === previous.length && list.every((item, index) => item === previous[index])
-    ? previous
-    : list
 }
 
 function only<T>(marks: Record<string, T>, ids: Set<string>): Record<string, T> {

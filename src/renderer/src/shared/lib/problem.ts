@@ -22,7 +22,7 @@ export interface Problem {
 
 // Failures that mean the engine is out of reach, as the socket, fetch and the gateway word them.
 const UNREACHABLE =
-  /not connected|offline|fetch failed|ECONNREFUSED|ECONNRESET|socket (?:closed|failed)|timed? ?out|TimeoutError/i
+  /gateway (?:is )?not connected|socket (?:is not open|failed|closed)|fetch failed|ECONNREFUSED|ECONNRESET|timed? ?out|TimeoutError/i
 
 /**
  * Any thrown value as a Problem. An unknown error gets a headline by kind: the engine out of
