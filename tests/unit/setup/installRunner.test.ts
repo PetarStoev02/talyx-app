@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   loginShell,
   runInstall,
@@ -80,7 +80,29 @@ describe('runInstall', () => {
 })
 
 describe('loginShell', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   it('should return an absolute shell path', () => {
     expect(loginShell()).toMatch(/^\//)
   })
+
+  it.each(['/bin/zsh', '/usr/local/bin/bash', '/bin/sh', '/bin/dash', '/bin/ksh'])(
+    'should use a POSIX login shell as it is (%s)',
+    (shell) => {
+      vi.stubEnv('SHELL', shell)
+
+      expect(loginShell()).toBe(shell)
+    }
+  )
+
+  it.each(['/bin/tcsh', '/bin/csh', '/usr/local/bin/fish', '/opt/homebrew/bin/nu', ''])(
+    'should fall back to bash or sh for a shell that cannot run the commands (%s)',
+    (shell) => {
+      vi.stubEnv('SHELL', shell)
+
+      expect(['/bin/bash', '/bin/sh']).toContain(loginShell())
+    }
+  )
 })

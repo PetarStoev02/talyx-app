@@ -54,9 +54,13 @@ function startInstall(owner: Sender): void {
   cancelWhenGone(owner)
 
   void run.done.then(
-    (exit) => finish(started, exit),
+    (exit) => {
+      logExit(exit)
+      finish(started, exit)
+    },
     (error: unknown) => {
-      log.warn('[Setup] The install run failed unexpectedly:', error)
+      // Name and code only: a spawn error's message can carry the command text.
+      log.warn(`[Setup] The install run failed unexpectedly (${errorLabel(error)})`)
       finish(started, { kind: 'failed', index: 0, code: 1 })
     }
   )
@@ -64,8 +68,13 @@ function startInstall(owner: Sender): void {
 
 function finish(started: RunningInstall, exit: InstallExit): void {
   if (running === started) running = null
-  logExit(exit)
   emit(started.owner, 'setup:install-exit', exit)
+}
+
+function errorLabel(error: unknown): string {
+  if (!(error instanceof Error)) return 'unknown'
+  const code = (error as NodeJS.ErrnoException).code
+  return code ? `${error.name} ${code}` : error.name
 }
 
 // Only the index and the code: the commands and their output stay out of the log.

@@ -1,11 +1,13 @@
 import { createHash } from 'node:crypto'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('electron', () => ({ app: {} }))
+const electronApp = vi.hoisted(() => ({ isPackaged: true, getVersion: (): string => '1.2.3' }))
+vi.mock('electron', () => ({ app: electronApp }))
 vi.mock('electron-log', () => ({ default: { warn: vi.fn(), info: vi.fn(), error: vi.fn() } }))
 
 import {
   ENGINE_INSTALL_SHA256,
+  installStepsSource,
   loadInstallSteps,
   type InstallStepsSource
 } from '../../../src/main/infrastructure/setup/installSteps'
@@ -99,5 +101,47 @@ describe('loadInstallSteps', () => {
 describe('ENGINE_INSTALL_SHA256', () => {
   it('should pin a SHA-256', () => {
     expect(ENGINE_INSTALL_SHA256).toMatch(/^[0-9a-f]{64}$/)
+  })
+})
+
+describe('installStepsSource', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function stubFetch(body: Uint8Array): ReturnType<typeof vi.fn> {
+    const fetch = vi.fn(() => Promise.resolve(new Response(body)))
+    vi.stubGlobal('fetch', fetch)
+    return fetch
+  }
+
+  it('should fetch the file from the release of this version, never the latest one', async () => {
+    const fetch = stubFetch(bytesOf(FILE))
+
+    const source = installStepsSource()
+    await source.read()
+
+    expect(fetch).toHaveBeenCalledWith(
+      'https://github.com/PetarStoev02/talyx-app/releases/download/v1.2.3/engine-install.json',
+      expect.anything()
+    )
+    expect(source.releaseUrl).toBe('https://github.com/PetarStoev02/talyx-app/releases/tag/v1.2.3')
+  })
+
+  it('should report the steps unavailable when the release file is over 64 KiB', async () => {
+    const oversized = new Uint8Array(64 * 1024 + 1)
+    stubFetch(oversized)
+
+    // The hash matches and the platform is supported, so only the size cap can refuse it.
+    const source = {
+      ...installStepsSource(),
+      expectedSha256: sha256(oversized),
+      platform: 'darwin' as const
+    }
+
+    expect(await loadInstallSteps(source)).toEqual({
+      kind: 'unavailable',
+      releaseUrl: 'https://github.com/PetarStoev02/talyx-app/releases/tag/v1.2.3'
+    })
   })
 })

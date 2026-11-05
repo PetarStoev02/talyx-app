@@ -170,6 +170,29 @@ describe('setup IPC', () => {
     }
   )
 
+  it('should log an unexpected failure by name and code only, never its message', async () => {
+    const owner = page()
+    const error = Object.assign(new Error('spawn /bin/sh -lc one ENOENT'), { code: 'ENOENT' })
+    setup.runInstall.mockImplementationOnce(() => ({
+      done: Promise.reject(error),
+      cancel: vi.fn()
+    }))
+    await invoke('setup:install-steps', owner)
+    await invoke('setup:install-run', owner)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      '[Setup] The install run failed unexpectedly (Error ENOENT)'
+    )
+    expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('one')
+    expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('command 0'))
+    expect(owner.sender.send).toHaveBeenCalledWith('setup:install-exit', {
+      kind: 'failed',
+      index: 0,
+      code: 1
+    })
+  })
+
   it('should not throw when the page is gone or refuses a send', async () => {
     const owner = page()
     const run = await startRun(owner)

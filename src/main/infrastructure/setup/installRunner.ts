@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import { basename } from 'node:path'
 import type { InstallExit } from '../../../shared/setup'
 
 export type InstallOutputSink = (index: number, text: string) => void
@@ -10,9 +11,14 @@ export interface InstallRun {
 }
 
 const KILL_GRACE_MS = 3000
+// Shells that take `-lc` and run the POSIX syntax the install commands are written in; csh, fish
+// and nushell do neither.
+const POSIX_SHELLS = new Set(['bash', 'zsh', 'sh', 'dash', 'ksh'])
 
 export function loginShell(): string {
-  return process.env.SHELL || (existsSync('/bin/bash') ? '/bin/bash' : '/bin/sh')
+  const shell = process.env.SHELL
+  if (shell && POSIX_SHELLS.has(basename(shell))) return shell
+  return existsSync('/bin/bash') ? '/bin/bash' : '/bin/sh'
 }
 
 export function runInstall(commands: string[], sink: InstallOutputSink, shell: string): InstallRun {

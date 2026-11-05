@@ -15,15 +15,16 @@ INSTALL_FILE=engine-install.json
 INSTALL_PIN_FILE=src/main/infrastructure/setup/installSteps.ts
 
 check_install_file() {
-  if [ ! -f "$INSTALL_FILE" ]; then
-    echo "✗ $INSTALL_FILE is missing at the repo root; the release cannot ship without it." >&2
+  local file="${1:-$INSTALL_FILE}"
+  if [ ! -f "$file" ]; then
+    echo "✗ $file is missing; the release cannot ship without it." >&2
     return 1
   fi
   local pinned actual
   pinned=$(grep -oE "ENGINE_INSTALL_SHA256 = '[0-9a-f]{64}'" "$INSTALL_PIN_FILE" | grep -oE '[0-9a-f]{64}' || true)
-  actual=$(shasum -a 256 "$INSTALL_FILE" | cut -d' ' -f1)
+  actual=$(shasum -a 256 "$file" | cut -d' ' -f1)
   if [ -z "$pinned" ] || [ "$actual" != "$pinned" ]; then
-    echo "✗ $INSTALL_FILE does not match the hash pinned in $INSTALL_PIN_FILE." >&2
+    echo "✗ $file does not match the hash pinned in $INSTALL_PIN_FILE." >&2
     echo "  file:   $actual" >&2
     echo "  pinned: ${pinned:-none}" >&2
     echo "  If the file changed on purpose, review it and update the pin in the same commit." >&2
@@ -31,6 +32,8 @@ check_install_file() {
   fi
 }
 
+# Checked before the build so a bad file fails fast, and again on the copy that is uploaded,
+# since the file can change during the minutes the build takes.
 check_install_file
 
 # Every uploaded file must come from this build; electron-builder never cleans dist/.
@@ -46,6 +49,7 @@ npm run build:mac
 # the release page (shasum -a 256 -c SHA256SUMS --ignore-missing). The install file is listed
 # too: the app fetches it from this release, so its checksum is part of what users verify.
 cp "$INSTALL_FILE" dist/
+check_install_file "dist/$INSTALL_FILE"
 (cd dist && shasum -a 256 *.dmg "$INSTALL_FILE" > SHA256SUMS)
 
 echo ""
