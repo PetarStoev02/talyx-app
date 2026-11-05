@@ -164,11 +164,21 @@ Petar is the main user of Talyx. He will use it more after the pivot than before
     tick face in white. It is the one bot without a hue; that is how the manager is told apart. Data: `ui_meta['talyx-bots']` keeps `shape` and `color`; new values are the shape
     name and hue index; old values map once (hue from the hsl string, shape from a hash of the
     blobatar id); bots with no values get "Match the name" (hash of the name) written back
-    through `profiles.configure`. A 1024px PNG is exported as the profile asset so other engine
+    through `profiles.configure` (revised for PR 8 below: read, never written back). A 1024px PNG is exported as the profile asset so other engine
     surfaces match. The profile's old `avatar.png` is overwritten by that export. No upload in
     1.0. Faces are on by default (Petar, 2026-11-04), one flag turns them off; no initials on
     the blocks. Fallback if blocks feel too playful after a day: Tiles, a rounded square in a pale tint
     with the initial in the hue's ink, same data, renderer swapped.
+    Built in PR 8 (Petar's decisions, 2026-11-04): nothing is written back. A bot without a saved
+    look is drawn from a hash of its profile id, and an older client's values are read as the
+    nearest block (hue from the colour converted to oklch, shape from a hash of the old value);
+    `ui_meta` changes only when a look is saved. The PNG is exported only on a Look save or when a
+    bot is created; Talyx's is never exported. The face flag is per bot (`faces: false` in the
+    same record). Offline means the engine socket is down, so every block greys together. A chat
+    shows "<name> is typing" with the bot's block bobbing; a room's "Answering:" line and its name
+    pill bob the answering members. "Match the name" is the plain hash; two bots may look alike.
+    My calls: the mockup's 12 hue angles (`20` to `260`, then `285`, `310`, `340`), stored as an
+    index; Look edits save with the panel's Save; the exported PNG is the idle block.
 11. **English only** (Petar's decision). The engine has no Bulgarian bundles; its seven locale
     bundles are not moved. Talyx keeps its own `shared/lib/i18n.ts`; Bulgarian can be added
     later as one file.

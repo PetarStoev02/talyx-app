@@ -7,10 +7,11 @@ import {
   saveDetails
 } from '../../../src/renderer/src/features/bots/details'
 import type { DetailsDraft } from '../../../src/renderer/src/features/bots/details'
+import { lookOf } from '../../../src/renderer/src/features/bots/look'
 import { RosterError } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import type { Bot } from '../../../src/renderer/src/features/bots/types'
-import { BOT_META_KEY, backendFor, engineDouble } from './engineDouble'
+import { BOT_META_KEY, backendFor, engineDouble, pngOf } from './engineDouble'
 import type { EngineDouble } from './engineDouble'
 
 let engine: EngineDouble
@@ -29,7 +30,11 @@ beforeEach(async () => {
 const bot = (name: string): Bot => useRoster.getState().snapshot.bots.find((b) => b.name === name)!
 
 async function opening(name: string): Promise<DetailsDraft> {
-  return { title: bot(name).meta.title ?? '', ...(await loadDetails(backend, name)) }
+  return {
+    title: bot(name).meta.title ?? '',
+    look: lookOf(bot(name)),
+    ...(await loadDetails(backend, name))
+  }
 }
 
 describe('bot details', () => {
@@ -53,6 +58,7 @@ describe('bot details', () => {
       expect(await saveDetails(backend, bot('analyst'), { opening: draft, draft })).toBeNull()
       expect(engine.configureCalls).toEqual([])
       expect(engine.configured).toEqual([])
+      expect(engine.assets).toEqual([])
     })
 
     it('should send only the changed sections', async () => {
@@ -79,6 +85,50 @@ describe('bot details', () => {
       expect(engine.configured).toEqual([])
     })
 
+    it('should save a new look in the bot metadata and export it as the avatar image', async () => {
+      const before = await opening('analyst')
+      const look = { shape: 'tower' as const, hue: 2, faces: false }
+      await saveDetails(backend, bot('analyst'), { opening: before, draft: { ...before, look } })
+      expect(engine.metadata.analyst[BOT_META_KEY]).toEqual({
+        title: 'Analyst',
+        sectionId: 'team',
+        sectionName: 'Team',
+        shape: 'tower',
+        color: 2,
+        faces: false
+      })
+      expect(engine.assets).toEqual([
+        { profile: 'analyst', params: { name: 'analyst', asset: 'avatar', data: pngOf(look) } }
+      ])
+      await refreshRoster(backend)
+      expect(lookOf(bot('analyst'))).toEqual(look)
+    })
+
+    it("should turn Talyx's face off without exporting an image", async () => {
+      const before = await opening('default')
+      await saveDetails(backend, bot('default'), {
+        opening: before,
+        draft: { ...before, look: { ...before.look, faces: false } }
+      })
+      expect(engine.metadata.default[BOT_META_KEY]).toEqual({ faces: false })
+      expect(engine.assets).toEqual([])
+    })
+
+    it('should save nothing when the image export fails, so the same Save can retry', async () => {
+      engine.failAssetOnce()
+      const before = await opening('analyst')
+      const look = { shape: 'slab' as const, hue: 8, faces: true }
+      const change = { opening: before, draft: { ...before, look, soul: '# New' } }
+      await expect(saveDetails(backend, bot('analyst'), change)).rejects.toThrow(
+        'Asset store is read-only'
+      )
+      expect(engine.metadata.analyst[BOT_META_KEY]).not.toHaveProperty('shape')
+      expect(engine.configured).toEqual([])
+      await saveDetails(backend, bot('analyst'), change)
+      expect(engine.metadata.analyst[BOT_META_KEY]).toMatchObject({ shape: 'slab', color: 8 })
+      expect(engine.assets.map((asset) => asset.params.data)).toEqual([pngOf(look)])
+    })
+
     it('should drop a stale metadata description when the description changes', async () => {
       engine.metadata.analyst[BOT_META_KEY] = { title: 'Analyst', description: 'old' }
       await refreshRoster(backend)
@@ -93,13 +143,15 @@ describe('bot details', () => {
       expect(engine.profiles.analyst.description).toBe('Margins and cash')
     })
 
-    it('should ask before an expensive model and keep the other sections', async () => {
+    it('should ask before an expensive model and keep the other sections and the look', async () => {
       engine.expensiveModels.add('big')
       const before = await opening('analyst')
+      const look = { ...before.look, hue: 0 }
       const confirm = await saveDetails(backend, bot('analyst'), {
         opening: before,
-        draft: { ...before, soul: '# Bigger', model: { provider: 'custom', model: 'big' } }
+        draft: { ...before, look, soul: '# Bigger', model: { provider: 'custom', model: 'big' } }
       })
+      expect(engine.assets.map((asset) => asset.params.data)).toEqual([pngOf(look)])
       expect(confirm).toEqual({
         message: 'Costs more',
         model: { provider: 'custom', model: 'big' }

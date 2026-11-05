@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
+import { BotAvatar } from '@features/bots/BotAvatar'
 import { botChatId, botTitle } from '@features/bots/roster'
 import type { Bot } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
@@ -91,6 +92,12 @@ export function ChatPane({
           >
             {t('chat.retry')}
           </button>
+        </p>
+      )}
+      {target.running && !prompts.length && (
+        <p className="mx-auto flex w-full max-w-3xl items-center gap-2 px-6 pb-2 text-sm text-muted-foreground">
+          <BotAvatar bot={bot} place="row" speaking />
+          {t('chat.typing').replace('{name}', title)}
         </p>
       )}
       {/* Always mounted, so a screen reader hears when a card asks for an answer. */}

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { host } from '@shared/engine/host'
+import { blockPng } from '@shared/ui/blockPng'
 import type { RosterBackend } from '@features/bots/data'
+import { useRoster } from '@features/bots/store'
 import { useEngine } from './useEngine'
 
 /**
@@ -18,10 +20,12 @@ export function useRosterBackend(): RosterBackend | null {
     if (!useEngine.getState().status) void check()
   }, [check])
   // A request before the first open fails at once; after that, drops redial on their own.
+  // While the socket is down, every bot shows as offline.
   useEffect(
     () =>
       host.onState((state) => {
         if (state === 'open') setOpened(true)
+        useRoster.getState().setOnline(state === 'open')
       }),
     []
   )
@@ -44,6 +48,7 @@ export function rosterBackendFor(keys: {
       await host.deleteProfile(profile)
     },
     botMetaKey,
-    botGroupsMetaKey
+    botGroupsMetaKey,
+    avatarPng: blockPng
   }
 }

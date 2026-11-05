@@ -70,7 +70,7 @@ function Sender({ sender }: { sender: { name: string; profile: string } }): Reac
   const bot = useRoster((state) => state.snapshot.bots.find((item) => item.name === profile))
   return (
     <p className="flex items-center gap-2 text-sm font-medium">
-      <BotAvatar bot={bot ?? { name: profile, meta: {} }} />
+      <BotAvatar bot={bot ?? { name: profile, meta: {} }} place="row" />
       {bot ? botTitle(bot) : sender.name}
     </p>
   )

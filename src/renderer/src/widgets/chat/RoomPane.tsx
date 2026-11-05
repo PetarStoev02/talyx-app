@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
+import { BotAvatar } from '@features/bots/BotAvatar'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot, Room } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
+import { answering } from '@features/chat/room'
 import type { RoomActions } from '@features/chat/room'
 import { parseAttachmentKey, roomItems } from '@features/chat/roomLog'
 import { useRooms } from '@features/chat/roomStore'
@@ -117,8 +119,16 @@ export function RoomPane({
       )}
       <p
         role="status"
-        className="mx-auto w-full max-w-3xl px-6 pb-2 text-sm text-muted-foreground empty:hidden"
+        className="mx-auto flex w-full max-w-3xl items-center gap-2 px-6 pb-2 text-sm text-muted-foreground empty:hidden"
       >
+        {answering(room, view.phases).map((profile) => (
+          <BotAvatar
+            key={profile}
+            bot={bots.find((item) => item.name === profile) ?? { name: profile, meta: {} }}
+            place="row"
+            speaking
+          />
+        ))}
         {activityLine(view, nameOf, t)}
       </p>
       {/* The composer's Send or the card's own button is the retry for these. */}

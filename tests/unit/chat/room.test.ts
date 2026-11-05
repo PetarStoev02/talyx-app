@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { roomActions } from '../../../src/renderer/src/features/chat/room'
+import { answering, roomActions } from '../../../src/renderer/src/features/chat/room'
 import type { RoomActions } from '../../../src/renderer/src/features/chat/room'
 import {
   attachmentKey,
@@ -98,7 +98,7 @@ describe('group room', () => {
   })
 
   describe('who is talking', () => {
-    it('should say which members answer and which wait their turn', async () => {
+    it('should say which members answer, by profile, and which wait their turn', async () => {
       engine.driver!.working = true
       engine.driver!.member_activity = [
         { member_id: 'acme-cfo', status: 'queued' },
@@ -110,6 +110,12 @@ describe('group room', () => {
         working: true,
         phases: { 'acme-cfo': 'working', default: 'queued' }
       })
+      const members = [{ profile: 'acme-cfo' }, { profile: 'default' }]
+      expect(answering({ members }, view().phases)).toEqual(['acme-cfo'])
+      // A legacy roster row seats a member under an id other than its profile.
+      const seated = [{ profile: 'acme-ops', member_id: 'acme-cfo' }]
+      expect(answering({ members: seated }, view().phases)).toEqual(['acme-ops'])
+      expect(answering({ members }, undefined)).toEqual([])
     })
   })
 

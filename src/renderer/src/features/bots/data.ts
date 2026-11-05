@@ -8,6 +8,7 @@ import {
   normalizeFolders,
   recoverFolders
 } from './roster'
+import type { Look } from './look'
 import type { Bot, BotMeta, Folder, Room, RosterSnapshot } from './types'
 
 export interface RosterBackend {
@@ -15,6 +16,8 @@ export interface RosterBackend {
   botMetaKey: string
   botGroupsMetaKey: string
   deleteProfile: (profile: string) => Promise<void>
+  // The block as a PNG data URL, for the profile's avatar image.
+  avatarPng: (look: Look) => Promise<string>
 }
 
 export type RosterRequest = (
@@ -57,7 +60,10 @@ const metaSchema = z
     sectionName: lenient(z.string().nullable()),
     pinned: lenient(z.boolean()),
     pinnedOrder: lenient(z.number().finite()),
-    hidden: lenient(z.boolean())
+    hidden: lenient(z.boolean()),
+    shape: lenient(z.string()),
+    color: lenient(z.union([z.number().finite(), z.string()])),
+    faces: lenient(z.boolean())
   })
   .catch({})
 const roomFoldersSchema = z.record(z.string(), z.string().nullable())

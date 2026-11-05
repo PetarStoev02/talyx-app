@@ -1,6 +1,7 @@
 import { expect } from 'vitest'
 import type { RosterBackend, RosterRequest } from '../../../src/renderer/src/features/bots/data'
 import type { ModelChoice } from '../../../src/renderer/src/features/bots/details'
+import type { Look } from '../../../src/renderer/src/features/bots/look'
 import type { Room } from '../../../src/renderer/src/features/bots/types'
 
 export const BOT_META_KEY = 'acme-bots'
@@ -41,13 +42,20 @@ export interface EngineDouble {
   failCronOnce: (error: string) => void
   failMetaOnce: () => void
   rooms: Room[]
+  /** Every profiles.set_asset call, in order. */
+  assets: { profile: string; params: Record<string, unknown> }[]
+  failAssetOnce: () => void
   // What groups.capabilities says the engine will seat; null when it does not say.
   seatable: string[] | null
 }
 
+/** What the double's renderer returns for a look, so a test can tell which look was exported. */
+export const pngOf = (look: Look): string =>
+  `data:image/png;base64,${look.shape}-${look.hue}-${look.faces ? 'face' : 'plain'}`
+
 const blank = (): ProfileState => ({ description: '', soul: '', model: null })
 
-// In-memory engine: profiles.list/describe/create/configure, groups.list/capabilities/create/
+// In-memory engine: profiles.list/describe/create/configure/set_asset, groups.list/capabilities/create/
 // disband and cron.manage.
 export function engineDouble(
   metadata: Record<string, Record<string, unknown>> = {
@@ -84,6 +92,8 @@ export function engineDouble(
   let conflict = false
   let cronFailure: string | null = null
   let metaFailure = false
+  let assetFailure = false
+  const assets: EngineDouble['assets'] = []
 
   function configureMeta(profile: string, params: Record<string, unknown>): unknown {
     const patch = params.ui_meta as Record<string, unknown>
@@ -188,6 +198,15 @@ export function engineDouble(
     }
   }
 
+  function setAsset(profile: string, params: Record<string, unknown>): unknown {
+    if (assetFailure) {
+      assetFailure = false
+      throw new Error('Asset store is read-only')
+    }
+    assets.push({ profile, params: structuredClone(params) })
+    return { ok: true, asset: params.asset, size: String(params.data).length }
+  }
+
   const request: RosterRequest = async (profile, method, params) => {
     if (method === 'profiles.list')
       return {
@@ -223,12 +242,14 @@ export function engineDouble(
     }
     if (method === 'profiles.create') return createProfile(params)
     if (method === 'cron.manage') return manageCron(profile, params)
+    if (method === 'profiles.set_asset') return setAsset(profile, params)
     if (method !== 'profiles.configure') throw new Error(`Unexpected method ${method}`)
     return params.ui_meta ? configureMeta(profile, params) : configureSections(params)
   }
   const double: EngineDouble = {
     request,
     rooms,
+    assets,
     seatable: null,
     metadata,
     profiles,
@@ -248,6 +269,9 @@ export function engineDouble(
     },
     failMetaOnce: () => {
       metaFailure = true
+    },
+    failAssetOnce: () => {
+      assetFailure = true
     }
   }
   return double
@@ -264,6 +288,7 @@ export function backendFor(
       if (!engine.metadata || !engine.deleted) throw new Error('Not used')
       delete engine.metadata[profile]
       engine.deleted.push(profile)
-    }
+    },
+    avatarPng: async (look) => pngOf(look)
   }
 }

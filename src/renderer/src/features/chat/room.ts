@@ -343,6 +343,16 @@ export function roomActions(backend: RoomBackend): RoomActions {
   }
 }
 
+/** The profiles answering in a room right now, by the members' phases from its last poll. */
+export function answering(
+  room: { members: RoomMember[] },
+  phases: Record<string, MemberPhase> | undefined
+): string[] {
+  return room.members
+    .filter((member) => phases?.[member.member_id ?? member.profile] === 'working')
+    .map((member) => member.profile)
+}
+
 // A member running (or stopping) outranks the same member still queued behind it.
 function phasesOf(driver: DriverStatus | null | undefined): Record<string, MemberPhase> {
   const phases: Record<string, MemberPhase> = {}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Toaster } from 'sonner'
 import { Roster } from '../../../src/renderer/src/widgets/roster/Roster'
@@ -7,10 +7,20 @@ import { ProvidersSection } from '../../../src/renderer/src/widgets/providers'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { useEngine } from '../../../src/renderer/src/app/providers/useEngine'
 import type { RosterRequest } from '../../../src/renderer/src/features/bots/data'
+import { blockPng } from '../../../src/renderer/src/shared/ui/blockPng'
 import { fixtureChat } from './fixtureChat'
 import { fixtureProviders } from './fixtureProviders'
 import { roomRequest, roomSessionRequest } from './fixtureRooms'
 import './fixture.css'
+
+// Saved looks: one in today's values, one from an older client (read as the nearest block).
+// Every other bot matches its name.
+const LOOKS: Record<string, Record<string, unknown>> = {
+  writer: { shape: 'tower', color: 2, faces: false },
+  designer: { shape: 'blobatar:fixture1', color: 'hsl(150 68% 58%)', imageKind: 'shape' }
+}
+// The last avatar image each profile was given through profiles.set_asset.
+const assets: Record<string, string> = {}
 
 // Deliberately in-memory: this fixture never connects to or modifies user profiles.
 const profiles = [
@@ -30,10 +40,11 @@ const profiles = [
   ui_meta: {
     'acme-bots': {
       title: name === 'default' ? 'Talyx' : name[0].toUpperCase() + name.slice(1),
-      pinned: index < 2,
+      pinned: index < 2 || name === 'analyst',
       pinnedOrder: index,
       sectionId: index < 6 ? 'team' : 'clients',
-      sectionName: index < 6 ? 'Team' : 'Clients'
+      sectionName: index < 6 ? 'Team' : 'Clients',
+      ...LOOKS[name]
     }
   } as Record<string, unknown>,
   ui_meta_revisions: { 'acme-bots': 1 } as Record<string, number>,
@@ -180,6 +191,11 @@ const request: RosterRequest = async (profile, method, params) => {
     (method.startsWith('session.') || method === 'config.set') &&
     roomSessionRequest(profile, method, params)
   if (roomSession) return roomSession
+  if (method === 'profiles.set_asset') {
+    assets[params.name as string] = params.data as string
+    window.dispatchEvent(new Event('fixture-asset'))
+    return { ok: true, asset: params.asset }
+  }
   throw new Error('Unsupported fixture operation')
 }
 async function deleteProfile(profile: string): Promise<void> {
@@ -191,7 +207,8 @@ const backend = {
   request,
   deleteProfile,
   botMetaKey: 'acme-bots',
-  botGroupsMetaKey: 'acme-bots-groups'
+  botGroupsMetaKey: 'acme-bots-groups',
+  avatarPng: blockPng
 }
 // The agents page waits for an attached engine; this page has no engine, so it says it has one.
 useEngine.setState({
@@ -212,8 +229,26 @@ useRoster.getState().markUnread('writer')
 const providers = fixtureProviders(profiles.map((bot) => bot.name))
 const chat = fixtureChat(providers)
 
+// The newest exported avatar image, so the PNG can be checked without an engine.
+function ExportedAvatar(): React.JSX.Element | null {
+  const [latest, setLatest] = useState<[string, string] | null>(null)
+  useEffect(() => {
+    const show = (): void => setLatest(Object.entries(assets).at(-1) ?? null)
+    window.addEventListener('fixture-asset', show)
+    return () => window.removeEventListener('fixture-asset', show)
+  }, [])
+  if (!latest) return null
+  return (
+    <figure className="mx-3 flex items-center gap-2 text-xs">
+      <img src={latest[1]} alt="" width={48} height={48} data-testid="exported-avatar" />
+      <figcaption>Exported avatar.png for {latest[0]}</figcaption>
+    </figure>
+  )
+}
+
 export function Fixture(): React.JSX.Element {
   const [page, setPage] = useState<'agents' | 'settings'>('agents')
+  const online = useRoster((state) => state.online)
   return (
     <div className="flex h-screen bg-card">
       <Toaster position="bottom-right" closeButton />
@@ -228,6 +263,14 @@ export function Fixture(): React.JSX.Element {
         >
           {page === 'settings' ? 'Back to agents' : 'Settings'}
         </button>
+        <button
+          className="mx-3 mb-3 rounded-full px-3 py-2 text-left text-sm hover:bg-accent"
+          aria-pressed={!online}
+          onClick={() => useRoster.getState().setOnline(!online)}
+        >
+          {online ? 'Drop the engine socket (offline)' : 'Reconnect the engine socket'}
+        </button>
+        <ExportedAvatar />
       </aside>
       <main className="min-w-0 flex-1">
         {page === 'settings' ? (

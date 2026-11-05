@@ -1,0 +1,73 @@
+/* Block avatars (pivot decision 10): transform and opacity only, all off under reduced motion. */
+@keyframes block-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes block-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes block-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes block-turn {
+  50% {
+    transform: perspective(240px) rotateY(24deg);
+  }
+}
+
+.block-bob {
+  animation: block-bob 1.6s ease-in-out infinite;
+}
+
+.block-blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: block-blink 5s infinite;
+}
+
+.block-tick {
+  transition:
+    transform 200ms ease,
+    opacity 200ms ease;
+}
+
+.block-fade {
+  animation: block-fade 150ms ease-out;
+}
+
+/* The Look preview: a new shape or hue fades in and the block turns once. */
+.block-look {
+  animation:
+    block-fade 150ms ease-out,
+    block-turn 600ms ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block-bob,
+  .block-blink,
+  .block-fade,
+  .block-look {
+    animation: none;
+  }
+
+  .block-tick {
+    transition: none;
+  }
+}

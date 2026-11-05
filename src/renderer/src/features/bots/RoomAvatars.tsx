@@ -7,23 +7,27 @@ const SHOWN = 3
 export function RoomAvatars({
   room,
   bots,
-  size = 24
+  size = 24,
+  speaking = []
 }: {
   room: Room
   bots: Bot[]
   size?: number
+  // Profiles answering in the open room; their blocks bob.
+  speaking?: string[]
 }): React.JSX.Element {
   return (
-    <span className="flex shrink-0 -space-x-3" aria-hidden="true">
+    <span className="flex shrink-0 items-end -space-x-1" aria-hidden="true">
       {room.members.slice(0, SHOWN).map((member) => (
-        <span key={member.profile} className="rounded-full bg-sidebar">
-          <BotAvatar
-            bot={
-              bots.find((bot) => bot.name === member.profile) ?? { name: member.profile, meta: {} }
-            }
-            size={size}
-          />
-        </span>
+        <BotAvatar
+          key={member.profile}
+          bot={
+            bots.find((bot) => bot.name === member.profile) ?? { name: member.profile, meta: {} }
+          }
+          place="row"
+          size={size}
+          speaking={speaking.includes(member.profile)}
+        />
       ))}
     </span>
   )

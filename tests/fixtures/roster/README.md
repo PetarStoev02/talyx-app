@@ -28,6 +28,16 @@ Cancel discards, the confirm dialog's two answers, routine toggles, New routine 
 roster's `+` opens New bot: check the profile-id hint, a taken name, a non-Latin name (`bot-N`),
 the default folder, and that the new bot lands in its folder, is selected and answers a message.
 
+Avatars: every bot is a block. Writer has a saved look (tower, faces off), Designer an older
+client's blobatar and hsl colour (read as the nearest block), the rest match their names; Talyx is
+the logo. Researcher shows working, Analyst waiting on you, and "Drop the engine socket" greys
+every block as offline. Check the pinned tiles blink, bob and lift on hover, the details hero
+turns toward the cursor, the Look tab (shapes, colours, Match the name, the face switch, the
+preview's crossfade) and that Save updates every size at once. A Look save or a new bot exports
+the block through `profiles.set_asset`; the newest export shows under the roster as a 1024px PNG.
+A bot that is answering shows "<name> is typing" with its block bobbing; in a room, each answering
+member's block bobs beside "Answering:" and in the name pill.
+
 Rooms (`fixtureRooms.ts`): Team discussion has a history with three senders; Archived plans is a
 room the engine does not run, so it reads but has no composer. Sending to a room makes each member
 answer in turn, a few seconds apart, with "Answering:" and "Up next:" under the transcript. A message

@@ -11,6 +11,8 @@ import type {
   ModelConfirm,
   ProfileDetails
 } from '@features/bots/details'
+import { lookOf, sameLook } from '@features/bots/look'
+import { LookPicker } from '@features/bots/LookPicker'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
 import { botTitle, problemOf } from '@features/bots/roster'
 import type { RosterProblem } from '@features/bots/roster'
@@ -52,11 +54,16 @@ export function DetailsPanel({
   const [loaded, setLoaded] = useState<ProfileDetails | null>(null)
   const [loadError, setLoadError] = useState<RosterProblem | null>(null)
   const [title, setTitle] = useState(bot.meta.title ?? '')
+  const [look, setLook] = useState(() => lookOf(bot))
   const [fields, setFields] = useState<ProfileDetails | null>(null)
   const [confirm, setConfirm] = useState<ModelConfirm | null>(null)
   const [attempt, setAttempt] = useState(0)
-  const opening: DetailsDraft | null = loaded && { title: bot.meta.title ?? '', ...loaded }
-  const draft: DetailsDraft | null = fields && { title, ...fields }
+  const opening: DetailsDraft | null = loaded && {
+    title: bot.meta.title ?? '',
+    look: lookOf(bot),
+    ...loaded
+  }
+  const draft: DetailsDraft | null = fields && { title, look, ...fields }
 
   useEffect(() => {
     let current = true
@@ -77,6 +84,7 @@ export function DetailsPanel({
     !!draft &&
     !!opening &&
     (draft.title.trim() !== opening.title.trim() ||
+      !sameLook(draft.look, opening.look) ||
       draft.description.trim() !== opening.description.trim() ||
       draft.soul !== opening.soul ||
       (!!draft.model &&
@@ -129,7 +137,7 @@ export function DetailsPanel({
         >
           <X size={16} />
         </button>
-        <BotAvatar bot={bot} size={64} />
+        <BotAvatar bot={bot} place="hero" />
         <h2 className="text-xl font-semibold">{botTitle(bot)}</h2>
         <p className="text-sm text-muted-foreground">
           {[
@@ -216,7 +224,7 @@ export function DetailsPanel({
             <RoutinesSection bot={bot} backend={backend} />
           </div>
         ) : tab === 'look' ? (
-          <p className="text-base">{t('details.lookSoon')}</p>
+          <LookPicker look={draft.look} profile={bot.name} onChange={setLook} />
         ) : (
           <label className="flex flex-1 flex-col text-base">
             {t('details.soul')}

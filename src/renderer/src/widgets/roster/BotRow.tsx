@@ -68,7 +68,13 @@ export function BotRow({
           pinned && 'flex-col px-1 pt-8 text-center'
         )}
       >
-        <BotAvatar bot={bot} size={pinned ? avatarSize : 24} />
+        {pinned ? (
+          <span className="transition-transform group-hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-y-0">
+            <BotAvatar bot={bot} place="tile" size={avatarSize} />
+          </span>
+        ) : (
+          <BotAvatar bot={bot} place="row" />
+        )}
         {/* In a tile the column would grow to the name; the full width lets it truncate. */}
         <span className={cn('min-w-0 flex-1', pinned && 'w-full')} title={botTitle(bot)}>
           <span className={cn('flex items-baseline gap-2', pinned && 'justify-center')}>
@@ -84,7 +90,7 @@ export function BotRow({
           </span>
         </span>
         {(unread || activity === 'waiting') && (
-          <span className="size-2 shrink-0 rounded-full bg-brand" aria-hidden="true" />
+          <span className="block-fade size-2 shrink-0 rounded-full bg-brand" aria-hidden="true" />
         )}
       </button>
       <RosterMenu

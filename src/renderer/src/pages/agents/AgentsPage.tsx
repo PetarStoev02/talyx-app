@@ -9,7 +9,8 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { EngineGate } from '@widgets/engine-gate'
 import { ChatPane, RoomPane } from '@widgets/chat'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
-import { roomActions } from '@features/chat/room'
+import { answering, roomActions } from '@features/chat/room'
+import { useRooms } from '@features/chat/roomStore'
 import { DetailsPanel } from '@widgets/bot-details'
 import type { ChatActions } from '@features/chat/chat'
 import type { RosterBackend } from '@features/bots/data'
@@ -30,6 +31,7 @@ export function AgentsPage({
   const room = snapshot.rooms.find(
     (item) => selection?.kind === 'room' && item.room_id === selection.id
   )
+  const phases = useRooms((state) => (room ? state.rooms[room.room_id]?.phases : undefined))
   const title = bot ? botTitle(bot) : room?.name
   const rooms = useMemo(() => roster && roomActions(roster), [roster])
   return (
@@ -51,7 +53,7 @@ export function AgentsPage({
                     'group transition-colors select-none hover:bg-foreground/10 aria-expanded:bg-foreground/10'
                   )}
                 >
-                  <BotAvatar bot={bot} />
+                  <BotAvatar bot={bot} place="pill" />
                   <span className="truncate">{title}</span>
                   <ChevronRight
                     size={16}
@@ -61,7 +63,14 @@ export function AgentsPage({
                 </button>
               ) : (
                 <span className={pillClass}>
-                  {room && <RoomAvatars room={room} bots={snapshot.bots} />}
+                  {room && (
+                    <RoomAvatars
+                      room={room}
+                      bots={snapshot.bots}
+                      size={20}
+                      speaking={answering(room, phases)}
+                    />
+                  )}
                   <span className="truncate">{title}</span>
                 </span>
               )}
@@ -71,7 +80,7 @@ export function AgentsPage({
             <ChatPane
               key={bot.name}
               bot={bot}
-              avatar={<BotAvatar bot={bot} size={64} />}
+              avatar={<BotAvatar bot={bot} place="tile" size={64} />}
               actions={chat}
             />
           ) : room ? (

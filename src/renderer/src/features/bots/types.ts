@@ -6,6 +6,10 @@ export interface BotMeta {
   pinned?: boolean
   pinnedOrder?: number
   hidden?: boolean
+  // The avatar: a block shape name and a hue index. Older clients stored other strings here.
+  shape?: string
+  color?: number | string
+  faces?: boolean
 }
 
 export interface SessionPreview {

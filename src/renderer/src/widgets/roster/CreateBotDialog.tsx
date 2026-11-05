@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { runRosterMutation } from '@features/bots/actions'
-import { UnfiledBotError, createBot, profileIdFor } from '@features/bots/create'
+import { IncompleteBotError, createBot, profileIdFor } from '@features/bots/create'
 import type { RosterBackend } from '@features/bots/data'
 import type { ModelChoice } from '@features/bots/details'
+import { matchName } from '@features/bots/look'
+import type { Look } from '@features/bots/look'
+import { LookPicker } from '@features/bots/LookPicker'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
 import { folderPath, problemOf } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
@@ -44,17 +47,24 @@ export function CreateBotDialog({
   const [model, setModel] = useState<ModelChoice | null>(null)
   const taken = snapshot.bots.map((bot) => bot.name)
   const id = idPreview(name, taken)
+  const profile = id.ok ? id.text : ''
+  const named = matchName(profile)
+  // Until a shape or hue is picked, the look follows the name as it is typed.
+  const [picked, setPicked] = useState<Partial<Look>>({})
+  const look: Look = { ...named, faces: true, ...picked }
+  const pick = (next: Look): void =>
+    setPicked(next.shape === named.shape && next.hue === named.hue ? { faces: next.faces } : next)
 
   function create(): void {
     const folder = snapshot.folders.find((item) => item.id === folderId) ?? null
     void runRosterMutation(backend, async () => {
       try {
-        const created = await createBot(backend, { name, folder, model }, taken)
+        const created = await createBot(backend, { name, folder, model, look }, taken)
         useRoster.getState().select({ kind: 'bot', id: created })
         onClose()
       } catch (error) {
         // The bot exists: show it rather than let a retry create a second one.
-        if (!(error instanceof UnfiledBotError)) throw error
+        if (!(error instanceof IncompleteBotError)) throw error
         useRoster.getState().select({ kind: 'bot', id: error.profile })
         onClose()
         throw error
@@ -64,7 +74,7 @@ export function CreateBotDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="border-0 bg-card shadow-none backdrop-blur-none">
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-0 bg-card shadow-none backdrop-blur-none">
         <DialogTitle>{t('create.title')}</DialogTitle>
         <DialogDescription>{t('create.hint')}</DialogDescription>
         <form
@@ -118,7 +128,9 @@ export function CreateBotDialog({
           </div>
           <div className="text-base">
             {t('create.look')}
-            <p className="mt-2 rounded-lg bg-secondary px-3 py-2">{t('create.lookMatch')}</p>
+            <div className="mt-2">
+              <LookPicker look={look} profile={profile} onChange={pick} />
+            </div>
           </div>
           {error && (
             <div role="alert">

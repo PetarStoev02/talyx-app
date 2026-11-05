@@ -1,6 +1,9 @@
+import type { TranslationKey } from '@shared/lib/i18n'
 import { saveBotMeta } from './data'
 import type { RosterBackend } from './data'
 import type { ModelChoice } from './details'
+import { exportAvatar, lookMeta } from './look'
+import type { Look } from './look'
 import { RosterError, problemOf } from './roster'
 import type { Folder } from './types'
 
@@ -9,16 +12,18 @@ export interface NewBot {
   folder: Folder | null
   /** Null leaves the model the engine gives a new profile. */
   model: ModelChoice | null
+  look: Look
 }
 
-/** The profile exists but its title and folder were not saved; `profile` is its id. */
-export class UnfiledBotError extends RosterError {
+/** The profile exists but a step after creating it failed; `profile` is its id. */
+export class IncompleteBotError extends RosterError {
   constructor(
     readonly profile: string,
+    key: TranslationKey,
     detail: string | null
   ) {
-    super('create.errorNotFiled', detail)
-    this.name = 'UnfiledBotError'
+    super(key, detail)
+    this.name = 'IncompleteBotError'
   }
 }
 
@@ -45,7 +50,7 @@ export function profileIdFor(name: string, taken: string[]): string {
   return `bot-${n}`
 }
 
-/** Creates the profile, then files it with its title. Returns the new profile id. */
+/** Creates the profile, files it with its title and look, then exports the look. Returns its id. */
 export async function createBot(
   backend: RosterBackend,
   bot: NewBot,
@@ -62,10 +67,16 @@ export async function createBot(
     await saveBotMeta(backend, id, {
       title,
       sectionId: bot.folder?.id ?? null,
-      sectionName: bot.folder?.name ?? null
+      sectionName: bot.folder?.name ?? null,
+      ...lookMeta(bot.look)
     })
   } catch (error) {
-    throw new UnfiledBotError(id, problemOf(error).detail)
+    throw new IncompleteBotError(id, 'create.errorNotFiled', problemOf(error).detail)
+  }
+  try {
+    await exportAvatar(backend, id, bot.look)
+  } catch (error) {
+    throw new IncompleteBotError(id, 'create.errorNoAvatar', problemOf(error).detail)
   }
   return id
 }
