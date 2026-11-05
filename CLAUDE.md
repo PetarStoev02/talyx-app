@@ -47,6 +47,7 @@ missing, an Engine (debug) page that sends "ping" and prints raw session events,
 ```bash
 npm run dev              # Start dev mode (Electron + Vite HMR)
 npm test                 # Run unit tests (Vitest)
+npm run test:smoke       # Real-engine smoke test (opt-in: TALYX_SMOKE_INSTALL_FILE=engine-install.json)
 npm run test:watch       # Tests in watch mode
 npm run lint             # ESLint on src/ and tests/
 npm run typecheck        # TypeScript check (node + web)
@@ -263,6 +264,7 @@ Types: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `ci:`, `test:`
 - Test success path + edge cases
 - Drive behavior through use cases, not the transport (IPC, websocket) or the DOM
 - Use factory functions for test data
+- `tests/smoke/` holds the opt-in real-engine smoke test; run it before merging an engine bump
 
 ## Key Patterns
 

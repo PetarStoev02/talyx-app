@@ -23,7 +23,7 @@ Talyx checks GitHub for a newer release and opens the release page. It installs 
 
 Talyx runs its bots on the engine, a separate agent backend you install yourself. Talyx needs **engine 0.22.7**.
 
-- The engine's command must be reachable as `talyx-engine`: on your `PATH`, in `~/.local/bin/talyx-engine` (on Windows, `%USERPROFILE%\.local\bin\talyx-engine.exe`), or picked with **Choose file** on the first-run screen. The engine's installer gives its command another name, so make a link once, for example `ln -s <the engine's command> ~/.local/bin/talyx-engine`.
+- The engine's command must be reachable as `talyx-engine`: on your `PATH`, in `~/.local/bin/talyx-engine` (on Windows, `%USERPROFILE%\.local\bin\talyx-engine.exe`), or picked with **Choose file** on the first-run screen. The setup screen installs the engine and links it as `talyx-engine`.
 - Talyx attaches to the engine's gateway on this machine with `talyx-engine gateway ensure --json`. The gateway runs on its own and outlives Talyx: quitting Talyx never stops it, and the next launch attaches to the same process.
 - Talyx reads every path and port from the engine's own output; it never assumes where the engine keeps its data.
 - Windows cannot attach yet: minting a gateway ticket there goes through the engine's own runtime, which comes with the 1.0 release work.
@@ -37,7 +37,7 @@ Talyx runs its bots on the engine, a separate agent backend you install yourself
 3. Diff against this folder and keep Talyx's changes, each marked `Talyx:` in a comment: main opens the gateway socket (`socket.ts`, `socketFactory`); REST goes through `http.ts`; wire strings and metadata keys come from `engineWire()` in `src/shared/engine.ts` at runtime; the remote-registry code paths are cut.
 4. Run `npm run typecheck`, `npm run lint` and `npm test`, then send "ping" from the Engine (debug) page.
 
-Before merging an engine bump, run `npm run test:smoke` and paste its summary in the PR.
+Before merging an engine bump, run `TALYX_SMOKE_INSTALL_FILE=engine-install.json npm run test:smoke` and paste its summary in the PR.
 
 ## Build from source
 
