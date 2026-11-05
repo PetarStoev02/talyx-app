@@ -6,7 +6,8 @@ describe('migrateSettings', () => {
     expect(migrateSettings({})).toEqual({
       theme: 'system',
       sidebarWidth: 320,
-      enginePath: null
+      enginePath: null,
+      lastSelection: null
     })
   })
 
@@ -19,7 +20,12 @@ describe('migrateSettings', () => {
       noticeMarks: { briefing: '2026-01-01' },
       appLanguage: 'bg'
     })
-    expect(migrated).toEqual({ theme: 'dark', sidebarWidth: 320, enginePath: null })
+    expect(migrated).toEqual({
+      theme: 'dark',
+      sidebarWidth: 320,
+      enginePath: null,
+      lastSelection: null
+    })
   })
 
   it.each([
@@ -40,5 +46,14 @@ describe('migrateSettings', () => {
 
   it('should keep an absolute engine path', () => {
     expect(migrateSettings({ enginePath: '/opt/engine/cli' }).enginePath).toBe('/opt/engine/cli')
+  })
+
+  it.each([
+    ['a saved bot', { kind: 'bot', id: 'analyst' }, { kind: 'bot', id: 'analyst' }],
+    ['a saved room', { kind: 'room', id: 'r-1' }, { kind: 'room', id: 'r-1' }],
+    ['an unknown kind', { kind: 'folder', id: 'x' }, null],
+    ['a hand-edited string', 'analyst', null]
+  ])('should keep the last chat only when it is %s', (_case, lastSelection, expected) => {
+    expect(migrateSettings({ lastSelection }).lastSelection).toEqual(expected)
   })
 })

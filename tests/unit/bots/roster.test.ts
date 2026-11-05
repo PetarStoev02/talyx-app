@@ -9,6 +9,7 @@ import {
   pinnedBots,
   placeKey,
   recoverFolders,
+  startSelection,
   timeInWords
 } from '../../../src/renderer/src/features/bots/roster'
 import { t } from '../../../src/renderer/src/shared/lib/i18n'
@@ -134,5 +135,41 @@ describe('roster previews', () => {
     expect(timeInWords(100, english, 864100000)).toBe('10 days ago')
     expect(timeInWords(200, english, 100000)).toBe('just now')
     expect(timeInWords(0, english)).toBe('')
+  })
+})
+
+describe('the chat the Agents page opens', () => {
+  const roster = (bots: Bot[], roomIds: string[] = []): RosterSnapshot => ({
+    ...snapshot(bots),
+    rooms: roomIds.map((room_id) => ({ room_id, name: room_id, members: [] }))
+  })
+  const bots = [bot('default'), bot('analyst'), bot('ghost', { hidden: true })]
+
+  it.each([
+    ['the saved bot', { kind: 'bot', id: 'analyst' }, { kind: 'bot', id: 'analyst' }],
+    ['the saved room', { kind: 'room', id: 'team' }, { kind: 'room', id: 'team' }],
+    [
+      'Talyx when the saved bot is gone',
+      { kind: 'bot', id: 'deleted' },
+      { kind: 'bot', id: 'default' }
+    ],
+    [
+      'Talyx when the saved bot is hidden',
+      { kind: 'bot', id: 'ghost' },
+      { kind: 'bot', id: 'default' }
+    ],
+    [
+      'Talyx when the saved room is gone',
+      { kind: 'room', id: 'gone' },
+      { kind: 'bot', id: 'default' }
+    ],
+    ['Talyx on a first run', null, { kind: 'bot', id: 'default' }]
+  ] as const)('should open %s', (_case, saved, expected) => {
+    expect(startSelection(roster(bots, ['team']), saved)).toEqual(expected)
+  })
+
+  it('should open another bot when Talyx is not in the roster, and nothing when no bot is', () => {
+    expect(startSelection(roster([bot('analyst')]), null)).toEqual({ kind: 'bot', id: 'analyst' })
+    expect(startSelection(roster([]), null)).toBeNull()
   })
 })

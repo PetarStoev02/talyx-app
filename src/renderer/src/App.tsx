@@ -14,9 +14,11 @@ import { TooltipProvider } from '@shared/ui/tooltip'
 import { Roster, RosterAdd, RosterRefresh } from '@widgets/roster'
 import { ConnectionBanner, EngineSplash } from '@widgets/engine-gate'
 import { useEngine } from '@app/providers/useEngine'
+import { useSelectionMemory } from '@app/providers/useSelectionMemory'
 
 function App(): React.JSX.Element {
   useKeyboardShortcuts()
+  useSelectionMemory()
   const { effectiveTheme } = useTheme()
   const currentView = useNavigation((s) => s.currentView)
   const navigate = useNavigation((s) => s.navigate)

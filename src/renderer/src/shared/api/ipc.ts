@@ -7,6 +7,7 @@ import { reportError } from '@shared/lib/report'
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system'
   sidebarWidth: number
+  lastSelection: { kind: 'bot' | 'room'; id: string } | null
 }
 
 export const settingsApi = {

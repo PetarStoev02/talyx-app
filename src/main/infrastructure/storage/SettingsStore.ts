@@ -3,18 +3,22 @@ import { isAbsolute, join } from 'path'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
 import log from 'electron-log'
 import { SIDEBAR_WIDTH, clampSidebarWidth } from '../../../shared/sidebar'
+import { LastSelectionSchema } from '../ipc/validation'
 
 export interface UserSettings {
   theme: 'light' | 'dark' | 'system'
   sidebarWidth: number
   /** Absolute path to the engine's command, picked by the user; null means look it up. */
   enginePath: string | null
+  /** The bot or room open when Talyx last ran, opened again on launch; null on a first run. */
+  lastSelection: { kind: 'bot' | 'room'; id: string } | null
 }
 
 const defaults: UserSettings = {
   theme: 'system',
   sidebarWidth: SIDEBAR_WIDTH.initial,
-  enginePath: null
+  enginePath: null,
+  lastSelection: null
 }
 
 function getSettingsPath(): string {
@@ -37,6 +41,8 @@ export function migrateSettings(raw: Record<string, unknown>): UserSettings {
   const path: unknown = settings.enginePath
   if (typeof path !== 'string' || !isAbsolute(path)) settings.enginePath = null
   settings.sidebarWidth = clampSidebarWidth(settings.sidebarWidth)
+  if (!LastSelectionSchema.nullable().safeParse(settings.lastSelection).success)
+    settings.lastSelection = null
   return settings
 }
 

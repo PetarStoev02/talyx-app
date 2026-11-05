@@ -1,7 +1,15 @@
 import type { TranslationKey } from '@shared/lib/i18n'
 import { AppError, problemOf } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'
-import type { Bot, Folder, Room, RosterItem, RosterItemRef, RosterSnapshot } from './types'
+import type {
+  Bot,
+  Folder,
+  Room,
+  RosterItem,
+  RosterItemRef,
+  RosterSnapshot,
+  Selection
+} from './types'
 
 export const FOLDERS_KEY = 'talyx-folders'
 export const ROOM_FOLDERS_KEY = 'talyx-room-folders'
@@ -254,4 +262,17 @@ export function removeFolder(folders: Folder[], id: string): Folder[] {
           }
         : folder
     )
+}
+
+/**
+ * What the Agents page opens: the saved bot or room while it is still in the roster, else Talyx
+ * (the default profile), else any bot; null only for a roster with no bots to show.
+ */
+export function startSelection(snapshot: RosterSnapshot, saved: Selection): Selection {
+  const visible = snapshot.bots.filter((bot) => !bot.meta.hidden)
+  if (saved?.kind === 'bot' && visible.some((bot) => bot.name === saved.id)) return saved
+  if (saved?.kind === 'room' && snapshot.rooms.some((room) => room.room_id === saved.id))
+    return saved
+  const fallback = visible.find((bot) => bot.name === 'default') ?? visible[0]
+  return fallback ? { kind: 'bot', id: fallback.name } : null
 }

@@ -2,8 +2,15 @@ import { isAbsolute } from 'path'
 import { z } from 'zod/v4'
 import { SIDEBAR_WIDTH } from '../../../shared/sidebar'
 
+/** A bot (profile name) or room (room id) to open again on launch. */
+export const LastSelectionSchema = z.object({
+  kind: z.enum(['bot', 'room']),
+  id: z.string().min(1).max(200)
+})
+
 export const UserSettingsPartialSchema = z
   .object({
+    lastSelection: LastSelectionSchema.nullable(),
     theme: z.enum(['light', 'dark', 'system']),
     sidebarWidth: z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)
   })
