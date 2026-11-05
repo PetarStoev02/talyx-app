@@ -26,7 +26,8 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
   const pickPath = useEngine((s) => s.pickPath)
   const everConnected = useEngine((s) => s.everConnected)
   const setup = useSetupBackend()
-  // Install the engine: the setup's engine screens, until their Continue.
+  // Install the engine: the setup's engine screens, until their Continue. An attach error shows
+  // them too: their error screen links the install, and an old engine gets the update.
   const [installing, setInstalling] = useState(false)
   // The first open is given a grace period, restarted by each Try again.
   const [waitStart, setWaitStart] = useState(() => Date.now())
@@ -36,7 +37,7 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
     if (!useEngine.getState().status) void check()
   }, [check])
 
-  if (installing)
+  if (installing || status?.state === 'error')
     return (
       <div className="scroll-y-stable flex h-full flex-1 flex-col items-center px-6 py-8">
         <div className="my-auto flex w-full flex-col items-center">
@@ -70,32 +71,15 @@ export function EngineGate({ children }: { children: React.ReactNode }): React.J
   return (
     <div className={centered}>
       <TalyxLogo size={40} className="text-foreground" />
-      <h2 className="text-xl font-semibold text-foreground">
-        {status.state === 'missing' ? t('engine.missingTitle') : t('engine.errorTitle')}
-      </h2>
-      {status.state === 'missing' ? (
-        <p className="max-w-md text-base text-foreground">{t('engine.missingBody')}</p>
-      ) : (
-        <div className="max-w-md">
-          <p className="text-base text-foreground">{t('engine.errorNext')}</p>
-          <p className="text-sm text-muted-foreground wrap-anywhere">{status.message}</p>
-        </div>
-      )}
+      <h2 className="text-xl font-semibold text-foreground">{t('engine.missingTitle')}</h2>
+      <p className="max-w-md text-base text-foreground">{t('engine.missingBody')}</p>
       <div className="flex flex-wrap items-center justify-center gap-4">
-        {status.state === 'missing' ? (
-          <>
-            <Button className="px-5" disabled={checking} onClick={() => setInstalling(true)}>
-              {t('setup.installEngine')}
-            </Button>
-            <button className={linkClass} disabled={checking} onClick={() => void check()}>
-              {t('action.tryAgain')}
-            </button>
-          </>
-        ) : (
-          <Button className="px-5" disabled={checking} onClick={() => void check()}>
-            {t('action.tryAgain')}
-          </Button>
-        )}
+        <Button className="px-5" disabled={checking} onClick={() => setInstalling(true)}>
+          {t('setup.installEngine')}
+        </Button>
+        <button className={linkClass} disabled={checking} onClick={() => void check()}>
+          {t('action.tryAgain')}
+        </button>
         <button className={linkClass} disabled={checking} onClick={() => void pickPath()}>
           {t('engine.chooseFile')}
         </button>

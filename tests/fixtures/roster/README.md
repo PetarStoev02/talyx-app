@@ -66,7 +66,7 @@ above; its Done opens the fixture on Talyx's chat. No `?setup` keeps the fixture
 | `mismatch` | The same screen with the hash-mismatch sentence                               |
 | `fail`     | The install stops in command 2 (exit 1): Try again, Show the commands, Copy   |
 | `old`      | Engine 0.21.0 is older: Update runs the install, Continue anyway moves on     |
-| `windows`  | "Talyx 1.0 cannot run the engine on Windows yet.", with the release page link |
+| `windows`  | Windows' attach error; Install the engine shows the Windows sentence and link |
 
 Check Copy and Copy all, Install, Cancel (back to the commands), Try again, Choose file (it always
 "finds" engine 0.22.5), Continue, the provider step (Continue once the router is read, Skip), Make

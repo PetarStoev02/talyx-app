@@ -21,6 +21,12 @@ const OUTPUT = [
   ['Installing the engine…', 'Unpacked 214 files.', 'Wrote the engine profile.'],
   ['Linking talyx-engine…', 'talyx-engine is on PATH.']
 ]
+// What main reports on Windows, where Talyx cannot attach to the engine yet.
+const WINDOWS_STATUS: EngineStatus = {
+  state: 'error',
+  message: 'Talyx cannot attach to the engine on Windows yet',
+  version: null
+}
 // `fail` stops in the second command, as a failed download of a dependency would.
 const FAILING = { index: 1, code: 1, line: 'error: the package index could not be reached' }
 
@@ -57,7 +63,9 @@ export function fixtureSetup(mode: SetupMode): SetupBackend {
 
   const found = (): EngineStatus => {
     if (installed) return attachedEngine(EXPECTED_ENGINE_VERSION)
-    return mode === 'old' ? attachedEngine(OLD_VERSION) : { state: 'missing', enginePath: null }
+    if (mode === 'old') return attachedEngine(OLD_VERSION)
+    if (mode === 'windows') return WINDOWS_STATUS
+    return { state: 'missing', enginePath: null }
   }
   const check = async (): Promise<void> => {
     useEngine.setState({ checking: true })
@@ -109,7 +117,8 @@ export function fixtureSetup(mode: SetupMode): SetupBackend {
     onExit: (cb) => {
       exits.add(cb)
       return () => exits.delete(cb)
-    }
+    },
+    recheckEngine: check
   }
 }
 

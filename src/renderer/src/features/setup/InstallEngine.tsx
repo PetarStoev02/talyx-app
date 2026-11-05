@@ -38,11 +38,6 @@ export function InstallEngine({
     if (!useInstall.getState().running) useInstall.setState({ exit: null })
   }, [])
 
-  // Before paint, so a finished install never flashes "cannot find the engine" before the check.
-  useLayoutEffect(() => {
-    if (exit?.kind === 'ok') void useEngine.getState().check()
-  }, [exit])
-
   useEffect(() => {
     if (screen.kind === 'fetching')
       useInstall
@@ -126,7 +121,7 @@ export function InstallEngine({
               installWhenReady.current = true
               setWantsInstall(true)
             },
-            continueAnyway: onReady
+            continueAnyway: screen.attached ? onReady : null
           }}
         />
       )

@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { Button } from '@shared/ui/button'
+import { displayOutput } from './install'
 import { CopyButton, ScreenTitle, Spinner } from './ScreenParts'
 import { linkClass, panelClass, rowClass } from './screenStyles'
 
@@ -79,6 +80,7 @@ export function InstallStopped({
 function OutputLog({ output }: { output: string }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const log = useRef<HTMLPreElement>(null)
+  const shown = useMemo(() => displayOutput(output), [output])
 
   useEffect(() => {
     if (log.current) log.current.scrollTop = log.current.scrollHeight
@@ -94,7 +96,7 @@ function OutputLog({ output }: { output: string }): React.JSX.Element {
       tabIndex={0}
       className="h-60 overflow-auto rounded-xl bg-secondary p-3 font-mono text-sm whitespace-pre-wrap text-foreground select-text"
     >
-      {output}
+      {shown}
     </pre>
   )
 }

@@ -69,11 +69,13 @@ describe('engineScreen', () => {
     it('should offer the update to an older engine, attached or not', () => {
       expect(engineScreen(facts({ status: attached('0.21.0') }))).toEqual({
         kind: 'older',
-        version: '0.21.0'
+        version: '0.21.0',
+        attached: true
       })
       expect(engineScreen(facts({ status: errored('0.21.0') }))).toEqual({
         kind: 'older',
-        version: '0.21.0'
+        version: '0.21.0',
+        attached: false
       })
     })
 

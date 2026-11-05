@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { InstallExit, InstallSteps } from '../../../src/shared/setup'
-import { useInstall, type SetupBackend } from '@features/setup/install'
+import { displayOutput, useInstall, type SetupBackend } from '@features/setup/install'
 
 const ready: InstallSteps = {
   kind: 'ready',
@@ -28,6 +28,7 @@ function fakeBackend(): SetupBackend & {
       exits.add(cb)
       return () => exits.delete(cb)
     },
+    recheckEngine: vi.fn().mockResolvedValue(undefined),
     emit: (index, text) => outputs.forEach((cb) => cb(index, text)),
     finish: (exit) => exits.forEach((cb) => cb(exit)),
     get outputListeners() {
@@ -90,9 +91,58 @@ describe('useInstall', () => {
     expect(useInstall.getState().running).toBe(false)
   })
 
+  it('should keep only the last 200,000 characters of a long output', async () => {
+    const backend = fakeBackend()
+    await useInstall.getState().start(backend)
+    backend.emit(0, 'a'.repeat(150_000))
+    backend.emit(0, 'b'.repeat(150_000))
+
+    const { output } = useInstall.getState()
+    expect(output).toHaveLength(200_000)
+    expect(output.endsWith('b'.repeat(150_000))).toBe(true)
+  })
+
+  it.each([
+    ['ok', { kind: 'ok' }, 1],
+    ['failed', { kind: 'failed', index: 0, code: 1 }, 0],
+    ['cancelled', { kind: 'cancelled' }, 0]
+  ] as const)(
+    'should look for the engine again only when the install ends ok (%s)',
+    async (_kind, exit, checks) => {
+      const backend = fakeBackend()
+      await useInstall.getState().start(backend)
+
+      backend.finish(exit)
+
+      expect(backend.recheckEngine).toHaveBeenCalledTimes(checks)
+    }
+  )
+
   it('should ask the backend to cancel', async () => {
     const backend = fakeBackend()
     await useInstall.getState().cancel(backend)
     expect(backend.cancel).toHaveBeenCalledOnce()
+  })
+})
+
+describe('displayOutput', () => {
+  it('should leave plain output as it is', () => {
+    expect(displayOutput('one\ntwo\n')).toBe('one\ntwo\n')
+  })
+
+  it('should drop colour and cursor escapes', () => {
+    expect(displayOutput('\x1b[1;32mok\x1b[0m done\x1b[?25l\x1b[2K')).toBe('ok done')
+  })
+
+  it('should show only the last state of a line redrawn with a carriage return', () => {
+    expect(displayOutput('10%\r50%\r100%\nnext\n')).toBe('100%\nnext\n')
+  })
+
+  it('should keep a line that ends in a carriage return before its newline', () => {
+    expect(displayOutput('line one\r\nline two\r\n')).toBe('line one\nline two\n')
+  })
+
+  it('should show a redraw still in progress at its latest state', () => {
+    expect(displayOutput('Fetching 1/3\rFetching 2/3')).toBe('Fetching 2/3')
   })
 })

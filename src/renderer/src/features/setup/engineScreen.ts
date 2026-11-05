@@ -13,7 +13,8 @@ export type EngineScreen =
   | { kind: 'stopped'; index: number; code: number }
   | { kind: 'notFound' }
   | { kind: 'ready'; version: string; newer: boolean; stale: boolean }
-  | { kind: 'older'; version: string }
+  /** `attached` false: it cannot attach either, so only the update is offered. */
+  | { kind: 'older'; version: string; attached: boolean }
 
 export interface EngineScreenFacts {
   status: EngineStatus | null
@@ -41,11 +42,11 @@ function foundScreen(status: EngineStatus): EngineScreen {
   if (status.state === 'error') {
     // An old engine that cannot attach is offered the update, not the generic error.
     return status.version !== null && engineVersionFit(status.version) === 'older'
-      ? { kind: 'older', version: status.version }
+      ? { kind: 'older', version: status.version, attached: false }
       : { kind: 'attachError', message: status.message }
   }
   const fit = engineVersionFit(status.version)
-  if (fit === 'older') return { kind: 'older', version: status.version }
+  if (fit === 'older') return { kind: 'older', version: status.version, attached: true }
   return { kind: 'ready', version: status.version, newer: fit === 'newer', stale: status.stale }
 }
 

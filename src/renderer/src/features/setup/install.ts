@@ -7,7 +7,14 @@ export interface SetupBackend {
   cancel: () => Promise<void>
   onOutput: (cb: (index: number, text: string) => void) => () => void
   onExit: (cb: (exit: InstallExit) => void) => () => void
+  /** Looks for the engine again; runs after every install that ends ok, whatever screen shows. */
+  recheckEngine: () => Promise<void>
 }
+
+// The output a screen keeps: the tail of a long install, enough to read or copy what went wrong.
+const MAX_OUTPUT_CHARS = 200_000
+// eslint-disable-next-line no-control-regex -- matching terminal escapes is the point
+const ANSI_CSI = /\x1b\[[0-9;?]*[A-Za-z]/g
 
 interface InstallState {
   steps: InstallSteps | null
@@ -26,8 +33,14 @@ export const useInstall = create<InstallState>((set) => {
   const subscribe = (backend: SetupBackend): void => {
     if (subscribed.has(backend)) return
     subscribed.add(backend)
-    backend.onOutput((_index, text) => set((state) => ({ output: state.output + text })))
-    backend.onExit((exit) => set({ running: false, exit }))
+    backend.onOutput((_index, text) =>
+      set((state) => ({ output: (state.output + text).slice(-MAX_OUTPUT_CHARS) }))
+    )
+    backend.onExit((exit) => {
+      // Before the exit lands, so the screen shows the check rather than "cannot find the engine".
+      if (exit.kind === 'ok') void backend.recheckEngine()
+      set({ running: false, exit })
+    })
   }
   return {
     steps: null,
@@ -48,3 +61,19 @@ export const useInstall = create<InstallState>((set) => {
     cancel: (backend) => backend.cancel()
   }
 })
+
+/**
+ * The output as a terminal would show it: colour codes dropped, and a line redrawn with `\r` (a
+ * progress bar) showing only its last state. Copy output keeps the raw text.
+ */
+export function displayOutput(raw: string): string {
+  return raw
+    .replace(ANSI_CSI, '')
+    .split('\n')
+    .map((line) => {
+      // A trailing \r (as in \r\n) erases nothing.
+      const drawn = line.replace(/\r+$/, '')
+      return drawn.slice(drawn.lastIndexOf('\r') + 1)
+    })
+    .join('\n')
+}

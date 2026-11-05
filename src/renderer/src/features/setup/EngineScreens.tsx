@@ -120,13 +120,16 @@ export function EngineReady({
   )
 }
 
-/** Screen 6b: an engine older than the one Talyx is built for. */
+/**
+ * Screen 6b: an engine older than the one Talyx is built for. `continueAnyway` is null when the old
+ * engine cannot attach: the steps after this one need it attached.
+ */
 export function EngineOlder({
   version,
   actions
 }: {
   version: string
-  actions: { update: () => void; continueAnyway: () => void }
+  actions: { update: () => void; continueAnyway: (() => void) | null }
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   return (
@@ -142,9 +145,11 @@ export function EngineOlder({
         <Button className="px-5" onClick={actions.update}>
           {t('setup.update').replace('{version}', EXPECTED_ENGINE_VERSION)}
         </Button>
-        <button className={linkClass} onClick={actions.continueAnyway}>
-          {t('setup.continueAnyway')}
-        </button>
+        {actions.continueAnyway && (
+          <button className={linkClass} onClick={actions.continueAnyway}>
+            {t('setup.continueAnyway')}
+          </button>
+        )}
       </div>
     </div>
   )
