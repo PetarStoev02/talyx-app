@@ -9,8 +9,7 @@ export function useReveal(): void {
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          // An anchor jump skips past elements; settle those too so they are in place on the way back.
-          if (!entry.isIntersecting && entry.boundingClientRect.top > 0) continue
+          if (!entry.isIntersecting) continue
           entry.target.classList.add('is-in')
           observer.unobserve(entry.target)
         }
