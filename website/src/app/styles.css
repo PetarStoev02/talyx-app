@@ -215,16 +215,14 @@ body {
     animation: line-up 900ms var(--ease-out) forwards;
     animation-delay: calc(var(--i) * 110ms + 150ms);
   }
+  /* Only a slide, never a fade: content stays readable even when a fast scroll
+     or an anchor jump lands before the observer fires. */
   .js [data-reveal] {
-    opacity: 0;
     transform: translateY(24px);
-    transition:
-      opacity 700ms var(--ease-out),
-      transform 900ms var(--ease-out);
+    transition: transform 900ms var(--ease-out);
     transition-delay: calc(var(--i, 0) * 80ms);
   }
   .js [data-reveal].is-in {
-    opacity: 1;
     transform: none;
   }
   .drift {
