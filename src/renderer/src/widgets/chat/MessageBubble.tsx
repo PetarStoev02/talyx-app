@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import ReactMarkdown from 'react-markdown'
-import type { Components } from 'react-markdown'
+import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
+import type { Components, UrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useEngine } from '@app/providers/useEngine'
 import { useLanguage } from '@app/providers/useLanguage'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
+import { markdownImage } from '@features/chat/markdownImage'
 import { senderProfile } from '@features/chat/transcript'
 import type { ChatItem } from '@features/chat/types'
 import { cn } from '@shared/lib/utils'
@@ -17,8 +18,23 @@ const MARKDOWN_COMPONENTS: Components = {
     <a href={href} target="_blank" rel="noreferrer">
       {children}
     </a>
-  )
+  ),
+  img: ({ src, alt }) => {
+    const image = markdownImage(typeof src === 'string' ? src : '', alt ?? '')
+    if (image.kind === 'image') return <img src={image.src} alt={alt} />
+    if (image.kind === 'link')
+      return (
+        <a href={image.href} target="_blank" rel="noreferrer">
+          {image.label}
+        </a>
+      )
+    return <>{image.label}</>
+  }
 }
+
+// The default transform drops data: URLs; image sources reach the img override raw, which decides.
+const urlTransform: UrlTransform = (url, _key, node) =>
+  node.tagName === 'img' ? url : defaultUrlTransform(url)
 
 type Message = Extract<ChatItem, { kind: 'user' | 'bot' | 'notice' }>
 
@@ -61,7 +77,11 @@ export function MessageBubble({
         message.streaming && 'chat-streaming'
       )}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={MARKDOWN_COMPONENTS}
+        urlTransform={urlTransform}
+      >
         {message.text}
       </ReactMarkdown>
       {message.error && (
