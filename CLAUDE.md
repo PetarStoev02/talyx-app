@@ -144,7 +144,7 @@ src/renderer/src/
 ├── widgets/          # AppShell, Roster (sidebar bots and rooms, create dialogs), Chat (transcript,
 │                     # cards, composer, RoomPane), BotDetails (the details panel and routines),
 │                     # Providers (the settings sections, add-provider dialog, sign-in),
-│                     # settings-engine (Settings: the engine's state and path),
+│                     # settings-engine (Settings: the engine's state and path, the debug console),
 │                     # settings-startup (Settings: launch at login),
 │                     # Setup (the first-run flow: welcome, engine, provider, bot steps)
 ├── features/         # bots (roster data, folders, pins, unread, details, routines, create, rooms),
