@@ -85,6 +85,7 @@ function useHoverMenu(onDismiss: () => void) {
 
   function scheduleMenu(next: MenuId | null, delay: number) {
     window.clearTimeout(hoverTimer.current)
+    if (next === openMenuId) return
     hoverTimer.current = window.setTimeout(() => {
       openedByHover.current = next !== null
       setOpenMenuId(next)
