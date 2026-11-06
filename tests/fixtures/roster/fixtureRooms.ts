@@ -22,8 +22,6 @@ interface FixtureRoom {
   name: string
   members: Member[]
   events: Record<string, unknown>[]
-  // A room the engine does not run: readable, not sendable.
-  live: boolean
   activity: { member_id: string; status: string }[]
   actions: Record<string, unknown>[]
 }
@@ -40,7 +38,6 @@ const rooms: FixtureRoom[] = [
     name: 'Team discussion',
     members: [member('default', 'Talyx'), member('analyst', 'Analyst'), member('writer', 'Writer')],
     events: [],
-    live: true,
     activity: [],
     actions: []
   },
@@ -49,7 +46,6 @@ const rooms: FixtureRoom[] = [
     name: 'Clients discussion',
     members: [member('support', 'Support'), member('sales', 'Sales')],
     events: [],
-    live: true,
     activity: [],
     actions: []
   },
@@ -58,7 +54,6 @@ const rooms: FixtureRoom[] = [
     name: 'Archived plans',
     members: [member('planner', 'Planner'), member('analyst', 'Analyst')],
     events: [],
-    live: false,
     activity: [],
     actions: []
   }
@@ -100,7 +95,6 @@ export function roomRequest(method: string, params: Record<string, unknown>): un
         name: String(params.name),
         members: params.members as Member[],
         events: [],
-        live: true,
         activity: [],
         actions: []
       })
@@ -111,15 +105,11 @@ export function roomRequest(method: string, params: Record<string, unknown>): un
     case 'groups.state':
       return {
         room: { room_id: room.room_id, latest_seq: room.events.length },
-        ...(room.live
-          ? {
-              driver_status: {
-                working: room.activity.length > 0,
-                member_activity: room.activity,
-                pending_actions: room.actions
-              }
-            }
-          : {})
+        driver_status: {
+          working: room.activity.length > 0,
+          member_activity: room.activity,
+          pending_actions: room.actions
+        }
       }
     case 'groups.log': {
       const since = Number(params.since_seq)
