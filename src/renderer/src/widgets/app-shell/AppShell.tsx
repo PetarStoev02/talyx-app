@@ -47,7 +47,6 @@ export function AppShell({
         >
           <TalyxLogo size={18} className="text-foreground" />
           <span className="text-xs font-semibold text-foreground">Talyx</span>
-          <span className="text-xs text-muted-foreground">{t('app.alpha')}</span>
           {/* Buttons in the title row must opt out of the window drag to take clicks. */}
           <span className="ml-auto" style={noDragRegion}>
             {titleEnd}

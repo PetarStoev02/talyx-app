@@ -1,6 +1,5 @@
 // English only for now (pivot decision 11). Another language is one more table here.
 const en = {
-  'app.alpha': 'alpha',
   'nav.agents': 'Agents',
   'nav.settings': 'Settings',
   'sidebar.resize': 'Resize sidebar',
