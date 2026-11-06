@@ -56,9 +56,9 @@ export function Header() {
 /**
  * Which mega menu is open, opened and closed on a hover delay. Escape and a
  * route change close it and call `onDismiss`, which must be stable. A click on
- * a trigger toggles its menu, except that the click which follows a hover-open
- * keeps the menu open: the pointer reaches the trigger before it clicks, so
- * the hover has already opened that menu.
+ * a trigger (or Enter on it) toggles its menu, except that the first one after a
+ * hover-open keeps the menu open: the pointer reaches the trigger before it
+ * clicks, so the hover has already opened that menu.
  */
 function useHoverMenu(onDismiss: () => void) {
   const [openMenuId, setOpenMenuId] = useState<MenuId | null>(null)
