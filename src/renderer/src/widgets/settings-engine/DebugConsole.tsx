@@ -5,25 +5,11 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { host } from '@shared/engine/host'
 import type { ConnectionState } from '@shared/engine/shared'
 import { Button } from '@shared/ui/button'
-import { PageHeader } from '@shared/ui/page-header'
-import { EngineGate } from '@widgets/engine-gate'
 
 const MAX_LOG_LINES = 500
 
-/** PR 2's proof page: one profile, one "ping", the raw session events as the gateway sends them. */
-export function EngineDebugPage(): React.JSX.Element {
-  const t = useLanguage((s) => s.t)
-  return (
-    <div className="flex h-full flex-col">
-      <PageHeader title={t('nav.engineDebug')} />
-      <EngineGate>
-        <DebugConsole />
-      </EngineGate>
-    </div>
-  )
-}
-
-function DebugConsole(): React.JSX.Element {
+/** One profile, one "ping", the raw session events as the gateway sends them. */
+export function DebugConsole(): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const stale = useEngine((s) => s.status?.state === 'attached' && s.status.stale)
   const [profiles, setProfiles] = useState<string[]>([])
@@ -74,7 +60,7 @@ function DebugConsole(): React.JSX.Element {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+    <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-sm">
           {t('engine.debugProfile')}
@@ -103,7 +89,7 @@ function DebugConsole(): React.JSX.Element {
       </div>
       {stale && <p className="text-sm text-foreground">{t('engine.stale')}</p>}
       <pre
-        className="min-h-0 flex-1 overflow-auto rounded-lg bg-secondary p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap"
+        className="h-80 overflow-auto rounded-lg bg-secondary p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap"
         data-testid="engine-log"
       >
         {log.length ? log.join('\n') : t('engine.debugWaiting')}

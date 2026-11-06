@@ -3,7 +3,6 @@ const en = {
   'nav.agents': 'Agents',
   'nav.settings': 'Settings',
   'sidebar.resize': 'Resize sidebar',
-  'nav.engineDebug': 'Engine (debug)',
   'engine.checking': 'Looking for the engine…',
   'engine.missingTitle': 'Talyx needs its engine.',
   'engine.missingBody':
@@ -358,6 +357,7 @@ const en = {
   'settings.engineCheck': 'Check again',
   'settings.engineInstall': 'Install the engine',
   'settings.engineUpdate': 'Update the engine',
+  'settings.engineDebugConsole': 'Debug console',
   'settings.appearance': 'Appearance',
   'settings.errorSave':
     'Talyx could not save this setting. It applies until you quit; change it again to retry.',

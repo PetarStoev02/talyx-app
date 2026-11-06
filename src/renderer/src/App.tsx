@@ -13,7 +13,6 @@ import { useKeyboardShortcuts } from '@shared/hooks/useKeyboardShortcuts'
 import { reportError } from '@shared/lib/report'
 import { AgentsPage } from '@pages/agents'
 import { SettingsPage } from '@pages/settings'
-import { EngineDebugPage } from '@pages/engine-debug'
 import { TooltipProvider } from '@shared/ui/tooltip'
 import { Roster, RosterAdd, RosterRefresh } from '@widgets/roster'
 import { ConnectionBanner, EngineSplash } from '@widgets/engine-gate'
@@ -47,7 +46,6 @@ function App(): React.JSX.Element {
   if ((visibility === 'show' || forced) && !inSetup) setInSetup(true)
   const pages = {
     agents: <AgentsPage chat={chat} roster={rosterBackend} />,
-    'engine-debug': <EngineDebugPage />,
     settings: <SettingsPage providers={providers} chat={chat} />
   }
 

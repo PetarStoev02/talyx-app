@@ -10,7 +10,8 @@ import type { ProvidersBackend } from '@features/providers/providers'
 import type { ModelLists } from '@features/chat/chat'
 import { reportProvider, useSetup } from '@features/setup/store'
 import { ProvidersSection } from '@widgets/providers'
-import { EngineSection } from '@widgets/settings-engine'
+import { EngineGate } from '@widgets/engine-gate'
+import { DebugConsole, EngineSection } from '@widgets/settings-engine'
 import { StartupSection } from '@widgets/settings-startup'
 
 export function SettingsPage({
@@ -45,7 +46,13 @@ export function SettingsPage({
       {/* The whole page scrolls, so the scrollbar sits at the window's edge, not the column's. */}
       <div className="scroll-y-stable min-h-0 flex-1">
         <div className="mx-auto w-full max-w-2xl space-y-10 p-6">
-          <EngineSection />
+          <EngineSection
+            debugConsole={
+              <EngineGate>
+                <DebugConsole />
+              </EngineGate>
+            }
+          />
           {providers && (
             <ProvidersSection backend={providers} chat={chat} onOverview={reportProvider} />
           )}
