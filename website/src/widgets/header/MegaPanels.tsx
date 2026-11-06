@@ -7,8 +7,8 @@ import { APP_VERSION } from '../../shared/data/release'
 import { NavAnchor } from '../../shared/ui/NavAnchor'
 import { Wallpaper } from '../../shared/ui/page'
 
-const MENU_LEDGER = PRIVACY_LEDGER.flatMap(({ figure, menuCaption }) =>
-  menuCaption ? [{ figure, caption: menuCaption }] : []
+const MENU_LEDGER = PRIVACY_LEDGER.flatMap(({ figure, counted, inMenu }) =>
+  inMenu ? [{ figure, caption: counted }] : []
 )
 
 const ITEM =

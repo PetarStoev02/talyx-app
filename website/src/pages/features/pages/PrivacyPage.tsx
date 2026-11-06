@@ -6,9 +6,9 @@ import { STEP } from '../../../shared/ui/page'
 function Ledger() {
   return (
     <dl className="space-y-8">
-      {PRIVACY_LEDGER.map(({ figure, caption }) => (
+      {PRIVACY_LEDGER.map(({ figure, counted, detail }) => (
         <div
-          key={caption}
+          key={counted}
           className="grid grid-cols-[3rem_1fr] items-baseline gap-5 sm:grid-cols-[minmax(0,2fr)_minmax(0,5fr)] sm:gap-6"
         >
           <dt
@@ -18,7 +18,7 @@ function Ledger() {
             {figure}
           </dt>
           <dd className="text-[var(--color-text-primary)]" style={STEP.body}>
-            {caption}
+            <span className="font-semibold">{counted}.</span> {detail}
           </dd>
         </div>
       ))}
