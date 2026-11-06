@@ -62,6 +62,8 @@ const appConfigs = [
   {
     // Vendored files keep upstream's code as written, so a re-sync is a clean diff.
     files: VENDORED_ENGINE_FILES,
+    // Upstream's directives target upstream's rules, so some go unused here.
+    linterOptions: { reportUnusedDisableDirectives: 'off' },
     rules: {
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
