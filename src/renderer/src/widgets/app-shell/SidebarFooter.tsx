@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Bot, Bug, Settings } from 'lucide-react'
+import { Bot, Settings } from 'lucide-react'
 import { useEngine } from '@app/providers/useEngine'
 import { updateItems } from '@features/updates/items'
 import { useUpdates } from '@features/updates/store'
@@ -39,7 +39,6 @@ export function SidebarFooter({
         <NavButton view="agents" labelKey="nav.agents" icon={Bot} shortcut={`${mod}1`} />
       )}
       <NavButton view="settings" labelKey="nav.settings" icon={Settings} shortcut={`${mod},`} />
-      <NavButton view="engine-debug" labelKey="nav.engineDebug" icon={Bug} shortcut={`${mod}2`} />
       <span className="ml-auto">{items.length > 0 ? <UpdateButton items={items} /> : end}</span>
     </div>
   )

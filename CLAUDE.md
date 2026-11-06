@@ -17,9 +17,9 @@ dictation), the details panel from the name pill (title, description, model, rou
 the create-bot dialog from the roster's `+`, group rooms hosted by the engine (history, send, who
 is answering, approvals, create, pin, delete), "Talyx needs its engine" when the engine is
 missing, a first-run setup (install the engine, a provider, a first bot), a footer update button
-(Talyx releases and engine updates), an Engine (debug) page that sends "ping" and prints raw session events, and Settings
-(providers: API keys, account sign-ins and custom endpoints, Talyx's default model; the engine:
-where it is, check again, choose its file; launch at login; appearance).
+(Talyx releases and engine updates), and Settings (providers: API keys, account sign-ins and
+custom endpoints, Talyx's default model; the engine: where it is, check again, choose its file, a
+debug console that sends "ping" and prints raw session events; launch at login; appearance).
 
 - **Version:** 1.0.0
 - **Stack:** Electron 44 + React 19 + TypeScript 5.9 + TailwindCSS 4

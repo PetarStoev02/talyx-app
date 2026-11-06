@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useEngine } from '@app/providers/useEngine'
 import { useNavigation } from '@app/providers/useNavigation'
@@ -19,7 +21,15 @@ const ACTION_KEYS = {
   update: 'settings.engineUpdate'
 } as const
 
-export function EngineSection(): React.JSX.Element {
+/**
+ * `debugConsole` is the engine-gated console: the page wraps it, since a widget cannot import the
+ * engine gate. It mounts only while open, so a closed field sends nothing to the engine.
+ */
+export function EngineSection({
+  debugConsole
+}: {
+  debugConsole: React.ReactNode
+}): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const status = useEngine((s) => s.status)
   const checking = useEngine((s) => s.checking)
@@ -28,6 +38,7 @@ export function EngineSection(): React.JSX.Element {
   const navigate = useNavigation((s) => s.navigate)
   const requestEngineInstall = useUpdates((s) => s.requestEngineInstall)
   const summary: EngineSummary = engineSummary(status)
+  const [consoleOpen, setConsoleOpen] = useState(false)
 
   function install(): void {
     // The Agents page's engine gate runs the install, with its output and restart step.
@@ -61,6 +72,17 @@ export function EngineSection(): React.JSX.Element {
           {t('engine.chooseFile')}
         </Button>
         {summary.action && <Button onClick={install}>{t(ACTION_KEYS[summary.action])}</Button>}
+      </div>
+      <div className="space-y-3">
+        <button
+          className="flex items-center gap-2 text-base font-medium text-foreground"
+          aria-expanded={consoleOpen}
+          onClick={() => setConsoleOpen((open) => !open)}
+        >
+          {consoleOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          {t('settings.engineDebugConsole')}
+        </button>
+        {consoleOpen && debugConsole}
       </div>
     </section>
   )

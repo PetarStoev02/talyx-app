@@ -11,7 +11,7 @@ import { reportError } from '@shared/lib/report'
 import { Button } from '@shared/ui/button'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
 
-// Fills a plain block (the Agents page) or a flex column (the debug page) and centers in it.
+// Fills a plain block (the Agents page, Settings' debug console) and centers in it.
 const centered = 'flex h-full flex-1 flex-col items-center justify-center gap-4 px-6 text-center'
 // How long the first socket open may take before the wait is shown as a problem.
 const FIRST_CONNECT_GRACE_MS = 8_000
