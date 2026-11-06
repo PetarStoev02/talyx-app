@@ -9,7 +9,7 @@
 - Talyx has no server, no account and no telemetry. The app sends nothing about you to us.
 - Your bots run on the engine, on your computer. What a bot sends goes from the engine to the model provider you set up for it, under that provider's terms. A bot's tools, like web search or a command it runs, can reach other services too. Some ask for your approval first.
 - On the internet, Talyx itself reaches only GitHub: to check for a new release, to download an update when you click Download (a deb install updates from the release page instead), and to fetch the engine's install steps. Those steps then download the engine.
-- This website counts page views and download clicks with PostHog, hosted in the EU, without cookies.
+- This website counts page views and download clicks with PostHog, hosted in the EU, and measures page speed with Vercel Speed Insights, both without cookies.
 
 ---
 
@@ -65,14 +65,15 @@ We have no access to any of these.
 
 ## 7. This Website
 
-This website counts page views and download clicks with PostHog, hosted in the EU, without cookies.
+This website counts page views and download clicks with PostHog, hosted in the EU, and measures page speed with Vercel Speed Insights, both without cookies.
 
 - **What it counts.** A page view each time you open a page, a page leave when you go, and one event when you click a link that downloads a Talyx installer, naming the file.
 - **What each count carries.** The page's address and title, including any campaign or ad-click tags in the address (such as `utm_source` or `gclid`), the page you came from, your browser, operating system, device type and model, your screen and window size, and your browser's language and time zone. Each page view gets a random ID that lives only in the open page's memory. A page leave also says how long you stayed and how far you scrolled.
 - **How.** The counts go to PostHog's EU Cloud in cookieless mode. PostHog sets no cookies and keeps nothing in your browser's storage, so no ID follows you from visit to visit. To count visitors, PostHog's servers compute a privacy-preserving hash. PostHog strips your IP address from these events, so they carry no location derived from it.
-- **What is off.** Autocapture of clicks and form fields, session replay, heatmaps, dead-click tracking, surveys, error capture and page-speed measurements.
+- **What is off.** Autocapture of clicks and form fields, session replay, heatmaps, dead-click tracking, surveys, error capture and PostHog's own page-speed measurements.
+- **Page speed.** Vercel Speed Insights measures how fast each page loads and responds (Core Web Vitals). Each measurement carries the page's full address (including any campaign tags), your browser, operating system, device type, connection speed and country. It sets no cookies and keeps nothing in your browser's storage.
 - **Where.** Only on talyx.app and www.talyx.app. Previews of the site and the live demo on the landing page count nothing.
-- **If you block it.** The site and its downloads work the same with PostHog blocked.
+- **If you block it.** The site and its downloads work the same with PostHog or Speed Insights blocked.
 
 The site remembers your theme choice (light, dark or system) in your browser's local storage, under `talyx-theme`. It is never sent anywhere.
 

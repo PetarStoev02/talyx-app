@@ -320,5 +320,5 @@ try {
 - Builds for macOS and Linux, none signed. No auto-update.
 - Free and open source (MIT). No account, no server, no telemetry.
 - Website (`website/`) on Vercel: it describes 1.0 and runs cookieless PostHog page analytics
-  (the app itself stays no-telemetry). Releases: GitHub Releases on `PetarStoev02/talyx-app`
+  and Vercel Speed Insights (the app itself stays no-telemetry). Releases: GitHub Releases on `PetarStoev02/talyx-app`
   (the Release workflow creates a draft).
