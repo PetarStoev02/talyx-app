@@ -39,8 +39,8 @@ the block through `profiles.set_asset`; the newest export shows under the roster
 A bot that is answering shows "<name> is typing" with its block bobbing; in a room, each answering
 member's block bobs beside "Answering:" and in the name pill.
 
-Rooms (`fixtureRooms.ts`): Team discussion has a history with three senders, Archived plans a
-short one with Planner. Sending to a room makes each member answer in turn, a few seconds apart,
+Rooms (`fixtureRooms.ts`): Team discussion has a history with three senders; Archived plans has
+a short one with Planner. Sending to a room makes each member answer in turn, a few seconds apart,
 with "Answering:" and "Up next:" under the transcript. A message
 containing "approve" shows an approval card, "stall" a turn to retry, "fail" a failed turn. Check
 New room from `+` (name, 2 to 6 bots, folder), Pin (the room joins the pinned tiles, which center
