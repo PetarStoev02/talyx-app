@@ -23,3 +23,4 @@ Only the latest release gets security fixes. Talyx checks GitHub for new release
 These are documented and not vulnerabilities on their own:
 
 - Releases are not signed, notarized or hardened, so software already running as your user could inject code into Talyx.
+- In-app updates trust the GitHub release they come from. Talyx checks the downloaded installer against `SHA256SUMS` from the same release, so the check catches a broken or tampered download but not a compromised GitHub account or repository, which could replace the installer and `SHA256SUMS` together. The engine install file does not share this limit: its SHA-256 is pinned inside the app (`src/main/infrastructure/setup/installPin.ts`), so Talyx refuses any other file. A Developer ID signature check on the downloaded app is planned with [#27](https://github.com/PetarStoev02/talyx-app/issues/27).

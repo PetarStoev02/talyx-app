@@ -23,12 +23,14 @@ Talyx checks GitHub for a newer release. When you click Download, it fetches the
 
 Talyx runs its bots on the engine, a separate agent backend that Talyx's setup screen installs for you. Talyx needs **engine 0.22.7**.
 
-- The engine's command must be reachable as `talyx-engine`: on your `PATH`, in `~/.local/bin/talyx-engine` (on Windows, `%USERPROFILE%\.local\bin\talyx-engine.exe`), or picked with **Choose file** on the first-run screen. The setup screen installs the engine and links it as `talyx-engine`.
+- The engine's command must be reachable as `talyx-engine`: on your `PATH`, in `~/.local/bin/talyx-engine`, or picked with **Choose file** on the first-run screen. The setup screen installs the engine and links it as `talyx-engine`.
 - Talyx attaches to the engine's gateway on this machine with `talyx-engine gateway ensure --json`. The gateway runs on its own and outlives Talyx: quitting Talyx never stops it, and the next launch attaches to the same process.
 - Talyx reads every path and port from the engine's own output; it never assumes where the engine keeps its data.
 - Windows cannot attach yet: minting a gateway ticket there goes through the engine's own runtime, so a Windows build comes once the engine runs there.
 
 ### Re-syncing the vendored client
+
+Two things change when the engine moves on, and only one of them updates on its own. The engine itself does: each Talyx release pins one engine version (`EXPECTED_ENGINE_VERSION` in `src/shared/engine.ts`, and `engine-install.json` on the release), and when the attached engine is older, the footer update button installs that version. The vendored client does not: when the engine's protocol changes, a developer redoes the steps below by hand and ships a new Talyx release.
 
 `src/renderer/src/shared/engine/` is the engine desktop app's protocol client and API wrappers, cut from tag `v0.22.7` (its MIT licence is in that folder). `src/main/infrastructure/engine/gateway.ts` is its gateway attach and ticket code. When the engine moves to a new version:
 
