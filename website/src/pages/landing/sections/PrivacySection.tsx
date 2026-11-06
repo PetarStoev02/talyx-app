@@ -27,9 +27,9 @@ export function PrivacySection() {
 
       <div className="md:col-span-7">
         <dl className="space-y-10 md:space-y-12">
-          {PRIVACY_LEDGER.map(({ figure, caption }, i) => (
+          {PRIVACY_LEDGER.map(({ figure, counted, detail }, i) => (
             <div
-              key={caption}
+              key={counted}
               data-reveal
               style={stagger(i)}
               className="grid grid-cols-[minmax(0,3fr)_minmax(0,7fr)] md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] items-baseline gap-6"
@@ -41,7 +41,7 @@ export function PrivacySection() {
                 {figure}
               </dt>
               <dd className="text-[var(--color-text-primary)]" style={STEP.body}>
-                {caption}
+                <span className="font-semibold">{counted}.</span> {detail}
               </dd>
             </div>
           ))}

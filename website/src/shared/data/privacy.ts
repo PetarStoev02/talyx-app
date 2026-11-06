@@ -1,9 +1,11 @@
-/** One line of the ledger: a count and what it counts. */
+/** One line of the ledger: a count, what it counts and the detail behind it. */
 interface LedgerEntry {
   figure: string
-  caption: string
-  /** The caption cut to one clause for the header menu; null leaves the entry out of the menu. */
-  menuCaption: string | null
+  /** Read straight after the figure, so the figure is a count: "0 Talyx servers or accounts". */
+  counted: string
+  detail: string
+  /** Whether the header menu lists this entry, with its counted phrase alone. */
+  inMenu: boolean
 }
 
 /**
@@ -13,27 +15,29 @@ interface LedgerEntry {
 export const PRIVACY_LEDGER: LedgerEntry[] = [
   {
     figure: '0',
-    caption:
-      'Talyx servers or accounts. There is nothing to sign up for, and the app collects no telemetry.',
-    menuCaption: 'Talyx servers or accounts'
+    counted: 'Talyx servers or accounts',
+    detail: 'There is nothing to sign up for, and the app collects no telemetry.',
+    inMenu: true
   },
   {
     figure: '1',
-    caption:
-      'source for everything the app downloads itself: GitHub. That is a check for a newer release, an installer and its SHA256SUMS when you click Download, and the engine’s install steps during setup or an engine update. Those steps then download the engine.',
-    menuCaption: 'source for everything the app downloads itself: GitHub'
+    counted: 'source for everything the app downloads itself: GitHub',
+    detail:
+      'That is a check for a newer release, an installer and its SHA256SUMS when you click Download, and the engine’s install steps during setup or an engine update. Those steps then download the engine.',
+    inMenu: true
   },
   {
     figure: '2',
-    caption:
-      'checks before anything runs: the installer must match the release’s SHA256SUMS, and the install steps must match a hash built into Talyx.',
-    menuCaption: null
+    counted: 'checks before anything runs',
+    detail:
+      'The installer must match the release’s SHA256SUMS, and the install steps must match a hash built into Talyx.',
+    inMenu: false
   },
   {
     figure: '1',
-    caption:
-      'place your keys and sign-ins live: the engine on your computer. Talyx hands them over and keeps no copy.',
-    menuCaption: 'place your keys and sign-ins live: the engine on your computer'
+    counted: 'place your keys and sign-ins live: the engine on your computer',
+    detail: 'Talyx hands them over and keeps no copy.',
+    inMenu: true
   }
 ]
 
