@@ -55,11 +55,15 @@ export function Header() {
 
 /**
  * Which mega menu is open, opened and closed on a hover delay. Escape and a
- * route change close it and call `onDismiss`, which must be stable.
+ * route change close it and call `onDismiss`, which must be stable. A click on
+ * a trigger (or Enter on it) toggles its menu, except that the first one after a
+ * hover-open keeps the menu open: the pointer reaches the trigger before it
+ * clicks, so the hover has already opened that menu.
  */
 function useHoverMenu(onDismiss: () => void) {
   const [openMenuId, setOpenMenuId] = useState<MenuId | null>(null)
   const hoverTimer = useRef<number | undefined>(undefined)
+  const openedByHover = useRef(false)
   const { pathname } = useLocation()
 
   useEffect(() => {
@@ -81,18 +85,29 @@ function useHoverMenu(onDismiss: () => void) {
 
   function scheduleMenu(next: MenuId | null, delay: number) {
     window.clearTimeout(hoverTimer.current)
-    hoverTimer.current = window.setTimeout(() => setOpenMenuId(next), delay)
+    if (next === openMenuId) return
+    hoverTimer.current = window.setTimeout(() => {
+      openedByHover.current = next !== null
+      setOpenMenuId(next)
+    }, delay)
+  }
+
+  function toggleMenu(id: MenuId) {
+    window.clearTimeout(hoverTimer.current)
+    const close = openMenuId === id && !openedByHover.current
+    openedByHover.current = false
+    setOpenMenuId(close ? null : id)
   }
 
   function cancelScheduledMenu() {
     window.clearTimeout(hoverTimer.current)
   }
 
-  return { openMenuId, setOpenMenuId, scheduleMenu, cancelScheduledMenu }
+  return { openMenuId, setOpenMenuId, scheduleMenu, cancelScheduledMenu, toggleMenu }
 }
 
 function DesktopNav({ menu }: { menu: ReturnType<typeof useHoverMenu> }) {
-  const { openMenuId, setOpenMenuId, scheduleMenu } = menu
+  const { openMenuId, setOpenMenuId, scheduleMenu, toggleMenu } = menu
 
   return (
     <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
@@ -102,7 +117,7 @@ function DesktopNav({ menu }: { menu: ReturnType<typeof useHoverMenu> }) {
             type="button"
             aria-expanded={openMenuId === id}
             aria-controls={`menu-${id}`}
-            onClick={() => setOpenMenuId(openMenuId === id ? null : id)}
+            onClick={() => toggleMenu(id)}
             onMouseEnter={() => scheduleMenu(id, openMenuId ? 0 : OPEN_DELAY_MS)}
             className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[15px] font-medium text-[var(--color-text-primary)] transition-colors aria-expanded:bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-secondary)]"
           >
