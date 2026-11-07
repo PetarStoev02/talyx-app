@@ -9,6 +9,26 @@ export const CONFIG_YAML_SOURCE = 'direct-config'
 // How the engine shows a key kept in an environment variable: a reference, not the key.
 const ENV_REF = /^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$/
 
+/**
+ * The named endpoint Talyx keeps for the bare custom one (see keepBareEndpoint): same base URL, so
+ * a list showing both would show the router twice. Null when there is no bare endpoint or twin.
+ */
+export function namedTwinOfBare(endpoints: CustomEndpoint[]): CustomEndpoint | null {
+  const bare = endpoints.find((endpoint) => endpoint.source === CONFIG_YAML_SOURCE)
+  if (!bare) return null
+  return (
+    endpoints.find(
+      (endpoint) =>
+        endpoint.source !== CONFIG_YAML_SOURCE && sameBaseUrl(endpoint.base_url, bare.base_url)
+    ) ?? null
+  )
+}
+
+export function sameBaseUrl(a: string, b: string): boolean {
+  const trimmed = (url: string): string => url.trim().replace(/\/+$/, '')
+  return trimmed(a) === trimmed(b)
+}
+
 export function listEndpoints(http: EngineHttp, profile: string): Promise<CustomEndpointsResponse> {
   return http<CustomEndpointsResponse>({
     path: `/api/providers/custom-endpoints?${new URLSearchParams({ profile })}`,

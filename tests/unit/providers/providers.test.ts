@@ -46,6 +46,23 @@ describe('providers', () => {
       expect(overview.model).toEqual({ provider: 'custom', model: '9-route-provider' })
     })
 
+    it('should list the router once when Talyx also keeps it as a named endpoint', async () => {
+      const kept = {
+        ...ROUTER,
+        id: 'endpoint-127-0-0-1-20128',
+        name: 'Custom endpoint (127.0.0.1:20128)',
+        base_url: `${ROUTER.base_url}/`,
+        is_current: false,
+        source: 'providers'
+      }
+      const other = { ...kept, id: 'lab', name: 'Lab', base_url: 'http://10.0.0.2:8000/v1' }
+      engine.profiles[HOME].endpoints.push(kept, other)
+
+      const { endpoints } = await loadProviders(engine.backend)
+
+      expect(endpoints.map((endpoint) => endpoint.id)).toEqual(['custom', 'lab'])
+    })
+
     it('should list one key per provider, a shared key under each of its routes', async () => {
       const { keys } = await loadProviders(engine.backend)
 
