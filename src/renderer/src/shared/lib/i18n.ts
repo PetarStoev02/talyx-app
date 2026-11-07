@@ -319,6 +319,12 @@ const en = {
     'The engine did not return Talyx’s own bot. Restart it with talyx-engine gateway restart, then refresh.',
   'roster.errorFolderGone': 'That folder no longer exists. Refresh the roster.',
   'details.errorNotApplied': 'Some changes were not saved. Your edits are still here; save again.',
+  'details.errorModel':
+    'The engine did not switch to this model. Check that its provider is set up in Settings → Providers, then save again.',
+  'details.errorDescription':
+    'The description was not saved. Save again; if it keeps failing, check the engine in Settings.',
+  'details.errorSoul':
+    'SOUL.md was not saved. Save again; if it keeps failing, check the engine in Settings.',
   'routines.errorEngine': 'The engine could not change the routine. Try again.',
   'create.errorTaken': 'A bot with that name already exists. Pick another name.',
   'create.errorNotFiled':

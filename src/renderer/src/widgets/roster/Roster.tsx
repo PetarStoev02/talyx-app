@@ -271,7 +271,7 @@ function ProblemBanner({
   action: { label: string; run: () => void }
 }): React.JSX.Element {
   return (
-    <div role="alert" className="mb-2 rounded-xl bg-secondary p-3 text-base">
+    <div className="mb-2 rounded-xl bg-secondary p-3 text-base">
       <ProblemMessage problem={problem} />
       <button className="mt-2 underline underline-offset-4 hover:decoration-2" onClick={action.run}>
         {action.label}

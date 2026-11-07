@@ -63,11 +63,7 @@ export function FolderNameDialog({
               onChange={(event) => setName(event.target.value)}
             />
           </label>
-          {error && (
-            <div role="alert">
-              <ProblemMessage problem={error} />
-            </div>
-          )}
+          {error && <ProblemMessage problem={error} />}
           <div className="flex gap-2">
             <Button type="submit" disabled={!name.trim() || saving}>
               {copy.submit}
@@ -178,11 +174,7 @@ function ConfirmDeleteDialog({
       <DialogContent>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{warning}</DialogDescription>
-        {error && (
-          <div role="alert">
-            <ProblemMessage problem={error} />
-          </div>
-        )}
+        {error && <ProblemMessage problem={error} />}
         <div className="flex gap-2">
           <Button variant="destructive" disabled={saving} onClick={onConfirm}>
             {confirm}
