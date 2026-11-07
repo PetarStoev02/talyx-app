@@ -6,6 +6,7 @@ import { saveBotMeta } from './data'
 import type { RosterBackend } from './data'
 import { exportAvatar, lookMeta, sameLook } from './look'
 import type { Look } from './look'
+import { problemOf } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'
 import { RosterError } from './roster'
 import type { Bot, BotMeta } from './types'
@@ -33,9 +34,15 @@ export interface ModelConfirm {
   model: ModelChoice
 }
 
-/** The profile sections the engine refused in one save, by their engine names. */
+/**
+ * The profile sections the engine refused in one save, by their engine names. `reason` is what the
+ * engine said about a refused model, when it said something.
+ */
 export class SectionsNotSavedError extends RosterError {
-  constructor(readonly sections: string[]) {
+  constructor(
+    readonly sections: string[],
+    readonly reason: string | null = null
+  ) {
     super('details.errorNotApplied', sections.join(', '))
     this.name = 'SectionsNotSavedError'
   }
@@ -167,9 +174,10 @@ async function assignModel(
     ...pick,
     ...(endpoint && { base_url: endpoint.url }),
     ...(endpoint?.keyRef && { api_key: endpoint.keyRef })
-  }).catch(() => {
-    // The engine answers a model it refuses with an HTTP error; what it says is in main's log.
-    throw new SectionsNotSavedError(['model'])
+  }).catch((error: unknown) => {
+    // The engine answers a model it refuses with an HTTP error; its words go under the field, so
+    // a timeout or a restart is not mistaken for a provider that is not set up.
+    throw new SectionsNotSavedError(['model'], problemOf(error).detail)
   })
   if (!result.ok && !result.confirm_required) throw new SectionsNotSavedError(['model'])
   return result
@@ -188,7 +196,8 @@ async function homeEndpoint(
     profile: MANAGER
   })
   if (current.provider !== BARE_CUSTOM || !current.base_url) return null
-  const preview = endpoints.find((endpoint) => endpoint.is_current)?.api_key_preview ?? ''
+  const preview =
+    endpoints.find((endpoint) => endpoint.base_url === current.base_url)?.api_key_preview ?? ''
   return { url: current.base_url, keyRef: ENV_REF.test(preview) ? preview : null }
 }
 
@@ -219,14 +228,16 @@ async function saveSections(
   if (draft.soul !== opening.soul) sections.soul = draft.soul
   const model = draft.model && !sameModelChoice(draft.model, opening.model) ? draft.model : null
   const refused: string[] = []
+  let reason: string | null = null
   const refusing = (error: unknown): null => {
     if (!(error instanceof SectionsNotSavedError)) throw error
     refused.push(...error.sections)
+    reason ??= error.reason
     return null
   }
   if (Object.keys(sections).length > 0) await configure(backend, profile, sections).catch(refusing)
   const confirm = model ? await setBotModel(backend, profile, model).catch(refusing) : null
-  if (refused.length > 0) throw new SectionsNotSavedError(refused)
+  if (refused.length > 0) throw new SectionsNotSavedError(refused, reason)
   return confirm
 }
 
@@ -235,12 +246,12 @@ export function sameModelChoice(a: ModelChoice, b: ModelChoice | null): boolean 
 }
 
 /**
- * What a refused section tells the user, shown under its field. The engine says only that a
- * section was not applied, so the reason is the likeliest one: a model whose provider is not set
- * up, or the engine failing to write.
+ * What a refused section tells the user, shown under its field. For description and SOUL the
+ * engine says only that the section was not applied, so the message gives the likeliest reason;
+ * a refused model also shows the engine's own words.
  */
-export function refusedSectionProblem(section: string): Problem {
-  if (section === 'model') return { key: 'details.errorModel', detail: null }
+export function refusedSectionProblem(section: string, reason: string | null = null): Problem {
+  if (section === 'model') return { key: 'details.errorModel', detail: reason }
   if (section === 'description') return { key: 'details.errorDescription', detail: null }
   if (section === 'soul') return { key: 'details.errorSoul', detail: null }
   return { key: 'details.errorNotApplied', detail: section }

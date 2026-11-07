@@ -235,7 +235,10 @@ describe('bot details', () => {
         draft: { ...before, soul: '# New', model: { provider: 'custom', model: 'other' } }
       })
       await expect(saving).rejects.toBeInstanceOf(SectionsNotSavedError)
-      await expect(saving).rejects.toMatchObject({ sections: ['soul', 'model'] })
+      await expect(saving).rejects.toMatchObject({
+        sections: ['soul', 'model'],
+        reason: 'Engine HTTP 400: model switch rejected'
+      })
     })
   })
 
@@ -247,6 +250,13 @@ describe('bot details', () => {
       ['provider', { key: 'details.errorNotApplied', detail: 'provider' }]
     ])('should give a refused %s its message', (section, problem) => {
       expect(refusedSectionProblem(section)).toEqual(problem)
+    })
+
+    it('should show what the engine said under a refused model', () => {
+      expect(refusedSectionProblem('model', 'Restart required')).toEqual({
+        key: 'details.errorModel',
+        detail: 'Restart required'
+      })
     })
   })
 
@@ -311,7 +321,10 @@ describe('bot details', () => {
       engine.homeProvider = 'anthropic'
       const setting = setBotModel(backend, 'analyst', custom)
       await expect(setting).rejects.toBeInstanceOf(SectionsNotSavedError)
-      await expect(setting).rejects.toMatchObject({ sections: ['model'] })
+      await expect(setting).rejects.toMatchObject({
+        sections: ['model'],
+        reason: 'Engine HTTP 400: custom provider needs a base_url'
+      })
       expect(engine.profiles.analyst.model).toEqual(haiku)
     })
 

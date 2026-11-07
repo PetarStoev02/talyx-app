@@ -75,6 +75,7 @@ export function DetailsPanel({
   const [attempt, setAttempt] = useState(0)
   // Sections the engine refused in the last save; each shows its reason under its field.
   const [refused, setRefused] = useState<string[]>([])
+  const [refusedReason, setRefusedReason] = useState<string | null>(null)
   const opening: DetailsDraft | null = loaded && {
     title: bot.meta.title ?? '',
     look: lookOf(bot),
@@ -134,6 +135,7 @@ export function DetailsPanel({
     } catch (error) {
       if (!(error instanceof SectionsNotSavedError)) throw error
       setRefused(error.sections)
+      setRefusedReason(error.reason)
       const [only, ...others] = error.sections
       if (others.length > 0 || !SECTION_TABS[only]) throw error
       setTab(SECTION_TABS[only])
@@ -143,7 +145,7 @@ export function DetailsPanel({
 
   function fieldProblem(section: string): React.JSX.Element | null {
     return refused.includes(section) ? (
-      <ProblemMessage problem={refusedSectionProblem(section)} />
+      <ProblemMessage problem={refusedSectionProblem(section, refusedReason)} />
     ) : null
   }
 
