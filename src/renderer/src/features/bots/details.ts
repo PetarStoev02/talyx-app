@@ -179,7 +179,9 @@ async function assignModel(
   const result = await assignMainModel(backend.http, profile, {
     ...pick,
     ...(endpoint && { base_url: endpoint.url }),
-    ...(endpoint?.keyRef && { api_key: endpoint.keyRef })
+    // Talyx already holds its key; a `${VAR}` written into its own model section would read back
+    // expanded, and the reference every bot copies would be lost.
+    ...(endpoint?.keyRef && profile !== MANAGER && { api_key: endpoint.keyRef })
   }).catch((error: unknown) => {
     // The engine answers a model it refuses with an HTTP error; its words go under the field, so
     // a timeout or a restart is not mistaken for a provider that is not set up.

@@ -340,6 +340,30 @@ describe('bot details', () => {
       expect(engine.profiles.default.model).toEqual(haiku)
     })
 
+    it("should not write the key variable into Talyx's own model when it changes custom models", async () => {
+      const other = { provider: 'custom', model: 'other-router-model' }
+      engine.profiles.default.model = custom
+      await setBotModel(backend, 'default', other)
+      expect(engine.modelSets).toEqual([
+        { profile: 'default', scope: 'main', ...other, base_url: HOME_ENDPOINT }
+      ])
+    })
+
+    it("should not name Talyx's endpoint twice when a named one has its URL", async () => {
+      engine.named.default = [
+        namedEndpoint('my-router', {
+          name: 'My router',
+          base_url: HOME_ENDPOINT,
+          model: '9-route-provider',
+          models: { '9-route-provider': {} },
+          discover_models: true,
+          key_env: 'ROUTER_API_KEY'
+        })
+      ]
+      await setBotModel(backend, 'default', haiku)
+      expect(engine.named.default.map((item) => item.id)).toEqual(['my-router'])
+    })
+
     it('should send no endpoint URL with a built-in provider', async () => {
       engine.profiles.analyst.model = custom
       await setBotModel(backend, 'analyst', haiku)

@@ -65,7 +65,11 @@ export async function keepBareEndpoint(
   if (pick.provider === BARE_CUSTOM) return
   const { endpoints } = await listEndpoints(http, profile)
   const bare = endpoints.find((endpoint) => endpoint.source === CONFIG_YAML_SOURCE)
-  if (!bare) return
+  // A named endpoint on the same URL already outlives the switch; a second would list it twice.
+  const named = endpoints.some(
+    (endpoint) => endpoint.source !== CONFIG_YAML_SOURCE && endpoint.base_url === bare?.base_url
+  )
+  if (!bare || named) return
   const { host } = new URL(bare.base_url)
   await saveNamedEndpoint(
     http,
