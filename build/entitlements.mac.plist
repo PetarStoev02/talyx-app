@@ -6,9 +6,6 @@
     <!-- V8 compiles JavaScript to machine code at run time; without this the hardened runtime kills it. -->
     <key>com.apple.security.cs.allow-jit</key>
     <true/>
-    <!-- V8 and WebAssembly also write code to memory that MAP_JIT does not cover (Electron's documented pair). -->
-    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-    <true/>
     <!-- Dictation records from the microphone; the hardened runtime blocks it without this. -->
     <key>com.apple.security.device.audio-input</key>
     <true/>

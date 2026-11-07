@@ -39,7 +39,6 @@ describe('release configuration', () => {
     const keys = [...plist.matchAll(/<key>([^<]+)<\/key>/g)].map((match) => match[1])
     expect(keys).toEqual([
       'com.apple.security.cs.allow-jit',
-      'com.apple.security.cs.allow-unsigned-executable-memory',
       'com.apple.security.device.audio-input'
     ])
   })
