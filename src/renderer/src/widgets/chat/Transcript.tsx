@@ -1,9 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { ArrowDown } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
-import type { ChatItem } from '@features/chat/types'
+import type { MessageItem } from '@features/chat/types'
 import { MessageBubble } from './MessageBubble'
-import { ToolLine } from './ToolLine'
 
 // How close to the end still counts as reading the newest message.
 const STICK_DISTANCE_PX = 48
@@ -14,7 +13,7 @@ export function Transcript({
   children,
   loadImage
 }: {
-  items: ChatItem[]
+  items: MessageItem[]
   children?: React.ReactNode
   loadImage: (path: string) => Promise<string>
 }): React.JSX.Element {
@@ -39,11 +38,7 @@ export function Transcript({
         <ol className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-6">
           {items.map((item, index) => (
             <li key={item.id || index} className="flex flex-col">
-              {item.kind === 'tool' ? (
-                <ToolLine tool={item} />
-              ) : (
-                <MessageBubble message={item} loadImage={loadImage} />
-              )}
+              <MessageBubble message={item} loadImage={loadImage} />
             </li>
           ))}
           {children}

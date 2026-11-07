@@ -9,7 +9,7 @@ import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { markdownImage } from '@features/chat/markdownImage'
 import { senderProfile } from '@features/chat/transcript'
-import type { ChatItem } from '@features/chat/types'
+import type { MessageItem } from '@features/chat/types'
 import { cn } from '@shared/lib/utils'
 
 // Links open in the browser through the window-open guard, never inside the app.
@@ -36,13 +36,11 @@ const MARKDOWN_COMPONENTS: Components = {
 const urlTransform: UrlTransform = (url, _key, node) =>
   node.tagName === 'img' ? url : defaultUrlTransform(url)
 
-type Message = Extract<ChatItem, { kind: 'user' | 'bot' | 'notice' }>
-
 export function MessageBubble({
   message,
   loadImage
 }: {
-  message: Message
+  message: MessageItem
   loadImage: (path: string) => Promise<string>
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)

@@ -18,6 +18,18 @@ const NOTICE_KINDS = new Set([
 const MESSAGE_AGENT = 'message_agent'
 const IMAGE_LINE = /^@image:(.+)$/gm
 const IMAGE_NOTE = /\[Image attached: ([^\]]+)\]/g
+// What the engine writes into a stored user message ahead of the typed text, matched by its fixed
+// wording only. Each image note names the image's path; the text after the notes is what was typed.
+const ENGINE_IMAGE_NOTES = [
+  /^\[The user sent an image~ Here's what I can see:\n[\s\S]*?\]\n\[If you need a closer look, use vision_analyze with image_url: ([^\n]+?) ~\](?:\n\n|$)/,
+  /^\[The user sent an image but I couldn't quite see it this time \(>_<\) You can try looking at it yourself with vision_analyze using image_url: ([^\n]+?)\](?:\n\n|$)/,
+  /^\[The user sent an image but something went wrong when I tried to look at it~ You can try examining it yourself with vision_analyze using image_url: ([^\n]+?)\](?:\n\n|$)/
+]
+// A request the engine restates after compacting the context, because it was not finished. The
+// engine's header has an em dash, built from its code point since this repo never spells one.
+const RESTATED = new RegExp(
+  `^\\[STILL IN PROGRESS ${String.fromCharCode(0x2014)} this is the active request, restated after the compaction boundary because it was not finished yet\\. Continue it; do not start over\\.\\]\\n`
+)
 
 type Payload = Record<string, unknown>
 type ToolItem = Extract<ChatItem, { kind: 'tool' }>
@@ -31,7 +43,11 @@ export function fromHistory(
   running: boolean
 ): Transcript {
   const calls = toolCalls(messages)
-  const items = messages.flatMap((message) => historyItem(message, calls))
+  const items: ChatItem[] = []
+  for (const message of messages) {
+    for (const item of historyItem(message, calls))
+      if (!isRestatedCopy(item, message, items)) items.push(item)
+  }
   return { sessionId, items, prompts: [], running, lastSeq: 0, epoch: null, stream: null }
 }
 
@@ -139,12 +155,38 @@ function noticeText(message: SessionMessage, text: string): string {
     : text.split('\n')[0].trim()
 }
 
-function userItem(id: string, raw: string): ChatItem {
-  const images = [...raw.matchAll(IMAGE_LINE), ...raw.matchAll(IMAGE_NOTE)].map((match) =>
-    match[1].trim()
+// A restated request whose original is still in the chat shows once, as first sent.
+function isRestatedCopy(item: ChatItem, message: SessionMessage, items: ChatItem[]): boolean {
+  if (
+    item.kind !== 'user' ||
+    !RESTATED.test(messageText(message.display_content ?? message.content))
   )
-  const text = raw.replace(IMAGE_LINE, '').replace(IMAGE_NOTE, '').trim()
-  return { kind: 'user', id, text, images }
+    return false
+  const original = items.filter((earlier) => earlier.kind === 'user').at(-1)
+  return original?.kind === 'user' && original.text === item.text
+}
+
+function userItem(id: string, stored: string): ChatItem {
+  const { typed, notedImages } = withoutEngineText(stored)
+  const images = [
+    ...notedImages,
+    ...[...typed.matchAll(IMAGE_LINE), ...typed.matchAll(IMAGE_NOTE)].map((match) =>
+      match[1].trim()
+    )
+  ]
+  const text = typed.replace(IMAGE_LINE, '').replace(IMAGE_NOTE, '').trim()
+  return { kind: 'user', id, text, images: [...new Set(images)] }
+}
+
+function withoutEngineText(stored: string): { typed: string; notedImages: string[] } {
+  let typed = stored.replace(RESTATED, '')
+  const notedImages: string[] = []
+  for (;;) {
+    const note = ENGINE_IMAGE_NOTES.map((shape) => shape.exec(typed)).find(Boolean)
+    if (!note) return { typed, notedImages }
+    notedImages.push(note[1].trim())
+    typed = typed.slice(note[0].length)
+  }
 }
 
 function toolItem(

@@ -91,6 +91,71 @@ describe('chat transcript', () => {
       })
     })
 
+    describe('engine text in your own messages', () => {
+      const PATH = '/cache/native-inputs/abc/image_9e15cd.png'
+      const SEEN =
+        "[The user sent an image~ Here's what I can see:\nA sidebar [with brackets] lists three bots.]\n" +
+        `[If you need a closer look, use vision_analyze with image_url: ${PATH} ~]`
+      const RESTATED =
+        `[STILL IN PROGRESS ${String.fromCharCode(0x2014)} this is the active request, restated after the compaction ` +
+        'boundary because it was not finished yet. Continue it; do not start over.]\n'
+      const user = (id: number, content: string): SessionMessage => ({ id, role: 'user', content })
+
+      it('should show the typed text and the image, not its description or path', () => {
+        const [item] = history(user(1, `${SEEN}\n\nMake the names match`)).items
+        expect(item).toEqual({
+          kind: 'user',
+          id: '1',
+          text: 'Make the names match',
+          images: [PATH]
+        })
+      })
+
+      it.each([
+        "[The user sent an image but I couldn't quite see it this time (>_<) You can try looking at it yourself with vision_analyze using image_url: /cache/a.png]",
+        '[The user sent an image but something went wrong when I tried to look at it~ You can try examining it yourself with vision_analyze using image_url: /cache/a.png]'
+      ])('should show only the image when the engine could not see it: %s', (note) => {
+        const [item] = history(user(1, `${note}\n\nWhat is this?`)).items
+        expect(item).toMatchObject({ text: 'What is this?', images: ['/cache/a.png'] })
+      })
+
+      it('should show each image of several, and none of their notes', () => {
+        const second = SEEN.replace(PATH, '/cache/b.png')
+        const [item] = history(user(1, `${SEEN}\n\n${second}`)).items
+        expect(item).toMatchObject({ text: '', images: [PATH, '/cache/b.png'] })
+      })
+
+      it('should show a request restated after compaction once, as you wrote it', () => {
+        const transcript = history(
+          user(1, 'Draft the Q3 report'),
+          { id: 2, role: 'assistant', content: 'Working on it.' },
+          user(3, `${RESTATED}Draft the Q3 report`)
+        )
+        expect(transcript.items.filter((item) => item.kind === 'user')).toEqual([
+          { kind: 'user', id: '1', text: 'Draft the Q3 report', images: [] }
+        ])
+      })
+
+      it('should show a restated request whose original is gone, without the header', () => {
+        const [item] = history(user(1, `${RESTATED}Draft the Q3 report`)).items
+        expect(item).toMatchObject({ kind: 'user', text: 'Draft the Q3 report' })
+      })
+
+      it('should strip a restated request that carries an image note', () => {
+        const [item] = history(user(1, `${RESTATED}${SEEN}\n\nDraft the Q3 report`)).items
+        expect(item).toMatchObject({ text: 'Draft the Q3 report', images: [PATH] })
+      })
+
+      it.each([
+        '[The user sent an image] is what I want the bot to say',
+        'Use [STILL IN PROGRESS] as the status label',
+        'See [docs](https://example.com) and [If you need a closer look] notes'
+      ])('should leave plain text with square brackets alone: %s', (text) => {
+        const [item] = history(user(1, text)).items
+        expect(item).toEqual({ kind: 'user', id: '1', text, images: [] })
+      })
+    })
+
     it('should label a tool line from its labels', () => {
       const [item] = history({
         id: 1,
