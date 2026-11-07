@@ -21,6 +21,7 @@ import {
   HOME_KEY_REF,
   backendFor,
   engineDouble,
+  namedEndpoint,
   pngOf
 } from './engineDouble'
 import type { EngineDouble } from './engineDouble'
@@ -308,6 +309,27 @@ describe('bot details', () => {
       expect(engine.modelSets).toEqual([
         { profile: 'analyst', scope: 'main', ...custom, base_url: HOME_ENDPOINT }
       ])
+    })
+
+    it("should give a bot Talyx's named endpoint and switch it there and back", async () => {
+      const kept = { provider: 'endpoint-127-0-0-1-20128', model: '9-route-provider' }
+      engine.homeProvider = 'anthropic'
+      engine.named.default = [
+        namedEndpoint(kept.provider, {
+          name: 'Custom endpoint (127.0.0.1:20128)',
+          base_url: HOME_ENDPOINT,
+          model: kept.model,
+          models: { [kept.model]: {} },
+          discover_models: true,
+          key_env: 'ROUTER_API_KEY'
+        })
+      ]
+      for (const model of [kept, haiku, kept]) {
+        await setBotModel(backend, 'analyst', model)
+        expect(engine.profiles.analyst.model).toEqual(model)
+      }
+      expect(engine.named.analyst).toEqual(engine.named.default)
+      expect(engine.named.analyst[0].api_key_preview).toBe('${ROUTER_API_KEY}')
     })
 
     it('should send no endpoint URL with a built-in provider', async () => {

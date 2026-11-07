@@ -468,6 +468,8 @@ const en = {
   'providers.errorEndpointIncomplete': 'An endpoint needs a name and a base URL.',
   'providers.errorEndpointNoModels': 'List at least one model.',
   'providers.errorEndpointKeyNeeded': 'Enter the endpoint’s key again before saving.',
+  'providers.errorEndpointKeyInConfig':
+    'Talyx’s custom endpoint keeps its key inside its settings file, so switching would lose it. Edit the endpoint under Providers and type its key again, then switch.',
   'providers.errorModelNotSet': 'The engine did not change the model. Pick it again.',
   'providers.errorNotSignedOut': 'There was no sign-in to remove.',
   'providers.defaultTitle': 'Talyx’s model',

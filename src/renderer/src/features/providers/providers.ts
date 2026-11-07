@@ -1,4 +1,10 @@
 import type { EngineApiRequest } from '@shared/engine/http'
+import {
+  BARE_CUSTOM,
+  CONFIG_YAML_SOURCE,
+  listEndpoints,
+  saveNamedEndpoint
+} from '@shared/engine/endpoints'
 import { assignMainModel } from '@shared/engine/mainModel'
 import type {
   CustomEndpoint,
@@ -90,8 +96,6 @@ const SIGN_IN_WAIT_SECONDS = 25
 const SIGN_IN_POLL_TIMEOUT_MS = 45_000
 const KEY_NAME = /(?:_API_KEY|_TOKEN|_KEY)$/
 const REDACTED = /^«redacted:(.+)»$/
-// How the engine marks an endpoint that lives in config.yaml's model section, not its list.
-const CONFIG_YAML_SOURCE = 'direct-config'
 
 export async function loadProviders(backend: ProvidersBackend): Promise<ProvidersOverview> {
   const profile = backend.home
@@ -263,6 +267,7 @@ export async function setDefaultModel(
   backend: ProvidersBackend,
   pick: ModelPick
 ): Promise<ModelConfirm | null> {
+  await keepBareEndpoint(backend, pick)
   const result = await assignMainModel(backend.http, backend.home, pick)
   if (result.confirm_required) return { message: result.confirm_message ?? '', model: pick }
   if (result.ok === false) throw new ProvidersError('providers.errorModelNotSet')
@@ -278,6 +283,24 @@ export async function confirmDefaultModel(
     confirm_expensive_model: true
   })
   if (result.ok === false) throw new ProvidersError('providers.errorModelNotSet')
+}
+
+/**
+ * A bare custom endpoint lives only in Talyx's model section, so a model on another provider
+ * would erase it, and with it every bot's way back. Before Talyx leaves it, it is kept as a named
+ * endpoint on Talyx's profile; a bot that picks it copies it then (see the bots' model pin).
+ */
+async function keepBareEndpoint(backend: ProvidersBackend, pick: ModelPick): Promise<void> {
+  if (pick.provider === BARE_CUSTOM) return
+  const { endpoints } = await listEndpoints(backend.http, backend.home)
+  const bare = endpoints.find((endpoint) => endpoint.source === CONFIG_YAML_SOURCE)
+  if (!bare) return
+  const { host } = new URL(bare.base_url)
+  await saveNamedEndpoint(
+    backend.http,
+    { profile: backend.home, id: `endpoint-${host.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}` },
+    { ...bare, name: `Custom endpoint (${host})` }
+  )
 }
 
 /** Opens a sign-in; the caller shows its code or page, then waits or submits. */

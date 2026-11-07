@@ -1,6 +1,7 @@
 import { expect } from 'vitest'
 import type { RosterBackend, RosterRequest } from '../../../src/renderer/src/features/bots/data'
 import type { EngineHttp } from '../../../src/renderer/src/shared/engine/http'
+import type { CustomEndpoint } from '../../../src/renderer/src/shared/engine/types'
 import type { ModelChoice } from '../../../src/renderer/src/features/bots/details'
 import type { Look } from '../../../src/renderer/src/features/bots/look'
 import type { Room } from '../../../src/renderer/src/features/bots/types'
@@ -38,6 +39,8 @@ export interface EngineDouble {
   modelSets: Record<string, unknown>[]
   /** The provider Talyx's own model is on; a bare custom pick copies its URL only from custom. */
   homeProvider: string
+  /** Each profile's named endpoints (its config's providers), as the endpoint list shows them. */
+  named: Record<string, CustomEndpoint[]>
   /** The engine's preview of Talyx's endpoint key: a `${VAR}` reference, or a redacted key. */
   homeKeyPreview: string
   metadata: Record<string, Record<string, unknown>>
@@ -65,6 +68,30 @@ export interface EngineDouble {
 /** What the double's renderer returns for a look, so a test can tell which look was exported. */
 export const pngOf = (look: Look): string =>
   `data:image/png;base64,${look.shape}-${look.hue}-${look.faces ? 'face' : 'plain'}`
+
+interface NamedEntry {
+  name: string
+  base_url: string
+  model: string
+  models: Record<string, object>
+  discover_models: boolean
+  key_env?: string
+}
+
+/** A named endpoint as the engine's list shows it: its key only as its variable. */
+export function namedEndpoint(id: string, entry: NamedEntry): CustomEndpoint {
+  return {
+    id,
+    name: entry.name,
+    base_url: entry.base_url,
+    model: entry.model,
+    models: Object.keys(entry.models),
+    discover_models: entry.discover_models,
+    has_api_key: !!entry.key_env,
+    api_key_preview: entry.key_env ? `\${${entry.key_env}}` : null,
+    source: 'providers'
+  }
+}
 
 const blank = (): ProfileState => ({ description: '', soul: '', model: null })
 
@@ -108,6 +135,7 @@ export function engineDouble(
   let assetFailure = false
   const assets: EngineDouble['assets'] = []
   const modelSets: Record<string, unknown>[] = []
+  const named: EngineDouble['named'] = {}
 
   // As the engine: a costly model waits for a yes, and a bare custom provider needs its URL.
   function setModel(profile: string, body: Record<string, unknown>): unknown {
@@ -118,6 +146,9 @@ export function engineDouble(
     if (failing.has('model')) throw new Error('Engine HTTP 400: model switch rejected')
     if (provider === 'custom' && !body.base_url)
       throw new Error('Engine HTTP 400: custom provider needs a base_url')
+    const namedIds = Object.values(named).flatMap((list) => list.map((item) => item.id))
+    if (namedIds.includes(provider) && !named[profile]?.some((item) => item.id === provider))
+      throw new Error(`Engine HTTP 400: Unknown provider '${provider}'`)
     profiles[profile].model = { provider, model }
     return { ok: true, scope: 'main', provider, model }
   }
@@ -130,19 +161,29 @@ export function engineDouble(
     const profile = new URL(request.path, 'http://engine').searchParams.get('profile') ?? ''
     if (request.path.startsWith('/api/model/set'))
       return setModel(profile, request.body as Record<string, unknown>) as T
+    if (request.path.startsWith('/api/config')) {
+      const { providers } = (request.body as { config: { providers: Record<string, NamedEntry> } })
+        .config
+      for (const [id, entry] of Object.entries(providers))
+        named[profile] = [...(named[profile] ?? []), namedEndpoint(id, entry)]
+      return { ok: true } as T
+    }
     if (request.path.startsWith('/api/providers/custom-endpoints')) {
-      const custom = double.homeProvider === 'custom'
+      const custom = double.homeProvider === 'custom' && profile === 'default'
       return {
-        endpoints: custom
-          ? [
-              {
-                id: 'custom',
-                base_url: HOME_ENDPOINT,
-                is_current: true,
-                api_key_preview: double.homeKeyPreview
-              }
-            ]
-          : [],
+        endpoints: [
+          ...(named[profile] ?? []),
+          ...(custom
+            ? [
+                {
+                  id: 'custom',
+                  base_url: HOME_ENDPOINT,
+                  is_current: true,
+                  api_key_preview: double.homeKeyPreview
+                }
+              ]
+            : [])
+        ],
         current: {
           provider: double.homeProvider,
           model: '9-route-provider',
@@ -298,6 +339,7 @@ export function engineDouble(
     request,
     http: http as EngineHttp,
     modelSets,
+    named,
     homeProvider: 'custom',
     homeKeyPreview: HOME_KEY_REF,
     rooms,

@@ -1,7 +1,14 @@
 import { z } from 'zod'
 import { create } from 'zustand'
+import {
+  BARE_CUSTOM,
+  CONFIG_YAML_SOURCE,
+  keyRef,
+  listEndpoints,
+  saveNamedEndpoint
+} from '@shared/engine/endpoints'
 import { assignMainModel } from '@shared/engine/mainModel'
-import type { CustomEndpointsResponse, ModelAssignmentResponse } from '@shared/engine/types'
+import type { ModelAssignmentResponse } from '@shared/engine/types'
 import { saveBotMeta } from './data'
 import type { RosterBackend } from './data'
 import { exportAvatar, lookMeta, sameLook } from './look'
@@ -50,11 +57,6 @@ export class SectionsNotSavedError extends RosterError {
 
 /** Talyx's own profile, the manager. Its avatar is the logo, so it never gets an exported image. */
 export const MANAGER = 'default'
-
-// The engine's bare custom provider: an endpoint known only by its URL, with no named entry.
-const BARE_CUSTOM = 'custom'
-// How the engine writes a key kept in an environment variable: a reference, not the key.
-const ENV_REF = /^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/
 
 const describeSchema = z.object({
   description: z.string().catch(''),
@@ -170,6 +172,7 @@ async function assignModel(
   // A bare custom provider is only its URL, and a bot that was on another provider no longer has
   // it: it comes from Talyx's own profile, which every bot's custom endpoint copies.
   const endpoint = pick.provider === BARE_CUSTOM ? await homeEndpoint(backend) : null
+  if (pick.provider !== BARE_CUSTOM) await copyHomeEndpoint(backend, profile, pick.provider)
   const result = await assignMainModel(backend.http, profile, {
     ...pick,
     ...(endpoint && { base_url: endpoint.url }),
@@ -191,14 +194,32 @@ async function assignModel(
 async function homeEndpoint(
   backend: RosterBackend
 ): Promise<{ url: string; keyRef: string | null } | null> {
-  const { current, endpoints } = await backend.http<CustomEndpointsResponse>({
-    path: `/api/providers/custom-endpoints?${new URLSearchParams({ profile: MANAGER })}`,
-    profile: MANAGER
-  })
+  const { current, endpoints } = await listEndpoints(backend.http, MANAGER)
   if (current.provider !== BARE_CUSTOM || !current.base_url) return null
-  const preview =
-    endpoints.find((endpoint) => endpoint.base_url === current.base_url)?.api_key_preview ?? ''
-  return { url: current.base_url, keyRef: ENV_REF.test(preview) ? preview : null }
+  const endpoint = endpoints.find((item) => item.base_url === current.base_url)
+  return { url: current.base_url, keyRef: endpoint ? keyRef(endpoint) : null }
+}
+
+/**
+ * A named endpoint of Talyx's that the bot lacks, such as one created after it or the one Talyx
+ * kept when its own model left it, is copied onto the bot first: the engine pins only a provider
+ * the bot's config names.
+ */
+async function copyHomeEndpoint(
+  backend: RosterBackend,
+  profile: string,
+  provider: string
+): Promise<void> {
+  if (profile === MANAGER) return
+  const [home, own] = await Promise.all([
+    listEndpoints(backend.http, MANAGER),
+    listEndpoints(backend.http, profile)
+  ])
+  const endpoint = home.endpoints.find(
+    (item) => item.id === provider && item.source !== CONFIG_YAML_SOURCE
+  )
+  if (!endpoint || own.endpoints.some((item) => item.id === provider)) return
+  await saveNamedEndpoint(backend.http, { profile, id: provider }, endpoint)
 }
 
 async function configure(
