@@ -3,9 +3,10 @@ import { DropdownMenu } from 'radix-ui'
 import { ArrowUp, ChevronDown, LoaderCircle, Mic, Plus, Square, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
+import { useNavigation } from '@app/providers/useNavigation'
 import type { ChatActions } from '@features/chat/chat'
 import type { ChatState } from '@features/chat/store'
-import { dataUrlOf, useDictation } from '@features/chat/useDictation'
+import { dataUrlOf, dictationProblem, useDictation } from '@features/chat/useDictation'
 import { problemOf, problemText } from '@shared/lib/problem'
 import { cn } from '@shared/lib/utils'
 import { ModelPicker } from '@shared/ui/ModelPicker'
@@ -56,6 +57,7 @@ export function Composer({
   children?: React.ReactNode
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
+  const navigate = useNavigation((s) => s.navigate)
   const [text, setText] = useState('')
   const [files, setFiles] = useState<ComposerFile[]>([])
   const [sending, setSending] = useState(false)
@@ -71,15 +73,17 @@ export function Composer({
   const dictation = useDictation(
     target.transcribe,
     (words) => setText((current) => (current.trim() ? `${current}\n${words}` : words)),
-    (error) =>
-      toast.error(
-        t(
-          error instanceof DOMException && error.name === 'NotAllowedError'
-            ? 'chat.micDenied'
-            : 'chat.dictationFailed'
-        ),
-        { description: error instanceof Error ? error.message : String(error), duration: Infinity }
-      )
+    (error) => {
+      const problem = dictationProblem(error)
+      toast.error(t(problem.key), {
+        description: problem.detail ?? undefined,
+        duration: Infinity,
+        action:
+          problem.key === 'chat.dictationNoProvider'
+            ? { label: t('chat.openSettings'), onClick: () => navigate('settings') }
+            : undefined
+      })
+    }
   )
 
   async function send(): Promise<void> {
