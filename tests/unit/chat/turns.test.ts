@@ -106,6 +106,15 @@ describe('turn view', () => {
       expect(activity).toEqual({ tool: newest, tools: 3 })
     })
 
+    it('should show the reply streaming before any tool, as the answer it is', () => {
+      const { items, activity } = turnView(
+        [user('u1'), { ...reply('b1', 'Margins'), streaming: true }],
+        true
+      )
+      expect(ids(items)).toEqual(['u1', 'b1'])
+      expect(activity).toEqual({ tool: null, tools: 0 })
+    })
+
     it('should show the reply streaming after the last tool', () => {
       const { items, activity } = turnView(
         [user('u1'), tool('t1'), { ...reply('b1', 'Margins'), streaming: true }],
