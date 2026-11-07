@@ -70,6 +70,17 @@ describe('telling bots they live in Talyx', () => {
     })
 
     it.each([
+      ['a prompt of only whitespace', ' \n\t'],
+      ['an empty list', []]
+    ])('should write the rules into a bot whose prompt is %s', async (_, prompt) => {
+      engine.prompts.analyst = prompt
+
+      await fillInRules(backend, ['analyst'])
+
+      expect(engine.prompts.analyst).toBe(TALYX_RULES)
+    })
+
+    it.each([
       ['a plain prompt', 'Answer in French.'],
       ['a prompt under the same heading', '# Talyx\n\nAnswer in French.'],
       ['the rules with lines the user added', `${TALYX_RULES}\nAnswer in French.`],

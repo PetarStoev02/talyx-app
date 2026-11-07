@@ -24,7 +24,7 @@ interface ProfileConfig {
 }
 
 /**
- * Writes the rules into the profile's prompt setting when it is empty or holds an earlier Talyx
+ * Writes the rules into the profile's prompt setting when it is empty (or blank) or holds an earlier Talyx
  * text. A prompt the user wrote is left alone.
  */
 export async function writeRules(backend: RosterBackend, profile: string): Promise<void> {
@@ -36,7 +36,12 @@ export async function writeRules(backend: RosterBackend, profile: string): Promi
   const prompt = config.agent?.system_prompt
   if (prompt === TALYX_RULES) return
   // The engine also takes a list here; like any prompt that is not a Talyx text, it is the user's.
-  if (prompt && !(typeof prompt === 'string' && PREVIOUS_RULES.includes(prompt))) return
+  // A blank string or an empty list holds nothing of theirs.
+  const empty =
+    !prompt ||
+    (typeof prompt === 'string' && !prompt.trim()) ||
+    (Array.isArray(prompt) && !prompt.length)
+  if (!empty && !(typeof prompt === 'string' && PREVIOUS_RULES.includes(prompt))) return
   await backend.http({
     path,
     method: 'PUT',

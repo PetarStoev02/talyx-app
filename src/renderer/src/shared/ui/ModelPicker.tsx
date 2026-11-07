@@ -74,7 +74,7 @@ export function ModelPicker({
                 <CheckItem
                   key={model}
                   label={model}
-                  selected={selected?.model === model && selected.provider === provider.slug}
+                  selected={selected?.model === model && isProvider(provider, selected.provider)}
                   onSelect={() => onSelect({ model, provider: provider.slug })}
                 />
               ))}
@@ -84,6 +84,11 @@ export function ModelPicker({
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
   )
+}
+
+/** A provider row also stands for the slugs it lists as aliases, such as a hidden twin. */
+function isProvider(provider: ModelOptionProvider, slug: string): boolean {
+  return provider.slug === slug || (provider.aliases ?? []).includes(slug)
 }
 
 /**
