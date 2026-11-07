@@ -9,8 +9,8 @@
 
 @source '../../../src/renderer/src';
 
-/* The demo is same-origin with talyx.app, so dictation would ask the visitor for the microphone,
-   and the footer's Settings page is not part of it. Their labels are the app's English copy
+/* The demo frame has no microphone permission, so dictation could only fail, and the footer's
+   Settings page is not part of it. Their labels are the app's English copy
    (src/renderer/src/shared/lib/i18n.ts). */
 button[aria-label='Dictate'],
 button[aria-label='Settings'] {

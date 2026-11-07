@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -111,6 +112,34 @@ async function prerender() {
   // Clean up SSR bundle
   rmSync(join(distDir, 'server'), { recursive: true, force: true })
   console.log('  Cleaned up: dist/server/\n')
+
+  checkInlineScriptsAllowed()
+}
+
+/**
+ * The CSP in vercel.json runs inline scripts by hash: the theme scripts in index.html and
+ * app-demo.html, and the ones React's prerender writes. An edit to one, or a React upgrade, changes
+ * a hash; this fails the build then, instead of shipping a page whose scripts the browser blocks.
+ */
+function checkInlineScriptsAllowed() {
+  const vercel = JSON.parse(readFileSync(join(__dirname, '..', 'vercel.json'), 'utf-8'))
+  const csp = vercel.headers
+    .flatMap((rule) => rule.headers)
+    .find((header) => header.key === 'Content-Security-Policy').value
+  const pages = readdirSync(distDir, { recursive: true }).filter((file) => file.endsWith('.html'))
+  const missing = new Set()
+  for (const page of pages) {
+    const html = readFileSync(join(distDir, page), 'utf-8')
+    for (const [, script] of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+      const hash = `'sha256-${createHash('sha256').update(script).digest('base64')}'`
+      if (!csp.includes(hash)) missing.add(`${hash} (${page})`)
+    }
+  }
+  if (missing.size > 0)
+    throw new Error(
+      `Inline scripts missing from the CSP in vercel.json:\n  ${[...missing].join('\n  ')}`
+    )
+  console.log(`  Checked: inline scripts in ${pages.length} pages are in the CSP\n`)
 }
 
 prerender().catch((err) => {

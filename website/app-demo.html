@@ -15,24 +15,27 @@
       }
     </style>
     <script>
-      // Same origin as the page embedding this, so the site's theme choice is
-      // readable straight from storage, and `storage` events land here when
-      // the visitor flips the switch out there. Inline, to theme before paint.
+      // Sandboxed in an opaque origin, so the site's storage is out of reach: the page that
+      // embeds this posts its theme (see AppEmbed.tsx), and this answers once it is applied.
+      // Until then, and when opened on its own, it follows the OS. Inline, to theme before paint.
       ;(function () {
         var media = window.matchMedia('(prefers-color-scheme: dark)')
-        function apply() {
-          var stored = null
-          try {
-            stored = localStorage.getItem('talyx-theme')
-          } catch (e) {
-            /* storage blocked: fall back to the OS preference */
-          }
-          var dark = stored === 'dark' || (stored !== 'light' && media.matches)
+        var fromParent = false
+        function apply(dark) {
           document.documentElement.className = dark ? 'dark' : 'light'
         }
-        apply()
-        window.addEventListener('storage', apply)
-        media.addEventListener('change', apply)
+        apply(media.matches)
+        media.addEventListener('change', function () {
+          if (!fromParent) apply(media.matches)
+        })
+        window.addEventListener('message', function (event) {
+          var data = event.data
+          if (event.source !== window.parent || !data || data.type !== 'talyx-theme') return
+          if (data.theme !== 'dark' && data.theme !== 'light') return
+          fromParent = true
+          apply(data.theme === 'dark')
+          window.parent.postMessage({ type: 'talyx-demo-ready' }, '*')
+        })
       })()
     </script>
   </head>
