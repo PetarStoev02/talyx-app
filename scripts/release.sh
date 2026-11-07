@@ -22,9 +22,7 @@ if [ ! -f "$FIXED_NOTES" ]; then
   exit 1
 fi
 NOTES_TMP=$(mktemp)
-KEY_TMP=$(mktemp)
-trap 'rm -f "$NOTES_TMP" "$KEY_TMP"' EXIT
-write_apple_api_key "$KEY_TMP"
+trap 'rm -f "$NOTES_TMP"' EXIT
 if release_notes_file "$HIGHLIGHTS_FILE" "$NOTES_TMP"; then echo >> "$NOTES_TMP"; else : > "$NOTES_TMP"; fi
 cat "$FIXED_NOTES" >> "$NOTES_TMP"
 

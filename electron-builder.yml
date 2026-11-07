@@ -35,8 +35,8 @@ mac:
   hardenedRuntime: true
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
-  # Notarizes and staples the .app when APPLE_API_KEY (a .p8 path), APPLE_API_KEY_ID and
-  # APPLE_API_ISSUER are set; with none of them it warns and skips, with only some it fails.
+  # Notarizes and staples the .app when APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID
+  # are set; with none of them it warns and skips.
   notarize: true
 dmg:
   # Signs the DMG with the same Developer ID; a no-op when there is no identity.

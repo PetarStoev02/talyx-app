@@ -99,8 +99,7 @@ release) at the repo root. It is gitignored, and its SHA-256 must equal `ENGINE_
 `src/main/infrastructure/setup/installPin.ts`; the script also requires the file's `engineVersion` to equal
 `EXPECTED_ENGINE_VERSION` and exactly one commit hash in it, and refuses to release otherwise. Changing
 the commands means updating that pin in the same commit. It also needs the five signing
-variables below in the environment (`APPLE_API_KEY` may be the `.p8` path there) and refuses
-without them.
+variables below in the environment and refuses without them.
 
 #### Signing secrets
 
@@ -112,11 +111,13 @@ as an Actions secret on `PetarStoev02/talyx-app`:
   it at developer.apple.com → Certificates). In Keychain Access, export the certificate with its
   private key as a `.p12`. Then `gh secret set CSC_LINK < <(base64 -i DeveloperID.p12)`.
 - `CSC_KEY_PASSWORD`: the password chosen for that `.p12` export. `gh secret set CSC_KEY_PASSWORD`.
-- `APPLE_API_KEY`: the App Store Connect API key's `.p8` content. In App Store Connect → Users and
-  Access → Integrations → App Store Connect API, create a Team key with the Developer role and
-  download it (only once). `gh secret set APPLE_API_KEY < AuthKey_<KEYID>.p8`.
-- `APPLE_API_KEY_ID`: that key's Key ID, shown next to it. `gh secret set APPLE_API_KEY_ID`.
-- `APPLE_API_ISSUER`: the Issuer ID at the top of the same page. `gh secret set APPLE_API_ISSUER`.
+- `APPLE_ID`: the Apple Account email of the developer account. `gh secret set APPLE_ID`.
+- `APPLE_APP_SPECIFIC_PASSWORD`: an app-specific password for that account, from
+  account.apple.com → Sign-In and Security → App-Specific Passwords (shown only once).
+  `gh secret set APPLE_APP_SPECIFIC_PASSWORD`. Check it first with
+  `xcrun notarytool history --apple-id <email> --team-id <team> --password <password>`.
+- `APPLE_TEAM_ID`: the team ID in the Developer ID certificate's name (`3Z52YUB6CN`).
+  `gh secret set APPLE_TEAM_ID`.
 
 The certificate expires after five years and the membership yearly; renew both before a release.
 
