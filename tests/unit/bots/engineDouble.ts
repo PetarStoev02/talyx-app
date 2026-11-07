@@ -23,6 +23,11 @@ export interface CronJob {
   deliver?: string
   enabled: boolean
   state: string
+  next_run_at?: string | null
+  last_run_at?: string | null
+  last_status?: string | null
+  last_error?: string | null
+  runs?: { started_at: number; is_active: boolean; title: string }[]
 }
 
 type Section = 'soul' | 'description' | 'model'
@@ -60,6 +65,10 @@ export interface EngineDouble {
   conflictOnce: () => void
   failSection: (section: Section) => void
   failCronOnce: (error: string) => void
+  /** The next cron REST call fails as the engine's HTTP error does. */
+  refuseCronOnce: (detail: string) => void
+  /** Every cron REST call that changed something, in order. */
+  cronWrites: { method: string; path: string; body?: unknown }[]
   failMetaOnce: () => void
   rooms: Room[]
   /** Every profiles.set_asset call, in order. */
@@ -135,6 +144,8 @@ export function engineDouble(
   const failing = new Set<Section>()
   let conflict = false
   let cronFailure: string | null = null
+  let cronRefusal: string | null = null
+  const cronWrites: EngineDouble['cronWrites'] = []
   let metaFailure = false
   let assetFailure = false
   const assets: EngineDouble['assets'] = []
@@ -185,6 +196,7 @@ export function engineDouble(
       }
       return { ok: true } as T
     }
+    if (request.path.startsWith('/api/cron/jobs/')) return cronRest(profile, request) as T
     if (request.path.startsWith('/api/providers/custom-endpoints')) {
       const custom = double.homeProvider === 'custom' && profile === 'default'
       return {
@@ -310,6 +322,44 @@ export function engineDouble(
     }
   }
 
+  // As the engine's cron REST: a job's schedule comes back as its stored shape, not as typed.
+  function cronRest(
+    profile: string,
+    request: { path: string; method?: string; body?: unknown }
+  ): unknown {
+    const method = request.method ?? 'GET'
+    const [id, action] = new URL(request.path, 'http://engine').pathname
+      .replace('/api/cron/jobs/', '')
+      .split('/')
+      .map(decodeURIComponent)
+    if (method !== 'GET') cronWrites.push({ method, path: request.path, body: request.body })
+    if (cronRefusal) {
+      const detail = cronRefusal
+      cronRefusal = null
+      throw new Error(detail)
+    }
+    const job = jobs[profile]?.find((item) => item.job_id === id)
+    if (!job) throw new Error('Job not found')
+    if (action === 'runs') return { runs: structuredClone(job.runs ?? []), limit: 5 }
+    if (action === 'trigger') {
+      job.last_run_at = '2026-11-07T10:00:00+00:00'
+      job.last_status = 'ok'
+      job.last_error = null
+      job.runs = [
+        { started_at: 1_794_045_600, is_active: false, title: 'Cash run' },
+        ...(job.runs ?? [])
+      ]
+    }
+    if (method === 'PUT') {
+      const { updates } = request.body as { updates: Record<string, string> }
+      if (updates.name !== undefined) job.name = updates.name
+      if (updates.prompt !== undefined) job.prompt = updates.prompt
+      if (updates.schedule !== undefined) job.schedule = updates.schedule
+      if (updates.deliver !== undefined) job.deliver = updates.deliver
+    }
+    return storedJob(job)
+  }
+
   function setAsset(profile: string, params: Record<string, unknown>): unknown {
     if (assetFailure) {
       assetFailure = false
@@ -386,6 +436,10 @@ export function engineDouble(
     failCronOnce: (error) => {
       cronFailure = error
     },
+    refuseCronOnce: (detail) => {
+      cronRefusal = detail
+    },
+    cronWrites,
     failMetaOnce: () => {
       metaFailure = true
     },
@@ -394,6 +448,29 @@ export function engineDouble(
     }
   }
   return double
+}
+
+function storedJob(job: CronJob): Record<string, unknown> {
+  const every = /^every (\d+)([mh])$/.exec(job.schedule)
+  const schedule = every
+    ? { kind: 'interval', minutes: Number(every[1]) * (every[2] === 'h' ? 60 : 1) }
+    : /^\d{4}-/.test(job.schedule)
+      ? { kind: 'once', run_at: job.schedule }
+      : { kind: 'cron', expr: job.schedule }
+  return {
+    id: job.job_id,
+    name: job.name,
+    prompt: job.prompt,
+    schedule: { ...schedule, display: job.schedule },
+    schedule_display: job.schedule,
+    deliver: job.deliver ?? 'local',
+    enabled: job.enabled,
+    state: job.state,
+    next_run_at: job.next_run_at ?? null,
+    last_run_at: job.last_run_at ?? null,
+    last_status: job.last_status ?? null,
+    last_error: job.last_error ?? null
+  }
 }
 
 export function backendFor(

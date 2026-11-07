@@ -10,35 +10,31 @@ import type { RosterProblem } from '@features/bots/roster'
 import {
   DEFAULT_SCHEDULE,
   addRoutine,
-  composeSchedule,
   describeSchedule,
   listRoutines,
   removeRoutine,
-  setRoutineActive
+  setRoutineActive,
+  weekdayName
 } from '@features/bots/routines'
-import type { Routine, RoutineDraft, ScheduleKind } from '@features/bots/routines'
+import type { Routine, RoutineDraft } from '@features/bots/routines'
 import type { Bot } from '@features/bots/types'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
-import { Input, NativeSelect, Textarea } from '@shared/ui/input'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { useArrival } from '@shared/hooks/useStayMounted'
 import { cn } from '@shared/lib/utils'
 import { Switch } from '@shared/ui/switch'
+import { RoutineDialog, RoutineForm } from './RoutineDialog'
 
 type Translate = (key: TranslationKey) => string
 
-const KINDS: Array<[ScheduleKind, TranslationKey]> = [
-  ['daily', 'routines.kindDaily'],
-  ['weekdays', 'routines.kindWeekdays'],
-  ['weekly', 'routines.kindWeekly'],
-  ['hours', 'routines.kindHours'],
-  ['custom', 'routines.kindCustom']
-]
-// Cron counts weekdays from Sunday = 0; the list starts on Monday.
-const WEEK = [1, 2, 3, 4, 5, 6, 0]
-const MAX_HOURS = 24
+const NEW_ROUTINE: RoutineDraft = {
+  name: '',
+  instruction: '',
+  schedule: DEFAULT_SCHEDULE,
+  postsToChat: true
+}
 
 /** A bot's routines. Each change goes to the engine at once; the panel's Save is not involved. */
 export function RoutinesSection({
@@ -53,6 +49,7 @@ export function RoutinesSection({
   const [problem, setProblem] = useState<RosterProblem | null>(null)
   const [adding, setAdding] = useState(false)
   const [deleting, setDeleting] = useState<Routine | null>(null)
+  const [opened, setOpened] = useState<Routine | null>(null)
   const arrival = useArrival(!routines && !problem)
   // A failed delete shows in its dialog: a toast would sit under the dialog, out of reach.
   const [deleteProblem, setDeleteProblem] = useState<RosterProblem | null>(null)
@@ -144,14 +141,18 @@ export function RoutinesSection({
         <ul className={cn('space-y-2', arrival)}>
           {routines.map((routine) => (
             <li key={routine.id} className="flex items-center gap-2 rounded-xl bg-secondary p-3">
-              <div className="min-w-0 flex-1">
-                {/* No other view shows a routine, so its name and schedule wrap, never cut off. */}
-                <p className="text-base font-medium wrap-break-word">{routine.name}</p>
-                <p className="text-sm text-muted-foreground wrap-break-word">
+              <button
+                aria-label={t('routines.open').replace('{name}', routine.name)}
+                onClick={() => setOpened(routine)}
+                className="min-w-0 flex-1 rounded-lg text-left hover:opacity-80"
+              >
+                {/* Its name and schedule wrap, never cut off: the row is where a routine is found. */}
+                <span className="block text-base font-medium wrap-break-word">{routine.name}</span>
+                <span className="block text-sm text-muted-foreground wrap-break-word">
                   {scheduleWords(t, routine.schedule)}
                   {routine.postsToChat && ` · ${t('routines.postsToChat')}`}
-                </p>
-              </div>
+                </span>
+              </button>
               <Switch
                 checked={routine.active}
                 aria-label={t('routines.run').replace('{name}', routine.name)}
@@ -174,6 +175,18 @@ export function RoutinesSection({
           onCreate={async (draft) => {
             await addRoutine(backend, bot.name, draft)
             setAdding(false)
+            await load()
+          }}
+        />
+      )}
+      {opened && (
+        <RoutineDialog
+          backend={backend}
+          profile={bot.name}
+          id={opened.id}
+          onClose={() => setOpened(null)}
+          onSaved={async () => {
+            setOpened(null)
             await load()
           }}
         />
@@ -208,153 +221,17 @@ function NewRoutineDialog({
   onCreate: (draft: RoutineDraft) => Promise<void>
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const [draft, setDraft] = useState<RoutineDraft>({
-    name: '',
-    instruction: '',
-    schedule: DEFAULT_SCHEDULE,
-    postsToChat: true
-  })
-  const [busy, setBusy] = useState(false)
-  const [problem, setProblem] = useState<RosterProblem | null>(null)
-  const { schedule } = draft
-  const timed = schedule.kind !== 'hours' && schedule.kind !== 'custom'
-  const ready =
-    draft.name.trim() !== '' &&
-    draft.instruction.trim() !== '' &&
-    (!timed || schedule.time !== '') &&
-    composeSchedule(schedule) !== ''
-  const setSchedule = (patch: Partial<RoutineDraft['schedule']>): void =>
-    setDraft({ ...draft, schedule: { ...schedule, ...patch } })
-
-  async function submit(): Promise<void> {
-    setBusy(true)
-    setProblem(null)
-    try {
-      await onCreate(draft)
-    } catch (error) {
-      setProblem(problemOf(error))
-      setBusy(false)
-    }
-  }
-
   return (
-    <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogTitle>{t('routines.new')}</DialogTitle>
         <DialogDescription>{t('routines.newHint')}</DialogDescription>
-        <form
-          className="space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (ready && !busy) void submit()
-          }}
-        >
-          <label className="block text-base">
-            {t('routines.name')}
-            <Input
-              autoFocus
-              value={draft.name}
-              maxLength={100}
-              onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-            />
-          </label>
-          <label className="block text-base">
-            {t('routines.instruction')}
-            <Textarea
-              value={draft.instruction}
-              rows={3}
-              placeholder={t('routines.instructionHint')}
-              onChange={(event) => setDraft({ ...draft, instruction: event.target.value })}
-            />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block text-base">
-              {t('routines.schedule')}
-              <NativeSelect
-                value={schedule.kind}
-                onChange={(event) => setSchedule({ kind: event.target.value as ScheduleKind })}
-              >
-                {KINDS.map(([kind, label]) => (
-                  <option key={kind} value={kind}>
-                    {t(label)}
-                  </option>
-                ))}
-              </NativeSelect>
-            </label>
-            {schedule.kind === 'weekly' && (
-              <label className="block text-base">
-                {t('routines.day')}
-                <NativeSelect
-                  value={schedule.weekday}
-                  onChange={(event) => setSchedule({ weekday: Number(event.target.value) })}
-                >
-                  {WEEK.map((day) => (
-                    <option key={day} value={day}>
-                      {weekdayName(day)}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </label>
-            )}
-            {timed && (
-              <label className="block text-base">
-                {t('routines.time')}
-                <Input
-                  type="time"
-                  value={schedule.time}
-                  onChange={(event) => setSchedule({ time: event.target.value })}
-                />
-              </label>
-            )}
-            {schedule.kind === 'hours' && (
-              <label className="block text-base">
-                {t('routines.hours')}
-                <Input
-                  type="number"
-                  min={1}
-                  max={MAX_HOURS}
-                  value={schedule.hours}
-                  onChange={(event) =>
-                    setSchedule({
-                      hours: Math.min(
-                        MAX_HOURS,
-                        Math.max(1, Math.round(Number(event.target.value)) || 1)
-                      )
-                    })
-                  }
-                />
-              </label>
-            )}
-          </div>
-          {schedule.kind === 'custom' && (
-            <label className="block text-base">
-              {t('routines.custom')}
-              <Input
-                value={schedule.custom}
-                placeholder={t('routines.customHint')}
-                onChange={(event) => setSchedule({ custom: event.target.value })}
-                className="font-mono"
-              />
-            </label>
-          )}
-          <label className="flex items-center gap-2 text-base">
-            <input
-              type="checkbox"
-              checked={draft.postsToChat}
-              onChange={(event) => setDraft({ ...draft, postsToChat: event.target.checked })}
-            />
-            {t('routines.postToChat')}
-          </label>
-          {problem && <ProblemMessage problem={problem} />}
-          <div className="flex gap-2">
-            <Button type="submit" disabled={!ready || busy}>
-              {t('routines.create')}
-            </Button>
-            <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
-              {t('roster.cancel')}
-            </Button>
-          </div>
-        </form>
+        <RoutineForm
+          initial={NEW_ROUTINE}
+          submitLabel={t('routines.create')}
+          onCancel={onClose}
+          onSubmit={onCreate}
+        />
       </DialogContent>
     </Dialog>
   )
@@ -377,15 +254,10 @@ function scheduleWords(t: Translate, schedule: string): string {
         ? t('routines.everyHour')
         : t('routines.everyHours').replace('{hours}', String(read.hours))
     case 'custom':
-      return schedule
+      return read.minutes
+        ? t('routines.everyMinutes').replace('{minutes}', String(read.minutes))
+        : schedule
   }
-}
-
-// 2023-01-01 was a Sunday, so day N of that week is cron's weekday N.
-function weekdayName(day: number): string {
-  return new Intl.DateTimeFormat('en', { weekday: 'long', timeZone: 'UTC' }).format(
-    Date.UTC(2023, 0, 1 + day)
-  )
 }
 
 function failureText(t: Translate, error: unknown): string {
