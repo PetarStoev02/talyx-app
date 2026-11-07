@@ -17,7 +17,7 @@ Builds come from the [GitHub releases](https://github.com/PetarStoev02/talyx-app
 - **macOS 13 or newer.** Open the DMG and drag Talyx to Applications, then open it. The Mac builds are signed with Developer ID, run with the hardened runtime and are notarized by Apple, so macOS opens them without a warning.
 - **Linux (x64).** Download `Talyx-x86_64.AppImage`, make it executable (`chmod +x`) and run it, or install `Talyx-amd64.deb` with `sudo apt install ./Talyx-amd64.deb`. There is no Windows build yet: it comes once the engine runs there.
 
-Talyx checks GitHub for a newer release. When you click Download, it fetches the installer for your computer and the release's `SHA256SUMS`, checks the installer against it, and opens it for you to run. It never installs anything itself.
+Talyx checks GitHub for a newer release when it starts and once a day. On macOS and in the AppImage it updates itself: it downloads the update in the background, checks it against the sha512 in the release's `latest-mac.yml` or `latest-linux.yml`, and the footer update button then offers **Restart to update**. Talyx never restarts by itself; if you do not click, the update installs when you quit. On macOS the update installs only when the new app carries the same Developer ID signature as the one running. The deb cannot update itself: the update button opens the release page, and you install the new deb the same way as the first.
 
 ## Engine
 
@@ -57,7 +57,7 @@ npm run build:linux  # AppImage and deb in dist/ (x64)
 
 ## Release
 
-Releases are built by the **Release** workflow on GitHub Actions: Actions → Release → Run workflow. It builds the macOS DMGs and the Linux AppImage and deb, runs the real-engine smoke test on Linux, and creates a **draft** release `v<version>` with the installers, `engine-install.json` and `SHA256SUMS`. Review the draft, then publish it.
+Releases are built by the **Release** workflow on GitHub Actions: Actions → Release → Run workflow. It builds the macOS DMGs and the Linux AppImage and deb, runs the real-engine smoke test on Linux, and creates a **draft** release `v<version>` with the installers, the update feed (`latest-mac.yml`, `latest-linux.yml`, the macOS zips and their blockmaps), `engine-install.json` and `SHA256SUMS`. Review the draft, then publish it. Installed copies see a release only once it is published: GitHub does not show drafts to them.
 
 - The release body is the optional **highlights** input (lines like `- **Lead.** Text.`, shown by the update button) above `docs/release-notes/<version>.md` and GitHub's generated notes. The form takes one line; for several, run `gh workflow run release.yml -f highlights="$(cat release-highlights.md)"`.
 - The workflow needs the secret `ENGINE_INSTALL_JSON`, the base64 of `engine-install.json`. Add it once, and again whenever the file changes: `gh secret set ENGINE_INSTALL_JSON < <(base64 -i engine-install.json)`. Each job checks it against `ENGINE_INSTALL_SHA256` and fails when it is missing or does not match.
@@ -66,7 +66,7 @@ Releases are built by the **Release** workflow on GitHub Actions: Actions → Re
 
 ## Privacy
 
-Talyx has no server, no account and no telemetry. The only network calls Talyx makes itself are three to GitHub: the update check; the installer and its `SHA256SUMS` from the release, when you click Download; and, at first-run setup, the release's `engine-install.json`, the steps that install the engine. What your bots send to their model providers is between the engine and those providers; Talyx itself sends nothing anywhere else. Third-party components are listed in [CREDITS.md](CREDITS.md).
+Talyx has no server, no account and no telemetry. The only network calls Talyx makes itself are three to GitHub: the update check; the update itself from the release (in the background on macOS and in the AppImage, or the installer and its `SHA256SUMS` when you click Download); and, at first-run setup, the release's `engine-install.json`, the steps that install the engine. What your bots send to their model providers is between the engine and those providers; Talyx itself sends nothing anywhere else. Third-party components are listed in [CREDITS.md](CREDITS.md).
 
 ## Contributing
 

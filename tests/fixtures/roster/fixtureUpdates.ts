@@ -1,7 +1,16 @@
 import { toast } from 'sonner'
 import type { ReleaseSummary, UpdateState } from '../../../src/shared/updater'
 
-const MODES = ['talyx', 'downloading', 'ready', 'failed', 'nodownload', 'engine', 'both'] as const
+const MODES = [
+  'talyx',
+  'downloading',
+  'ready',
+  'restart',
+  'failed',
+  'nodownload',
+  'engine',
+  'both'
+] as const
 export type UpdateMode = (typeof MODES)[number]
 
 const TICK_MS = 200
@@ -21,7 +30,7 @@ export function updateNeedsOlderEngine(mode: UpdateMode | null): boolean {
   return mode === 'engine' || mode === 'both'
 }
 
-function release(downloadable: boolean): ReleaseSummary {
+function release(downloadable: boolean, automatic: boolean): ReleaseSummary {
   return {
     version: '1.0.1',
     url: RELEASE_URL,
@@ -31,15 +40,16 @@ function release(downloadable: boolean): ReleaseSummary {
       { lead: 'Downloads in the app.', text: 'The installer is checked before it opens.' }
     ],
     changes: 9,
+    automatic,
     downloadable
   }
 }
 
 function startState(mode: UpdateMode | null): UpdateState {
-  const found = release(mode !== 'nodownload')
+  const found = release(mode !== 'nodownload', mode === 'restart')
   if (mode === 'downloading')
     return { kind: 'downloading', release: found, received: 0, total: TOTAL_BYTES }
-  if (mode === 'ready') return { kind: 'ready', release: found }
+  if (mode === 'ready' || mode === 'restart') return { kind: 'ready', release: found }
   if (mode === 'failed') return { kind: 'failed', release: found, reason: 'checksum' }
   if (mode === 'engine' || mode === null) return { kind: 'none' }
   return { kind: 'available', release: found }
@@ -100,8 +110,12 @@ export function fixtureUpdates(mode: UpdateMode | null): Record<string, unknown>
       stop()
       publish({ kind: 'available', release: state.release })
     },
-    openUpdateInstaller: async () => {
-      toast('Would open the downloaded installer')
+    installUpdate: async () => {
+      toast(
+        state.kind === 'ready' && state.release.automatic
+          ? 'Would restart into the update'
+          : 'Would open the downloaded installer'
+      )
     },
     onUpdateState: (callback: (state: UpdateState) => void) => {
       listeners.add(callback)

@@ -9,7 +9,12 @@ export interface ReleaseSummary {
   publishedAt: string
   highlights: Highlight[]
   changes: number
-  /** True when this computer's installer and the release's SHA256SUMS are both there. */
+  /**
+   * True when Talyx downloads this release by itself and installs it on restart or quit (macOS
+   * and AppImage, when the release has their latest-*.yml); false when the user opens the installer.
+   */
+  automatic: boolean
+  /** True when the release has what the download needs: the update feed, or installer and SHA256SUMS. */
   downloadable: boolean
 }
 

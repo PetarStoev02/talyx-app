@@ -52,9 +52,9 @@ const shipped: RoadmapItem[] = [
       'Installs the engine for your user only, with no admin password, then helps you add a provider and a first bot.'
   },
   {
-    title: 'Updates you start',
+    title: 'Updates in the background',
     description:
-      'Talyx tells you when a new release is out. Click Download and it fetches the installer, checks it against the release’s SHA256SUMS and opens it. A deb install updates from the release page.'
+      'On macOS and in the AppImage, Talyx downloads a new release in the background, checks it and installs it when you click Restart to update or quit. A deb install updates from the release page.'
   }
 ]
 

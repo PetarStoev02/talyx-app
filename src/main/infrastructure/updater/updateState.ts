@@ -50,13 +50,15 @@ function sameRelease(a: ReleaseSummary, b: ReleaseSummary): boolean {
   return JSON.stringify(a) === JSON.stringify(b)
 }
 
+/** Installs a verified download: opens the installer, or restarts Talyx into the update. */
+export type Install = () => Promise<void>
+
 export interface UpdateStoreDeps {
   download: (
     found: FoundRelease,
     onProgress: (received: number, total: number) => void,
     signal: AbortSignal
-  ) => Promise<string>
-  open: (file: string) => Promise<void>
+  ) => Promise<Install>
   publish: (state: UpdateState) => void
 }
 
@@ -66,14 +68,14 @@ export interface UpdateStore {
   found: (release: FoundRelease | null) => void
   startDownload: () => Promise<void>
   cancel: () => void
-  openInstaller: () => Promise<void>
+  install: () => Promise<void>
 }
 
 export function createUpdateStore(deps: UpdateStoreDeps): UpdateStore {
   let state: UpdateState = NONE
   // What `state` is about, kept in main: the asset URLs never reach the renderer.
   let release: FoundRelease | null = null
-  let file: string | null = null
+  let installer: Install | null = null
   let running: AbortController | null = null
 
   const apply = (event: UpdateEvent): boolean => {
@@ -84,54 +86,60 @@ export function createUpdateStore(deps: UpdateStoreDeps): UpdateStore {
     return true
   }
 
+  async function startDownload(): Promise<void> {
+    const target = release
+    if (!target || !apply({ kind: 'download', total: target.asset?.size ?? 0 })) return
+    const controller = new AbortController()
+    running = controller
+    // A self-update has no installer asset; its version names it in the log.
+    const name = target.asset?.name ?? `v${target.summary.version}`
+    try {
+      installer = await deps.download(
+        target,
+        (received, total) => apply({ kind: 'progress', received, total }),
+        controller.signal
+      )
+      apply({ kind: 'verified' })
+    } catch (error) {
+      if (controller.signal.aborted) {
+        log.info(`[Updater] ${name} cancelled`)
+        apply({ kind: 'cancelled' })
+        return
+      }
+      const reason = error instanceof ReleaseDownloadError ? error.reason : 'other'
+      log.warn(`[Updater] ${name} failed (${reason})`)
+      apply({ kind: 'failed', reason })
+    } finally {
+      running = null
+    }
+  }
+
   return {
     current: () => state,
 
     found(found) {
       if (!apply({ kind: 'found', release: found?.summary ?? null })) return
       release = state.kind === 'none' ? null : found
-      file = null
+      installer = null
+      // A release Talyx installs itself downloads in the background; it restarts only on a click.
+      if (found?.summary.automatic) void startDownload()
     },
 
-    async startDownload() {
-      const target = release
-      if (!target || !apply({ kind: 'download', total: target.asset?.size ?? 0 })) return
-      const controller = new AbortController()
-      running = controller
-      try {
-        file = await deps.download(
-          target,
-          (received, total) => apply({ kind: 'progress', received, total }),
-          controller.signal
-        )
-        apply({ kind: 'verified' })
-      } catch (error) {
-        if (controller.signal.aborted) {
-          log.info(`[Updater] ${target.asset?.name} cancelled`)
-          apply({ kind: 'cancelled' })
-          return
-        }
-        const reason = error instanceof ReleaseDownloadError ? error.reason : 'other'
-        log.warn(`[Updater] ${target.asset?.name} failed (${reason})`)
-        apply({ kind: 'failed', reason })
-      } finally {
-        running = null
-      }
-    },
+    startDownload,
 
     cancel() {
       running?.abort()
     },
 
-    async openInstaller() {
-      if (state.kind !== 'ready' || !file)
-        throw new ReleaseDownloadError('other', 'No verified download to open')
+    async install() {
+      if (state.kind !== 'ready' || !installer)
+        throw new ReleaseDownloadError('other', 'No verified download to install')
       try {
-        await deps.open(file)
+        await installer()
       } catch (error) {
         // The file is gone or cannot be opened: offer Try again instead of a dead button.
-        log.warn('[Updater] The installer could not be opened')
-        file = null
+        log.warn('[Updater] The update could not be installed')
+        installer = null
         apply({ kind: 'failed', reason: 'other' })
         throw error
       }

@@ -14,8 +14,14 @@ describe('release configuration', () => {
     expect(pkg.license).toBe('MIT')
   })
 
-  it('should not depend on an installer that needs a signed app', () => {
-    expect(pkg.dependencies['electron-updater']).toBeUndefined()
+  it('should update itself from the GitHub releases of this repository', () => {
+    const config = readFileSync('electron-builder.yml', 'utf8')
+    expect(pkg.dependencies['electron-updater']).toMatch(/^\d+\.\d+\.\d+$/)
+    expect(config).toMatch(
+      /^publish:\n {2}provider: github\n {2}owner: PetarStoev02\n {2}repo: talyx-app$/m
+    )
+    expect(config).toMatch(/- target: zip/)
+    expect(config).toMatch(/writeUpdateInfo: false/)
     expect(existsSync('dev-app-update.yml')).toBe(false)
   })
 
@@ -30,8 +36,6 @@ describe('release configuration', () => {
     expect(config).toMatch(/hardenedRuntime:\s*true/)
     expect(config).toMatch(/entitlements:\s*build\/entitlements\.mac\.plist/)
     expect(config).toMatch(/resetAdHocDarwinSignature:\s*true/)
-    expect(config).not.toMatch(/target:\s*zip/)
-    expect(config).toMatch(/^publish:\s*null/m)
   })
 
   it('should grant only the entitlements Electron and dictation need', () => {

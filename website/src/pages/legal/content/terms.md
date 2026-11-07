@@ -26,7 +26,7 @@ You download Talyx yourself from [GitHub Releases](https://github.com/PetarStoev
 
 On macOS, each build is signed with Developer ID, runs with Apple's hardened runtime and is notarized by Apple, so it opens without a warning. Linux shows no warning.
 
-Talyx checks GitHub for a newer release. When you click Download, it downloads the installer for your computer, checks it against the release's `SHA256SUMS` and opens it for you to run. It never installs an update by itself. A Linux deb install updates from the release page instead.
+Talyx checks GitHub for a newer release. On macOS and in the AppImage it downloads the update in the background, checks it, and installs it when you click Restart to update or quit Talyx. It never restarts by itself. A Linux deb install updates from the release page instead.
 
 ---
 

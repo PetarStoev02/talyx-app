@@ -23,14 +23,14 @@ export const PRIVACY_LEDGER: LedgerEntry[] = [
     figure: '1',
     counted: 'source for everything the app downloads itself: GitHub',
     detail:
-      'That is a check for a newer release, an installer and its SHA256SUMS when you click Download, and the engine’s install steps during setup or an engine update. Those steps then download the engine.',
+      'That is a check for a newer release, the update itself with its checksums, and the engine’s install steps during setup or an engine update. Those steps then download the engine.',
     inMenu: true
   },
   {
     figure: '2',
     counted: 'checks before anything runs',
     detail:
-      'The installer must match the release’s SHA256SUMS, and the install steps must match a hash built into Talyx.',
+      'The update must match the release’s checksums, and the install steps must match a hash built into Talyx.',
     inMenu: false
   },
   {

@@ -289,7 +289,9 @@ function TalyxActions({
       )
     case 'ready':
       return (
-        <Button onClick={() => act(updaterApi.openInstaller)}>{t('update.openInstaller')}</Button>
+        <Button onClick={() => act(updaterApi.install)}>
+          {t(state.release.automatic ? 'update.restart' : 'update.openInstaller')}
+        </Button>
       )
     case 'available':
     case 'failed':
@@ -316,7 +318,10 @@ function talyxTitle(state: TalyxState, t: (key: TranslationKey) => string): stri
         .replace('{version}', version)
         .replace('{percent}', String(Math.floor(fraction(state) * 100)))
     case 'ready':
-      return t('update.ready').replace('{version}', version)
+      return t(state.release.automatic ? 'update.readyRestart' : 'update.ready').replace(
+        '{version}',
+        version
+      )
     case 'failed':
       return t('update.failed').replace('{version}', version)
   }

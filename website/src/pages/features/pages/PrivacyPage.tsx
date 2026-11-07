@@ -53,7 +53,7 @@ export function PrivacyPage() {
         {
           title: 'Release checks and downloads',
           description:
-            'Talyx asks GitHub whether a newer release exists. When you click Download, it fetches the installer and checks it against the release’s SHA256SUMS before opening it.'
+            'Talyx asks GitHub whether a newer release exists. On macOS and in the AppImage it downloads the update in the background and checks it against the release’s checksums; on a Mac the new build must also carry the same Developer ID signature. Nothing installs until you restart Talyx or quit it.'
         },
         {
           title: 'This website',

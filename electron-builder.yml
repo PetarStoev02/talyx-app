@@ -1,8 +1,12 @@
 appId: com.talyx.app
 productName: Talyx
-# Talyx does not use electron-updater; without this electron-builder detects a GitHub
-# target from package.json and writes app-update.yml, latest-mac.yml and blockmaps.
-publish: null
+# electron-updater's feed. The builds run with --publish never: this only writes app-update.yml
+# into the app and latest-mac.yml, latest-linux.yml and blockmaps into dist/, which the Release
+# workflow and scripts/release.sh attach to the draft release. Drafts are invisible to the feed.
+publish:
+  provider: github
+  owner: PetarStoev02
+  repo: talyx-app
 directories:
   buildResources: build
 files:
@@ -25,6 +29,14 @@ mac:
       arch:
         - x64
         - arm64
+    # Squirrel.Mac installs updates from the zip. Both architectures build in one run, so a single
+    # latest-mac.yml lists both zips and electron-updater picks the one naming arm64 on Apple Silicon.
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  # The zips: Talyx-x64.zip and Talyx-arm64.zip (the DMG sets its own name below).
+  artifactName: ${productName}-${arch}.${ext}
   # No identity here: electron-builder finds the Developer ID Application certificate that
   # CSC_LINK/CSC_KEY_PASSWORD (or the keychain) provides. Without one the build stays unsigned
   # and electronFuses.resetAdHocDarwinSignature below keeps it runnable on Apple Silicon.
@@ -42,6 +54,9 @@ dmg:
   # Signs the DMG with the same Developer ID; a no-op when there is no identity.
   sign: true
   artifactName: ${productName}-${arch}.${ext}
+  # Updates come from the zip. The DMG is stapled after the build, which would leave a hash for it
+  # in latest-mac.yml (and its blockmap) that no longer matches the uploaded file.
+  writeUpdateInfo: false
 linux:
   icon: build/talyx-icon.png
   category: Utility

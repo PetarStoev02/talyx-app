@@ -25,9 +25,9 @@ export function InstallSteps() {
           bot.
         </li>
         <li>
-          When a new version is out, Talyx tells you. Click Download and it fetches the installer,
-          checks it against the release’s <code>SHA256SUMS</code> and opens it for you to run. A deb
-          install updates from the release page instead.
+          When a new version is out, Talyx downloads it in the background on macOS and in the
+          AppImage, checks it, and installs it when you click <strong>Restart to update</strong> or
+          quit. A deb install updates from the release page instead.
         </li>
       </ol>
     </section>

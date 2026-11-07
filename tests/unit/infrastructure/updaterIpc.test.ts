@@ -9,7 +9,9 @@ const electron = vi.hoisted(() => ({
   openPath: vi.fn(async () => ''),
   showItemInFolder: vi.fn(),
   chmod: vi.fn(async () => undefined),
-  downloadRelease: vi.fn()
+  downloadRelease: vi.fn(),
+  downloadSelfUpdate: vi.fn(),
+  restart: vi.fn(async () => undefined)
 }))
 
 vi.mock('electron', () => ({
@@ -30,6 +32,10 @@ vi.mock('../../../src/main/infrastructure/updater/releaseDownload', async (impor
   downloadRelease: electron.downloadRelease
 }))
 
+vi.mock('../../../src/main/infrastructure/updater/selfUpdate', () => ({
+  downloadSelfUpdate: electron.downloadSelfUpdate
+}))
+
 const DOWNLOAD = 'https://github.com/PetarStoev02/talyx-app/releases/download/v1.0.0/'
 const RELEASE: FoundRelease = {
   summary: {
@@ -38,6 +44,7 @@ const RELEASE: FoundRelease = {
     publishedAt: '',
     highlights: [],
     changes: 0,
+    automatic: false,
     downloadable: true
   },
   asset: { name: 'Talyx-arm64.dmg', url: `${DOWNLOAD}Talyx-arm64.dmg`, size: 10 },
@@ -59,6 +66,7 @@ describe('updater IPC', () => {
     vi.clearAllMocks()
     vi.resetModules()
     electron.downloadRelease.mockResolvedValue(SAVED)
+    electron.downloadSelfUpdate.mockResolvedValue(electron.restart)
     ipc = await import('../../../src/main/infrastructure/ipc/updater.ipc')
     ipc.registerUpdaterIpc()
   })
@@ -91,7 +99,7 @@ describe('updater IPC', () => {
 
   it('should refuse to open the installer until a download is verified', async () => {
     ipc.updates.found(RELEASE)
-    await expect(invoke('updater:open-installer')).rejects.toThrow('No verified download')
+    await expect(invoke('updater:install')).rejects.toThrow('No verified download')
     expect(electron.openPath).not.toHaveBeenCalled()
   })
 
@@ -100,7 +108,7 @@ describe('updater IPC', () => {
     ipc.updates.found(RELEASE)
     await invoke('updater:download')
     await settle()
-    await invoke('updater:open-installer', '/Applications/Evil.app')
+    await invoke('updater:install', '/Applications/Evil.app')
 
     expect(electron.openPath).toHaveBeenCalledWith(SAVED)
   })
@@ -112,7 +120,7 @@ describe('updater IPC', () => {
     await invoke('updater:download')
     await settle()
 
-    await expect(invoke('updater:open-installer')).rejects.toThrow('could not be opened')
+    await expect(invoke('updater:install')).rejects.toThrow('could not be opened')
   })
 
   it('should make the AppImage executable and show it in its folder on Linux', async () => {
@@ -120,10 +128,25 @@ describe('updater IPC', () => {
     ipc.updates.found(RELEASE)
     await invoke('updater:download')
     await settle()
-    await invoke('updater:open-installer')
+    await invoke('updater:install')
 
     expect(electron.chmod).toHaveBeenCalledWith(SAVED, 0o755)
     expect(electron.showItemInFolder).toHaveBeenCalledWith(SAVED)
+    expect(electron.openPath).not.toHaveBeenCalled()
+  })
+
+  it('should hand a self-installing release to the self-update and restart only on install', async () => {
+    const automatic = { ...RELEASE, summary: { ...RELEASE.summary, automatic: true } }
+    ipc.updates.found(automatic)
+    await settle()
+
+    expect(electron.downloadSelfUpdate).toHaveBeenCalledOnce()
+    expect(electron.downloadRelease).not.toHaveBeenCalled()
+    expect(invoke('updater:status')).toEqual({ kind: 'ready', release: automatic.summary })
+    expect(electron.restart).not.toHaveBeenCalled()
+
+    await invoke('updater:install')
+    expect(electron.restart).toHaveBeenCalledOnce()
     expect(electron.openPath).not.toHaveBeenCalled()
   })
 

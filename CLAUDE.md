@@ -66,9 +66,13 @@ npm run reset            # Delete local app data (settings.json)
 Talyx 1.0 ships for macOS and Linux (no Windows build yet). The macOS releases are signed with
 Developer ID, run with the hardened runtime (`build/entitlements.mac.plist` lists and justifies
 each exception) and are notarized: the .app and the DMG are both stapled, so Gatekeeper opens them
-with no warning. Linux builds are not signed. Talyx cannot replace itself: the app checks GitHub
-for a newer release and, on the user's click, downloads this computer's installer and the
-release's `SHA256SUMS`, verifies the installer against it, and opens it for the user to run.
+with no warning. Linux builds are not signed. Talyx updates itself on macOS and in the AppImage with
+electron-updater (GitHub provider, `publish` in `electron-builder.yml`): after the release check
+finds a release with `latest-mac.yml` / `latest-linux.yml`, it downloads in the background
+(sha512 from the yml; on macOS Squirrel.Mac also requires the same code signature), the update
+button offers Restart to update, and quitting installs it. It never restarts unasked. A deb, or a
+release without the feed, falls back: the release page for the deb, otherwise the installer
+download checked against `SHA256SUMS`, which the user opens.
 
 Electron 44 needs macOS 13 or newer; every macOS version Talyx runs on requires a Developer ID
 app to be notarized, so a release is never shipped signed but not notarized.
@@ -80,7 +84,8 @@ release paths pass `forceCodeSigning`, notarize and staple the DMGs, and check t
 
 Releases come from the Release workflow (`.github/workflows/release.yml`, Actions → Release → Run
 workflow): macOS DMGs, Linux AppImage + deb, the real-engine smoke test on Linux, then a draft
-release `v<version>` with `engine-install.json` and `SHA256SUMS`. Its body is the optional
+release `v<version>` with the update feed (`latest-*.yml`, the mac zips and their blockmaps),
+`engine-install.json` and `SHA256SUMS`. Drafts are invisible to installed apps until published. Its body is the optional
 `highlights` input under `## Highlights`, then `docs/release-notes/<version>.md` (write it before
 releasing; no engine name), then GitHub's generated notes. It needs the secret
 `ENGINE_INSTALL_JSON` (base64 of `engine-install.json`), set once per file change with
@@ -144,9 +149,11 @@ src/main/
     ├── setup/                  # installPin.ts (the hash pin), installSteps.ts (loads the install file), installRunner.ts (runs it)
     ├── storage/SettingsStore.ts # settings.json in userData
     ├── system/loginItem.ts     # launch at login: macOS login item, Linux autostart .desktop
-    └── updater/                # releaseCheck.ts (GitHub latest-release check), releaseDownload.ts
-                                # (installer download, checked against SHA256SUMS), updateState.ts
-                                # (the update state machine), openInstaller.ts (the user runs it)
+    └── updater/                # releaseCheck.ts (GitHub latest-release check), selfUpdate.ts
+                                # (electron-updater: background download, restart to update),
+                                # releaseDownload.ts (fallback installer download, checked against
+                                # SHA256SUMS), updateState.ts (the update state machine),
+                                # openInstaller.ts (the fallback: the user runs it)
 ```
 
 `src/shared/api.ts` is the single definition of `window.api`; the preload builds it over
@@ -341,7 +348,9 @@ try {
   delivery, group rooms and routines run in the engine, not in the app.
 - Settings are a JSON file (`settings.json` in userData). No local database.
 - Old features are deleted, not kept dormant; git history and `legacy/file-organizer` keep them.
-- Builds for macOS (Developer ID signed, notarized) and Linux (unsigned). No auto-update.
+- Builds for macOS (Developer ID signed, notarized) and Linux (unsigned). Automatic updates on
+  macOS and the AppImage (electron-updater; restart only on the user's click, else on quit); the
+  deb updates from the release page.
 - Free and open source (MIT). No account, no server, no telemetry.
 - Website (`website/`) on Vercel: it describes 1.0 and runs cookieless PostHog page analytics
   and Vercel Speed Insights (the app itself stays no-telemetry). Releases: GitHub Releases on `PetarStoev02/talyx-app`
