@@ -1,5 +1,5 @@
 import type { EngineApiRequest } from '@shared/engine/http'
-import { CONFIG_YAML_SOURCE, keepBareEndpoint } from '@shared/engine/endpoints'
+import { CONFIG_YAML_SOURCE, keepBareEndpoint, namedTwinOfBare } from '@shared/engine/endpoints'
 import { assignMainModel } from '@shared/engine/mainModel'
 import type {
   CustomEndpoint,
@@ -111,7 +111,10 @@ export async function loadProviders(backend: ProvidersBackend): Promise<Provider
   ])
   return {
     keys: keySlots(env),
-    endpoints: custom.endpoints,
+    // The bare endpoint is the active one and carries the badge; its named copy would repeat it.
+    endpoints: custom.endpoints.filter(
+      (endpoint) => endpoint !== namedTwinOfBare(custom.endpoints)
+    ),
     accounts: oauth.providers.map(account),
     model: info.model && info.provider ? { provider: info.provider, model: info.model } : null
   }

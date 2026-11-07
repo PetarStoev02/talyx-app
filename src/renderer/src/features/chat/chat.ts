@@ -2,7 +2,7 @@ import type { EngineApiRequest } from '@shared/engine/http'
 import type { CustomEndpoint, SessionMessage } from '@shared/engine/types'
 import type { ModelOptionProvider, SessionLiveInfo } from '@shared/engine/gateway-events'
 import type { GatewayEvent } from '@shared/engine/shared'
-import { BARE_CUSTOM, CONFIG_YAML_SOURCE } from '@shared/engine/endpoints'
+import { BARE_CUSTOM, namedTwinOfBare, sameBaseUrl } from '@shared/engine/endpoints'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { failureOf } from '@shared/lib/problem'
 import { useChat } from './store'
@@ -396,16 +396,8 @@ function withoutBareTwin(
   providers: ModelOptionProvider[],
   endpoints: CustomEndpoint[]
 ): ModelOptionProvider[] {
-  const bare = endpoints.find((endpoint) => endpoint.source === CONFIG_YAML_SOURCE)
-  const twin =
-    bare &&
-    endpoints.find(
-      (endpoint) =>
-        endpoint.source !== CONFIG_YAML_SOURCE &&
-        baseUrl(endpoint.base_url) === baseUrl(bare.base_url) &&
-        providers.some((provider) => provider.slug === endpoint.id)
-    )
-  if (!twin) return providers
+  const twin = namedTwinOfBare(endpoints)
+  if (!twin || !providers.some((provider) => provider.slug === twin.id)) return providers
   return providers.flatMap((provider) => {
     if (provider.slug === BARE_CUSTOM) return []
     if (provider.slug !== twin.id) return [provider]
@@ -421,13 +413,9 @@ function withSavedModels(
   provider: ModelOptionProvider,
   endpoints: CustomEndpoint[]
 ): ModelOptionProvider {
-  const url = provider.is_user_defined ? baseUrl(provider.api_url ?? '') : ''
-  const endpoint = url && endpoints.find((item) => baseUrl(item.base_url) === url)
+  const url = provider.is_user_defined ? (provider.api_url ?? '') : ''
+  const endpoint = url && endpoints.find((item) => sameBaseUrl(item.base_url, url))
   return endpoint && endpoint.models.length > 0
     ? { ...provider, models: endpoint.models }
     : provider
-}
-
-function baseUrl(url: string): string {
-  return url.trim().replace(/\/+$/, '')
 }
