@@ -125,14 +125,22 @@ function checkInlineScriptsAllowed() {
   const vercel = JSON.parse(readFileSync(join(__dirname, '..', 'vercel.json'), 'utf-8'))
   const csp = vercel.headers
     .flatMap((rule) => rule.headers)
-    .find((header) => header.key === 'Content-Security-Policy').value
+    .find((header) => header.key === 'Content-Security-Policy')?.value
+  if (!csp) throw new Error('No Content-Security-Policy header in vercel.json')
+  const scriptSrc = csp
+    .split(';')
+    .map((directive) => directive.trim().split(/\s+/))
+    .find(([name]) => name === 'script-src')
+  if (!scriptSrc) throw new Error('No script-src directive in the CSP in vercel.json')
   const pages = readdirSync(distDir, { recursive: true }).filter((file) => file.endsWith('.html'))
   const missing = new Set()
   for (const page of pages) {
     const html = readFileSync(join(distDir, page), 'utf-8')
-    for (const [, script] of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+    for (const [, attrs, script] of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+      // A src script is checked by its origin, and JSON-LD is data the browser never runs.
+      if (/\ssrc\s*=/i.test(attrs) || /type\s*=\s*["']?application\/ld\+json/i.test(attrs)) continue
       const hash = `'sha256-${createHash('sha256').update(script).digest('base64')}'`
-      if (!csp.includes(hash)) missing.add(`${hash} (${page})`)
+      if (!scriptSrc.includes(hash)) missing.add(`${hash} (${page})`)
     }
   }
   if (missing.size > 0)

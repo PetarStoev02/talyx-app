@@ -10,6 +10,8 @@ const READY_MESSAGE = 'talyx-demo-ready'
  * assets with `Access-Control-Allow-Origin: *`; `vite preview` is set to do the same.
  */
 const SANDBOX = import.meta.env.DEV ? undefined : 'allow-scripts'
+/** Show the frame anyway if its theme answer never comes, so it is never invisible yet clickable. */
+const READY_FALLBACK_MS = 1000
 
 /**
  * A slice of the real app, scaled to fit its container: the renderer's own
@@ -36,6 +38,7 @@ export function AppEmbed({
   const [ready, setReady] = useState(false)
   // Browsers start `loading="lazy"` frames far ahead of the viewport; each demo is the whole app.
   const [inView, setInView] = useState(false)
+  const fallback = useRef<number | null>(null)
 
   useEffect(() => {
     const el = box.current
@@ -72,6 +75,7 @@ export function AppEmbed({
     return () => {
       window.removeEventListener('message', onMessage)
       observer.disconnect()
+      if (fallback.current !== null) window.clearTimeout(fallback.current)
     }
   }, [])
 
@@ -89,7 +93,11 @@ export function AppEmbed({
           title={title}
           loading="lazy"
           sandbox={SANDBOX}
-          onLoad={() => sendTheme(frame.current)}
+          onLoad={() => {
+            sendTheme(frame.current)
+            if (fallback.current !== null) window.clearTimeout(fallback.current)
+            fallback.current = window.setTimeout(() => setReady(true), READY_FALLBACK_MS)
+          }}
           className={`absolute top-0 left-0 origin-top-left border-0 transition-opacity duration-500 ${
             ready && scale > 0 ? 'opacity-100' : 'opacity-0'
           }`}
