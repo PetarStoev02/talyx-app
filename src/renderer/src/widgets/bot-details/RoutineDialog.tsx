@@ -250,7 +250,6 @@ export function RoutineForm({
         {/* Drag the corner to read a long instruction whole; past its height it scrolls. */}
         <Textarea
           value={draft.instruction}
-          rows={3}
           className="h-40 max-h-[70dvh] min-h-24 resize-y overflow-y-auto overscroll-contain"
           placeholder={t('routines.instructionHint')}
           onChange={(event) => setDraft({ ...draft, instruction: event.target.value })}

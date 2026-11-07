@@ -243,7 +243,8 @@ const en = {
   'routines.time': 'Time',
   'routines.hours': 'Hours between runs',
   'routines.custom': 'Schedule line',
-  'routines.customHint': 'A cron line, e.g. 0 8 * * 1',
+  // Short enough for the half-width field beside Schedule; the label already says what it is.
+  'routines.customHint': 'e.g. 0 8 * * 1',
   'routines.postToChat': 'Post to this chat',
   'routines.create': 'Create routine',
   'routines.open': 'Open {name}',
