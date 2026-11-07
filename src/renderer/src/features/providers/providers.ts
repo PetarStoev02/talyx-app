@@ -1,4 +1,5 @@
 import type { EngineApiRequest } from '@shared/engine/http'
+import { assignMainModel } from '@shared/engine/mainModel'
 import type {
   CustomEndpoint,
   CustomEndpointsResponse,
@@ -262,7 +263,7 @@ export async function setDefaultModel(
   backend: ProvidersBackend,
   pick: ModelPick
 ): Promise<ModelConfirm | null> {
-  const result = await assignMainModel(backend, { scope: 'main', ...pick })
+  const result = await assignMainModel(backend.http, backend.home, pick)
   if (result.confirm_required) return { message: result.confirm_message ?? '', model: pick }
   if (result.ok === false) throw new ProvidersError('providers.errorModelNotSet')
   return null
@@ -272,8 +273,7 @@ export async function confirmDefaultModel(
   backend: ProvidersBackend,
   pick: ModelPick
 ): Promise<void> {
-  const result = await assignMainModel(backend, {
-    scope: 'main',
+  const result = await assignMainModel(backend.http, backend.home, {
     ...pick,
     confirm_expensive_model: true
   })
@@ -395,14 +395,6 @@ async function removing(
   } catch (error) {
     if (await stillThere()) throw error
   }
-}
-
-async function assignMainModel(
-  backend: ProvidersBackend,
-  body: Record<string, unknown>
-): Promise<{ ok?: boolean; confirm_required?: boolean; confirm_message?: string | null }> {
-  const profile = backend.home
-  return backend.http({ path: scoped('/api/model/set', profile), method: 'POST', body, profile })
 }
 
 // The home profile goes first: if it refuses the change, no bot gets it.

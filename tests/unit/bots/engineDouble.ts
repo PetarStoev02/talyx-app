@@ -1,5 +1,6 @@
 import { expect } from 'vitest'
 import type { RosterBackend, RosterRequest } from '../../../src/renderer/src/features/bots/data'
+import type { EngineHttp } from '../../../src/renderer/src/shared/engine/http'
 import type { ModelChoice } from '../../../src/renderer/src/features/bots/details'
 import type { Look } from '../../../src/renderer/src/features/bots/look'
 import type { Room } from '../../../src/renderer/src/features/bots/types'
@@ -25,8 +26,20 @@ export interface CronJob {
 
 type Section = 'soul' | 'description' | 'model'
 
+/** Talyx's own custom endpoint, the URL a bare `custom` pick needs. */
+export const HOME_ENDPOINT = 'http://127.0.0.1:20128/v1'
+/** How the engine shows Talyx's endpoint key kept in an environment variable. */
+export const HOME_KEY_REF = '${ROUTER_API_KEY}'
+
 export interface EngineDouble {
   request: RosterRequest
+  http: EngineHttp
+  /** Every model pin (POST /api/model/set), with its profile, in order. */
+  modelSets: Record<string, unknown>[]
+  /** The provider Talyx's own model is on; a bare custom pick copies its URL only from custom. */
+  homeProvider: string
+  /** The engine's preview of Talyx's endpoint key: a `${VAR}` reference, or a redacted key. */
+  homeKeyPreview: string
   metadata: Record<string, Record<string, unknown>>
   profiles: Record<string, ProfileState>
   jobs: Record<string, CronJob[]>
@@ -94,6 +107,51 @@ export function engineDouble(
   let metaFailure = false
   let assetFailure = false
   const assets: EngineDouble['assets'] = []
+  const modelSets: Record<string, unknown>[] = []
+
+  // As the engine: a costly model waits for a yes, and a bare custom provider needs its URL.
+  function setModel(profile: string, body: Record<string, unknown>): unknown {
+    modelSets.push({ profile, ...structuredClone(body) })
+    const { provider, model } = body as { provider: string; model: string }
+    if (expensiveModels.has(model) && body.confirm_expensive_model !== true)
+      return { ok: false, confirm_required: true, confirm_message: 'Costs more' }
+    if (failing.has('model')) throw new Error('Engine HTTP 400: model switch rejected')
+    if (provider === 'custom' && !body.base_url)
+      throw new Error('Engine HTTP 400: custom provider needs a base_url')
+    profiles[profile].model = { provider, model }
+    return { ok: true, scope: 'main', provider, model }
+  }
+
+  const http = async <T>(request: {
+    path: string
+    body?: unknown
+    profile?: string
+  }): Promise<T> => {
+    const profile = new URL(request.path, 'http://engine').searchParams.get('profile') ?? ''
+    if (request.path.startsWith('/api/model/set'))
+      return setModel(profile, request.body as Record<string, unknown>) as T
+    if (request.path.startsWith('/api/providers/custom-endpoints')) {
+      const custom = double.homeProvider === 'custom'
+      return {
+        endpoints: custom
+          ? [
+              {
+                id: 'custom',
+                base_url: HOME_ENDPOINT,
+                is_current: true,
+                api_key_preview: double.homeKeyPreview
+              }
+            ]
+          : [],
+        current: {
+          provider: double.homeProvider,
+          model: '9-route-provider',
+          base_url: custom ? HOME_ENDPOINT : ''
+        }
+      } as T
+    }
+    throw new Error(`Unexpected REST call ${request.path}`)
+  }
 
   function configureMeta(profile: string, params: Record<string, unknown>): unknown {
     const patch = params.ui_meta as Record<string, unknown>
@@ -117,7 +175,6 @@ export function engineDouble(
     return { applied: { ui_meta: true } }
   }
 
-  // Soul and description are written before the model, as the engine does.
   function configureSections(params: Record<string, unknown>): unknown {
     configured.push(structuredClone(params))
     const state = profiles[params.name as string]
@@ -129,14 +186,7 @@ export function engineDouble(
     if (typeof params.description === 'string')
       apply('description', () => (state.description = params.description as string))
     if (typeof params.soul === 'string') apply('soul', () => (state.soul = params.soul as string))
-    if (typeof params.model === 'string' && typeof params.provider === 'string') {
-      if (expensiveModels.has(params.model) && params.confirm_expensive_model !== true)
-        return { ok: true, applied, confirm_required: true, confirm_message: 'Costs more' }
-      apply(
-        'model',
-        () => (state.model = { provider: params.provider as string, model: params.model as string })
-      )
-    }
+    if (params.model !== undefined) throw new Error('A model goes through /api/model/set')
     return { ok: Object.values(applied).every(Boolean), applied }
   }
 
@@ -147,13 +197,11 @@ export function engineDouble(
     created.push(structuredClone(params))
     metadata[name] = {}
     revisions[name] = {}
+    // Without a model the engine gives the new profile Talyx's own.
     profiles[name] = {
       description: '',
       soul: (params.soul as string) ?? '',
-      model:
-        typeof params.model === 'string'
-          ? { provider: params.provider as string, model: params.model }
-          : null
+      model: { provider: 'custom', model: '9-route-provider' }
     }
     return { ok: true, name, path: `/profiles/${name}`, mirrored: {} }
   }
@@ -248,6 +296,10 @@ export function engineDouble(
   }
   const double: EngineDouble = {
     request,
+    http: http as EngineHttp,
+    modelSets,
+    homeProvider: 'custom',
+    homeKeyPreview: HOME_KEY_REF,
     rooms,
     assets,
     seatable: null,
@@ -282,6 +334,11 @@ export function backendFor(
 ): RosterBackend {
   return {
     request: engine.request,
+    http:
+      engine.http ??
+      (() => {
+        throw new Error('Not used')
+      }),
     botMetaKey: BOT_META_KEY,
     botGroupsMetaKey: GROUPS_META_KEY,
     deleteProfile: async (profile) => {

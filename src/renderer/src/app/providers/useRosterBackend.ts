@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { host } from '@shared/engine/host'
+import { engineHttp } from '@shared/engine/http'
 import { blockPng } from '@shared/ui/blockPng'
 import type { RosterBackend } from '@features/bots/data'
 import { useRoster } from '@features/bots/store'
@@ -44,6 +45,7 @@ export function rosterBackendFor(keys: {
   if (!botMetaKey || !botGroupsMetaKey) return null
   return {
     request: (profile, method, params) => host.request(profile, method, params),
+    http: engineHttp,
     deleteProfile: async (profile) => {
       await host.deleteProfile(profile)
     },

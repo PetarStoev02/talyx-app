@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import { create } from 'zustand'
+import { assignMainModel } from '@shared/engine/mainModel'
+import type { CustomEndpointsResponse, ModelAssignmentResponse } from '@shared/engine/types'
 import { saveBotMeta } from './data'
 import type { RosterBackend } from './data'
 import { exportAvatar, lookMeta, sameLook } from './look'
@@ -42,6 +44,11 @@ export class SectionsNotSavedError extends RosterError {
 /** Talyx's own profile, the manager. Its avatar is the logo, so it never gets an exported image. */
 export const MANAGER = 'default'
 
+// The engine's bare custom provider: an endpoint known only by its URL, with no named entry.
+const BARE_CUSTOM = 'custom'
+// How the engine writes a key kept in an environment variable: a reference, not the key.
+const ENV_REF = /^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/
+
 const describeSchema = z.object({
   description: z.string().catch(''),
   soul: z.string().catch(''),
@@ -49,11 +56,7 @@ const describeSchema = z.object({
     .object({ provider: z.string().catch(''), default: z.string().catch('') })
     .catch({ provider: '', default: '' })
 })
-const configureSchema = z.object({
-  applied: z.record(z.string(), z.unknown()).catch({}),
-  confirm_required: z.boolean().nullish(),
-  confirm_message: z.string().nullish()
-})
+const configureSchema = z.object({ applied: z.record(z.string(), z.unknown()).catch({}) })
 
 /**
  * Counts saves of bot details, so a view that shows them (the chat's intro) reads them again;
@@ -124,32 +127,87 @@ export async function confirmModel(
   model: ModelChoice
 ): Promise<void> {
   try {
-    await configure(backend, profile, {
-      model: model.model,
-      provider: model.provider,
-      confirm_expensive_model: true
-    })
+    await confirmBotModel(backend, profile, model)
   } finally {
     detailsChanged()
   }
+}
+
+/**
+ * Pins the bot's model. For a costly model the engine saves nothing and asks first: the question
+ * comes back, `confirmBotModel` answers it. A refusal is a `SectionsNotSavedError` for `model`.
+ */
+export async function setBotModel(
+  backend: RosterBackend,
+  profile: string,
+  pick: ModelChoice
+): Promise<ModelConfirm | null> {
+  const result = await assignModel(backend, profile, pick)
+  return result.confirm_required ? { message: result.confirm_message ?? '', model: pick } : null
+}
+
+/** Pins the bot's model after the user said yes to its cost. */
+export async function confirmBotModel(
+  backend: RosterBackend,
+  profile: string,
+  pick: ModelChoice
+): Promise<void> {
+  await assignModel(backend, profile, { ...pick, confirm_expensive_model: true })
+}
+
+async function assignModel(
+  backend: RosterBackend,
+  profile: string,
+  pick: ModelChoice & { confirm_expensive_model?: boolean }
+): Promise<ModelAssignmentResponse> {
+  // A bare custom provider is only its URL, and a bot that was on another provider no longer has
+  // it: it comes from Talyx's own profile, which every bot's custom endpoint copies.
+  const endpoint = pick.provider === BARE_CUSTOM ? await homeEndpoint(backend) : null
+  const result = await assignMainModel(backend.http, profile, {
+    ...pick,
+    ...(endpoint && { base_url: endpoint.url }),
+    ...(endpoint?.keyRef && { api_key: endpoint.keyRef })
+  }).catch(() => {
+    // The engine answers a model it refuses with an HTTP error; what it says is in main's log.
+    throw new SectionsNotSavedError(['model'])
+  })
+  if (!result.ok && !result.confirm_required) throw new SectionsNotSavedError(['model'])
+  return result
+}
+
+/**
+ * Talyx's bare custom endpoint, or null when its model is on another provider. `keyRef` is where
+ * the endpoint's key lives, as the engine's `${VAR}` reference to a variable every bot's .env has;
+ * a key written into the config shows only redacted and is never sent.
+ */
+async function homeEndpoint(
+  backend: RosterBackend
+): Promise<{ url: string; keyRef: string | null } | null> {
+  const { current, endpoints } = await backend.http<CustomEndpointsResponse>({
+    path: `/api/providers/custom-endpoints?${new URLSearchParams({ profile: MANAGER })}`,
+    profile: MANAGER
+  })
+  if (current.provider !== BARE_CUSTOM || !current.base_url) return null
+  const preview = endpoints.find((endpoint) => endpoint.is_current)?.api_key_preview ?? ''
+  return { url: current.base_url, keyRef: ENV_REF.test(preview) ? preview : null }
 }
 
 async function configure(
   backend: RosterBackend,
   profile: string,
   sections: Record<string, unknown>
-): Promise<z.infer<typeof configureSchema>> {
+): Promise<void> {
   const result = configureSchema.parse(
     await backend.request(profile, 'profiles.configure', { name: profile, ...sections })
   )
-  // A model waiting on the user's yes is not a failure, however the engine reports it.
   const failed = Object.entries(result.applied).flatMap(([name, ok]) =>
-    ok === false && !(name === 'model' && result.confirm_required) ? [name] : []
+    ok === false ? [name] : []
   )
   if (failed.length > 0) throw new SectionsNotSavedError(failed)
-  return result
 }
 
+// Description and SOUL go in one configure call, the model through its own pin; a refusal of
+// either does not stop the other, and every refused section is reported together.
 async function saveSections(
   backend: RosterBackend,
   profile: string,
@@ -159,18 +217,20 @@ async function saveSections(
   if (draft.description.trim() !== opening.description.trim())
     sections.description = draft.description.trim()
   if (draft.soul !== opening.soul) sections.soul = draft.soul
-  if (draft.model && !sameModel(draft.model, opening.model)) {
-    sections.model = draft.model.model
-    sections.provider = draft.model.provider
+  const model = draft.model && !sameModelChoice(draft.model, opening.model) ? draft.model : null
+  const refused: string[] = []
+  const refusing = (error: unknown): null => {
+    if (!(error instanceof SectionsNotSavedError)) throw error
+    refused.push(...error.sections)
+    return null
   }
-  if (Object.keys(sections).length === 0) return null
-  const result = await configure(backend, profile, sections)
-  return result.confirm_required && draft.model
-    ? { message: result.confirm_message ?? '', model: draft.model }
-    : null
+  if (Object.keys(sections).length > 0) await configure(backend, profile, sections).catch(refusing)
+  const confirm = model ? await setBotModel(backend, profile, model).catch(refusing) : null
+  if (refused.length > 0) throw new SectionsNotSavedError(refused)
+  return confirm
 }
 
-function sameModel(a: ModelChoice, b: ModelChoice | null): boolean {
+export function sameModelChoice(a: ModelChoice, b: ModelChoice | null): boolean {
   return a.provider === b?.provider && a.model === b.model
 }
 

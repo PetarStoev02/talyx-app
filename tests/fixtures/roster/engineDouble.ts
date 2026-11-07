@@ -1,6 +1,7 @@
 import { useEngine } from '../../../src/renderer/src/app/providers/useEngine'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import type { RosterBackend, RosterRequest } from '../../../src/renderer/src/features/bots/data'
+import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/http'
 import { blockPng } from '../../../src/renderer/src/shared/ui/blockPng'
 import { EXPECTED_ENGINE_VERSION, type EngineStatus } from '../../../src/shared/engine'
 import { fixtureChat } from './fixtureChat'
@@ -151,18 +152,6 @@ function configure(profile: string, params: Record<string, unknown>): unknown {
       state.soul = params.soul
       applied.soul = true
     }
-    if (typeof params.model === 'string') {
-      if (params.model === COSTLY_MODEL && params.confirm_expensive_model !== true)
-        return {
-          ok: true,
-          applied,
-          confirm_required: true,
-          confirm_message: `${COSTLY_MODEL} costs more per turn.`
-        }
-      state.model = params.model
-      state.provider = params.provider as string
-      applied.model = true
-    }
     return { ok: true, applied }
   }
   for (const [key, value] of Object.entries(params.ui_meta as Record<string, unknown>)) {
@@ -208,8 +197,8 @@ function createProfile(params: Record<string, unknown>): unknown {
   details[name] = {
     description: '',
     soul: params.soul as string,
-    provider: (params.provider as string) ?? PROVIDER,
-    model: (params.model as string) ?? DEFAULT_MODEL
+    provider: PROVIDER,
+    model: DEFAULT_MODEL
   }
   return { ok: true, name, path: `/fixture/${name}`, mirrored: {} }
 }
@@ -247,6 +236,24 @@ const request: RosterRequest = async (profile, method, params) => {
   throw new Error('Unsupported fixture operation')
 }
 
+// A bot's model pin; every other call is the Providers page's double.
+async function http<T>(request: EngineApiRequest): Promise<T> {
+  if (!request.path.startsWith('/api/model/set')) return providers.http<T>(request)
+  const body = request.body as {
+    provider: string
+    model: string
+    confirm_expensive_model?: boolean
+  }
+  if (body.model === COSTLY_MODEL && body.confirm_expensive_model !== true)
+    return {
+      ok: false,
+      confirm_required: true,
+      confirm_message: `${COSTLY_MODEL} costs more per turn.`
+    } as T
+  Object.assign(details[request.profile!], { provider: body.provider, model: body.model })
+  return { ok: true } as T
+}
+
 async function deleteProfile(profile: string): Promise<void> {
   if (profile === 'default') throw new Error('Cannot delete the default profile')
   const index = profiles.findIndex((bot) => bot.name === profile)
@@ -255,6 +262,7 @@ async function deleteProfile(profile: string): Promise<void> {
 
 export const rosterBackend: RosterBackend = {
   request,
+  http,
   deleteProfile,
   botMetaKey: BOT_META_KEY,
   botGroupsMetaKey: `${BOT_META_KEY}-groups`,

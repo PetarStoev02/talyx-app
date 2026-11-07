@@ -6,10 +6,12 @@ import { runRosterMutation } from '@features/bots/actions'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import type { RosterBackend } from '@features/bots/data'
 import {
+  MANAGER,
   SectionsNotSavedError,
   confirmModel,
   loadDetails,
   refusedSectionProblem,
+  sameModelChoice,
   saveDetails
 } from '@features/bots/details'
 import type {
@@ -25,7 +27,7 @@ import { botTitle, problemOf } from '@features/bots/roster'
 import type { RosterProblem } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot } from '@features/bots/types'
-import type { ModelOptionProvider } from '@shared/engine/gateway-events'
+import type { ChatActions } from '@features/chat/chat'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
@@ -46,17 +48,18 @@ const TABS: Array<[Tab, TranslationKey]> = [
 // The tab that holds each section's field, where its refusal shows.
 const SECTION_TABS: Record<string, Tab> = { description: 'details', model: 'details', soul: 'soul' }
 
-export type ModelOptions = (profile: string) => Promise<ModelOptionProvider[]>
+/** What the panel needs of the chat: the model lists, and the open chat's model switch. */
+export type ChatModels = Pick<ChatActions, 'models' | 'setModel'>
 
 /** The third column for one bot. Edits stay here until Save; Cancel drops them. */
 export function DetailsPanel({
   bot,
   backend,
-  models
+  chat
 }: {
   bot: Bot
   backend: RosterBackend
-  models: ModelOptions | null
+  chat: ChatModels | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const editProfile = useRoster((s) => s.editProfile)
@@ -101,9 +104,7 @@ export function DetailsPanel({
       !sameLook(draft.look, opening.look) ||
       draft.description.trim() !== opening.description.trim() ||
       draft.soul !== opening.soul ||
-      (!!draft.model &&
-        (draft.model.model !== opening.model?.model ||
-          draft.model.provider !== opening.model?.provider)))
+      (!!draft.model && !sameModelChoice(draft.model, opening.model)))
 
   function save(): void {
     if (!draft || !opening) return
@@ -111,7 +112,10 @@ export function DetailsPanel({
     void runRosterMutation(backend, async () => {
       const asked = await saveOrMarkRefused(draft, opening)
       if (asked === undefined) return
-      if (!asked) return closeIfShowing()
+      if (!asked) {
+        if (draft.model && !sameModelChoice(draft.model, opening.model)) followInChat(draft.model)
+        return closeIfShowing()
+      }
       // Everything but the model is saved; the panel now opens from there.
       setLoaded({ ...draft, model: opening.model })
       setConfirm(asked)
@@ -146,9 +150,16 @@ export function DetailsPanel({
   function applyModel(model: ModelChoice): void {
     void runRosterMutation(backend, async () => {
       await confirmModel(backend, bot.name, model)
+      followInChat(model)
       setConfirm(null)
       closeIfShowing()
     })
+  }
+
+  // The engine's pin is for new sessions; the bot's open chat switches too, as from its composer,
+  // so its model chip agrees with the bot. With no chat yet, the first one starts on the pin.
+  function followInChat(model: ModelChoice): void {
+    void chat?.setModel(bot.name, model)
   }
 
   // A save can finish after the user moved to another bot's panel; that panel stays open.
@@ -269,7 +280,9 @@ export function DetailsPanel({
                     failed: t('chat.modelsFailed')
                   }}
                   value={draft.model}
-                  load={models && (() => models(bot.name))}
+                  // Talyx's models, as in the New bot dialog: a bot moved off a custom endpoint no
+                  // longer lists it, and the pin brings the endpoint along.
+                  load={chat && (() => chat.models(MANAGER))}
                   onSelect={(model) => update({ model })}
                 />
                 {fieldProblem('model')}
