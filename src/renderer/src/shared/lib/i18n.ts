@@ -151,6 +151,8 @@ const en = {
   'chat.micDenied':
     'Talyx cannot use the microphone. Allow it for Talyx in your system settings, then try again.',
   'chat.dictationFailed': 'Dictation did not work. Try again, or type your message.',
+  'chat.dictationNoProvider':
+    'Dictation needs a speech-to-text provider. Add an OpenAI, Groq, Mistral or ElevenLabs key in Settings → Providers.',
   'rooms.placeholder': 'Message the room · @ to address one bot',
   'rooms.empty': 'Say something to the room. Each bot answers in turn.',
   'rooms.working': 'Answering: {names}',

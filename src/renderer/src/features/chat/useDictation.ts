@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { problemOf, type Problem } from '@shared/lib/problem'
 
 export type DictationState = 'idle' | 'starting' | 'recording' | 'transcribing'
 
@@ -61,6 +62,24 @@ export function useDictation(
   }
 
   return { state, toggle }
+}
+
+// The engine's fixed opening when the bot has no speech-to-text provider; the rest of its text
+// lists environment variables the user cannot set from Talyx.
+const NO_PROVIDER = /^No STT provider available/
+// An engine error short enough to read in a toast, and naming no environment variable.
+const READABLE_MAX = 120
+const ENV_VAR = /\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b/
+
+/** A failed dictation as the message to show: what went wrong and what the user can do. */
+export function dictationProblem(error: unknown): Problem {
+  if (error instanceof DOMException && error.name === 'NotAllowedError')
+    return { key: 'chat.micDenied', detail: null }
+  const { detail } = problemOf(error)
+  if (detail && NO_PROVIDER.test(detail)) return { key: 'chat.dictationNoProvider', detail: null }
+  const readable =
+    detail && detail.length <= READABLE_MAX && !detail.includes('\n') && !ENV_VAR.test(detail)
+  return { key: 'chat.dictationFailed', detail: readable ? detail : null }
 }
 
 export function dataUrlOf(file: Blob): Promise<string> {
