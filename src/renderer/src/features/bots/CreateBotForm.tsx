@@ -136,11 +136,7 @@ export function CreateBotForm({
           <LookPicker look={look} profile={profile} onChange={pick} />
         </div>
       </div>
-      {error && (
-        <div role="alert">
-          <ProblemMessage problem={error} />
-        </div>
-      )}
+      {error && <ProblemMessage problem={error} />}
       <div className="flex gap-2">
         <Button type="submit" disabled={!id.ok || saving}>
           {submitLabel}

@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { refreshRoster } from '../../../src/renderer/src/features/bots/actions'
 import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
 import {
+  SectionsNotSavedError,
   confirmModel,
   loadDetails,
+  refusedSectionProblem,
   saveDetails,
   useDetailsRevision
 } from '../../../src/renderer/src/features/bots/details'
@@ -215,9 +217,33 @@ describe('bot details', () => {
       await expect(saving).rejects.toBeInstanceOf(RosterError)
       await expect(saving).rejects.toMatchObject({
         key: 'details.errorNotApplied',
-        detail: 'soul'
+        detail: 'soul',
+        sections: ['soul']
       })
       expect(engine.profiles.analyst.description).toBe('New')
+    })
+
+    it('should list every section the engine refused', async () => {
+      engine.failSection('soul')
+      engine.failSection('model')
+      const before = await opening('analyst')
+      const saving = saveDetails(backend, bot('analyst'), {
+        opening: before,
+        draft: { ...before, soul: '# New', model: { provider: 'custom', model: 'other' } }
+      })
+      await expect(saving).rejects.toBeInstanceOf(SectionsNotSavedError)
+      await expect(saving).rejects.toMatchObject({ sections: ['soul', 'model'] })
+    })
+  })
+
+  describe('refusedSectionProblem', () => {
+    it.each([
+      ['model', { key: 'details.errorModel', detail: null }],
+      ['description', { key: 'details.errorDescription', detail: null }],
+      ['soul', { key: 'details.errorSoul', detail: null }],
+      ['provider', { key: 'details.errorNotApplied', detail: 'provider' }]
+    ])('should give a refused %s its message', (section, problem) => {
+      expect(refusedSectionProblem(section)).toEqual(problem)
     })
   })
 

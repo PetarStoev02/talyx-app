@@ -4,6 +4,7 @@ import { saveBotMeta } from './data'
 import type { RosterBackend } from './data'
 import { exportAvatar, lookMeta, sameLook } from './look'
 import type { Look } from './look'
+import type { Problem } from '@shared/lib/problem'
 import { RosterError } from './roster'
 import type { Bot, BotMeta } from './types'
 
@@ -28,6 +29,14 @@ export interface DetailsDraft extends ProfileDetails {
 export interface ModelConfirm {
   message: string
   model: ModelChoice
+}
+
+/** The profile sections the engine refused in one save, by their engine names. */
+export class SectionsNotSavedError extends RosterError {
+  constructor(readonly sections: string[]) {
+    super('details.errorNotApplied', sections.join(', '))
+    this.name = 'SectionsNotSavedError'
+  }
 }
 
 /** Talyx's own profile, the manager. Its avatar is the logo, so it never gets an exported image. */
@@ -137,7 +146,7 @@ async function configure(
   const failed = Object.entries(result.applied).flatMap(([name, ok]) =>
     ok === false && !(name === 'model' && result.confirm_required) ? [name] : []
   )
-  if (failed.length > 0) throw new RosterError('details.errorNotApplied', failed.join(', '))
+  if (failed.length > 0) throw new SectionsNotSavedError(failed)
   return result
 }
 
@@ -163,4 +172,16 @@ async function saveSections(
 
 function sameModel(a: ModelChoice, b: ModelChoice | null): boolean {
   return a.provider === b?.provider && a.model === b.model
+}
+
+/**
+ * What a refused section tells the user, shown under its field. The engine says only that a
+ * section was not applied, so the reason is the likeliest one: a model whose provider is not set
+ * up, or the engine failing to write.
+ */
+export function refusedSectionProblem(section: string): Problem {
+  if (section === 'model') return { key: 'details.errorModel', detail: null }
+  if (section === 'description') return { key: 'details.errorDescription', detail: null }
+  if (section === 'soul') return { key: 'details.errorSoul', detail: null }
+  return { key: 'details.errorNotApplied', detail: section }
 }

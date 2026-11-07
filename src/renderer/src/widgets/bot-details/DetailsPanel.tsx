@@ -5,7 +5,13 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { runRosterMutation } from '@features/bots/actions'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import type { RosterBackend } from '@features/bots/data'
-import { confirmModel, loadDetails, saveDetails } from '@features/bots/details'
+import {
+  SectionsNotSavedError,
+  confirmModel,
+  loadDetails,
+  refusedSectionProblem,
+  saveDetails
+} from '@features/bots/details'
 import type {
   DetailsDraft,
   ModelChoice,
@@ -37,6 +43,9 @@ const TABS: Array<[Tab, TranslationKey]> = [
   ['soul', 'details.tabSoul']
 ]
 
+// The tab that holds each section's field, where its refusal shows.
+const SECTION_TABS: Record<string, Tab> = { description: 'details', model: 'details', soul: 'soul' }
+
 export type ModelOptions = (profile: string) => Promise<ModelOptionProvider[]>
 
 /** The third column for one bot. Edits stay here until Save; Cancel drops them. */
@@ -61,6 +70,8 @@ export function DetailsPanel({
   const [fields, setFields] = useState<ProfileDetails | null>(null)
   const [confirm, setConfirm] = useState<ModelConfirm | null>(null)
   const [attempt, setAttempt] = useState(0)
+  // Sections the engine refused in the last save; each shows its reason under its field.
+  const [refused, setRefused] = useState<string[]>([])
   const opening: DetailsDraft | null = loaded && {
     title: bot.meta.title ?? '',
     look: lookOf(bot),
@@ -96,13 +107,40 @@ export function DetailsPanel({
 
   function save(): void {
     if (!draft || !opening) return
+    setRefused([])
     void runRosterMutation(backend, async () => {
-      const asked = await saveDetails(backend, bot, { opening, draft })
+      const asked = await saveSections(draft, opening)
+      if (asked === undefined) return
       if (!asked) return closeIfShowing()
       // Everything but the model is saved; the panel now opens from there.
       setLoaded({ ...draft, model: opening.model })
       setConfirm(asked)
     })
+  }
+
+  // A refusal shows under its field, on that field's tab; the general line below the panel joins
+  // it when several sections failed or one has no field. Resolves undefined when a field was
+  // refused.
+  async function saveSections(
+    draft: DetailsDraft,
+    opening: DetailsDraft
+  ): Promise<ModelConfirm | null | undefined> {
+    try {
+      return await saveDetails(backend, bot, { opening, draft })
+    } catch (error) {
+      if (!(error instanceof SectionsNotSavedError)) throw error
+      setRefused(error.sections)
+      const [only, ...others] = error.sections
+      if (others.length > 0 || !SECTION_TABS[only]) throw error
+      setTab(SECTION_TABS[only])
+      return undefined
+    }
+  }
+
+  function fieldProblem(section: string): React.JSX.Element | null {
+    return refused.includes(section) ? (
+      <ProblemMessage problem={refusedSectionProblem(section)} />
+    ) : null
   }
 
   function applyModel(model: ModelChoice): void {
@@ -177,7 +215,7 @@ export function DetailsPanel({
           className={cn('scroll-y-stable flex min-h-0 flex-1 flex-col px-6 py-4', arrival)}
         >
           {loadError ? (
-            <div role="alert">
+            <div>
               <ProblemMessage problem={loadError} />
               <button
                 className="mt-2 underline underline-offset-4 hover:decoration-2"
@@ -220,6 +258,7 @@ export function DetailsPanel({
                   onChange={(event) => update({ description: event.target.value })}
                 />
               </label>
+              {fieldProblem('description')}
               <div className="text-base">
                 {t('details.model')}
                 <ModelField
@@ -233,26 +272,30 @@ export function DetailsPanel({
                   load={models && (() => models(bot.name))}
                   onSelect={(model) => update({ model })}
                 />
+                {fieldProblem('model')}
               </div>
               <RoutinesSection bot={bot} backend={backend} />
             </div>
           ) : tab === 'look' ? (
             <LookPicker look={draft.look} profile={bot.name} onChange={setLook} />
           ) : (
-            <label className="flex flex-1 flex-col text-base">
-              {t('details.soul')}
-              <Textarea
-                value={draft.soul}
-                spellCheck={false}
-                onChange={(event) => update({ soul: event.target.value })}
-                className="min-h-64 flex-1"
-              />
-            </label>
+            <>
+              <label className="flex flex-1 flex-col text-base">
+                {t('details.soul')}
+                <Textarea
+                  value={draft.soul}
+                  spellCheck={false}
+                  onChange={(event) => update({ soul: event.target.value })}
+                  className="min-h-64 flex-1"
+                />
+              </label>
+              {fieldProblem('soul')}
+            </>
           )}
         </Tabs.Content>
       </Tabs.Root>
       {error && (
-        <div role="alert" className="px-6 pb-2">
+        <div className="px-6 pb-2">
           <ProblemMessage problem={error} />
         </div>
       )}
@@ -269,11 +312,7 @@ export function DetailsPanel({
         <DialogContent>
           <DialogTitle>{t('details.confirmTitle')}</DialogTitle>
           <DialogDescription>{confirm?.message}</DialogDescription>
-          {error && (
-            <div role="alert">
-              <ProblemMessage problem={error} />
-            </div>
-          )}
+          {error && <ProblemMessage problem={error} />}
           <div className="flex gap-2">
             <Button disabled={saving} onClick={() => confirm && applyModel(confirm.model)}>
               {t('details.confirmUse')}

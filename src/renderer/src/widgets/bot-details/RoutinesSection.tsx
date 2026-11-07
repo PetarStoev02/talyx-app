@@ -120,7 +120,7 @@ export function RoutinesSection({
         )}
       </div>
       {problem ? (
-        <div role="alert">
+        <div>
           <ProblemMessage problem={problem} />
           <button
             className="mt-2 underline underline-offset-4 hover:decoration-2"
@@ -184,11 +184,7 @@ export function RoutinesSection({
             {t('routines.deleteTitle').replace('{name}', deleting?.name ?? '')}
           </DialogTitle>
           <DialogDescription>{t('routines.deleteWarning')}</DialogDescription>
-          {deleteProblem && (
-            <div role="alert">
-              <ProblemMessage problem={deleteProblem} />
-            </div>
-          )}
+          {deleteProblem && <ProblemMessage problem={deleteProblem} />}
           <div className="flex gap-2">
             <Button variant="destructive" onClick={() => deleting && void remove(deleting)}>
               {t('routines.deleteConfirm')}
@@ -349,11 +345,7 @@ function NewRoutineDialog({
             />
             {t('routines.postToChat')}
           </label>
-          {problem && (
-            <div role="alert">
-              <ProblemMessage problem={problem} />
-            </div>
-          )}
+          {problem && <ProblemMessage problem={problem} />}
           <div className="flex gap-2">
             <Button type="submit" disabled={!ready || busy}>
               {t('routines.create')}

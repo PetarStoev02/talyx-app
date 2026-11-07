@@ -154,11 +154,7 @@ export function CreateRoomDialog({
               ))}
             </NativeSelect>
           </label>
-          {error && (
-            <div role="alert">
-              <ProblemMessage problem={error} />
-            </div>
-          )}
+          {error && <ProblemMessage problem={error} />}
           <div className="flex gap-2">
             <Button type="submit" disabled={!ready || saving}>
               {t('rooms.create')}
