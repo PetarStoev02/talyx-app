@@ -17,7 +17,7 @@ function files(path: string): string[] {
 
 const SITE = ROOTS.flatMap(files).filter((f) => /\.(tsx?|md|html|mjs|json|svg|txt|xml)$/.test(f))
 
-/** Claims that are not true of Talyx 1.0: free, unsigned, macOS and Linux only. */
+/** Claims that are not true of Talyx: free, signed on macOS, macOS and Linux only. */
 const RETIRED = [
   /\$\d/,
   /\bpricing\b/i,
@@ -30,7 +30,7 @@ const RETIRED = [
   /\bwindows\b(?! comes later\.)(?!',\s+description: 'It comes once the engine runs there\.')/i,
   /built-in AI|local AI|on-device AI/i,
   /refund/i,
-  /(?<!not |or )notari[sz]ed/i,
+  /not (?:signed|notari[sz]ed)|open anyway|com\.apple\.quarantine/i,
   /windows (?:is )?(?:planned|coming)|coming to windows/i,
   /auto-?updat|updates? (?:are )?delivered automatically/i,
   /\b(?:qwen|smolvlm|gliner|tesseract)\b/i,

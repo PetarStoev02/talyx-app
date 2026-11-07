@@ -76,3 +76,55 @@ release_notes_file() {
   done < "$highlights"
   { printf '## Highlights\n\n'; cat "$highlights"; echo; } > "$out"
 }
+
+# macOS signing and notarization. CSC_LINK is the base64 (or a path) of the Developer ID
+# Application .p12 and CSC_KEY_PASSWORD its password; electron-builder imports it into a temporary
+# keychain. APPLE_API_KEY is the App Store Connect .p8 key's content or path, APPLE_API_KEY_ID its
+# Key ID, APPLE_API_ISSUER the Issuer ID. Never echoes a value.
+MAC_SIGNING_VARS=(CSC_LINK CSC_KEY_PASSWORD APPLE_API_KEY APPLE_API_KEY_ID APPLE_API_ISSUER)
+
+check_mac_signing_env() {
+  local name missing=()
+  for name in "${MAC_SIGNING_VARS[@]}"; do
+    [ -n "${!name:-}" ] || missing+=("$name")
+  done
+  [ ${#missing[@]} -eq 0 ] && return 0
+  echo "✗ The macOS release must be signed and notarized. Missing: ${missing[*]}." >&2
+  echo "  CLAUDE.md → Builds → Signing secrets says how to create each one." >&2
+  return 1
+}
+
+# electron-builder and notarytool want the .p8 as a file. Writes the key's content to $1 (owner
+# only) and points APPLE_API_KEY at it; a value that is already a file path is kept.
+write_apple_api_key() {
+  local dest="$1"
+  [ -f "$APPLE_API_KEY" ] && return 0
+  (umask 077 && printf '%s\n' "$APPLE_API_KEY" > "$dest") || return 1
+  export APPLE_API_KEY="$dest"
+}
+
+# electron-builder notarizes and staples the .app but not the DMG around it. A DMG downloaded from
+# the release carries the quarantine attribute, so it is notarized and stapled too: Gatekeeper then
+# accepts it without reaching Apple.
+notarize_dmgs() {
+  local dmg
+  for dmg in "$@"; do
+    echo "→ Notarizing $dmg..."
+    xcrun notarytool submit "$dmg" --key "$APPLE_API_KEY" --key-id "$APPLE_API_KEY_ID" \
+      --issuer "$APPLE_API_ISSUER" --wait --timeout 30m || return 1
+    xcrun stapler staple "$dmg" || return 1
+  done
+}
+
+# Fails unless every .app under dist/ is Developer ID signed and notarized, and every DMG is stapled.
+verify_mac_release() {
+  local app dmg
+  for app in dist/mac*/*.app; do
+    codesign --verify --deep --strict --verbose=2 "$app" || return 1
+    spctl -a -vv "$app" || return 1
+  done
+  for dmg in dist/*.dmg; do
+    xcrun stapler validate "$dmg" || return 1
+    spctl -a -vv -t open --context context:primary-signature "$dmg" || return 1
+  done
+}

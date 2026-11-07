@@ -12,12 +12,12 @@ Until version 0.11.0 Talyx was a file organizer and a hotkey assistant for macOS
 
 ## Install
 
-Builds come from the [GitHub releases](https://github.com/PetarStoev02/talyx-app/releases). None of them is signed or notarized: there is no Apple developer account. Your system warns you the first time you open each new version.
+Builds come from the [GitHub releases](https://github.com/PetarStoev02/talyx-app/releases).
 
-- **macOS 13 or newer.** Open the DMG and drag Talyx to Applications. Open Talyx and dismiss the warning. Then go to System Settings → Privacy & Security, scroll down and click **Open Anyway**; macOS asks for your password. Or run once in Terminal: `xattr -dr com.apple.quarantine /Applications/Talyx.app`
+- **macOS 13 or newer.** Open the DMG and drag Talyx to Applications, then open it. The Mac builds are signed with Developer ID, run with the hardened runtime and are notarized by Apple, so macOS opens them without a warning.
 - **Linux (x64).** Download `Talyx-x86_64.AppImage`, make it executable (`chmod +x`) and run it, or install `Talyx-amd64.deb` with `sudo apt install ./Talyx-amd64.deb`. There is no Windows build yet: it comes once the engine runs there.
 
-Talyx checks GitHub for a newer release. When you click Download, it fetches the installer for your computer and the release's `SHA256SUMS`, checks the installer against it, and opens it for you to run. It never installs anything itself. A download made by Talyx has no quarantine attribute, so macOS's **Open Anyway** step is not needed for in-app updates; the SHA-256 check is the integrity guarantee.
+Talyx checks GitHub for a newer release. When you click Download, it fetches the installer for your computer and the release's `SHA256SUMS`, checks the installer against it, and opens it for you to run. It never installs anything itself.
 
 ## Engine
 
@@ -49,7 +49,7 @@ Node 22.12 or newer (Node 24 matches the Electron runtime).
 npm ci
 npm run dev          # Electron + Vite with hot reload
 npm test             # unit tests
-npm run build:mac    # ad-hoc signed DMGs in dist/, no Apple account needed
+npm run build:mac    # DMGs in dist/; unsigned unless a Developer ID is set up
 npm run build:linux  # AppImage and deb in dist/ (x64)
 ```
 
