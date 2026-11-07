@@ -45,6 +45,13 @@ function isLoopback(url: string, port: number): boolean {
   }
 }
 
+/** The one log line for a bridge that did not start; a taken port names the way out. */
+export function bridgeStartFailure(error: unknown, port: number): string {
+  if ((error as NodeJS.ErrnoException | null)?.code === 'EADDRINUSE')
+    return `[DevBridge] Port ${port} is taken, probably by another dev run: the browser renderer cannot reach this app. Start both runs with a free TALYX_BRIDGE_PORT.`
+  return `[DevBridge] Could not start on port ${port}: ${error instanceof Error ? error.message : String(error)}`
+}
+
 /**
  * Dev-only bridge that lets a plain browser tab drive the app: window.api
  * calls arrive as POST /bridge/invoke and are dispatched to the same handlers
@@ -144,6 +151,12 @@ export class DevBridge {
           }
         })()
       })
+      return
+    }
+    // Lets a browser tab check it reached this app's bridge, not another dev run's.
+    if (req.method === 'GET' && req.url === '/bridge/hello') {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ rendererPort: this.rendererPort }))
       return
     }
     if (req.method === 'GET' && req.url === '/bridge/events') {
