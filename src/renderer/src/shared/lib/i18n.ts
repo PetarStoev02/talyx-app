@@ -330,6 +330,8 @@ const en = {
     'SOUL.md was not saved. Save again; if it keeps failing, check the engine in Settings.',
   'routines.errorEngine': 'The engine could not change the routine. Try again.',
   'create.errorTaken': 'A bot with that name already exists. Pick another name.',
+  'create.errorRules':
+    'The bot was created, but it was not told it lives in Talyx. It is told the next time Talyx starts.',
   'create.errorModel':
     'The bot was created on Talyx’s model, but the engine did not switch it to the one you picked. Pick it again in its details.',
   'create.errorNotFiled':

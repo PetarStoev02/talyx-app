@@ -6,6 +6,7 @@ import type { ModelChoice } from './details'
 import { exportAvatar, lookMeta } from './look'
 import type { Look } from './look'
 import { RosterError, problemOf } from './roster'
+import { writeRules } from './rules'
 import type { Folder } from './types'
 
 export interface NewBot {
@@ -54,7 +55,8 @@ export function profileIdFor(name: string, taken: string[]): string {
 }
 
 /**
- * Creates the profile, pins its model, files it with its title and look, then exports the look.
+ * Creates the profile, pins its model, files it with its title and look, exports the look, then
+ * tells it about Talyx.
  * Returns its id. The model goes through the same pin as the details panel's: the pick was made
  * in the form, so a costly one is not asked about again.
  */
@@ -88,6 +90,11 @@ export async function createBot(
     await exportAvatar(backend, id, bot.look)
   } catch (error) {
     throw new IncompleteBotError(id, 'create.errorNoAvatar', problemOf(error).detail)
+  }
+  try {
+    await writeRules(backend, id)
+  } catch (error) {
+    throw new IncompleteBotError(id, 'create.errorRules', problemOf(error).detail)
   }
   return id
 }

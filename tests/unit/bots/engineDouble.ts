@@ -39,6 +39,10 @@ export interface EngineDouble {
   modelSets: Record<string, unknown>[]
   /** The provider Talyx's own model is on; a bare custom pick copies its URL only from custom. */
   homeProvider: string
+  /** Each profile's prompt setting (`agent.system_prompt`); absent when it has none. */
+  prompts: Record<string, unknown>
+  /** Every profile whose prompt setting was written, in order. */
+  promptWrites: string[]
   /** Each profile's named endpoints (its config's providers), as the endpoint list shows them. */
   named: Record<string, CustomEndpoint[]>
   /** The engine's preview of Talyx's endpoint key: a `${VAR}` reference, or a redacted key. */
@@ -136,6 +140,8 @@ export function engineDouble(
   const assets: EngineDouble['assets'] = []
   const modelSets: Record<string, unknown>[] = []
   const named: EngineDouble['named'] = {}
+  const prompts: EngineDouble['prompts'] = {}
+  const promptWrites: string[] = []
 
   // As the engine: a costly model waits for a yes, and a bare custom provider needs its URL.
   function setModel(profile: string, body: Record<string, unknown>): unknown {
@@ -155,6 +161,7 @@ export function engineDouble(
 
   const http = async <T>(request: {
     path: string
+    method?: string
     body?: unknown
     profile?: string
   }): Promise<T> => {
@@ -162,10 +169,20 @@ export function engineDouble(
     if (request.path.startsWith('/api/model/set'))
       return setModel(profile, request.body as Record<string, unknown>) as T
     if (request.path.startsWith('/api/config')) {
-      const { providers } = (request.body as { config: { providers: Record<string, NamedEntry> } })
-        .config
-      for (const [id, entry] of Object.entries(providers))
+      if (!metadata[profile]) throw new Error(`Engine HTTP 404: no profile ${profile}`)
+      if (request.method !== 'PUT')
+        return (profile in prompts ? { agent: { system_prompt: prompts[profile] } } : {}) as T
+      const { providers, agent } = (
+        request.body as {
+          config: { providers?: Record<string, NamedEntry>; agent?: { system_prompt: string } }
+        }
+      ).config
+      for (const [id, entry] of Object.entries(providers ?? {}))
         named[profile] = [...(named[profile] ?? []), namedEndpoint(id, entry)]
+      if (agent) {
+        prompts[profile] = agent.system_prompt
+        promptWrites.push(profile)
+      }
       return { ok: true } as T
     }
     if (request.path.startsWith('/api/providers/custom-endpoints')) {
@@ -346,6 +363,8 @@ export function engineDouble(
     http: http as EngineHttp,
     modelSets,
     named,
+    prompts,
+    promptWrites,
     homeProvider: 'custom',
     homeKeyPreview: HOME_KEY_REF,
     rooms,
