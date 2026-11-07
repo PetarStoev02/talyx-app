@@ -23,13 +23,23 @@ describe('release configuration', () => {
     expect(readFileSync('electron-builder.yml', 'utf8')).not.toMatch(/railway/i)
   })
 
-  it('should build ad-hoc signed DMGs without notarization', () => {
+  it('should sign with the hardened runtime and notarize the macOS build', () => {
     const config = readFileSync('electron-builder.yml', 'utf8')
-    expect(config).toMatch(/identity:\s*'-'/)
-    expect(config).toMatch(/notarize:\s*false/)
-    expect(config).toMatch(/hardenedRuntime:\s*false/)
+    expect(config).not.toMatch(/identity:/)
+    expect(config).toMatch(/notarize:\s*true/)
+    expect(config).toMatch(/hardenedRuntime:\s*true/)
+    expect(config).toMatch(/entitlements:\s*build\/entitlements\.mac\.plist/)
+    expect(config).toMatch(/resetAdHocDarwinSignature:\s*true/)
     expect(config).not.toMatch(/target:\s*zip/)
-    expect(config).not.toMatch(/entitlements/)
     expect(config).toMatch(/^publish:\s*null/m)
+  })
+
+  it('should grant only the entitlements Electron and dictation need', () => {
+    const plist = readFileSync('build/entitlements.mac.plist', 'utf8')
+    const keys = [...plist.matchAll(/<key>([^<]+)<\/key>/g)].map((match) => match[1])
+    expect(keys).toEqual([
+      'com.apple.security.cs.allow-jit',
+      'com.apple.security.device.audio-input'
+    ])
   })
 })

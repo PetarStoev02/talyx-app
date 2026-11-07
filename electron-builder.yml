@@ -25,15 +25,22 @@ mac:
       arch:
         - x64
         - arm64
-  # No Apple account: ad-hoc signature ('-'). Apple Silicon refuses an unsigned binary,
-  # and flipping the fuses below invalidates any earlier signature, so sign last.
-  identity: '-'
+  # No identity here: electron-builder finds the Developer ID Application certificate that
+  # CSC_LINK/CSC_KEY_PASSWORD (or the keychain) provides. Without one the build stays unsigned
+  # and electronFuses.resetAdHocDarwinSignature below keeps it runnable on Apple Silicon.
   # macOS asks for the microphone with this line the first time you dictate.
   extendInfo:
     NSMicrophoneUsageDescription: Talyx uses the microphone to turn what you say into a message.
-  hardenedRuntime: false
-  notarize: false
+  # Notarization requires the hardened runtime; the entitlements file justifies each exception.
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # Notarizes and staples the .app when APPLE_API_KEY (a .p8 path), APPLE_API_KEY_ID and
+  # APPLE_API_ISSUER are set; with none of them it warns and skips, with only some it fails.
+  notarize: true
 dmg:
+  # Signs the DMG with the same Developer ID; a no-op when there is no identity.
+  sign: true
   artifactName: ${productName}-${arch}.${ext}
 linux:
   icon: build/talyx-icon.png
@@ -73,3 +80,6 @@ electronFuses:
   onlyLoadAppFromAsar: true
   # The renderer is served over app:// (appProtocol.ts), so file:// pages need no extra reach.
   grantFileProtocolExtraPrivileges: false
+  # Flipping fuses breaks the binary's signature. electron-builder re-signs a release after this,
+  # but a local build with no Developer ID is never signed, and Apple Silicon refuses to run it.
+  resetAdHocDarwinSignature: true

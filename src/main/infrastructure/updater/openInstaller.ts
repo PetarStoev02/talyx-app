@@ -13,7 +13,7 @@ export interface OpenInstallerDeps {
 }
 
 /**
- * Talyx is unsigned and cannot replace itself: the user runs the installer. A Linux AppImage is
+ * Talyx cannot replace itself: the user runs the installer. A Linux AppImage is
  * the app itself, so it is made executable (the download is not) and shown in its folder.
  */
 export async function openInstaller(file: string, deps: OpenInstallerDeps): Promise<void> {
