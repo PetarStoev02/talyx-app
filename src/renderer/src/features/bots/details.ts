@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import {
   BARE_CUSTOM,
   CONFIG_YAML_SOURCE,
+  keepBareEndpoint,
   keyRef,
   listEndpoints,
   saveNamedEndpoint
@@ -173,6 +174,8 @@ async function assignModel(
   // it: it comes from Talyx's own profile, which every bot's custom endpoint copies.
   const endpoint = pick.provider === BARE_CUSTOM ? await homeEndpoint(backend) : null
   if (pick.provider !== BARE_CUSTOM) await copyHomeEndpoint(backend, profile, pick.provider)
+  // Talyx's own model also changes here, from its details panel, as in Settings.
+  if (profile === MANAGER) await keepBareEndpoint(backend.http, MANAGER, pick)
   const result = await assignMainModel(backend.http, profile, {
     ...pick,
     ...(endpoint && { base_url: endpoint.url }),

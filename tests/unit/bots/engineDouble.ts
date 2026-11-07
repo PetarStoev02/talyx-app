@@ -177,9 +177,15 @@ export function engineDouble(
             ? [
                 {
                   id: 'custom',
+                  name: 'Custom',
                   base_url: HOME_ENDPOINT,
+                  model: '9-route-provider',
+                  models: ['9-route-provider'],
+                  discover_models: true,
+                  has_api_key: true,
                   is_current: true,
-                  api_key_preview: double.homeKeyPreview
+                  api_key_preview: double.homeKeyPreview,
+                  source: 'direct-config'
                 }
               ]
             : [])

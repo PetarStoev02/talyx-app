@@ -51,3 +51,25 @@ export async function saveNamedEndpoint(
     profile: target.profile
   })
 }
+
+/**
+ * A bare custom endpoint lives only in the profile's model section, so a model on another provider
+ * would erase it, and with it every bot's way back. Before the profile leaves it, it is kept as a
+ * named endpoint there; a bot that picks it copies it then (see the bots' model pin).
+ */
+export async function keepBareEndpoint(
+  http: EngineHttp,
+  profile: string,
+  pick: { provider: string }
+): Promise<void> {
+  if (pick.provider === BARE_CUSTOM) return
+  const { endpoints } = await listEndpoints(http, profile)
+  const bare = endpoints.find((endpoint) => endpoint.source === CONFIG_YAML_SOURCE)
+  if (!bare) return
+  const { host } = new URL(bare.base_url)
+  await saveNamedEndpoint(
+    http,
+    { profile, id: `endpoint-${host.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}` },
+    { ...bare, name: `Custom endpoint (${host})` }
+  )
+}

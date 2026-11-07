@@ -332,6 +332,14 @@ describe('bot details', () => {
       expect(engine.named.analyst[0].api_key_preview).toBe('${ROUTER_API_KEY}')
     })
 
+    it("should keep Talyx's custom endpoint when its own model leaves it from its details", async () => {
+      await setBotModel(backend, 'default', haiku)
+      expect(engine.named.default.map((item) => [item.id, item.api_key_preview])).toEqual([
+        ['endpoint-127-0-0-1-20128', HOME_KEY_REF]
+      ])
+      expect(engine.profiles.default.model).toEqual(haiku)
+    })
+
     it('should send no endpoint URL with a built-in provider', async () => {
       engine.profiles.analyst.model = custom
       await setBotModel(backend, 'analyst', haiku)
