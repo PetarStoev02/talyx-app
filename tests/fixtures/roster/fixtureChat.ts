@@ -9,7 +9,10 @@ import type { GatewayEvent, ServerRequest } from '../../../src/renderer/src/shar
 
 // Deliberately in-memory: a scripted bot per profile. Words in your message pick the script:
 // "clarify" asks two questions, "approve" asks to run a command, "ask" delegates to another bot.
+// Developer opens waiting on you, with an approval card and a question card.
 const STEP_MS = 120
+const REPLY = 'On it. I will look into this and post a **short summary** here when it is ready.'
+const DENIED = 'Okay, I will not run it.'
 const FIXTURE_IMAGE =
   'data:image/svg+xml;base64,' +
   btoa(
@@ -49,9 +52,25 @@ const history: Record<string, Array<Record<string, unknown>>> = {
       content:
         'Happy to. **Which regions should the report cover?** North and South are ready; West is still closing its books.'
     }
+  ],
+  developer: [
+    { id: 1, role: 'user', content: 'The CSV export drops the last row. Can you fix it?' },
+    {
+      id: 2,
+      role: 'assistant',
+      content:
+        'Found it: the export loop stopped one row early. **The fix is in and the tests pass.**'
+    },
+    { id: 3, role: 'user', content: 'Great, ship it.' }
   ]
 }
 let seq = 100
+// Developer's cards open once per page load, with its history, so the chat opens scrolled to them.
+let developerAsked = false
+// Each open question card: its last question, whose answer settles it, and the reply that follows.
+const clarifies: Record<string, { last: string; reply: (answer: string) => string }> = {}
+// When each profile's scripted steps run out, so two replies never stream into one bubble.
+const idleAt: Record<string, number> = {}
 
 /** `providers` answers the model lists, so a provider added in Settings shows in every picker. */
 export function fixtureChat(providers: ProvidersBackend): ChatActions {
@@ -65,26 +84,41 @@ export function fixtureChat(providers: ProvidersBackend): ChatActions {
         seq: ++seq
       } as GatewayEvent)
     )
-  const ask = (profile: string, request: Omit<ServerRequest, 'respond' | 'fail'>): void =>
+  const ask = (
+    profile: string,
+    request: Omit<ServerRequest, 'respond' | 'fail'>,
+    reply: (choice: string) => string = (choice) => (choice === 'deny' ? DENIED : REPLY)
+  ): void =>
     show(
       handlePrompt({
         ...request,
-        respond: () => {
+        respond: ({ choice }) => {
           emit(profile, 'approval.settled', { prompt_id: request.id })
-          play(finish(profile))
+          play(profile, finish(profile, reply(String(choice))))
         },
         fail: () => undefined
       })
     )
+  const askClarify = (
+    profile: string,
+    questions: Array<Record<string, unknown>>,
+    reply: (answer: string) => string = () => REPLY
+  ): void => {
+    const id = `clarify-${seq}`
+    clarifies[id] = { last: String(questions.at(-1)!.qid), reply }
+    ask(profile, { id, method: 'clarify', params: { session_id: sessionOf(profile), questions } })
+  }
 
-  function play(steps: Array<() => void>): void {
-    steps.forEach((step, index) => setTimeout(step, STEP_MS * (index + 1)))
+  function play(profile: string, steps: Array<() => void>): void {
+    const start = Math.max(Date.now(), idleAt[profile] ?? 0)
+    idleAt[profile] = start + STEP_MS * steps.length
+    steps.forEach((step, index) => setTimeout(step, start - Date.now() + STEP_MS * (index + 1)))
   }
 
   // Streams a short reply word by word, then stores it as the engine would.
-  function finish(profile: string): Array<() => void> {
-    const text = 'On it. I will look into this and post a **short summary** here when it is ready.'
+  function finish(profile: string, text = REPLY): Array<() => void> {
     return [
+      () => emit(profile, 'message.start'),
       ...text.split(' ').map((word) => () => emit(profile, 'message.delta', { text: `${word} ` })),
       () => {
         history[profile].push({ id: Date.now(), role: 'assistant', content: text })
@@ -96,32 +130,21 @@ export function fixtureChat(providers: ProvidersBackend): ChatActions {
   function reply(profile: string, text: string): void {
     const start = (): void => emit(profile, 'message.start')
     if (/clarify/i.test(text))
-      return play([
+      return play(profile, [
         start,
         () =>
-          ask(profile, {
-            id: `clarify-${seq}`,
-            method: 'clarify',
-            params: {
-              session_id: sessionOf(profile),
-              questions: [
-                {
-                  qid: 'q1',
-                  question: 'Which quarter?',
-                  choices: ['Q3 2026', 'Q4 so far', 'Both']
-                },
-                {
-                  qid: 'q2',
-                  question: 'Which regions?',
-                  choices: ['North', 'South'],
-                  multi_select: true
-                }
-              ]
+          askClarify(profile, [
+            { qid: 'q1', question: 'Which quarter?', choices: ['Q3 2026', 'Q4 so far', 'Both'] },
+            {
+              qid: 'q2',
+              question: 'Which regions?',
+              choices: ['North', 'South'],
+              multi_select: true
             }
-          })
+          ])
       ])
     if (/approve/i.test(text))
-      return play([
+      return play(profile, [
         start,
         () =>
           ask(profile, {
@@ -156,7 +179,48 @@ export function fixtureChat(providers: ProvidersBackend): ChatActions {
           }
         ]
       : []
-    play([start, ...delegation, ...finish(profile)])
+    play(profile, [start, ...delegation, ...finish(profile)])
+  }
+
+  // A turn shows only its last reply, so each answer's reply repeats the ones before it.
+  function askDeveloper(): void {
+    developerAsked = true
+    const notes: string[] = []
+    const note = (text: string): string => {
+      notes.push(text)
+      return notes.join(' ')
+    }
+    ask(
+      'developer',
+      {
+        id: 'approval-build',
+        method: 'approval',
+        params: {
+          session_id: sessionOf('developer'),
+          command: 'rm -rf build/ && npm run build',
+          description: 'Rebuilds the app with the fix, so you can try the export.',
+          choices: ['once', 'session', 'always', 'deny']
+        }
+      },
+      (choice) =>
+        note(
+          choice === 'deny'
+            ? 'Okay, I left the build alone.'
+            : 'Rebuilt: the export keeps **all 1,204 rows** of the test file.'
+        )
+    )
+    askClarify(
+      'developer',
+      [
+        {
+          qid: 'release',
+          question: 'Which release should get the fix?',
+          choices: ['1.4.2 patch', '1.5 update', 'Both']
+        }
+      ],
+      (answer) =>
+        note(`The fix ships in **${answer === 'Both' ? 'both releases' : `the ${answer}`}**.`)
+    )
   }
 
   const request: ChatBackend['request'] = async <T>(
@@ -174,6 +238,7 @@ export function fixtureChat(providers: ProvidersBackend): ChatActions {
           history[profile] ??= []
           return {}
         case 'session.resume':
+          if (profile === 'developer' && !developerAsked) askDeveloper()
           return {
             running: false,
             last_sequence: seq,
@@ -183,10 +248,14 @@ export function fixtureChat(providers: ProvidersBackend): ChatActions {
           history[profile].push({ id: Date.now(), role: 'user', content: String(params.text) })
           reply(profile, String(params.text))
           return {}
-        case 'clarify.lock':
-          if (params.question_id === 'q2')
+        case 'clarify.lock': {
+          const clarify = clarifies[String(params.request_id)]
+          if (clarify?.last === params.question_id) {
             setTimeout(() => emit(profile, 'clarify.settled', { prompt_id: params.request_id }))
+            play(profile, finish(profile, clarify.reply(String(params.answer))))
+          }
           return {}
+        }
         default:
           return {}
       }

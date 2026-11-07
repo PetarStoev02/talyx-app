@@ -25,6 +25,16 @@ const FEATURES: Feature[] = [
     ]
   },
   {
+    view: 'cards',
+    preview: '/previews/cards.jpg',
+    wallpaper: '60% 60%',
+    title: 'You stay in charge',
+    paragraphs: [
+      'A bot asks before it runs a command. Allow it once, for the rest of the chat or always, or say no.',
+      'When a bot needs a decision, it asks a question with the answers laid out as choices. Pick one and it carries on.'
+    ]
+  },
+  {
     view: 'details',
     preview: '/previews/details.jpg',
     wallpaper: '80% 20%',
