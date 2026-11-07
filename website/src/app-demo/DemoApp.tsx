@@ -8,7 +8,7 @@ import { MANAGER } from '@features/bots/details'
 import { useRoster } from '@features/bots/store'
 import { attachDouble, chat, rosterBackend } from '../../../tests/fixtures/roster/engineDouble'
 
-export type DemoView = 'chat' | 'details' | 'room'
+export type DemoView = 'chat' | 'cards' | 'details' | 'room'
 
 // Before the first render: the Agents page checks for an engine when it has none.
 attachDouble()
@@ -16,6 +16,7 @@ attachDouble()
 function showScene(scene: DemoView) {
   const { select, editProfile } = useRoster.getState()
   if (scene === 'room') return select({ kind: 'room', id: 'team-room' })
+  if (scene === 'cards') return select({ kind: 'bot', id: 'developer' })
   select({ kind: 'bot', id: scene === 'details' ? 'analyst' : MANAGER })
   if (scene === 'details') editProfile('analyst')
 }
