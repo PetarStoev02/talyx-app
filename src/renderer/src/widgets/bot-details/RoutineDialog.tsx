@@ -36,6 +36,10 @@ const KINDS: Array<[ScheduleKind, TranslationKey]> = [
 // Cron counts weekdays from Sunday = 0; the list starts on Monday.
 const WEEK = [1, 2, 3, 4, 5, 6, 0]
 const MS_PER_SECOND = 1000
+const RUN_WORDS: Record<'running' | 'finished', TranslationKey> = {
+  running: 'routines.runActive',
+  finished: 'routines.runFinished'
+}
 const WHEN = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' })
 
 /** One routine, opened from its row: the form filled in, its runs, and Run now. */
@@ -165,7 +169,7 @@ function RoutineStatus({
             <li key={run.startedAt} className="wrap-break-word">
               {when(new Date(run.startedAt * MS_PER_SECOND))}
               {' · '}
-              {run.running ? t('routines.runActive') : run.title}
+              {run.state === 'stopped' ? run.reason.replaceAll('_', ' ') : t(RUN_WORDS[run.state])}
             </li>
           ))}
         </ul>

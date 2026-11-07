@@ -261,6 +261,7 @@ const en = {
   'routines.recentRuns': 'Recent runs',
   'routines.noRuns': 'No runs yet.',
   'routines.runActive': 'running',
+  'routines.runFinished': 'finished',
   'routines.everyMinutes': 'Every {minutes} minutes',
   'roster.label': 'Roster',
   'roster.loading': 'Loading bots…',

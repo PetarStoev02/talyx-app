@@ -260,7 +260,6 @@ describe('routines', () => {
           path: '/api/cron/jobs/cash?profile=analyst',
           body: {
             updates: {
-              name: 'Monday cash position',
               prompt: 'Summarise cash and runway.',
               schedule: '30 7 * * 1-5'
             }
@@ -281,7 +280,7 @@ describe('routines', () => {
         after: { ...before, name: 'Cash, three-hourly' }
       })
       expect(engine.cronWrites[0].body).toEqual({
-        updates: { name: 'Cash, three-hourly', prompt: 'Summarise the cash position.' }
+        updates: { name: 'Cash, three-hourly' }
       })
       expect(engine.jobs.analyst[0].schedule).toBe('15 */3 * * 1-5')
     })
@@ -321,7 +320,7 @@ describe('routines', () => {
         path: '/api/cron/jobs/cash/trigger?profile=analyst'
       })
       expect(await listRoutineRuns(backend, 'analyst', 'cash')).toEqual([
-        { startedAt: 1_794_045_600, running: false, title: 'Cash run' }
+        { startedAt: 1_794_045_600, state: 'finished', reason: '' }
       ])
       expect(await loadRoutine(backend, 'analyst', 'cash')).toMatchObject({
         lastStatus: 'ok',
@@ -340,13 +339,37 @@ describe('routines', () => {
     it('should list only the five most recent runs', async () => {
       const runs = Array.from({ length: 7 }, (_, index) => ({
         started_at: 1_794_000_000 - index,
-        is_active: index === 0,
+        is_active: false,
+        end_reason: 'cron_complete',
         title: `Run ${index}`
       }))
       await open({ runs })
       const recent = await listRoutineRuns(backend, 'analyst', 'cash')
-      expect(recent.map((run) => run.title)).toEqual(['Run 0', 'Run 1', 'Run 2', 'Run 3', 'Run 4'])
-      expect(recent[0].running).toBe(true)
+      expect(recent.map((run) => run.startedAt)).toEqual([
+        1_794_000_000, 1_793_999_999, 1_793_999_998, 1_793_999_997, 1_793_999_996
+      ])
+    })
+
+    it('should tell a running, a finished and a stopped run apart', async () => {
+      await open({
+        runs: [
+          { started_at: 3, is_active: true, end_reason: null, title: 'Cash' },
+          { started_at: 2, is_active: false, end_reason: 'cron_complete', title: 'Cash' },
+          {
+            started_at: 1,
+            is_active: false,
+            end_reason: 'cron_incomplete_no_output',
+            title: 'Cash'
+          },
+          { started_at: 0, is_active: false, end_reason: null, title: 'FAILED · timeout' }
+        ]
+      })
+      expect(await listRoutineRuns(backend, 'analyst', 'cash')).toEqual([
+        { startedAt: 3, state: 'running', reason: '' },
+        { startedAt: 2, state: 'finished', reason: '' },
+        { startedAt: 1, state: 'stopped', reason: 'cron_incomplete_no_output' },
+        { startedAt: 0, state: 'stopped', reason: 'FAILED · timeout' }
+      ])
     })
   })
 })

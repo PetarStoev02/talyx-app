@@ -27,7 +27,7 @@ export interface CronJob {
   last_run_at?: string | null
   last_status?: string | null
   last_error?: string | null
-  runs?: { started_at: number; is_active: boolean; title: string }[]
+  runs?: { started_at: number; is_active: boolean; end_reason: string | null; title: string }[]
 }
 
 type Section = 'soul' | 'description' | 'model'
@@ -346,7 +346,12 @@ export function engineDouble(
       job.last_status = 'ok'
       job.last_error = null
       job.runs = [
-        { started_at: 1_794_045_600, is_active: false, title: 'Cash run' },
+        {
+          started_at: 1_794_045_600,
+          is_active: false,
+          end_reason: 'cron_complete',
+          title: 'Cash run'
+        },
         ...(job.runs ?? [])
       ]
     }

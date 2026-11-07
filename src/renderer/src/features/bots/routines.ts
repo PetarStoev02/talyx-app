@@ -46,9 +46,12 @@ export interface RoutineDetails {
 export interface RoutineRun {
   /** Seconds since the epoch. */
   startedAt: number
-  running: boolean
-  title: string
+  state: RunState
+  /** Why a run that did not finish stopped, as the engine says it; empty otherwise. */
+  reason: string
 }
+
+export type RunState = 'running' | 'finished' | 'stopped'
 
 export interface RoutineEdit {
   id: string
@@ -68,6 +71,8 @@ export const DEFAULT_SCHEDULE: ScheduleDraft = {
 const BOT_CHAT = 'bot-chat'
 // The engine's token for "keep the run's output in the engine only".
 const LOCAL = 'local'
+// How the engine ends a run session that finished.
+const RUN_COMPLETE = 'cron_complete'
 const AT_TIME = /^(\d{1,2}) (\d{1,2}) \* \* (\*|1-5|[0-6])$/
 const EVERY_HOURS = /^every (\d+)h$/
 // How the engine stores an interval ("every 2h" comes back as "every 120m"), and a cron step.
@@ -120,6 +125,7 @@ const runsSchema = z.object({
       z.object({
         started_at: z.number().nullish(),
         is_active: z.boolean().nullish(),
+        end_reason: z.string().nullish(),
         title: z.string().nullish()
       })
     )
@@ -267,11 +273,16 @@ export async function listRoutineRuns(
       profile
     })
   )
-  return (runs ?? []).slice(0, RECENT_RUNS).map((run) => ({
-    startedAt: run.started_at ?? 0,
-    running: run.is_active ?? false,
-    title: run.title ?? ''
-  }))
+  return (runs ?? []).slice(0, RECENT_RUNS).map((run) => {
+    const state: RunState = run.is_active
+      ? 'running'
+      : run.end_reason === RUN_COMPLETE
+        ? 'finished'
+        : 'stopped'
+    // A script-only run has no session: its title carries the outcome.
+    const reason = state === 'stopped' ? (run.end_reason ?? run.title ?? '') : ''
+    return { startedAt: run.started_at ?? 0, state, reason }
+  })
 }
 
 /** Sends only what changed, so a schedule the form cannot show is never rewritten. */
@@ -281,9 +292,11 @@ export async function saveRoutine(
   { id, before, after }: RoutineEdit
 ): Promise<void> {
   const schedule = composeSchedule(after.schedule)
+  const name = after.name.trim()
+  const prompt = after.instruction.trim()
   const updates = {
-    name: after.name.trim(),
-    prompt: after.instruction.trim(),
+    ...(name !== before.name ? { name } : {}),
+    ...(prompt !== before.instruction ? { prompt } : {}),
     ...(schedule !== composeSchedule(before.schedule) ? { schedule } : {}),
     ...(after.postsToChat !== before.postsToChat
       ? { deliver: after.postsToChat ? BOT_CHAT : LOCAL }
