@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { chatActions } from '../../../src/renderer/src/features/chat/chat'
+import { MediaGoneError, chatActions } from '../../../src/renderer/src/features/chat/chat'
 import type { ChatActions } from '../../../src/renderer/src/features/chat/chat'
 import { useChat } from '../../../src/renderer/src/features/chat/store'
 import { handleEvent } from '../../../src/renderer/src/features/chat/events'
@@ -343,6 +343,13 @@ describe('bot chat', () => {
       expect(await actions.mediaUrl(MANAGER, '/images/a b.png')).toBe('data:image/png;base64,AAAA')
       expect(call('GET /api/media')?.params).toMatchObject({ path: '/api/media' })
       expect(engine.calls.at(-1)?.profile).toBe(MANAGER)
+    })
+
+    it('should report an image the engine no longer has as gone', async () => {
+      engine.goneMedia.add('/images/gone.png')
+      await expect(actions.mediaUrl(MANAGER, '/images/gone.png')).rejects.toBeInstanceOf(
+        MediaGoneError
+      )
     })
   })
 })

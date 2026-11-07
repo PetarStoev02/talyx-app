@@ -2,8 +2,8 @@ import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { BrowserWindow, dialog, ipcMain } from 'electron'
 import log from 'electron-log'
-import type { EngineStatus } from '../../../shared/engine'
-import { createEngine, userBinEngine } from '../engine/engine'
+import type { EngineHttpRequest, EngineStatus } from '../../../shared/engine'
+import { EngineHttpError, createEngine, userBinEngine } from '../engine/engine'
 import { EngineSockets, type SocketEventSink } from '../engine/engineSockets'
 import { settingsStore } from '../storage/SettingsStore'
 import {
@@ -14,6 +14,8 @@ import {
   ProfileNameSchema,
   validateInput
 } from './validation'
+
+const MEDIA_PATH = '/api/media'
 
 const engine = createEngine({ enginePath: () => settingsStore.store.enginePath })
 const sockets = new EngineSockets(engine)
@@ -61,7 +63,7 @@ export function registerEngineIpc(): void {
   })
 
   ipcMain.handle('engine:http', (_event, raw: unknown) =>
-    engine.http(validateInput(EngineHttpRequestSchema, raw))
+    engineHttp(validateInput(EngineHttpRequestSchema, raw))
   )
 
   ipcMain.handle(
@@ -135,4 +137,21 @@ function senderSink(sender: Sender): SocketEventSink {
     if (channel === 'engine:socket-closed') ownedSockets.get(sender)?.delete(args[0] as string)
     if (!sender.isDestroyed()) sender.send(channel, ...args)
   }
+}
+
+// A transcript image the engine has since cleared from its cache answers 404. That is expected,
+// and the chat shows the file's name instead, so it resolves null rather than reaching Electron's
+// error log as a failed handler.
+async function engineHttp(request: EngineHttpRequest): Promise<unknown> {
+  try {
+    return await engine.http(request)
+  } catch (error) {
+    if (error instanceof EngineHttpError && error.status === 404 && isMediaRead(request.path))
+      return null
+    throw error
+  }
+}
+
+function isMediaRead(path: string): boolean {
+  return new URL(path, 'http://engine').pathname === MEDIA_PATH
 }
