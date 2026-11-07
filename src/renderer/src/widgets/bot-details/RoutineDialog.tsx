@@ -247,11 +247,11 @@ export function RoutineForm({
       </label>
       <label className="block text-base">
         {t('routines.instruction')}
-        {/* Grows with the instruction, so a long one is read whole; past the cap it scrolls. */}
+        {/* Drag the corner to read a long instruction whole; past its height it scrolls. */}
         <Textarea
           value={draft.instruction}
           rows={3}
-          className="field-sizing-content max-h-80 min-h-24 overflow-y-auto overscroll-contain"
+          className="h-40 max-h-[70dvh] min-h-24 resize-y overflow-y-auto overscroll-contain"
           placeholder={t('routines.instructionHint')}
           onChange={(event) => setDraft({ ...draft, instruction: event.target.value })}
         />
@@ -335,8 +335,9 @@ export function RoutineForm({
         {t('routines.postToChat')}
       </label>
       {problem && <ProblemMessage problem={problem} />}
-      {/* Stays in view while a long form scrolls inside the dialog. */}
-      <div className="sticky bottom-0 -mx-6 -mb-6 flex gap-3 bg-card px-6 pt-3 pb-6">
+      {/* Stays in view while a long form scrolls; -bottom-6 covers the dialog's own padding so
+          nothing scrolls visibly below it. */}
+      <div className="sticky -bottom-6 -mx-6 -mb-6 flex gap-3 bg-card px-6 pt-3 pb-6">
         <Button type="submit" disabled={!ready || busy}>
           {submitLabel}
         </Button>
