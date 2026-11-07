@@ -20,6 +20,8 @@ export function AppEmbed({
   const frame = useRef<HTMLIFrameElement>(null)
   const [scale, setScale] = useState(0)
   const [loaded, setLoaded] = useState(false)
+  // Browsers start `loading="lazy"` frames far ahead of the viewport; each demo is the whole app.
+  const [inView, setInView] = useState(false)
 
   useEffect(() => {
     const el = box.current
@@ -28,6 +30,18 @@ export function AppEmbed({
     observer.observe(el)
     return () => observer.disconnect()
   }, [width])
+
+  useEffect(() => {
+    const el = box.current
+    if (!el) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return
+      setInView(true)
+      observer.disconnect()
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     if (frame.current?.contentDocument?.readyState === 'complete') setLoaded(true)
@@ -40,17 +54,19 @@ export function AppEmbed({
       className="relative isolate overflow-hidden rounded-xl bg-[var(--color-bg)]"
       style={{ aspectRatio: `${width} / ${height}` }}
     >
-      <iframe
-        ref={frame}
-        src={`/app-demo.html?view=${view}`}
-        title={title}
-        loading="lazy"
-        onLoad={() => setLoaded(true)}
-        className={`absolute top-0 left-0 origin-top-left border-0 transition-opacity duration-500 ${
-          loaded && scale > 0 ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{ width, height, transform: `scale(${scale})` }}
-      />
+      {inView && (
+        <iframe
+          ref={frame}
+          src={`/app-demo.html?view=${view}`}
+          title={title}
+          loading="lazy"
+          onLoad={() => setLoaded(true)}
+          className={`absolute top-0 left-0 origin-top-left border-0 transition-opacity duration-500 ${
+            loaded && scale > 0 ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{ width, height, transform: `scale(${scale})` }}
+        />
+      )}
     </div>
   )
 }
