@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { metaPatch } from '@shared/engine/botMeta'
+import type { EngineHttp } from '@shared/engine/http'
 import {
   FOLDERS_KEY,
   ROOM_FOLDERS_KEY,
@@ -14,6 +15,7 @@ import type { Bot, BotMeta, Folder, Room, RosterSnapshot } from './types'
 
 export interface RosterBackend {
   request: RosterRequest
+  http: EngineHttp
   botMetaKey: string
   botGroupsMetaKey: string
   deleteProfile: (profile: string) => Promise<void>

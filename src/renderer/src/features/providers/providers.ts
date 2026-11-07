@@ -1,4 +1,6 @@
 import type { EngineApiRequest } from '@shared/engine/http'
+import { CONFIG_YAML_SOURCE, keepBareEndpoint } from '@shared/engine/endpoints'
+import { assignMainModel } from '@shared/engine/mainModel'
 import type {
   CustomEndpoint,
   CustomEndpointsResponse,
@@ -89,8 +91,6 @@ const SIGN_IN_WAIT_SECONDS = 25
 const SIGN_IN_POLL_TIMEOUT_MS = 45_000
 const KEY_NAME = /(?:_API_KEY|_TOKEN|_KEY)$/
 const REDACTED = /^«redacted:(.+)»$/
-// How the engine marks an endpoint that lives in config.yaml's model section, not its list.
-const CONFIG_YAML_SOURCE = 'direct-config'
 
 export async function loadProviders(backend: ProvidersBackend): Promise<ProvidersOverview> {
   const profile = backend.home
@@ -262,7 +262,8 @@ export async function setDefaultModel(
   backend: ProvidersBackend,
   pick: ModelPick
 ): Promise<ModelConfirm | null> {
-  const result = await assignMainModel(backend, { scope: 'main', ...pick })
+  await keepBareEndpoint(backend.http, backend.home, pick)
+  const result = await assignMainModel(backend.http, backend.home, pick)
   if (result.confirm_required) return { message: result.confirm_message ?? '', model: pick }
   if (result.ok === false) throw new ProvidersError('providers.errorModelNotSet')
   return null
@@ -272,8 +273,7 @@ export async function confirmDefaultModel(
   backend: ProvidersBackend,
   pick: ModelPick
 ): Promise<void> {
-  const result = await assignMainModel(backend, {
-    scope: 'main',
+  const result = await assignMainModel(backend.http, backend.home, {
     ...pick,
     confirm_expensive_model: true
   })
@@ -395,14 +395,6 @@ async function removing(
   } catch (error) {
     if (await stillThere()) throw error
   }
-}
-
-async function assignMainModel(
-  backend: ProvidersBackend,
-  body: Record<string, unknown>
-): Promise<{ ok?: boolean; confirm_required?: boolean; confirm_message?: string | null }> {
-  const profile = backend.home
-  return backend.http({ path: scoped('/api/model/set', profile), method: 'POST', body, profile })
 }
 
 // The home profile goes first: if it refuses the change, no bot gets it.

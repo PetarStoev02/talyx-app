@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createBrowserTransport } from '../../src/renderer/src/app/browser-bridge'
+import { bridgeConnected, createBrowserTransport } from '../../src/renderer/src/app/browser-bridge'
 
 function fakeEventSource(): {
   source: Pick<EventSource, 'addEventListener'>
@@ -77,5 +77,22 @@ describe('createBrowserTransport', () => {
     es.emit({ channel: 'example:progress', args: [{ done: 3 }] })
     expect(progressEvents).toEqual([{ done: 2 }])
     expect(otherEvents).toEqual(['changed'])
+  })
+})
+
+describe('bridgeConnected', () => {
+  const answering = (status: number, body: unknown): typeof fetch =>
+    vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status }))
+
+  it('should accept the bridge that serves this renderer', async () => {
+    expect(await bridgeConnected(answering(200, { rendererPort: 5173 }), '5173')).toBe(true)
+  })
+
+  it.each([
+    ['another dev run holds the bridge port', answering(200, { rendererPort: 5174 })],
+    ['the bridge refuses the tab', answering(403, {})],
+    ['no bridge is listening', vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))]
+  ])('should report no connection when %s', async (_case, fetchFn) => {
+    expect(await bridgeConnected(fetchFn as typeof fetch, '5173')).toBe(false)
   })
 })

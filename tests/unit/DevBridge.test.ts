@@ -1,7 +1,11 @@
 import { request } from 'http'
 import { createServer } from 'net'
 import { describe, it, expect, vi } from 'vitest'
-import { DevBridge, isTrustedBridgeRequest } from '../../src/main/infrastructure/bridge/DevBridge'
+import {
+  DevBridge,
+  bridgeStartFailure,
+  isTrustedBridgeRequest
+} from '../../src/main/infrastructure/bridge/DevBridge'
 
 type Handler = (event: unknown, ...args: unknown[]) => unknown
 
@@ -170,6 +174,23 @@ describe('DevBridge over HTTP', () => {
       })
       expect(status).toBe(200)
       expect(handler).toHaveBeenCalledOnce()
+    })
+  })
+
+  it('should tell a tab which renderer it serves', async () => {
+    await withBridge(async (port) => {
+      const response = await fetch(`http://127.0.0.1:${port}/bridge/hello`)
+      expect(await response.json()).toEqual({ rendererPort: 5173 })
+    })
+  })
+
+  it('should name the port and the way out when another dev run holds it', async () => {
+    await withBridge(async (port) => {
+      const second = new DevBridge(5174)
+      const failure = await second.start(port).catch((error: unknown) => error)
+      expect(bridgeStartFailure(failure, port)).toBe(
+        `[DevBridge] Port ${port} is taken, probably by another dev run: the browser renderer cannot reach this app. Start both runs with a free TALYX_BRIDGE_PORT.`
+      )
     })
   })
 })

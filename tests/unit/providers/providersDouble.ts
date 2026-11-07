@@ -25,6 +25,16 @@ interface Body {
   discover_models: boolean
   provider: string
   confirm_expensive_model?: boolean
+  config: { providers: Record<string, NamedEntry> }
+}
+
+interface NamedEntry {
+  name: string
+  base_url: string
+  model: string
+  models: Record<string, object>
+  discover_models: boolean
+  key_env?: string
 }
 
 export interface ProfileConfig {
@@ -75,6 +85,7 @@ export const ROUTER: CustomEndpoint = {
   models: ['9-route-provider'],
   discover_models: true,
   has_api_key: true,
+  api_key_preview: '${ROUTER_API_KEY}',
   is_current: true,
   source: 'direct-config'
 }
@@ -154,7 +165,27 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
       if (COSTLY.has(body.model) && !body.confirm_expensive_model)
         return { ok: false, confirm_required: true, confirm_message: `${body.model} costs more.` }
       config.model = { provider: body.provider, model: body.model }
+      // Another provider's URL replaces the model section's, and the bare endpoint goes with it.
+      if (body.provider !== 'custom')
+        config.endpoints = config.endpoints.filter((e) => e.source !== 'direct-config')
       return { ok: true, provider: body.provider, model: body.model }
+    }
+    if (path === '/api/config' && method === 'PUT') {
+      const [[id, entry]] = Object.entries(body.config.providers)
+      const keyEnv = entry.key_env
+      const saved: CustomEndpoint = {
+        id,
+        name: entry.name,
+        base_url: entry.base_url,
+        model: entry.model,
+        models: Object.keys(entry.models),
+        discover_models: entry.discover_models,
+        has_api_key: !!keyEnv,
+        api_key_preview: keyEnv ? `\${${keyEnv}}` : null,
+        source: 'providers'
+      }
+      config.endpoints = [...config.endpoints.filter((e) => e.id !== id), saved]
+      return { ok: true }
     }
     if (path === '/api/providers/oauth') return { providers: accounts }
     if (path.endsWith('/start'))

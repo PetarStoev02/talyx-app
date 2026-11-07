@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DropdownMenu } from 'radix-ui'
 import { ChevronDown } from 'lucide-react'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
@@ -86,7 +86,10 @@ export function ModelPicker({
   )
 }
 
-/** A model choice shown as a form field; `labels.empty` names the engine's default. */
+/**
+ * A model choice shown as a form field; `labels.empty` names the engine's default. The list starts
+ * loading when the field appears, so the menu usually opens on it; `load` keeps what it loaded.
+ */
 export function ModelField({
   labels,
   value,
@@ -99,6 +102,13 @@ export function ModelField({
   onSelect: (pick: ModelPick) => void
 }): React.JSX.Element {
   const shown = value ? `${value.provider} · ${value.model}` : labels.empty
+  const preloaded = useRef(false)
+  useEffect(() => {
+    if (!load || preloaded.current) return
+    preloaded.current = true
+    // A failure here is shown when the menu opens and loads again.
+    load().catch(() => undefined)
+  }, [load])
   return (
     <ModelPicker
       load={load ?? (() => Promise.resolve([]))}

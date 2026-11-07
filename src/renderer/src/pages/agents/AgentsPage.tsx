@@ -123,7 +123,7 @@ export function AgentsPage({
         <SlidePanel value={roster && detailsOpen && bot} className={PANEL_PLACE}>
           {(shown) => (
             <ErrorBoundary key={shown.name} scope="details">
-              <DetailsPanel bot={shown} backend={roster!} models={chat?.models ?? null} />
+              <DetailsPanel bot={shown} backend={roster!} chat={chat} />
             </ErrorBoundary>
           )}
         </SlidePanel>

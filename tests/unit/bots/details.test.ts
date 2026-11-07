@@ -7,6 +7,7 @@ import {
   loadDetails,
   refusedSectionProblem,
   saveDetails,
+  setBotModel,
   useDetailsRevision
 } from '../../../src/renderer/src/features/bots/details'
 import type { DetailsDraft } from '../../../src/renderer/src/features/bots/details'
@@ -14,7 +15,15 @@ import { lookOf } from '../../../src/renderer/src/features/bots/look'
 import { RosterError } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import type { Bot } from '../../../src/renderer/src/features/bots/types'
-import { BOT_META_KEY, backendFor, engineDouble, pngOf } from './engineDouble'
+import {
+  BOT_META_KEY,
+  HOME_ENDPOINT,
+  HOME_KEY_REF,
+  backendFor,
+  engineDouble,
+  namedEndpoint,
+  pngOf
+} from './engineDouble'
 import type { EngineDouble } from './engineDouble'
 
 let engine: EngineDouble
@@ -176,25 +185,6 @@ describe('bot details', () => {
       })
     })
 
-    it('should still ask when the engine reports the waiting model as not applied', async () => {
-      engine.expensiveModels.add('big')
-      const reportsModelFalse = backendFor({
-        request: async (profile, method, params) => {
-          const result = await engine.request(profile, method, params)
-          const answer = result as { confirm_required?: boolean; applied?: object }
-          return answer.confirm_required
-            ? { ...answer, applied: { ...answer.applied, model: false } }
-            : result
-        }
-      })
-      const before = await opening('analyst')
-      const confirm = await saveDetails(reportsModelFalse, bot('analyst'), {
-        opening: before,
-        draft: { ...before, model: { provider: 'custom', model: 'big' } }
-      })
-      expect(confirm?.model).toEqual({ provider: 'custom', model: 'big' })
-    })
-
     it('should send a plain model change without asking', async () => {
       const before = await opening('analyst')
       const confirm = await saveDetails(backend, bot('analyst'), {
@@ -202,9 +192,23 @@ describe('bot details', () => {
         draft: { ...before, model: { provider: 'custom', model: 'paid-model' } }
       })
       expect(confirm).toBeNull()
-      expect(engine.configured).toEqual([
-        { name: 'analyst', model: 'paid-model', provider: 'custom' }
-      ])
+      expect(engine.configured).toEqual([])
+      expect(engine.profiles.analyst.model).toEqual({ provider: 'custom', model: 'paid-model' })
+    })
+
+    it('should switch a custom bot to a built-in provider and back', async () => {
+      const haiku = { provider: 'anthropic', model: 'claude-haiku-4-5' }
+      const custom = { provider: 'custom', model: '9-route-provider' }
+      for (const model of [haiku, custom]) {
+        const before = await opening('analyst')
+        expect(
+          await saveDetails(backend, bot('analyst'), {
+            opening: before,
+            draft: { ...before, model }
+          })
+        ).toBeNull()
+        expect((await loadDetails(backend, 'analyst')).model).toEqual(model)
+      }
     })
 
     it('should name the sections the engine did not apply', async () => {
@@ -232,7 +236,10 @@ describe('bot details', () => {
         draft: { ...before, soul: '# New', model: { provider: 'custom', model: 'other' } }
       })
       await expect(saving).rejects.toBeInstanceOf(SectionsNotSavedError)
-      await expect(saving).rejects.toMatchObject({ sections: ['soul', 'model'] })
+      await expect(saving).rejects.toMatchObject({
+        sections: ['soul', 'model'],
+        reason: 'Engine HTTP 400: model switch rejected'
+      })
     })
   })
 
@@ -245,19 +252,144 @@ describe('bot details', () => {
     ])('should give a refused %s its message', (section, problem) => {
       expect(refusedSectionProblem(section)).toEqual(problem)
     })
+
+    it('should show what the engine said under a refused model', () => {
+      expect(refusedSectionProblem('model', 'Restart required')).toEqual({
+        key: 'details.errorModel',
+        detail: 'Restart required'
+      })
+    })
   })
 
   describe('confirmModel', () => {
     it('should apply a confirmed model', async () => {
       engine.expensiveModels.add('big')
       await confirmModel(backend, 'analyst', { provider: 'custom', model: 'big' })
-      expect(engine.configured).toEqual([
-        { name: 'analyst', model: 'big', provider: 'custom', confirm_expensive_model: true }
-      ])
+      expect(engine.modelSets.at(-1)).toEqual({
+        profile: 'analyst',
+        scope: 'main',
+        provider: 'custom',
+        model: 'big',
+        base_url: HOME_ENDPOINT,
+        api_key: HOME_KEY_REF,
+        confirm_expensive_model: true
+      })
       expect((await loadDetails(backend, 'analyst')).model).toEqual({
         provider: 'custom',
         model: 'big'
       })
+    })
+  })
+
+  describe('setBotModel', () => {
+    const custom = { provider: 'custom', model: '9-route-provider' }
+    const haiku = { provider: 'anthropic', model: 'claude-haiku-4-5' }
+
+    beforeEach(() => {
+      engine.profiles.analyst.model = haiku
+    })
+
+    it("should send Talyx's endpoint URL and key variable with a bare custom model", async () => {
+      expect(await setBotModel(backend, 'analyst', custom)).toBeNull()
+      expect(engine.modelSets).toEqual([
+        {
+          profile: 'analyst',
+          scope: 'main',
+          ...custom,
+          base_url: HOME_ENDPOINT,
+          api_key: HOME_KEY_REF
+        }
+      ])
+      expect(engine.profiles.analyst.model).toEqual(custom)
+    })
+
+    it('should never send a key written into the config, only its variable', async () => {
+      engine.homeKeyPreview = 'sk-...abcd'
+      await setBotModel(backend, 'analyst', custom)
+      expect(engine.modelSets).toEqual([
+        { profile: 'analyst', scope: 'main', ...custom, base_url: HOME_ENDPOINT }
+      ])
+    })
+
+    it("should give a bot Talyx's named endpoint and switch it there and back", async () => {
+      const kept = { provider: 'endpoint-127-0-0-1-20128', model: '9-route-provider' }
+      engine.homeProvider = 'anthropic'
+      engine.named.default = [
+        namedEndpoint(kept.provider, {
+          name: 'Custom endpoint (127.0.0.1:20128)',
+          base_url: HOME_ENDPOINT,
+          model: kept.model,
+          models: { [kept.model]: {} },
+          discover_models: true,
+          key_env: 'ROUTER_API_KEY'
+        })
+      ]
+      for (const model of [kept, haiku, kept]) {
+        await setBotModel(backend, 'analyst', model)
+        expect(engine.profiles.analyst.model).toEqual(model)
+      }
+      expect(engine.named.analyst).toEqual(engine.named.default)
+      expect(engine.named.analyst[0].api_key_preview).toBe('${ROUTER_API_KEY}')
+    })
+
+    it("should keep Talyx's custom endpoint when its own model leaves it from its details", async () => {
+      await setBotModel(backend, 'default', haiku)
+      expect(engine.named.default.map((item) => [item.id, item.api_key_preview])).toEqual([
+        ['endpoint-127-0-0-1-20128', HOME_KEY_REF]
+      ])
+      expect(engine.profiles.default.model).toEqual(haiku)
+    })
+
+    it("should not write the key variable into Talyx's own model when it changes custom models", async () => {
+      const other = { provider: 'custom', model: 'other-router-model' }
+      engine.profiles.default.model = custom
+      await setBotModel(backend, 'default', other)
+      expect(engine.modelSets).toEqual([
+        { profile: 'default', scope: 'main', ...other, base_url: HOME_ENDPOINT }
+      ])
+    })
+
+    it("should not name Talyx's endpoint twice when a named one has its URL", async () => {
+      engine.named.default = [
+        namedEndpoint('my-router', {
+          name: 'My router',
+          base_url: HOME_ENDPOINT,
+          model: '9-route-provider',
+          models: { '9-route-provider': {} },
+          discover_models: true,
+          key_env: 'ROUTER_API_KEY'
+        })
+      ]
+      await setBotModel(backend, 'default', haiku)
+      expect(engine.named.default.map((item) => item.id)).toEqual(['my-router'])
+    })
+
+    it('should send no endpoint URL with a built-in provider', async () => {
+      engine.profiles.analyst.model = custom
+      await setBotModel(backend, 'analyst', haiku)
+      expect(engine.modelSets).toEqual([{ profile: 'analyst', scope: 'main', ...haiku }])
+      expect(engine.profiles.analyst.model).toEqual(haiku)
+    })
+
+    it('should report the model as not saved when the engine refuses it', async () => {
+      engine.homeProvider = 'anthropic'
+      const setting = setBotModel(backend, 'analyst', custom)
+      await expect(setting).rejects.toBeInstanceOf(SectionsNotSavedError)
+      await expect(setting).rejects.toMatchObject({
+        sections: ['model'],
+        reason: 'Engine HTTP 400: custom provider needs a base_url'
+      })
+      expect(engine.profiles.analyst.model).toEqual(haiku)
+    })
+
+    it('should ask before a costly model and keep the one the bot has', async () => {
+      engine.expensiveModels.add('big')
+      const big = { provider: 'anthropic', model: 'big' }
+      expect(await setBotModel(backend, 'analyst', big)).toEqual({
+        message: 'Costs more',
+        model: big
+      })
+      expect(engine.profiles.analyst.model).toEqual(haiku)
     })
   })
 })

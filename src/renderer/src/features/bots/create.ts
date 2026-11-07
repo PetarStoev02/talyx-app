@@ -1,6 +1,7 @@
 import type { TranslationKey } from '@shared/lib/i18n'
 import { saveBotMeta } from './data'
 import type { RosterBackend } from './data'
+import { confirmBotModel } from './details'
 import type { ModelChoice } from './details'
 import { exportAvatar, lookMeta } from './look'
 import type { Look } from './look'
@@ -10,7 +11,7 @@ import type { Folder } from './types'
 export interface NewBot {
   name: string
   folder: Folder | null
-  /** Null leaves the model the engine gives a new profile. */
+  /** Null leaves the model the engine gives a new profile: Talyx's own. */
   model: ModelChoice | null
   look: Look
   /** What the bot does, written into its SOUL. Blank counts as none. */
@@ -52,7 +53,11 @@ export function profileIdFor(name: string, taken: string[]): string {
   return `bot-${n}`
 }
 
-/** Creates the profile, files it with its title and look, then exports the look. Returns its id. */
+/**
+ * Creates the profile, pins its model, files it with its title and look, then exports the look.
+ * Returns its id. The model goes through the same pin as the details panel's: the pick was made
+ * in the form, so a costly one is not asked about again.
+ */
 export async function createBot(
   backend: RosterBackend,
   bot: NewBot,
@@ -62,9 +67,13 @@ export async function createBot(
   const title = bot.name.trim()
   await backend.request('default', 'profiles.create', {
     name: id,
-    soul: soulFor(title, id, bot.purpose?.trim() || null),
-    ...(bot.model ? { model: bot.model.model, provider: bot.model.provider } : {})
+    soul: soulFor(title, id, bot.purpose?.trim() || null)
   })
+  try {
+    if (bot.model) await confirmBotModel(backend, id, bot.model)
+  } catch (error) {
+    throw new IncompleteBotError(id, 'create.errorModel', problemOf(error).detail)
+  }
   try {
     await saveBotMeta(backend, id, {
       title,

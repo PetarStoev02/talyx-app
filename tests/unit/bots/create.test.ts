@@ -10,7 +10,14 @@ import type { NewBot } from '../../../src/renderer/src/features/bots/create'
 import { RosterError, folderBots } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { matchName } from '../../../src/renderer/src/features/bots/look'
-import { BOT_META_KEY, backendFor, engineDouble, pngOf } from './engineDouble'
+import {
+  BOT_META_KEY,
+  HOME_ENDPOINT,
+  HOME_KEY_REF,
+  backendFor,
+  engineDouble,
+  pngOf
+} from './engineDouble'
 import type { EngineDouble } from './engineDouble'
 
 const TEAM = { id: 'team', name: 'Team' }
@@ -63,11 +70,51 @@ describe('creating a bot', () => {
   })
 
   describe('createBot', () => {
-    it('should create the profile with its own SOUL and model', async () => {
+    it('should create the profile with its own SOUL', async () => {
       expect(await createBot(backend, newBot(), ['default', 'analyst'])).toBe('agro-ops-legal')
-      expect(engine.created).toEqual([
-        { name: 'agro-ops-legal', soul: SOUL, model: 'paid-model', provider: 'custom' }
+      expect(engine.created).toEqual([{ name: 'agro-ops-legal', soul: SOUL }])
+    })
+
+    it("should put a custom endpoint model on the new bot with Talyx's endpoint", async () => {
+      await createBot(backend, newBot(), [])
+      expect(engine.modelSets).toEqual([
+        {
+          profile: 'agro-ops-legal',
+          scope: 'main',
+          provider: 'custom',
+          model: 'paid-model',
+          base_url: HOME_ENDPOINT,
+          api_key: HOME_KEY_REF,
+          confirm_expensive_model: true
+        }
       ])
+      expect(engine.profiles['agro-ops-legal'].model).toEqual({
+        provider: 'custom',
+        model: 'paid-model'
+      })
+    })
+
+    it('should put a built-in provider model on the new bot without an endpoint', async () => {
+      const model = { provider: 'anthropic', model: 'claude-haiku-4-5' }
+      await createBot(backend, newBot({ model }), [])
+      expect(engine.modelSets).toEqual([
+        { profile: 'agro-ops-legal', scope: 'main', ...model, confirm_expensive_model: true }
+      ])
+      expect(engine.profiles['agro-ops-legal'].model).toEqual(model)
+    })
+
+    it('should name the created profile when the engine refuses its model', async () => {
+      engine.homeProvider = 'anthropic'
+      const creating = createBot(backend, newBot(), [])
+      await expect(creating).rejects.toBeInstanceOf(IncompleteBotError)
+      await expect(creating).rejects.toMatchObject({
+        profile: 'agro-ops-legal',
+        key: 'create.errorModel'
+      })
+      expect(engine.profiles['agro-ops-legal'].model).toEqual({
+        provider: 'custom',
+        model: '9-route-provider'
+      })
     })
 
     it('should write what the bot does into its SOUL', async () => {
@@ -82,8 +129,7 @@ describe('creating a bot', () => {
 
     it('should leave the model to the engine when none is picked', async () => {
       await createBot(backend, newBot({ model: null }), [])
-      expect(engine.created[0]).not.toHaveProperty('model')
-      expect(engine.created[0]).not.toHaveProperty('provider')
+      expect(engine.modelSets).toEqual([])
     })
 
     it('should place the new bot in its folder with its title and look', async () => {

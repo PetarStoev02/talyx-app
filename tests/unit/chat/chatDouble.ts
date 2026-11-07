@@ -16,6 +16,8 @@ export interface ChatDouble {
   failNext: (method: string, message: string) => void
   // Holds the next call to `method` until the returned release runs.
   holdNext: (method: string) => () => void
+  /** Files the engine has cleared from its cache: main answers null for them. */
+  goneMedia: Set<string>
 }
 
 // In-memory engine for the chat: Bot Chat lookup, create, resume, submit and the REST paths.
@@ -33,6 +35,7 @@ export function chatDouble(
   const calls: ChatCall[] = []
   const failures = new Map<string, string>()
   const holds = new Map<string, Promise<void>>()
+  const goneMedia = new Set<string>()
   let created = 0
   const answer = (profile: string, method: string, params: Record<string, unknown>): unknown => {
     calls.push({ profile, method, params })
@@ -84,7 +87,9 @@ export function chatDouble(
           ]
         }
       case 'GET /api/media':
-        return { data_url: 'data:image/png;base64,AAAA' }
+        return goneMedia.has(String(params.file))
+          ? null
+          : { data_url: 'data:image/png;base64,AAAA' }
       default:
         return {}
     }
@@ -105,6 +110,7 @@ export function chatDouble(
       const params = {
         ...Object.fromEntries(url.searchParams),
         ...((request.body as Record<string, unknown> | undefined) ?? {}),
+        file: url.searchParams.get('path'),
         path: url.pathname
       }
       return (await held(route, () =>
@@ -116,6 +122,7 @@ export function chatDouble(
     backend,
     calls,
     chats,
+    goneMedia,
     failNext: (method, message) => failures.set(method, message),
     holdNext: (method) => {
       let release = (): void => undefined

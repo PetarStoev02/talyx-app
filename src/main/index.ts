@@ -14,7 +14,7 @@ import { fetchLatestRelease } from './infrastructure/updater/releaseCheck'
 import { settingsStore } from './infrastructure/storage/SettingsStore'
 import { syncLaunchAtLogin, systemLoginItemDeps } from './infrastructure/system/loginItem'
 import { ThemeSchema, validateInput, type Theme } from './infrastructure/ipc/validation'
-import { DevBridge } from './infrastructure/bridge/DevBridge'
+import { DevBridge, bridgeStartFailure } from './infrastructure/bridge/DevBridge'
 import icon from '../../resources/talyx-icon.png?asset'
 
 /** Long enough for the window to settle; short enough to land in the first minute. */
@@ -54,9 +54,10 @@ function registerIpc(): void {
   ipcMain.handle('theme:set-native', (_event, theme: unknown) =>
     syncNativeTheme(validateInput(ThemeSchema, theme))
   )
+  const bridgePort = Number(process.env['TALYX_BRIDGE_PORT'] ?? 5175)
   devBridge
-    ?.start(Number(process.env['TALYX_BRIDGE_PORT'] ?? 5175))
-    .catch((error: unknown) => log.error('[DevBridge] Could not start', error))
+    ?.start(bridgePort)
+    .catch((error: unknown) => log.error(bridgeStartFailure(error, bridgePort)))
 }
 
 /** Keep native chrome (menus, dialogs, scrollbars) in the same appearance as the app theme. */

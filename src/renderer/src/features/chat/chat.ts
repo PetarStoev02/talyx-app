@@ -14,6 +14,14 @@ export const BOT_CHAT_TITLE = 'Bot Chat'
 const HISTORY_LIMIT = 120
 const TITLE_TAKEN = 'already in use'
 
+/** A transcript image the engine no longer has on disk. */
+export class MediaGoneError extends Error {
+  constructor(readonly path: string) {
+    super('The engine no longer has this file')
+    this.name = 'MediaGoneError'
+  }
+}
+
 export interface ChatBackend {
   request: <T = unknown>(
     profile: string,
@@ -308,11 +316,13 @@ export function chatActions(backend: ChatBackend): ChatActions {
 
     mediaUrl: async (profile, path) => {
       const query = new URLSearchParams({ path, profile })
-      const { data_url: dataUrl } = await backend.http<{ data_url: string }>({
+      // Null when the engine no longer has the file; the chat then shows its name.
+      const media = await backend.http<{ data_url: string } | null>({
         path: `/api/media?${query}`,
         profile
       })
-      return dataUrl
+      if (!media) throw new MediaGoneError(path)
+      return media.data_url
     }
   }
 }

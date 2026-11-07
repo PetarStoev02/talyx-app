@@ -8,6 +8,8 @@ export interface EngineApiRequest extends EngineHttpRequest {
   priority?: 'foreground'
 }
 
+export type EngineHttp = <T = unknown>(request: EngineApiRequest) => Promise<T>
+
 /** One REST call to the engine gateway through main, which mints the call's one-use ticket. */
 export function engineHttp<T>({
   path,

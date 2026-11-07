@@ -276,6 +276,40 @@ describe('providers', () => {
       })
     })
 
+    it("should keep Talyx's custom endpoint as a named one before its model leaves it", async () => {
+      await setDefaultModel(engine.backend, { provider: 'anthropic', model: 'claude-haiku' })
+
+      expect(engine.writes.slice(0, 2)).toEqual([
+        `${HOME} PUT /api/config`,
+        `${HOME} POST /api/model/set`
+      ])
+      expect(engine.bodies['PUT /api/config']).toEqual({
+        config: {
+          providers: {
+            'endpoint-127-0-0-1-20128': {
+              name: 'Custom endpoint (127.0.0.1:20128)',
+              base_url: ROUTER.base_url,
+              model: '9-route-provider',
+              models: { '9-route-provider': {} },
+              discover_models: true,
+              key_env: 'ROUTER_API_KEY'
+            }
+          }
+        }
+      })
+      expect(engine.profiles[HOME].endpoints.map((endpoint) => endpoint.id)).toEqual([
+        'endpoint-127-0-0-1-20128'
+      ])
+    })
+
+    it('should refuse to leave an endpoint whose key is written into the config', async () => {
+      engine.profiles[HOME].endpoints[0].api_key_preview = 'sk-...abcd'
+      await expect(
+        setDefaultModel(engine.backend, { provider: 'anthropic', model: 'claude-haiku' })
+      ).rejects.toMatchObject({ key: 'providers.errorEndpointKeyInConfig' })
+      expect(engine.profiles[HOME].model).toEqual({ provider: 'custom', model: '9-route-provider' })
+    })
+
     it('should ask before a costly model and set it only after a yes', async () => {
       const pick = { provider: 'custom', model: 'paid-model' }
 

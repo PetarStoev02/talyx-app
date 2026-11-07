@@ -330,6 +330,8 @@ const en = {
     'SOUL.md was not saved. Save again; if it keeps failing, check the engine in Settings.',
   'routines.errorEngine': 'The engine could not change the routine. Try again.',
   'create.errorTaken': 'A bot with that name already exists. Pick another name.',
+  'create.errorModel':
+    'The bot was created on Talyx’s model, but the engine did not switch it to the one you picked. Pick it again in its details.',
   'create.errorNotFiled':
     'The bot was created, but its name and folder were not saved. Set them in its details.',
   'create.errorNoAvatar':
@@ -466,6 +468,8 @@ const en = {
   'providers.errorEndpointIncomplete': 'An endpoint needs a name and a base URL.',
   'providers.errorEndpointNoModels': 'List at least one model.',
   'providers.errorEndpointKeyNeeded': 'Enter the endpoint’s key again before saving.',
+  'providers.errorEndpointKeyInConfig':
+    'Talyx’s custom endpoint keeps its key inside its settings file, so switching would lose it. Edit the endpoint under Providers and type its key again, then switch.',
   'providers.errorModelNotSet': 'The engine did not change the model. Pick it again.',
   'providers.errorNotSignedOut': 'There was no sign-in to remove.',
   'providers.defaultTitle': 'Talyx’s model',
