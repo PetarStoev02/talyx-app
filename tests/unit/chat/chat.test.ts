@@ -5,7 +5,7 @@ import { useChat } from '../../../src/renderer/src/features/chat/store'
 import { handleEvent } from '../../../src/renderer/src/features/chat/events'
 import { addPrompt } from '../../../src/renderer/src/features/chat/transcript'
 import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/shared'
-import { chatDouble } from './chatDouble'
+import { KEPT_ENDPOINT_PROFILE, chatDouble } from './chatDouble'
 import type { ChatCall, ChatDouble } from './chatDouble'
 import type { ChatState } from '../../../src/renderer/src/features/chat/store'
 
@@ -303,6 +303,16 @@ describe('bot chat', () => {
       expect(call('GET /api/model/options')?.params).toMatchObject({ explicit_only: '1' })
       expect(call('GET /api/providers/custom-endpoints')?.profile).toBe(MANAGER)
       expect(engine.calls.at(-1)?.profile).toBe(MANAGER)
+    })
+
+    it('should list a kept custom endpoint once, standing for the bare one on the same URL', async () => {
+      expect(await actions.models(KEPT_ENDPOINT_PROFILE)).toEqual([
+        expect.objectContaining({
+          slug: 'endpoint-router',
+          aliases: ['custom'],
+          models: ['9-route-provider']
+        })
+      ])
     })
 
     it('should load the models once for every menu until they are forgotten', async () => {
