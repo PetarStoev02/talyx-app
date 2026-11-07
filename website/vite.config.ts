@@ -67,6 +67,8 @@ export default defineConfig(({ isSsrBuild }) => ({
   server: {
     fs: { allow: [path.resolve(__dirname, '..')] }
   },
+  // The sandboxed demo frame loads its modules from an opaque origin; Vercel allows any origin.
+  preview: { cors: true },
   build: {
     outDir: 'dist',
     rollupOptions: isSsrBuild

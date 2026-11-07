@@ -26,6 +26,15 @@
   ],
   "headers": [
     {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'sha256-SNz/7eF8pKLGDriuGfYVUa71jOmDnyqgsMIvmyP1u8k=' 'sha256-7mu4H06fwDCjmnxxr/xNHyuQC6pLTHr4M2E4jXw5WZs=' 'sha256-QAlSewaQLi/NPCznjAZSyvQ72heD0VdxmNDDkZeCxgc=' 'sha256-/h4jUTrKgJlhBK8b7s2zEe4KL+p92EZKqR1qquqkJzw=' https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://eu.i.posthog.com; frame-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+        }
+      ]
+    },
+    {
       "source": "/design",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }

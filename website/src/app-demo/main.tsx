@@ -1,3 +1,4 @@
+import './jitless'
 import { createRoot } from 'react-dom/client'
 import './demo.css'
 import { installDemoApi } from './demoApi'
