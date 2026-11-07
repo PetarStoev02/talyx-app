@@ -97,10 +97,8 @@ export function DownloadSection() {
         className="max-w-[90ch] leading-relaxed opacity-75 [&_code]:rounded [&_code]:bg-[color-mix(in_srgb,var(--color-bg)_14%,transparent)] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[15px]"
         style={STEP.body}
       >
-        Builds are not signed. On a Mac, open Talyx once, then click Open Anyway in System Settings,
-        Privacy &amp; Security, or run{' '}
-        <code>xattr -dr com.apple.quarantine /Applications/Talyx.app</code>. On Linux, run{' '}
-        <code>chmod +x {ASSETS.appImage}</code>, or install the deb with{' '}
+        Mac builds are signed with Developer ID and notarized by Apple, so they open with a double
+        click. On Linux, run <code>chmod +x {ASSETS.appImage}</code>, or install the deb with{' '}
         <code>sudo apt install ./{ASSETS.deb}</code>.
       </p>
     </section>

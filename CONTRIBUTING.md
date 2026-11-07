@@ -16,7 +16,7 @@ You need Node 22.12 or newer (Node 24 matches the Electron runtime). Talyx 1.0 r
 npm ci
 npm run dev          # Electron + Vite with hot reload
 npm test             # unit tests (Vitest)
-npm run build:mac    # ad-hoc signed DMGs in dist/
+npm run build:mac    # DMGs in dist/; unsigned unless a Developer ID is set up
 ```
 
 `npm run dev` downloads Electron the first time. `npm run reset` deletes your local Talyx settings; `npm run dev:reset` does that and starts the app.

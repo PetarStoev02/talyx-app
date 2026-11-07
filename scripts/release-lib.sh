@@ -76,3 +76,46 @@ release_notes_file() {
   done < "$highlights"
   { printf '## Highlights\n\n'; cat "$highlights"; echo; } > "$out"
 }
+
+# macOS signing and notarization. CSC_LINK is the base64 (or a path) of the Developer ID
+# Application .p12 and CSC_KEY_PASSWORD its password; electron-builder imports it into a temporary
+# keychain. Notarization signs in as APPLE_ID with an app-specific password
+# (APPLE_APP_SPECIFIC_PASSWORD) for the team APPLE_TEAM_ID. Never echoes a value.
+MAC_SIGNING_VARS=(CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID)
+
+check_mac_signing_env() {
+  local name missing=()
+  for name in "${MAC_SIGNING_VARS[@]}"; do
+    [ -n "${!name:-}" ] || missing+=("$name")
+  done
+  [ ${#missing[@]} -eq 0 ] && return 0
+  echo "✗ The macOS release must be signed and notarized. Missing: ${missing[*]}." >&2
+  echo "  CLAUDE.md → Builds → Signing secrets says how to create each one." >&2
+  return 1
+}
+
+# electron-builder notarizes and staples the .app but not the DMG around it. A DMG downloaded from
+# the release carries the quarantine attribute, so it is notarized and stapled too: Gatekeeper then
+# accepts it without reaching Apple.
+notarize_dmgs() {
+  local dmg
+  for dmg in "$@"; do
+    echo "→ Notarizing $dmg..."
+    xcrun notarytool submit "$dmg" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+      --password "$APPLE_APP_SPECIFIC_PASSWORD" --wait --timeout 30m || return 1
+    xcrun stapler staple "$dmg" || return 1
+  done
+}
+
+# Fails unless every .app under dist/ is Developer ID signed and notarized, and every DMG is stapled.
+verify_mac_release() {
+  local app dmg
+  for app in dist/mac*/*.app; do
+    codesign --verify --deep --strict --verbose=2 "$app" || return 1
+    spctl -a -vv "$app" || return 1
+  done
+  for dmg in dist/*.dmg; do
+    xcrun stapler validate "$dmg" || return 1
+    spctl -a -vv -t open --context context:primary-signature "$dmg" || return 1
+  done
+}

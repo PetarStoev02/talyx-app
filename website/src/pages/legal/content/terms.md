@@ -22,11 +22,9 @@ Talyx 1.0 runs on macOS 13 or newer (Apple Silicon and Intel) and on Linux x64. 
 
 ## 3. Installation and Updates
 
-No build of Talyx is signed or notarized. You download it yourself from [GitHub Releases](https://github.com/PetarStoev02/talyx-app/releases/latest).
+You download Talyx yourself from [GitHub Releases](https://github.com/PetarStoev02/talyx-app/releases/latest).
 
-On macOS, the system blocks each downloaded version the first time you open it. Open Talyx and dismiss the warning, then go to System Settings → Privacy & Security and click **Open Anyway** (macOS asks for your password). Or run `xattr -dr com.apple.quarantine /Applications/Talyx.app` once in Terminal. Linux shows no warning.
-
-**Security note:** Talyx is not hardened or notarized, so software already running as you could change how it behaves. Keep that in mind before you add keys and sign-ins.
+On macOS, each build is signed with Developer ID, runs with Apple's hardened runtime and is notarized by Apple, so it opens without a warning. Linux shows no warning.
 
 Talyx checks GitHub for a newer release. When you click Download, it downloads the installer for your computer, checks it against the release's `SHA256SUMS` and opens it for you to run. It never installs an update by itself. A Linux deb install updates from the release page instead.
 

@@ -37,6 +37,16 @@ jobs:
           node-version: 24
           cache: npm
 
+      # Fails in seconds, before the build, when a signing secret is missing.
+      - name: Check the signing secrets
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: source scripts/release-lib.sh && check_mac_signing_env
+
       - name: Install dependencies
         run: npm ci
 
@@ -53,8 +63,22 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Build
-        run: npm run build:mac
+      # Signs with the Developer ID from CSC_LINK, notarizes and staples each .app, then notarizes
+      # and staples each DMG. forceCodeSigning fails the build instead of shipping it unsigned.
+      - name: Build, sign and notarize
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          source scripts/release-lib.sh
+          npm run build:mac -- --config.forceCodeSigning=true
+          notarize_dmgs dist/*.dmg
+
+      - name: Verify the signatures
+        run: source scripts/release-lib.sh && verify_mac_release
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

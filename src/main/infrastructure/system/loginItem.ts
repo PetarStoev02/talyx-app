@@ -98,7 +98,7 @@ async function setOnLinux(enabled: boolean, deps: LoginItemDeps): Promise<void> 
   await deps.fs.writeFile(path, autostartEntry(deps.env.APPIMAGE || deps.execPath))
 }
 
-/** Applies the choice and returns what the OS now reports: macOS may not register an ad-hoc app. */
+/** Applies the choice and returns what the OS now reports: macOS may not register an unsigned build. */
 export async function setLaunchAtLogin(enabled: boolean, deps: LoginItemDeps): Promise<boolean> {
   if (!deps.packaged) return enabled
   try {

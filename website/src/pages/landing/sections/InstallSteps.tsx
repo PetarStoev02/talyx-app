@@ -1,7 +1,7 @@
 import { ASSETS } from '../../../shared/data/release'
 import { SectionHeading, STEP, stagger } from '../../../shared/ui/page'
 
-/** How to open a build that is not signed: the same steps as the release notes. */
+/** How to install and open Talyx: the same steps as the README. */
 export function InstallSteps() {
   return (
     <section id="install" className="grid gap-12 px-5 py-32 sm:px-8 md:grid-cols-12 md:py-40">
@@ -12,13 +12,8 @@ export function InstallSteps() {
         style={{ ...stagger(1), ...STEP.body }}
       >
         <li>
-          On a Mac, open the DMG and drag Talyx to Applications. Open Talyx and dismiss the warning:
-          the build is not signed, so macOS blocks it the first time.
-        </li>
-        <li>
-          Go to <strong>System Settings, Privacy &amp; Security</strong>, scroll down and click{' '}
-          <strong>Open Anyway</strong>. macOS asks for your password. Or run this once in Terminal:{' '}
-          <code>xattr -dr com.apple.quarantine /Applications/Talyx.app</code>
+          On a Mac, open the DMG and drag Talyx to Applications, then open it. The build is signed
+          with Developer ID and notarized by Apple, so macOS opens it like any other app.
         </li>
         <li>
           On Linux, make the AppImage executable with <code>chmod +x {ASSETS.appImage}</code> and

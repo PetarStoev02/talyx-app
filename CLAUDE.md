@@ -57,24 +57,26 @@ npm run format           # Prettier format all files
 npm run build            # Typecheck + production build
 npm run build:mac        # Build macOS DMG (ARM64 + x64)
 npm run build:linux      # Build Linux AppImage + deb (x64)
-npm run release          # Ad-hoc signed DMGs, then a draft GitHub release
+npm run release          # Signed, notarized DMGs, then a draft GitHub release
 npm run reset            # Delete local app data (settings.json)
 ```
 
 ### Builds
 
-Talyx 1.0 ships for macOS and Linux (no Windows build yet). No build is signed or notarized (no
-Apple account). Talyx cannot replace itself: the app checks GitHub for a newer release and,
-on the user's click, downloads this computer's installer and the release's `SHA256SUMS`, verifies
-the installer against it, and opens it for the user to run. A download made by Talyx has no
-quarantine attribute, so the "Open Anyway" step below is not needed for in-app updates; the
-SHA-256 check is the integrity guarantee.
+Talyx 1.0 ships for macOS and Linux (no Windows build yet). The macOS releases are signed with
+Developer ID, run with the hardened runtime (`build/entitlements.mac.plist` lists and justifies
+each exception) and are notarized: the .app and the DMG are both stapled, so Gatekeeper opens them
+with no warning. Linux builds are not signed. Talyx cannot replace itself: the app checks GitHub
+for a newer release and, on the user's click, downloads this computer's installer and the
+release's `SHA256SUMS`, verifies the installer against it, and opens it for the user to run.
 
-On macOS a downloaded build is blocked the first time it is opened: dismiss the warning, then
-click Open Anyway in System Settings → Privacy & Security, or run
-`xattr -dr com.apple.quarantine /Applications/Talyx.app` once.
+Electron 44 needs macOS 13 or newer; every macOS version Talyx runs on requires a Developer ID
+app to be notarized, so a release is never shipped signed but not notarized.
 
-Electron 44 needs macOS 13 or newer.
+`npm run build:mac` needs no credentials: with no Developer ID available it builds unsigned DMGs
+(the fuses' ad-hoc signature keeps them runnable on Apple Silicon) for local testing only. Both
+release paths pass `forceCodeSigning`, notarize and staple the DMGs, and check them with
+`verify_mac_release` (`codesign --verify --deep --strict`, `spctl -a -vv`, `xcrun stapler validate`).
 
 Releases come from the Release workflow (`.github/workflows/release.yml`, Actions → Release → Run
 workflow): macOS DMGs, Linux AppImage + deb, the real-engine smoke test on Linux, then a draft
@@ -83,7 +85,8 @@ release `v<version>` with `engine-install.json` and `SHA256SUMS`. Its body is th
 releasing; no engine name), then GitHub's generated notes. It needs the secret
 `ENGINE_INSTALL_JSON` (base64 of `engine-install.json`), set once per file change with
 `gh secret set ENGINE_INSTALL_JSON < <(base64 -i engine-install.json)`; each job checks it with
-`scripts/release-lib.sh`, which `release.sh` shares.
+`scripts/release-lib.sh`, which `release.sh` shares. The mac job also needs the five signing
+secrets below and fails before the build when one is missing.
 
 `npm run release` (`scripts/release.sh`) is the local path, macOS DMGs only. Before it, write the
 gitignored `release-highlights.md` at the repo root: 1-3 lines `- **Lead.** Text.`. The script puts
@@ -95,7 +98,28 @@ the script warns and the release has no highlights.
 release) at the repo root. It is gitignored, and its SHA-256 must equal `ENGINE_INSTALL_SHA256` in
 `src/main/infrastructure/setup/installPin.ts`; the script also requires the file's `engineVersion` to equal
 `EXPECTED_ENGINE_VERSION` and exactly one commit hash in it, and refuses to release otherwise. Changing
-the commands means updating that pin in the same commit.
+the commands means updating that pin in the same commit. It also needs the five signing
+variables below in the environment and refuses without them.
+
+#### Signing secrets
+
+The account owner creates these once; never commit them or paste them anywhere else. Set each
+as an Actions secret on `PetarStoev02/talyx-app`:
+
+- `CSC_LINK`: the Developer ID Application certificate as base64 of a `.p12`. In Xcode →
+  Settings → Accounts → Manage Certificates, add a Developer ID Application certificate (or create
+  it at developer.apple.com → Certificates). In Keychain Access, export the certificate with its
+  private key as a `.p12`. Then `gh secret set CSC_LINK < <(base64 -i DeveloperID.p12)`.
+- `CSC_KEY_PASSWORD`: the password chosen for that `.p12` export. `gh secret set CSC_KEY_PASSWORD`.
+- `APPLE_ID`: the Apple Account email of the developer account. `gh secret set APPLE_ID`.
+- `APPLE_APP_SPECIFIC_PASSWORD`: an app-specific password for that account, from
+  account.apple.com → Sign-In and Security → App-Specific Passwords (shown only once).
+  `gh secret set APPLE_APP_SPECIFIC_PASSWORD`. Check it first with
+  `xcrun notarytool history --apple-id <email> --team-id <team> --password <password>`.
+- `APPLE_TEAM_ID`: the team ID in the Developer ID certificate's name (`3Z52YUB6CN`).
+  `gh secret set APPLE_TEAM_ID`.
+
+The certificate expires after five years and the membership yearly; renew both before a release.
 
 During `npm run dev` the renderer is also usable in a plain browser at
 `http://localhost:5173` (dev bridge → real main process).
@@ -317,7 +341,7 @@ try {
   delivery, group rooms and routines run in the engine, not in the app.
 - Settings are a JSON file (`settings.json` in userData). No local database.
 - Old features are deleted, not kept dormant; git history and `legacy/file-organizer` keep them.
-- Builds for macOS and Linux, none signed. No auto-update.
+- Builds for macOS (Developer ID signed, notarized) and Linux (unsigned). No auto-update.
 - Free and open source (MIT). No account, no server, no telemetry.
 - Website (`website/`) on Vercel: it describes 1.0 and runs cookieless PostHog page analytics
   and Vercel Speed Insights (the app itself stays no-telemetry). Releases: GitHub Releases on `PetarStoev02/talyx-app`
