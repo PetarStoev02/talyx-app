@@ -109,13 +109,16 @@ export function RoutineDialog({
           )
         ) : (
           <>
-            <RoutineStatus details={details} runs={runs} />
-            <div className="flex flex-col items-start gap-2">
-              <Button variant="secondary" disabled={running} onClick={() => void runNow()}>
-                {running ? t('routines.running') : t('routines.runNow')}
-              </Button>
-              {runProblem && <ProblemMessage problem={runProblem} />}
-            </div>
+            <RoutineStatus
+              details={details}
+              runs={runs}
+              runAction={
+                <Button variant="secondary" disabled={running} onClick={() => void runNow()}>
+                  {running ? t('routines.running') : t('routines.runNow')}
+                </Button>
+              }
+            />
+            {runProblem && <ProblemMessage problem={runProblem} />}
             <RoutineForm
               initial={details.draft}
               submitLabel={t('routines.save')}
@@ -133,12 +136,15 @@ export function RoutineDialog({
   )
 }
 
+// Run now sits in the card it changes, so the button reads as part of the run status.
 function RoutineStatus({
   details,
-  runs
+  runs,
+  runAction
 }: {
   details: RoutineDetails
   runs: RoutineRun[]
+  runAction: React.ReactNode
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const lastRun = details.lastRunAt
@@ -147,33 +153,40 @@ function RoutineStatus({
         .join(' · ')
     : t('routines.never')
   return (
-    <div className="space-y-2 rounded-xl bg-secondary p-3 text-base">
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-        <dt className="text-muted-foreground">{t('routines.nextRun')}</dt>
-        <dd>{details.nextRunAt ? when(details.nextRunAt) : t('routines.notScheduled')}</dd>
-        <dt className="text-muted-foreground">{t('routines.lastRun')}</dt>
-        <dd>{lastRun}</dd>
-        {details.lastError && (
-          <>
-            <dt className="text-muted-foreground">{t('routines.lastError')}</dt>
-            <dd className="text-destructive-text wrap-break-word">{details.lastError}</dd>
-          </>
+    <div className="space-y-3 rounded-xl bg-secondary p-4 text-base">
+      <div className="flex items-start justify-between gap-3">
+        <dl className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
+          <dt className="text-muted-foreground">{t('routines.nextRun')}</dt>
+          <dd>{details.nextRunAt ? when(details.nextRunAt) : t('routines.notScheduled')}</dd>
+          <dt className="text-muted-foreground">{t('routines.lastRun')}</dt>
+          <dd>{lastRun}</dd>
+          {details.lastError && (
+            <>
+              <dt className="text-muted-foreground">{t('routines.lastError')}</dt>
+              <dd className="text-destructive-text wrap-break-word">{details.lastError}</dd>
+            </>
+          )}
+        </dl>
+        <div className="shrink-0">{runAction}</div>
+      </div>
+      <div className="space-y-1">
+        <h4 className="font-medium">{t('routines.recentRuns')}</h4>
+        {runs.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t('routines.noRuns')}</p>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {runs.map((run) => (
+              <li key={run.startedAt} className="wrap-break-word">
+                {when(new Date(run.startedAt * MS_PER_SECOND))}
+                {' · '}
+                {run.state === 'stopped'
+                  ? run.reason.replaceAll('_', ' ')
+                  : t(RUN_WORDS[run.state])}
+              </li>
+            ))}
+          </ul>
         )}
-      </dl>
-      <h4 className="pt-1 font-medium">{t('routines.recentRuns')}</h4>
-      {runs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('routines.noRuns')}</p>
-      ) : (
-        <ul className="space-y-1 text-sm">
-          {runs.map((run) => (
-            <li key={run.startedAt} className="wrap-break-word">
-              {when(new Date(run.startedAt * MS_PER_SECOND))}
-              {' · '}
-              {run.state === 'stopped' ? run.reason.replaceAll('_', ' ') : t(RUN_WORDS[run.state])}
-            </li>
-          ))}
-        </ul>
-      )}
+      </div>
     </div>
   )
 }
@@ -234,9 +247,10 @@ export function RoutineForm({
       </label>
       <label className="block text-base">
         {t('routines.instruction')}
+        {/* Drag the corner to read a long instruction whole; past its height it scrolls. */}
         <Textarea
           value={draft.instruction}
-          rows={3}
+          className="h-40 max-h-[70dvh] min-h-24 resize-y overflow-y-auto overscroll-contain"
           placeholder={t('routines.instructionHint')}
           onChange={(event) => setDraft({ ...draft, instruction: event.target.value })}
         />
@@ -299,18 +313,18 @@ export function RoutineForm({
             />
           </label>
         )}
+        {schedule.kind === 'custom' && (
+          <label className="block text-base">
+            {t('routines.custom')}
+            <Input
+              value={schedule.custom}
+              placeholder={t('routines.customHint')}
+              onChange={(event) => setSchedule({ custom: event.target.value })}
+              className="font-mono"
+            />
+          </label>
+        )}
       </div>
-      {schedule.kind === 'custom' && (
-        <label className="block text-base">
-          {t('routines.custom')}
-          <Input
-            value={schedule.custom}
-            placeholder={t('routines.customHint')}
-            onChange={(event) => setSchedule({ custom: event.target.value })}
-            className="font-mono"
-          />
-        </label>
-      )}
       <label className="flex items-center gap-2 text-base">
         <input
           type="checkbox"
@@ -320,7 +334,9 @@ export function RoutineForm({
         {t('routines.postToChat')}
       </label>
       {problem && <ProblemMessage problem={problem} />}
-      <div className="flex gap-2">
+      {/* Stays in view while a long form scrolls; -bottom-6 covers the dialog's own padding so
+          nothing scrolls visibly below it. */}
+      <div className="sticky -bottom-6 -mx-6 -mb-6 flex gap-3 bg-card px-6 pt-3 pb-6">
         <Button type="submit" disabled={!ready || busy}>
           {submitLabel}
         </Button>
