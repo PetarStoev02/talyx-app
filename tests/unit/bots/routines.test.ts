@@ -5,14 +5,23 @@ import {
   addRoutine,
   composeSchedule,
   describeSchedule,
+  listRoutineRuns,
   listRoutines,
+  loadRoutine,
   removeRoutine,
+  runRoutine,
+  saveRoutine,
+  scheduleDraft,
   setRoutineActive
 } from '../../../src/renderer/src/features/bots/routines'
-import type { RoutineDraft, ScheduleDraft } from '../../../src/renderer/src/features/bots/routines'
+import type {
+  RoutineDetails,
+  RoutineDraft,
+  ScheduleDraft
+} from '../../../src/renderer/src/features/bots/routines'
 import { RosterError } from '../../../src/renderer/src/features/bots/roster'
 import { backendFor, engineDouble } from './engineDouble'
-import type { EngineDouble } from './engineDouble'
+import type { CronJob, EngineDouble } from './engineDouble'
 
 const schedule = (patch: Partial<ScheduleDraft>): ScheduleDraft => ({
   ...DEFAULT_SCHEDULE,
@@ -79,8 +88,17 @@ describe('routines', () => {
         kind: 'custom',
         time: null,
         weekday: null,
-        hours: null
+        hours: null,
+        minutes: null
       })
+    })
+
+    it("should read the engine's stored interval for every 2 hours", () => {
+      expect(describeSchedule('every 120m')).toMatchObject({ kind: 'hours', hours: 2 })
+    })
+
+    it.each(['every 30m', '*/30 * * * *'])('should read %s as every 30 minutes', (line) => {
+      expect(describeSchedule(line)).toMatchObject({ kind: 'custom', minutes: 30 })
     })
   })
 
@@ -174,6 +192,184 @@ describe('routines', () => {
         key: 'routines.errorEngine',
         detail: 'bad schedule'
       })
+    })
+  })
+
+  describe('an opened routine', () => {
+    const cashJob = (patch: Partial<CronJob> = {}): CronJob => ({
+      job_id: 'cash',
+      name: 'Monday cash position',
+      schedule: '0 8 * * 1',
+      prompt: 'Summarise the cash position.',
+      deliver: 'bot-chat',
+      enabled: true,
+      state: 'scheduled',
+      next_run_at: '2026-11-09T08:00:00+00:00',
+      ...patch
+    })
+    const open = async (patch: Partial<CronJob> = {}): Promise<RoutineDetails> => {
+      engine.jobs.analyst = [cashJob(patch)]
+      return loadRoutine(backend, 'analyst', 'cash')
+    }
+
+    it('should load its full instruction, schedule and next run', async () => {
+      expect(await open()).toEqual({
+        id: 'cash',
+        draft: draft(),
+        active: true,
+        nextRunAt: '2026-11-09T08:00:00+00:00',
+        lastRunAt: null,
+        lastStatus: null,
+        lastError: null
+      })
+    })
+
+    it('should show the last run of a routine that failed, with its error', async () => {
+      const details = await open({
+        last_run_at: '2026-11-06T08:00:00+00:00',
+        last_status: 'error',
+        last_error: 'Model quota exhausted'
+      })
+      expect(details).toMatchObject({
+        lastRunAt: '2026-11-06T08:00:00+00:00',
+        lastStatus: 'error',
+        lastError: 'Model quota exhausted'
+      })
+    })
+
+    it('should keep a schedule the form cannot show as its own line', async () => {
+      const { draft: loaded } = await open({ schedule: '15 */3 * * 1-5' })
+      expect(loaded.schedule).toMatchObject({ kind: 'custom', custom: '15 */3 * * 1-5' })
+    })
+
+    it('should read every 2 hours back as the hours kind', async () => {
+      const { draft: loaded } = await open({ schedule: 'every 2h' })
+      expect(loaded.schedule).toMatchObject({ kind: 'hours', hours: 2 })
+    })
+
+    it('should save an edit and show it in the list', async () => {
+      const { draft: before } = await open()
+      const after = draft({
+        instruction: 'Summarise cash and runway.',
+        schedule: schedule({ kind: 'weekdays', time: '07:30' })
+      })
+      await saveRoutine(backend, 'analyst', { id: 'cash', before, after })
+      expect(engine.cronWrites).toEqual([
+        {
+          method: 'PUT',
+          path: '/api/cron/jobs/cash?profile=analyst',
+          body: {
+            updates: {
+              prompt: 'Summarise cash and runway.',
+              schedule: '30 7 * * 1-5'
+            }
+          }
+        }
+      ])
+      expect((await listRoutines(backend, 'analyst'))[0].schedule).toBe('30 7 * * 1-5')
+      expect((await loadRoutine(backend, 'analyst', 'cash')).draft.instruction).toBe(
+        'Summarise cash and runway.'
+      )
+    })
+
+    it('should keep a schedule Talyx cannot show when the edit leaves it alone', async () => {
+      const { draft: before } = await open({ schedule: '15 */3 * * 1-5' })
+      await saveRoutine(backend, 'analyst', {
+        id: 'cash',
+        before,
+        after: { ...before, name: 'Cash, three-hourly' }
+      })
+      expect(engine.cronWrites[0].body).toEqual({
+        updates: { name: 'Cash, three-hourly' }
+      })
+      expect(engine.jobs.analyst[0].schedule).toBe('15 */3 * * 1-5')
+    })
+
+    it('should stop posting to the chat', async () => {
+      const { draft: before } = await open()
+      await saveRoutine(backend, 'analyst', {
+        id: 'cash',
+        before,
+        after: { ...before, postsToChat: false }
+      })
+      expect(engine.jobs.analyst[0].deliver).toBe('local')
+    })
+
+    it('should report a save the engine refuses, with its reason', async () => {
+      const { draft: before } = await open()
+      engine.refuseCronOnce("Invalid schedule 'every someday'")
+      const saving = saveRoutine(backend, 'analyst', {
+        id: 'cash',
+        before,
+        after: { ...before, schedule: scheduleDraft('every someday') }
+      })
+      await expect(saving).rejects.toBeInstanceOf(RosterError)
+      await expect(saving).rejects.toMatchObject({
+        key: 'routines.errorSave',
+        detail: "Invalid schedule 'every someday'"
+      })
+      expect(engine.jobs.analyst[0].schedule).toBe('0 8 * * 1')
+    })
+
+    it('should run it now and show the run', async () => {
+      await open()
+      expect(await listRoutineRuns(backend, 'analyst', 'cash')).toEqual([])
+      await runRoutine(backend, 'analyst', 'cash')
+      expect(engine.cronWrites[0]).toMatchObject({
+        method: 'POST',
+        path: '/api/cron/jobs/cash/trigger?profile=analyst'
+      })
+      expect(await listRoutineRuns(backend, 'analyst', 'cash')).toEqual([
+        { startedAt: 1_794_045_600, state: 'finished', reason: '' }
+      ])
+      expect(await loadRoutine(backend, 'analyst', 'cash')).toMatchObject({
+        lastStatus: 'ok',
+        lastError: null
+      })
+    })
+
+    it('should report a run the engine refuses', async () => {
+      await open()
+      engine.refuseCronOnce('Job is already running or was claimed by another scheduler')
+      await expect(runRoutine(backend, 'analyst', 'cash')).rejects.toMatchObject({
+        key: 'routines.errorRun'
+      })
+    })
+
+    it('should list only the five most recent runs', async () => {
+      const runs = Array.from({ length: 7 }, (_, index) => ({
+        started_at: 1_794_000_000 - index,
+        is_active: false,
+        end_reason: 'cron_complete',
+        title: `Run ${index}`
+      }))
+      await open({ runs })
+      const recent = await listRoutineRuns(backend, 'analyst', 'cash')
+      expect(recent.map((run) => run.startedAt)).toEqual([
+        1_794_000_000, 1_793_999_999, 1_793_999_998, 1_793_999_997, 1_793_999_996
+      ])
+    })
+
+    it('should tell a running, a finished and a stopped run apart', async () => {
+      await open({
+        runs: [
+          { started_at: 3, is_active: true, end_reason: null, title: 'Cash' },
+          { started_at: 2, is_active: false, end_reason: 'cron_complete', title: 'Cash' },
+          {
+            started_at: 1,
+            is_active: false,
+            end_reason: 'cron_incomplete_no_output',
+            title: 'Cash'
+          },
+          { started_at: 0, is_active: false, end_reason: null, title: 'FAILED · timeout' }
+        ]
+      })
+      expect(await listRoutineRuns(backend, 'analyst', 'cash')).toEqual([
+        { startedAt: 3, state: 'running', reason: '' },
+        { startedAt: 2, state: 'finished', reason: '' },
+        { startedAt: 1, state: 'stopped', reason: 'cron_incomplete_no_output' },
+        { startedAt: 0, state: 'stopped', reason: 'FAILED · timeout' }
+      ])
     })
   })
 })
