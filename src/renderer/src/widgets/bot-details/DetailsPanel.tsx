@@ -109,7 +109,7 @@ export function DetailsPanel({
     if (!draft || !opening) return
     setRefused([])
     void runRosterMutation(backend, async () => {
-      const asked = await saveSections(draft, opening)
+      const asked = await saveOrMarkRefused(draft, opening)
       if (asked === undefined) return
       if (!asked) return closeIfShowing()
       // Everything but the model is saved; the panel now opens from there.
@@ -121,7 +121,7 @@ export function DetailsPanel({
   // A refusal shows under its field, on that field's tab; the general line below the panel joins
   // it when several sections failed or one has no field. Resolves undefined when a field was
   // refused.
-  async function saveSections(
+  async function saveOrMarkRefused(
     draft: DetailsDraft,
     opening: DetailsDraft
   ): Promise<ModelConfirm | null | undefined> {
