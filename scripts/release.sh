@@ -1,5 +1,6 @@
 #!/bin/bash
-# Build the macOS release and create a draft GitHub release. Local path, macOS DMGs only: the
+# Build the macOS release and create a draft GitHub release. Local path, macOS only (the DMGs and
+# the update zips with latest-mac.yml): the
 # Linux builds and the real-engine smoke test come from the Release workflow on GitHub Actions.
 # The DMGs are signed with Developer ID and notarized, like the workflow's. Without the five
 # signing variables (see CLAUDE.md → Builds → Signing secrets) it refuses: an unsigned release would
@@ -36,7 +37,8 @@ npm run build:mac -- --config.forceCodeSigning=true
 notarize_dmgs dist/*.dmg
 verify_mac_release
 
-# The in-app update checks each download against these; users can check one by hand against the
+# The fallback in-app download checks each installer against these (the update zips carry
+# their sha512 in latest-mac.yml); users can check one by hand against the
 # release page (shasum -a 256 -c SHA256SUMS --ignore-missing). The install file is listed
 # too: the app fetches it from this release, so its checksum is part of what users verify.
 cp "$INSTALL_FILE" dist/
@@ -44,7 +46,7 @@ check_install_file "dist/$INSTALL_FILE"
 (cd dist && shasum -a 256 *.dmg "$INSTALL_FILE" > SHA256SUMS)
 
 echo ""
-ls -lh dist/*.dmg
+ls -lh dist/*.dmg dist/*.zip
 cat dist/SHA256SUMS
 
 echo ""
@@ -55,5 +57,5 @@ gh release create "v$VERSION" \
   --title "Talyx $VERSION" \
   --notes-file "$NOTES_TMP" \
   --generate-notes \
-  dist/*.dmg "dist/$INSTALL_FILE" dist/SHA256SUMS
+  dist/*.dmg dist/*.zip dist/*.zip.blockmap dist/latest-mac.yml "dist/$INSTALL_FILE" dist/SHA256SUMS
 echo "✅ Draft created. Review it, then publish: gh release edit v$VERSION --repo PetarStoev02/talyx-app --draft=false"

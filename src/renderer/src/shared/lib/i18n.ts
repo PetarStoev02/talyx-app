@@ -514,6 +514,9 @@ const en = {
   'update.download': 'Download',
   'update.cancel': 'Cancel',
   'update.openInstaller': 'Open the installer',
+  'update.readyRestart':
+    'Update {version} is ready. Restart Talyx to finish, or it installs when you quit.',
+  'update.restart': 'Restart to update',
   'update.openRelease': 'Open the release page',
   'update.oneChange': '1 change',
   'update.changes': '{count} changes',

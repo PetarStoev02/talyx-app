@@ -24,7 +24,7 @@ defaults:
 
 jobs:
   mac:
-    name: macOS DMGs
+    name: macOS DMGs and update zips
     runs-on: macos-latest
 
     steps:
@@ -83,7 +83,12 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: mac
-          path: dist/*.dmg
+          # The zips, their blockmaps and latest-mac.yml are electron-updater's feed.
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.zip.blockmap
+            dist/latest-mac.yml
           if-no-files-found: error
 
   linux:
@@ -119,9 +124,11 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: linux
+          # latest-linux.yml is the AppImage's update feed; the deb does not update itself.
           path: |
             dist/*.AppImage
             dist/*.deb
+            dist/latest-linux.yml
           if-no-files-found: error
 
   release:
@@ -148,6 +155,7 @@ jobs:
         run: source scripts/release-lib.sh && write_install_file_from_secret release/engine-install.json
 
       # Bare file names, so users can run sha256sum -c SHA256SUMS --ignore-missing next to a download.
+      # It lists every file, including the installers the fallback in-app download checks.
       - name: Write SHA256SUMS
         working-directory: release
         run: sha256sum * > SHA256SUMS

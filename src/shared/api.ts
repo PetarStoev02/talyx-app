@@ -66,7 +66,7 @@ export function buildApi(transport: ApiTransport) {
     getUpdateState: () => invoke('updater:status'),
     downloadUpdate: () => invoke('updater:download'),
     cancelUpdate: () => invoke('updater:cancel'),
-    openUpdateInstaller: () => invoke('updater:open-installer'),
+    installUpdate: () => invoke('updater:install'),
     onUpdateState: (callback: (state: UpdateState) => void) =>
       transport.on('updater:state', (state) => callback(state as UpdateState))
   }

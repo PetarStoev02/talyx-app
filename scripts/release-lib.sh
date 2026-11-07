@@ -107,12 +107,21 @@ notarize_dmgs() {
   done
 }
 
-# Fails unless every .app under dist/ is Developer ID signed and notarized, and every DMG is stapled.
+# Fails unless every .app under dist/ and inside each update zip is Developer ID signed and
+# notarized, and every DMG is stapled. The zip's app is what Squirrel.Mac installs.
 verify_mac_release() {
-  local app dmg
+  local app dmg zip unpacked
   for app in dist/mac*/*.app; do
     codesign --verify --deep --strict --verbose=2 "$app" || return 1
     spctl -a -vv "$app" || return 1
+  done
+  for zip in dist/*.zip; do
+    unpacked=$(mktemp -d)
+    ditto -x -k "$zip" "$unpacked" || return 1
+    codesign --verify --deep --strict --verbose=2 "$unpacked"/*.app || return 1
+    spctl -a -vv "$unpacked"/*.app || return 1
+    xcrun stapler validate "$unpacked"/*.app || return 1
+    rm -rf "$unpacked"
   done
   for dmg in dist/*.dmg; do
     xcrun stapler validate "$dmg" || return 1

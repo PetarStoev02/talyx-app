@@ -6,6 +6,11 @@ const RELEASE_PAGE_PREFIX = 'https://github.com/PetarStoev02/talyx-app/releases/
 
 const RELEASE_ASSET_PREFIX = 'https://github.com/PetarStoev02/talyx-app/releases/download/'
 const CHECKSUMS_ASSET_NAME = 'SHA256SUMS'
+// electron-updater's feed for the installs that update themselves.
+const UPDATE_FEED_NAME: Partial<Record<NodeJS.Platform, string>> = {
+  darwin: 'latest-mac.yml',
+  linux: 'latest-linux.yml'
+}
 const MAX_HIGHLIGHTS = 3
 
 const REQUEST_TIMEOUT_MS = 10_000
@@ -194,6 +199,10 @@ export async function fetchLatestRelease(
         ? null
         : pickAsset(assets, target.platform, target.arch)
     const checksums = assets.find((a) => a.name === CHECKSUMS_ASSET_NAME) ?? null
+    // A release without the feed (1.0.0 and older) still updates the manual way.
+    const selfUpdating = target.platform === 'darwin' || target.appImage
+    const feed = UPDATE_FEED_NAME[target.platform]
+    const automatic = selfUpdating && assets.some((a) => a.name === feed)
     const notes = typeof body.body === 'string' ? body.body : ''
     return {
       kind: 'available',
@@ -204,7 +213,8 @@ export async function fetchLatestRelease(
           publishedAt: typeof body.published_at === 'string' ? body.published_at : '',
           highlights: parseHighlights(notes),
           changes: countChanges(notes),
-          downloadable: asset !== null && checksums !== null
+          automatic,
+          downloadable: automatic || (asset !== null && checksums !== null)
         },
         asset,
         checksums

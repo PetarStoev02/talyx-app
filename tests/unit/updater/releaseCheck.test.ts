@@ -52,6 +52,7 @@ describe('fetchLatestRelease', () => {
           publishedAt: '',
           highlights: [],
           changes: 0,
+          automatic: false,
           downloadable: false
         },
         asset: null,
@@ -147,6 +148,7 @@ describe('fetchLatestRelease', () => {
         publishedAt: '2026-11-05T10:00:00Z',
         highlights: [{ lead: 'Update button.', text: 'Shows new releases.' }],
         changes: 2,
+        automatic: false,
         downloadable: true
       })
       expect(r.asset).toEqual({
@@ -202,6 +204,34 @@ describe('fetchLatestRelease', () => {
       if (check.kind !== 'available') throw new Error('expected an available release')
       expect(check.release.asset?.name ?? null).toBe(name)
       expect(check.release.summary.downloadable).toBe(appImage)
+    })
+
+    describe('self-updating installs', () => {
+      const linux = (appImage: boolean) => ({ platform: 'linux', arch: 'x64', appImage }) as const
+      const feeds = [asset('latest-mac.yml'), asset('latest-linux.yml')]
+
+      it.each([
+        ['a Mac', mac, true],
+        ['an AppImage', linux(true), true],
+        ['a deb install', linux(false), false],
+        ['Windows', { platform: 'win32', arch: 'x64', appImage: false } as const, false]
+      ])('should update %s by itself: %s', async (_name, target, automatic) => {
+        const check = await fetchLatestRelease(respond(release(feeds)), '0.11.0', target)
+        if (check.kind !== 'available') throw new Error('expected an available release')
+        expect(check.release.summary.automatic).toBe(automatic)
+        expect(check.release.summary.downloadable).toBe(automatic)
+      })
+
+      it('should fall back to the installer download when the release has no feed', async () => {
+        const { release: r } = await found(release([asset('Talyx-arm64.dmg'), asset('SHA256SUMS')]))
+        expect(r.summary.automatic).toBe(false)
+        expect(r.summary.downloadable).toBe(true)
+      })
+
+      it("should not read another platform's feed", async () => {
+        const { release: r } = await found(release([asset('latest-linux.yml')]))
+        expect(r.summary.automatic).toBe(false)
+      })
     })
 
     it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])(

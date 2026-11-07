@@ -46,6 +46,6 @@ export const updaterApi = {
   state: (): Promise<UpdateState> => window.api.getUpdateState() as Promise<UpdateState>,
   download: (): Promise<void> => window.api.downloadUpdate() as Promise<void>,
   cancel: (): Promise<void> => window.api.cancelUpdate() as Promise<void>,
-  openInstaller: (): Promise<void> => window.api.openUpdateInstaller() as Promise<void>,
+  install: (): Promise<void> => window.api.installUpdate() as Promise<void>,
   onState: (cb: (state: UpdateState) => void): (() => void) => window.api.onUpdateState(cb)
 }

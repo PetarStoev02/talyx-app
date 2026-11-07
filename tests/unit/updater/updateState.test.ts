@@ -6,28 +6,36 @@ vi.mock('electron-log', () => ({ default: logger }))
 import {
   createUpdateStore,
   next,
-  type UpdateEvent
+  type Install,
+  type UpdateEvent,
+  type UpdateStoreDeps
 } from '../../../src/main/infrastructure/updater/updateState'
 import { ReleaseDownloadError } from '../../../src/main/infrastructure/updater/releaseDownload'
 import type { FoundRelease } from '../../../src/main/infrastructure/updater/releaseCheck'
 import type { ReleaseSummary, UpdateState } from '../../../src/shared/updater'
 
-function summary(version: string, downloadable = true): ReleaseSummary {
+function summary(version: string, downloadable = true, automatic = false): ReleaseSummary {
   return {
     version,
     url: `https://github.com/PetarStoev02/talyx-app/releases/tag/v${version}`,
     publishedAt: '',
     highlights: [],
     changes: 0,
+    automatic,
     downloadable
   }
 }
 
-function found(version: string, downloadable = true): FoundRelease {
+function found(
+  version: string,
+  downloadable = true,
+  automatic = false,
+  installer: string | null = 'Talyx-arm64.dmg'
+): FoundRelease {
   const download = 'https://github.com/PetarStoev02/talyx-app/releases/download/'
   return {
-    summary: summary(version, downloadable),
-    asset: { name: 'Talyx-arm64.dmg', url: `${download}Talyx-arm64.dmg`, size: 10 },
+    summary: summary(version, downloadable, automatic),
+    asset: installer ? { name: installer, url: `${download}${installer}`, size: 10 } : null,
     checksums: { name: 'SHA256SUMS', url: `${download}SHA256SUMS`, size: 1 }
   }
 }
@@ -143,21 +151,26 @@ describe('next', () => {
 })
 
 describe('update store', () => {
-  function store(download = vi.fn(async () => '/downloads/Talyx-arm64.dmg')): {
+  const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+
+  function store(): {
     updates: ReturnType<typeof createUpdateStore>
     published: UpdateState[]
-    download: typeof download
-    open: ReturnType<typeof vi.fn>
+    download: ReturnType<typeof vi.fn<UpdateStoreDeps['download']>>
+    install: ReturnType<typeof vi.fn<Install>>
   } {
     const published: UpdateState[] = []
-    const open = vi.fn(async () => undefined)
-    const updates = createUpdateStore({ download, open, publish: (s) => published.push(s) })
-    return { updates, published, download, open }
+    const install = vi.fn<Install>(async () => undefined)
+    const download = vi.fn<UpdateStoreDeps['download']>(async () => install)
+    const updates = createUpdateStore({ download, publish: (s) => published.push(s) })
+    return { updates, published, download, install }
   }
 
-  it('should download the release it was handed and open the verified file', async () => {
-    const { updates, published, download, open } = store()
+  it('should download the release it was handed only on request, then install it', async () => {
+    const { updates, published, download, install } = store()
     updates.found(found('1.0.0'))
+    await settle()
+    expect(download).not.toHaveBeenCalled()
     await updates.startDownload()
 
     expect(download).toHaveBeenCalledWith(
@@ -166,28 +179,73 @@ describe('update store', () => {
       expect.any(AbortSignal)
     )
     expect(published.map((s) => s.kind)).toEqual(['available', 'downloading', 'ready'])
-    await updates.openInstaller()
-    expect(open).toHaveBeenCalledWith('/downloads/Talyx-arm64.dmg')
+    await updates.install()
+    expect(install).toHaveBeenCalledOnce()
   })
 
-  it('should refuse to open anything before a download is verified', async () => {
-    const { updates, open } = store()
-    await expect(updates.openInstaller()).rejects.toThrow('No verified download')
+  it('should download a release it installs itself in the background, then wait for the restart click', async () => {
+    const { updates, published, download, install } = store()
+    updates.found(found('1.0.0', true, true))
+    await settle()
+
+    expect(download).toHaveBeenCalledOnce()
+    expect(published.map((s) => s.kind)).toEqual(['available', 'downloading', 'ready'])
+    expect(updates.current()).toEqual({ kind: 'ready', release: summary('1.0.0', true, true) })
+    expect(install).not.toHaveBeenCalled()
+
+    await updates.install()
+    expect(install).toHaveBeenCalledOnce()
+  })
+
+  it('should download a newer self-installing release found after one is ready', async () => {
+    const { updates, download } = store()
+    updates.found(found('1.0.0', true, true))
+    await settle()
+    updates.found(found('1.1.0', true, true))
+    await settle()
+
+    expect(download).toHaveBeenCalledTimes(2)
+    expect(updates.current()).toEqual({ kind: 'ready', release: summary('1.1.0', true, true) })
+  })
+
+  it('should not download again by itself after a background download failed', async () => {
+    const { updates, download } = store()
+    download.mockRejectedValueOnce(new ReleaseDownloadError('checksum', 'sha512 mismatch'))
+    updates.found(found('1.0.0', true, true, null))
+    await settle()
+    expect(logger.warn).toHaveBeenCalledWith('[Updater] v1.0.0 failed (checksum)')
+    expect(updates.current()).toEqual({
+      kind: 'failed',
+      release: summary('1.0.0', true, true),
+      reason: 'checksum'
+    })
+
+    updates.found(found('1.0.0', true, true))
+    await settle()
+    expect(download).toHaveBeenCalledOnce()
+
+    await updates.startDownload()
+    expect(updates.current().kind).toBe('ready')
+  })
+
+  it('should refuse to install anything before a download is verified', async () => {
+    const { updates, install } = store()
+    await expect(updates.install()).rejects.toThrow('No verified download')
     updates.found(found('1.0.0'))
-    await expect(updates.openInstaller()).rejects.toThrow('No verified download')
-    expect(open).not.toHaveBeenCalled()
+    await expect(updates.install()).rejects.toThrow('No verified download')
+    expect(install).not.toHaveBeenCalled()
   })
 
-  it('should move to failed, and offer a retry, when the installer cannot be opened', async () => {
-    const { updates, published, download, open } = store()
-    open.mockRejectedValueOnce(new ReleaseDownloadError('other', 'gone'))
+  it('should move to failed, and offer a retry, when the update cannot be installed', async () => {
+    const { updates, published, download, install } = store()
+    install.mockRejectedValueOnce(new ReleaseDownloadError('other', 'gone'))
     updates.found(found('1.0.0'))
     await updates.startDownload()
 
-    await expect(updates.openInstaller()).rejects.toThrow('gone')
+    await expect(updates.install()).rejects.toThrow('gone')
     expect(updates.current()).toEqual({ kind: 'failed', release: v1, reason: 'other' })
     expect(published.at(-1)).toEqual(updates.current())
-    await expect(updates.openInstaller()).rejects.toBeInstanceOf(ReleaseDownloadError)
+    await expect(updates.install()).rejects.toBeInstanceOf(ReleaseDownloadError)
 
     await updates.startDownload()
     expect(download).toHaveBeenCalledTimes(2)
@@ -195,11 +253,8 @@ describe('update store', () => {
   })
 
   it('should fail with the download reason and log only the asset name and reason', async () => {
-    const { updates } = store(
-      vi.fn(async () => {
-        throw new ReleaseDownloadError('checksum', 'mismatch')
-      })
-    )
+    const { updates, download } = store()
+    download.mockRejectedValueOnce(new ReleaseDownloadError('checksum', 'mismatch'))
     updates.found(found('1.0.0'))
     await updates.startDownload()
 
@@ -208,13 +263,13 @@ describe('update store', () => {
   })
 
   it('should return to available when the download is cancelled', async () => {
-    const download = vi.fn(
-      (_found: FoundRelease, _progress: unknown, signal: AbortSignal) =>
-        new Promise<string>((_resolve, reject) =>
+    const { updates, download } = store()
+    download.mockImplementationOnce(
+      (_found, _progress, signal) =>
+        new Promise<Install>((_resolve, reject) =>
           signal.addEventListener('abort', () => reject(new ReleaseDownloadError('network', 'x')))
         )
     )
-    const { updates } = store(download as never)
     updates.found(found('1.0.0'))
     const running = updates.startDownload()
     expect(updates.current().kind).toBe('downloading')

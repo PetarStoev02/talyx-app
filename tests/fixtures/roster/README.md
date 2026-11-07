@@ -92,6 +92,7 @@ Open the release page only show a toast.
 | `talyx`       | Available: Download; the ring fills, then "ready" with Open the installer       |
 | `downloading` | A download already running (progress ring, Cancel back to available)            |
 | `ready`       | Ready: Open the installer                                                       |
+| `restart`     | Ready on a self-updating install: Restart to update (macOS, AppImage)           |
 | `failed`      | A checksum failure: Try again (fails again) and Open the release page           |
 | `nodownload`  | Available with no installer for this computer: only Open the release page       |
 | `engine`      | The engine item only (0.22.5 below the pin); its action runs the engine install |
