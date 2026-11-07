@@ -8,7 +8,7 @@
 
 - Talyx has no server, no account and no telemetry. The app sends nothing about you to us.
 - Your bots run on the engine, on your computer. What a bot sends goes from the engine to the model provider you set up for it, under that provider's terms. A bot's tools, like web search or a command it runs, can reach other services too. Some ask for your approval first.
-- On the internet, Talyx itself reaches only GitHub: to check for a new release, to download an update when you click Download (a deb install updates from the release page instead), and to fetch the engine's install steps. Those steps then download the engine.
+- On the internet, Talyx itself reaches only GitHub: to check for a new release, to download an update (in the background on macOS and in the AppImage; a deb install updates from the release page instead), and to fetch the engine's install steps. Those steps then download the engine.
 - This website counts page views and download clicks with PostHog, hosted in the EU, and measures page speed with Vercel Speed Insights, both without cookies.
 
 ---
@@ -46,7 +46,7 @@ When you add an API key or a custom endpoint in Settings, Talyx passes it to the
 Every download the app makes itself comes from GitHub, from the releases of `PetarStoev02/talyx-app`. GitHub sees each request like any other web request.
 
 - **Release check.** Shortly after launch, and then once a day, Talyx asks GitHub whether a newer release exists.
-- **Update download.** When you click Download, Talyx downloads the installer for your computer and the release's `SHA256SUMS`. It checks the installer against `SHA256SUMS`, then opens it for you to run. Talyx never installs anything by itself. A Linux deb install downloads nothing: Talyx links to the release page instead.
+- **Update download.** On macOS and in the AppImage, Talyx downloads a new release in the background and checks it against the checksums in the release's `latest-mac.yml` or `latest-linux.yml`. On macOS the update must also be signed with the same Developer ID. It installs when you click Restart to update or when you quit Talyx; Talyx never restarts by itself. A Linux deb install downloads nothing: Talyx links to the release page instead.
 - **Engine install steps.** During first-run setup or an engine update, Talyx downloads the release's `engine-install.json` and checks it against a hash built into Talyx. The steps in it then download and install the engine.
 
 A link you click inside Talyx opens in your web browser.
