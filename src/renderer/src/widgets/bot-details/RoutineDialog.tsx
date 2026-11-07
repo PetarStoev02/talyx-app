@@ -335,14 +335,17 @@ export function RoutineForm({
       </label>
       {problem && <ProblemMessage problem={problem} />}
       {/* Stays in view while a long form scrolls; -bottom-6 covers the dialog's own padding so
-          nothing scrolls visibly below it. */}
-      <div className="sticky -bottom-6 -mx-6 -mb-6 flex gap-3 bg-card px-6 pt-3 pb-6">
-        <Button type="submit" disabled={!ready || busy}>
-          {submitLabel}
-        </Button>
-        <Button type="button" variant="ghost" disabled={busy} onClick={onCancel}>
-          {t('roster.cancel')}
-        </Button>
+          nothing scrolls visibly below it. Its top edge shows only while it is stuck, that is
+          while the form runs on under it. */}
+      <div className="sticky -bottom-6 -mx-6 -mb-6 [container-type:scroll-state]">
+        <div className="flex gap-3 border-t border-transparent bg-card px-6 pt-3 pb-6 [@container_scroll-state(stuck:bottom)]:border-border">
+          <Button type="submit" disabled={!ready || busy}>
+            {submitLabel}
+          </Button>
+          <Button type="button" variant="ghost" disabled={busy} onClick={onCancel}>
+            {t('roster.cancel')}
+          </Button>
+        </div>
       </div>
     </form>
   )

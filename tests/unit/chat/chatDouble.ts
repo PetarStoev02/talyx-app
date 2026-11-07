@@ -20,6 +20,10 @@ export interface ChatDouble {
   goneMedia: Set<string>
 }
 
+/** A profile on its bare custom endpoint that also keeps the same URL as a named one. */
+export const KEPT_ENDPOINT_PROFILE = 'acme-kept'
+const ROUTER_URL = 'http://127.0.0.1:20128/v1'
+
 // In-memory engine for the chat: Bot Chat lookup, create, resume, submit and the REST paths.
 export function chatDouble(
   chats: ChatDouble['chats'] = {
@@ -68,6 +72,19 @@ export function chatDouble(
       case 'POST /api/audio/transcribe':
         return { transcript: 'dictated words' }
       case 'GET /api/model/options':
+        if (profile === KEPT_ENDPOINT_PROFILE)
+          return {
+            providers: [
+              { slug: 'custom', name: 'custom', is_current: true, models: ['9-route-provider'] },
+              {
+                slug: 'endpoint-router',
+                name: 'Custom endpoint',
+                is_user_defined: true,
+                api_url: ROUTER_URL,
+                models: ['9-route-provider', 'behind/the-router']
+              }
+            ]
+          }
         return {
           providers: [
             {
@@ -81,6 +98,23 @@ export function chatDouble(
           ]
         }
       case 'GET /api/providers/custom-endpoints':
+        if (profile === KEPT_ENDPOINT_PROFILE)
+          return {
+            endpoints: [
+              {
+                id: 'custom',
+                base_url: ROUTER_URL,
+                source: 'direct-config',
+                models: ['9-route-provider']
+              },
+              {
+                id: 'endpoint-router',
+                base_url: `${ROUTER_URL}/`,
+                source: 'providers',
+                models: ['9-route-provider']
+              }
+            ]
+          }
         return {
           endpoints: [
             { id: 'custom', base_url: 'http://127.0.0.1:20128/v1', models: ['9-route-provider'] }

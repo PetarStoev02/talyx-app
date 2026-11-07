@@ -2,6 +2,7 @@ import type { EngineApiRequest } from '@shared/engine/http'
 import type { CustomEndpoint, SessionMessage } from '@shared/engine/types'
 import type { ModelOptionProvider, SessionLiveInfo } from '@shared/engine/gateway-events'
 import type { GatewayEvent } from '@shared/engine/shared'
+import { BARE_CUSTOM, CONFIG_YAML_SOURCE } from '@shared/engine/endpoints'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { failureOf } from '@shared/lib/problem'
 import { useChat } from './store'
@@ -381,7 +382,35 @@ async function loadModels(backend: ChatBackend, profile: string): Promise<ModelO
       // The saved lists only narrow the picker: without them it shows every model offered.
       .catch(() => ({ endpoints: [] }))
   ])
-  return providers.map((provider) => withSavedModels(provider, endpoints ?? []))
+  return withoutBareTwin(providers, endpoints ?? []).map((provider) =>
+    withSavedModels(provider, endpoints ?? [])
+  )
+}
+
+/**
+ * Talyx keeps its bare custom endpoint as a named one too (see keepBareEndpoint), which would list
+ * the same URL twice. The bare row goes and the named row stands for it, so a bot still on the
+ * bare provider shows its model as selected there.
+ */
+function withoutBareTwin(
+  providers: ModelOptionProvider[],
+  endpoints: CustomEndpoint[]
+): ModelOptionProvider[] {
+  const bare = endpoints.find((endpoint) => endpoint.source === CONFIG_YAML_SOURCE)
+  const twin =
+    bare &&
+    endpoints.find(
+      (endpoint) =>
+        endpoint.source !== CONFIG_YAML_SOURCE &&
+        baseUrl(endpoint.base_url) === baseUrl(bare.base_url) &&
+        providers.some((provider) => provider.slug === endpoint.id)
+    )
+  if (!twin) return providers
+  return providers.flatMap((provider) => {
+    if (provider.slug === BARE_CUSTOM) return []
+    if (provider.slug !== twin.id) return [provider]
+    return [{ ...provider, aliases: [...(provider.aliases ?? []), BARE_CUSTOM] }]
+  })
 }
 
 /**
