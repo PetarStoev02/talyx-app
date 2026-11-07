@@ -1,7 +1,11 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
 import { createBot } from '../../../src/renderer/src/features/bots/create'
-import { TALYX_RULES, fillInRules } from '../../../src/renderer/src/features/bots/rules'
+import {
+  PREVIOUS_RULES,
+  TALYX_RULES,
+  fillInRules
+} from '../../../src/renderer/src/features/bots/rules'
 import { backendFor, engineDouble } from './engineDouble'
 import type { EngineDouble } from './engineDouble'
 
@@ -13,6 +17,10 @@ let backend: RosterBackend
 beforeEach(() => {
   engine = engineDouble()
   backend = backendFor(engine)
+})
+
+afterEach(() => {
+  PREVIOUS_RULES.length = 0
 })
 
 describe('telling bots they live in Talyx', () => {
@@ -52,7 +60,8 @@ describe('telling bots they live in Talyx', () => {
       expect(engine.promptWrites).toEqual(['default'])
     })
 
-    it('should rewrite a bot that has an older version of the rules', async () => {
+    it('should rewrite a bot that has an earlier version of the rules', async () => {
+      PREVIOUS_RULES.push(OLDER_RULES)
       engine.prompts.analyst = OLDER_RULES
 
       await fillInRules(backend, ['analyst'])
@@ -60,12 +69,17 @@ describe('telling bots they live in Talyx', () => {
       expect(engine.prompts.analyst).toBe(TALYX_RULES)
     })
 
-    it('should keep a prompt the user wrote', async () => {
-      engine.prompts.analyst = 'Answer in French.'
+    it.each([
+      ['a plain prompt', 'Answer in French.'],
+      ['a prompt under the same heading', '# Talyx\n\nAnswer in French.'],
+      ['the rules with lines the user added', `${TALYX_RULES}\nAnswer in French.`],
+      ['a prompt written as a list', ['Answer in French.', 'Be brief.']]
+    ])('should keep %s the user wrote', async (_, prompt) => {
+      engine.prompts.analyst = prompt
 
       await fillInRules(backend, ['analyst'])
 
-      expect(engine.prompts.analyst).toBe('Answer in French.')
+      expect(engine.prompts.analyst).toEqual(prompt)
       expect(engine.promptWrites).toEqual([])
     })
 

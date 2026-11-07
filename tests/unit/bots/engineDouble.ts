@@ -40,7 +40,7 @@ export interface EngineDouble {
   /** The provider Talyx's own model is on; a bare custom pick copies its URL only from custom. */
   homeProvider: string
   /** Each profile's prompt setting (`agent.system_prompt`); absent when it has none. */
-  prompts: Record<string, string>
+  prompts: Record<string, unknown>
   /** Every profile whose prompt setting was written, in order. */
   promptWrites: string[]
   /** Each profile's named endpoints (its config's providers), as the endpoint list shows them. */
