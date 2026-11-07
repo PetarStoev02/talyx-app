@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
-import { BotAvatar } from '@features/bots/BotAvatar'
 import { botChatId, botTitle } from '@features/bots/roster'
 import type { RosterBackend } from '@features/bots/data'
 import { MANAGER } from '@features/bots/details'
@@ -9,9 +8,11 @@ import type { Bot } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
 import { useChat } from '@features/chat/store'
 import { useSetup } from '@features/setup/store'
-import type { ChatItem } from '@features/chat/types'
+import { turnView } from '@features/chat/turns'
+import type { MessageItem } from '@features/chat/types'
 import { useRefocus } from '@shared/hooks/useRefocus'
 import type { TranslationKey } from '@shared/lib/i18n'
+import { ActivityLine } from './ActivityLine'
 import { ApprovalCard } from './ApprovalCard'
 import { ClarifyCard } from './ClarifyCard'
 import { ChatChips, Composer } from './Composer'
@@ -68,13 +69,14 @@ export function ChatPane({
   const arrival = useArrival(loading)
   if (loading) return <ChatSkeleton label={t('chat.loading')} />
 
-  const items = chat.transcript?.items ?? []
+  const running = chat.transcript?.running === true
+  const { items, activity } = turnView(chat.transcript?.items ?? [], running)
   const prompts = chat.transcript?.prompts ?? []
   const loadImage = (path: string): Promise<string> => actions.mediaUrl(bot.name, path)
-  const announced = announcement(items, prompts.length, chat.transcript?.running === true)
+  const announced = announcement(items, prompts.length, running)
   const target: ComposerTarget = {
     placeholder: t('chat.placeholder').replace('{name}', title),
-    running: chat.transcript?.running === true,
+    running,
     send: ({ text, files }) =>
       actions.send(bot.name, {
         text,
@@ -93,6 +95,11 @@ export function ChatPane({
       <div className={cn('flex min-h-0 flex-1 flex-col', arrival)}>
         {items.length || prompts.length ? (
           <Transcript items={items} loadImage={loadImage}>
+            {activity && (
+              <li>
+                <ActivityLine bot={bot} activity={activity} />
+              </li>
+            )}
             {prompts.map((prompt) => (
               <li key={prompt.id}>
                 {prompt.kind === 'clarify' ? (
@@ -135,12 +142,6 @@ export function ChatPane({
           </div>
         )}
       </Reveal>
-      {target.running && !prompts.length && (
-        <p className="mx-auto flex w-full max-w-3xl items-center gap-2 px-6 pb-2 text-sm text-muted-foreground">
-          <BotAvatar bot={bot} place="row" speaking />
-          {t('chat.typing').replace('{name}', title)}
-        </p>
-      )}
       {/* Always mounted, so a screen reader hears each change: typing, a card, a reply. */}
       <p className="sr-only" role="status">
         {announced && t(announced).replace('{name}', title)}
@@ -165,7 +166,11 @@ export function ChatPane({
 }
 
 // What the status line says for the newest turn; the first render's text is never read out.
-function announcement(items: ChatItem[], prompts: number, running: boolean): TranslationKey | null {
+function announcement(
+  items: MessageItem[],
+  prompts: number,
+  running: boolean
+): TranslationKey | null {
   if (prompts) return 'chat.waiting'
   if (running) return 'chat.typing'
   const last = items.at(-1)

@@ -16,8 +16,8 @@ Check pin/unpin (folder counts change), four-pin layout, menu and drag reorderin
 and cycle prevention, hide/restore, folder creation, profile deletion confirmation, bot and
 room selection, unread clearing, and keyboard navigation through menus and dialogs.
 The chat side runs a scripted bot per profile (`fixtureChat.ts`): Talyx has a history with a
-delegation line, Analyst one that ends on a question; any other bot starts empty. A message containing "clarify" shows a two-question
-card, "approve" an approval card, "ask" a delegation line before the reply; anything else streams
+delegation (its tool line is hidden), Analyst one that ends on a question; any other bot starts empty. A message containing "clarify" shows a two-question
+card, "approve" an approval card, "ask" the activity line on "Asking Analyst" before the reply; anything else streams
 a short markdown reply. Check streaming, the cards, Stop, the model and reasoning chips, images,
 scroll-to-bottom and unread marks on a bot you leave while it replies.
 
@@ -36,7 +36,8 @@ every block as offline. Check the pinned tiles blink, bob and lift on hover, the
 turns toward the cursor, the Look tab (shapes, colours, Match the name, the face switch, the
 preview's crossfade) and that Save updates every size at once. A Look save or a new bot exports
 the block through `profiles.set_asset`; the newest export shows under the roster as a 1024px PNG.
-A bot that is answering shows "<name> is typing" with its block bobbing; in a room, each answering
+A bot that is answering shows one activity line with its block bobbing ("<name> is typing" before
+its first tool, then the newest tool, the tool count and the time taken); in a room, each answering
 member's block bobs beside "Answering:" and in the name pill.
 
 Rooms (`fixtureRooms.ts`): Team discussion has a history with three senders; Archived plans has

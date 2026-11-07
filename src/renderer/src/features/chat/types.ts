@@ -25,6 +25,9 @@ export type ChatItem =
   // A line the engine wrote into the chat (a finished job, a model switch), not a message.
   | { kind: 'notice'; id: string; text: string }
 
+/** What the chat shows as a message: everything but a tool call. */
+export type MessageItem = Exclude<ChatItem, { kind: 'tool' }>
+
 export interface ClarifyQuestion {
   qid: string
   question: string

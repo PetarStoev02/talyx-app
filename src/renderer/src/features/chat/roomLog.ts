@@ -1,5 +1,5 @@
 import type { TranslationKey } from '@shared/lib/i18n'
-import type { ChatItem, RoomAttachment, RoomEvent } from './types'
+import type { MessageItem, RoomAttachment, RoomEvent } from './types'
 
 // Log rows that say a turn or the room did not go as planned; the rest of the bookkeeping
 // (settled turns, renames, finished rounds) stays out of the transcript.
@@ -19,7 +19,7 @@ export interface RoomLabels {
 }
 
 /** The room's log as the chat transcript's items: each bot reply names its sender. */
-export function roomItems(events: RoomEvent[], labels: RoomLabels): ChatItem[] {
+export function roomItems(events: RoomEvent[], labels: RoomLabels): MessageItem[] {
   return events.flatMap((event) => roomItem(event, labels))
 }
 
@@ -38,7 +38,7 @@ export function parseAttachmentKey(
   return eventId && attachmentId && kind ? { eventId, attachmentId, kind } : null
 }
 
-function roomItem(event: RoomEvent, { memberOf, t }: RoomLabels): ChatItem[] {
+function roomItem(event: RoomEvent, { memberOf, t }: RoomLabels): MessageItem[] {
   const id = event.event_id || String(event.seq)
   const text = typeof event.payload.text === 'string' ? event.payload.text : ''
   if (event.kind === 'message.user') {
