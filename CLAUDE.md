@@ -21,7 +21,7 @@ missing, a first-run setup (install the engine, a provider, a first bot), a foot
 custom endpoints, Talyx's default model; the engine: where it is, check again, choose its file, a
 debug console that sends "ping" and prints raw session events; launch at login; appearance).
 
-- **Version:** 1.0.0
+- **Version:** 1.0.1
 - **Stack:** Electron 44 + React 19 + TypeScript 5.9 + TailwindCSS 4
 - **State:** Zustand | **UI:** shadcn/ui (New York) | **Settings:** JSON file
 - **Build:** electron-vite + electron-builder | **Tests:** Vitest
