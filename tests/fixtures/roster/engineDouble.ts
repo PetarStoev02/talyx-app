@@ -123,14 +123,27 @@ const jobs: Record<string, Record<string, unknown>[]> = {
     {
       job_id: 'cash',
       name: 'Monday cash position',
+      prompt: 'Post the cash position across our accounts and flag anything below the floor.',
       schedule: '0 8 * * 1',
       deliver: 'bot-chat',
       enabled: true,
-      state: 'scheduled'
+      state: 'scheduled',
+      next_run_at: '2026-11-09T08:00:00+00:00',
+      last_run_at: '2026-11-02T08:00:00+00:00',
+      last_status: 'ok',
+      runs: [
+        {
+          started_at: 1_793_606_400,
+          is_active: false,
+          end_reason: 'cron_complete',
+          title: 'Cash run'
+        }
+      ]
     },
     {
       job_id: 'invoices',
       name: 'Invoice chase',
+      prompt: 'List the invoices more than 30 days overdue and draft a reminder for each.',
       schedule: '0 17 * * *',
       enabled: false,
       state: 'paused'
@@ -236,8 +249,44 @@ const request: RosterRequest = async (profile, method, params) => {
   throw new Error('Unsupported fixture operation')
 }
 
-// A bot's model pin; every other call is the Providers page's double.
+// As the engine's cron REST that the routine dialog reads and writes.
+function cronRest(request: EngineApiRequest): unknown {
+  const url = new URL(request.path, 'http://engine')
+  const profile = url.searchParams.get('profile') ?? 'default'
+  const [id, action] = url.pathname
+    .replace('/api/cron/jobs/', '')
+    .split('/')
+    .map(decodeURIComponent)
+  const job = jobs[profile]?.find((item) => item.job_id === id)
+  if (!job) throw new Error('Job not found')
+  if (action === 'runs') return { runs: structuredClone(job.runs ?? []), limit: 5 }
+  if (action === 'trigger') {
+    job.last_run_at = new Date().toISOString()
+    job.last_status = 'ok'
+    const run = { started_at: Date.now() / 1000, is_active: false, end_reason: 'cron_complete' }
+    job.runs = [{ ...run, title: `${job.name} run` }, ...((job.runs as unknown[]) ?? [])]
+  }
+  if (request.method === 'PUT')
+    Object.assign(job, (request.body as { updates: Record<string, string> }).updates)
+  return {
+    id: job.job_id,
+    name: job.name,
+    prompt: job.prompt ?? '',
+    schedule: { kind: 'cron', expr: job.schedule, display: job.schedule },
+    schedule_display: job.schedule,
+    deliver: job.deliver ?? 'local',
+    enabled: job.enabled,
+    state: job.state,
+    next_run_at: job.next_run_at ?? null,
+    last_run_at: job.last_run_at ?? null,
+    last_status: job.last_status ?? null,
+    last_error: null
+  }
+}
+
+// A bot's model pin and a routine's details; every other call is the Providers page's double.
 async function http<T>(request: EngineApiRequest): Promise<T> {
+  if (request.path.startsWith('/api/cron/jobs/')) return cronRest(request) as T
   if (!request.path.startsWith('/api/model/set')) return providers.http<T>(request)
   const body = request.body as {
     provider: string
