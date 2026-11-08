@@ -1,17 +1,28 @@
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CATALOG_URL } from '../../../src/main/infrastructure/modules/catalog'
+import { CATALOG_URL, MAX_BUNDLE_BYTES } from '../../../src/main/infrastructure/modules/catalog'
 import {
   createModuleHost,
   type ModuleHost
 } from '../../../src/main/infrastructure/modules/moduleHost'
 import type { ModulesState } from '../../../src/shared/modules'
-import { LICENSE, helloBundle, issueKey, newSigner, signBundle, type TestSigner } from './moduleKit'
+import {
+  LICENSE,
+  helloBundle,
+  helloRuns,
+  issueKey,
+  newSigner,
+  resetHelloRuns,
+  signBundle,
+  type TestSigner
+} from './moduleKit'
 
 const BUNDLE_URL = 'https://downloads.example/hello-1.0.0.json'
+const NOON = Date.parse('2026-11-08T12:00:00Z')
+const HOUR_MS = 60 * 60_000
 
 describe('module host', () => {
   let root: string
@@ -20,6 +31,9 @@ describe('module host', () => {
   let published: ModulesState[]
   let files: Map<string, Buffer | object>
   let host: ModuleHost
+  let clock: number
+  /** Set to hold the bundle download until the test releases it. */
+  let heldDownload: Promise<void> | null
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'talyx-modules-'))
@@ -27,11 +41,16 @@ describe('module host', () => {
     savedKey = null
     published = []
     files = new Map()
+    clock = NOON
+    heldDownload = null
     host = newHost()
-    ;(globalThis as { helloStopped?: number }).helloStopped = 0
+    resetHelloRuns()
   })
 
-  afterEach(() => rm(root, { recursive: true, force: true }))
+  afterEach(async () => {
+    vi.useRealTimers()
+    await rm(root, { recursive: true, force: true })
+  })
 
   function newHost(): ModuleHost {
     return createModuleHost({
@@ -42,11 +61,12 @@ describe('module host', () => {
       engineHttp: async () => null,
       log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
       publish: (state) => published.push(state),
-      now: () => Date.parse('2026-11-08T12:00:00Z')
+      now: () => clock
     })
   }
 
   const fakeFetch = (async (url: string) => {
+    if (url === BUNDLE_URL && heldDownload) await heldDownload
     const body = files.get(url)
     if (body === undefined) return new Response(null, { status: 404, statusText: 'Not Found' })
     return new Response(Buffer.isBuffer(body) ? new Uint8Array(body) : JSON.stringify(body))
@@ -177,7 +197,7 @@ describe('module host', () => {
       await installHello()
       publish(helloBundle({ version: '1.1.0' }))
       const state = await host.install('hello')
-      expect((globalThis as { helloStopped?: number }).helloStopped).toBe(1)
+      expect(helloRuns().stopped).toBe(1)
       expect(state.modules[0]).toMatchObject({ version: '1.1.0', status: 'running' })
     })
 
@@ -200,7 +220,123 @@ describe('module host', () => {
     })
   })
 
+  describe('given changes that overlap', () => {
+    it('should stop a module whose install finished after the license was removed', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer))
+      let release = (): void => undefined
+      heldDownload = new Promise((resolve) => (release = resolve))
+      const installing = host.install('hello')
+      const removing = host.deactivate()
+      release()
+      await Promise.all([installing, removing])
+      expect(host.state()).toEqual({ license: null, modules: [] })
+      expect(helloRuns()).toEqual({ started: 1, stopped: 1 })
+      await expect(host.invoke('hello', 'greet', { name: 'x' })).rejects.toThrow()
+    })
+
+    it('should run two installs of one module one after the other', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer))
+      await Promise.all([host.install('hello'), host.install('hello')])
+      expect(host.state().modules).toMatchObject([{ id: 'hello', status: 'running' }])
+      expect(helloRuns()).toEqual({ started: 2, stopped: 1 })
+    })
+
+    it('should stop a module that a new key no longer unlocks', async () => {
+      await installHello()
+      const state = await host.activate(issueKey(signer, { ...LICENSE, modules: [] }))
+      expect(state.modules).toEqual([])
+      expect(helloRuns().stopped).toBe(1)
+      expect(host.file('hello', 'renderer.js')).toBeNull()
+    })
+  })
+
+  describe('given a key with an end date', () => {
+    it('should stop its modules at the end of the last day while Talyx runs', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      publish(helloBundle())
+      await host.activate(issueKey(signer, { ...LICENSE, expires: '2026-11-08' }))
+      await host.install('hello')
+      clock = NOON + 12 * HOUR_MS
+      await vi.advanceTimersByTimeAsync(12 * HOUR_MS)
+      expect(host.state()).toEqual({ license: null, modules: [] })
+      expect(published.at(-1)).toEqual({ license: null, modules: [] })
+      expect(helloRuns().stopped).toBe(1)
+      await expect(host.install('hello')).rejects.toThrow('No license is active.')
+    })
+  })
+
+  describe('given a module that misbehaves', () => {
+    it('should give up on a module that never finishes starting and keep going', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      const main = 'module.exports = { activate: () => new Promise(() => {}) }'
+      publish(helloBundle({ files: { 'renderer.js': '', 'main.js': main } }))
+      await host.activate(issueKey(signer))
+      let settled = false
+      const installing = host.install('hello').finally(() => (settled = true))
+      while (!settled) await vi.advanceTimersByTimeAsync(1_000)
+      expect((await installing).modules[0]).toMatchObject({
+        status: 'failed',
+        problem: 'The module did not start within 10 seconds.'
+      })
+    })
+
+    it('should serve only the module page files, never inherited names', async () => {
+      await installHello()
+      for (const name of ['constructor', 'toString', '__proto__', 'main.js'])
+        expect(host.file('hello', name)).toBeNull()
+    })
+
+    it('should refuse a download larger than any module', async () => {
+      publish(helloBundle())
+      files.set(BUNDLE_URL, Buffer.alloc(MAX_BUNDLE_BYTES + 1))
+      await host.activate(issueKey(signer))
+      await expect(host.install('hello')).rejects.toThrow(
+        'The module download is larger than any module can be.'
+      )
+    })
+
+    it('should refuse an older signed version over a newer install', async () => {
+      publish(helloBundle({ version: '1.2.0' }))
+      await host.activate(issueKey(signer))
+      await host.install('hello')
+      publish(helloBundle({ version: '1.1.9' }))
+      await expect(host.install('hello')).rejects.toThrow(
+        'The download is older than the installed version.'
+      )
+      expect(host.state().modules[0]).toMatchObject({ version: '1.2.0', status: 'running' })
+    })
+  })
+
   describe('at the next start', () => {
+    it('should show an installed module with a missing signature as failed', async () => {
+      await installHello()
+      await rm(join(root, 'modules', 'hello', 'bundle.sig'))
+      const restarted = newHost()
+      await restarted.start()
+      expect(restarted.state().modules[0]).toMatchObject({
+        status: 'failed',
+        problem: 'The installed module is incomplete (ENOENT).'
+      })
+    })
+
+    it('should put back a version left aside by an update that was cut short', async () => {
+      await installHello()
+      await rename(join(root, 'modules', 'hello'), join(root, 'modules', 'hello.old'))
+      const restarted = newHost()
+      await restarted.start()
+      expect(restarted.state().modules[0]).toMatchObject({ id: 'hello', status: 'running' })
+    })
+
+    it('should announce what it started, since the window opens before modules do', async () => {
+      await installHello()
+      published = []
+      const restarted = newHost()
+      await restarted.start()
+      expect(published).toEqual([restarted.state()])
+    })
+
     it('should run the installed modules the saved license unlocks', async () => {
       await installHello()
       const restarted = newHost()

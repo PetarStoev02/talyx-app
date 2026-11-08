@@ -59,6 +59,12 @@ function App(): React.JSX.Element {
       <AgentsPage chat={chat} roster={rosterBackend} />
     )
 
+  // A module page whose module stopped, expired or was removed hands back to the agents, so a
+  // later key does not jump straight to it.
+  useEffect(() => {
+    if (moduleIdOf(currentView) && !openModule) navigate('agents')
+  }, [currentView, openModule, navigate])
+
   useEffect(() => {
     useSetup
       .getState()

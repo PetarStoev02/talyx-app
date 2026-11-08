@@ -57,10 +57,19 @@ export function readLicense(key: string, keys: SigningKeys, now: number): Licens
   const parsed = LicensePayloadSchema.safeParse(parseJson(bytes))
   if (!parsed.success) throw new LicenseError('This key is not valid.')
   const { id, name, modules, expires } = parsed.data
-  // The whole day of `expires` still counts.
-  if (expires !== null && now >= Date.parse(expires) + DAY_MS)
-    throw new LicenseError('This key has expired.')
-  return { id, name, modules, expires }
+  const license = { id, name, modules, expires }
+  if (isExpired(license, now)) throw new LicenseError('This key has expired.')
+  return license
+}
+
+/** The whole day of `expires` still counts. */
+export function isExpired(license: LicenseSummary, now: number): boolean {
+  return license.expires !== null && now >= expiryTime(license.expires)
+}
+
+/** The moment a license stops working: the end of its `expires` day (UTC). */
+export function expiryTime(expires: string): number {
+  return Date.parse(expires) + DAY_MS
 }
 
 const DAY_MS = 24 * 60 * 60_000

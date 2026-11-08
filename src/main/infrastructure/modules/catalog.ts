@@ -6,6 +6,8 @@ export const CATALOG_URL =
   'https://github.com/PetarStoev02/talyx-modules-dist/releases/latest/download/index.json'
 
 const FETCH_TIMEOUT_MS = 30_000
+/** Far above any real module; stops a broken or hostile server from filling memory. */
+export const MAX_BUNDLE_BYTES = 20 * 1024 * 1024
 
 const CatalogEntrySchema = z.object({
   id: ModuleIdSchema,
@@ -32,9 +34,16 @@ export async function fetchCatalog(fetchFn: typeof fetch): Promise<CatalogEntry[
   return parsed.data.modules
 }
 
-export async function fetchBytes(fetchFn: typeof fetch, url: string): Promise<Buffer> {
+export async function fetchBundleBytes(fetchFn: typeof fetch, url: string): Promise<Buffer> {
   const response = await fetchOk(fetchFn, url)
-  return Buffer.from(await response.arrayBuffer())
+  if (Number(response.headers.get('content-length') ?? 0) > MAX_BUNDLE_BYTES) throw tooLarge()
+  const bytes = Buffer.from(await response.arrayBuffer())
+  if (bytes.length > MAX_BUNDLE_BYTES) throw tooLarge()
+  return bytes
+}
+
+function tooLarge(): CatalogError {
+  return new CatalogError('The module download is larger than any module can be.')
 }
 
 async function fetchJson(fetchFn: typeof fetch, url: string): Promise<unknown> {

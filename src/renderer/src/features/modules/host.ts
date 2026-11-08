@@ -13,7 +13,7 @@ export interface ModulePageProps {
  * The page's half of the contract. A module's renderer.js imports React from here instead of
  * bundling its own, so its components run on Talyx's React (two copies break hooks).
  */
-export interface ModuleHost {
+export interface ModulePageHost {
   apiVersion: number
   React: typeof React
   jsxRuntime: typeof jsxRuntime
@@ -21,7 +21,7 @@ export interface ModuleHost {
 
 declare global {
   interface Window {
-    talyxModuleHost?: ModuleHost
+    talyxModuleHost?: ModulePageHost
   }
 }
 

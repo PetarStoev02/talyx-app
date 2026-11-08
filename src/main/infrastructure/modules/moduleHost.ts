@@ -1,4 +1,3 @@
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { compileFunction } from 'node:vm'
 import {
@@ -10,15 +9,25 @@ import {
   type ModulesState
 } from '../../../shared/modules'
 import { ModuleActionSchema } from '../ipc/validation'
-import { fetchBytes, fetchCatalog } from './catalog'
-import { readBundle, readLicense, type ModuleBundle, type SigningKeys } from './signing'
+import { fetchBundleBytes, fetchCatalog } from './catalog'
+import { readInstalled, remove, stage, swapIn, type InstalledFiles } from './moduleFiles'
+import {
+  expiryTime,
+  isExpired,
+  readBundle,
+  readLicense,
+  type ModuleBundle,
+  type SigningKeys
+} from './signing'
 
-const BUNDLE_FILE = 'bundle.json'
-const SIGNATURE_FILE = 'bundle.sig'
 const CONTENT_TYPES: Record<string, string> = {
   'renderer.js': 'text/javascript',
   'style.css': 'text/css'
 }
+/** A module's activate or deactivate past this counts as failed, so one module never stalls the rest. */
+const LIFECYCLE_TIMEOUT_MS = 10_000
+/** setTimeout's ceiling (about 24.8 days); a later expiry is looked at again then. */
+const MAX_TIMER_MS = 2 ** 31 - 1
 
 export class ModuleError extends Error {
   override name = 'ModuleError'
@@ -73,56 +82,68 @@ interface Loaded {
 export type ModuleHost = ReturnType<typeof createModuleHost>
 
 /**
- * Installs, loads and runs modules. Nothing runs without a valid license, and nothing runs that
- * the module key did not sign: the signature is checked on install and again on every load, so a
- * file changed or dropped into userData by anything else is refused.
+ * Installs, loads and runs modules. Nothing runs without a valid, unexpired license, and nothing
+ * runs that the module key did not sign: the signature is checked on install and again on every
+ * load, so a file changed or dropped into userData by anything else is refused.
  */
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function createModuleHost(deps: ModuleHostDeps) {
   let license: LicenseSummary | null = null
+  let expiryTimer: ReturnType<typeof setTimeout> | null = null
   const loaded = new Map<string, Loaded>()
+  // Every change to the license or to what is installed runs here, one after another, so an
+  // install can never interleave with Remove license, another key or a second install.
+  let queue: Promise<unknown> = Promise.resolve()
 
   function state(): ModulesState {
-    if (!license) return { license: null, modules: [] }
-    const modules = license.modules.flatMap((id) => {
+    const current = activeLicense()
+    if (!current) return { license: null, modules: [] }
+    const modules = current.modules.flatMap((id) => {
       const module = loaded.get(id)
       if (!module) return []
       const { name, version, status, problem, bundle } = module
       return [{ id, name, version, status, problem, styled: !!bundle?.files['style.css'] }]
     })
-    return { license, modules }
+    return { license: current, modules }
   }
 
-  /** At startup: the saved license, then every installed module it unlocks. */
-  async function start(): Promise<void> {
-    const key = deps.licenseKey.read()
-    if (!key) return
-    try {
-      license = readLicense(key, deps.keys, deps.now())
-    } catch (error) {
-      // An expired key stays saved: Settings then has nothing to show, and a new key replaces it.
-      deps.log.warn('[Modules] The saved license is not valid:', errorMessage(error))
-      return
-    }
-    await loadLicensed()
+  /** After startup, with the window already open: the saved license and the modules it unlocks. */
+  function start(): Promise<ModulesState> {
+    return serial(async () => {
+      const key = deps.licenseKey.read()
+      if (!key) return state()
+      try {
+        setLicense(readLicense(key, deps.keys, deps.now()))
+      } catch (error) {
+        // An expired key stays saved: Settings then has nothing to show, and a new key replaces it.
+        deps.log.warn('[Modules] The saved license is not valid:', errorMessage(error))
+        return state()
+      }
+      await loadLicensed()
+      return changed()
+    })
   }
 
-  async function activate(key: string): Promise<ModulesState> {
-    const next = readLicense(key, deps.keys, deps.now())
-    deps.licenseKey.write(key.trim())
-    await unloadAll()
-    license = next
-    deps.log.info(`[Modules] License ${next.id} activated`)
-    await loadLicensed()
-    return changed()
+  function activate(key: string): Promise<ModulesState> {
+    return serial(async () => {
+      const next = readLicense(key, deps.keys, deps.now())
+      deps.licenseKey.write(key.trim())
+      await unloadAll()
+      setLicense(next)
+      deps.log.info(`[Modules] License ${next.id} activated`)
+      await loadLicensed()
+      return changed()
+    })
   }
 
   /** Forgets the license; installed files stay, so the same key later needs no download. */
-  async function deactivate(): Promise<ModulesState> {
-    await unloadAll()
-    license = null
-    deps.licenseKey.write(null)
-    return changed()
+  function deactivate(): Promise<ModulesState> {
+    return serial(async () => {
+      await unloadAll()
+      setLicense(null)
+      deps.licenseKey.write(null)
+      return changed()
+    })
   }
 
   async function available(): Promise<AvailableModule[]> {
@@ -139,38 +160,34 @@ export function createModuleHost(deps: ModuleHostDeps) {
   }
 
   /** Install or update: download, check the signature, swap the folder in whole, load. */
-  async function install(id: string): Promise<ModulesState> {
-    if (!requireLicense().modules.includes(id))
-      throw new ModuleError('Your license does not include this module.')
-    const entry = (await fetchCatalog(deps.fetch)).find((candidate) => candidate.id === id)
-    if (!entry) throw new ModuleError('This module is not available for download.')
-    if (entry.apiVersion !== MODULE_API_VERSION)
-      throw new ModuleError('This module needs a different version of Talyx.')
-    const bytes = await fetchBytes(deps.fetch, entry.url)
-    const bundle = readBundle(bytes, entry.signature, deps.keys)
-    if (bundle.id !== id) throw new ModuleError('The download is a different module.')
-
-    const dir = moduleDir(id)
-    const staging = `${dir}.tmp`
-    await rm(staging, { recursive: true, force: true })
-    await mkdir(staging, { recursive: true })
-    await writeFile(join(staging, BUNDLE_FILE), bytes)
-    await writeFile(join(staging, SIGNATURE_FILE), entry.signature)
-    await unload(id)
-    // A crash between these two leaves no module, never half of one.
-    await rm(dir, { recursive: true, force: true })
-    await rename(staging, dir)
-    deps.log.info(`[Modules] Installed ${id} ${bundle.version}`)
-    await load(id)
-    return changed()
+  function install(id: string): Promise<ModulesState> {
+    return serial(async () => {
+      if (!requireLicense().modules.includes(id))
+        throw new ModuleError('Your license does not include this module.')
+      const { files, bundle } = await download(id)
+      const dir = moduleDir(id)
+      await stage(dir, files)
+      await unload(id)
+      try {
+        await swapIn(dir)
+        deps.log.info(`[Modules] Installed ${id} ${bundle.version}`)
+      } finally {
+        // The new version, or the old one back after a failed swap.
+        await load(id)
+        deps.publish(state())
+      }
+      return state()
+    })
   }
 
   /** Removes the module's code; its data folder stays, so a reinstall picks up where it was. */
-  async function uninstall(id: string): Promise<ModulesState> {
-    await unload(id)
-    await rm(moduleDir(id), { recursive: true, force: true })
-    deps.log.info(`[Modules] Uninstalled ${id}`)
-    return changed()
+  function uninstall(id: string): Promise<ModulesState> {
+    return serial(async () => {
+      await unload(id)
+      await remove(moduleDir(id))
+      deps.log.info(`[Modules] Uninstalled ${id}`)
+      return changed()
+    })
   }
 
   async function invoke(id: string, name: string, input: unknown): Promise<unknown> {
@@ -181,72 +198,121 @@ export function createModuleHost(deps: ModuleHostDeps) {
 
   /** A running module's file for the page, or null (unknown module, file or not running). */
   function file(id: string, name: string): { body: string; type: string } | null {
-    const type = CONTENT_TYPES[name]
-    const body = running(id)?.bundle?.files[name as keyof ModuleBundle['files']]
-    return type && body !== undefined ? { body, type } : null
+    const files = running(id)?.bundle?.files
+    if (!files || !Object.hasOwn(CONTENT_TYPES, name) || !Object.hasOwn(files, name)) return null
+    const body = files[name as keyof ModuleBundle['files']]
+    return body === undefined ? null : { body, type: CONTENT_TYPES[name]! }
+  }
+
+  function serial<T>(change: () => Promise<T>): Promise<T> {
+    const run = queue.then(change)
+    queue = run.catch(() => undefined)
+    return run
+  }
+
+  function activeLicense(): LicenseSummary | null {
+    return license && !isExpired(license, deps.now()) ? license : null
+  }
+
+  function requireLicense(): LicenseSummary {
+    const current = activeLicense()
+    if (!current) throw new ModuleError('No license is active.')
+    return current
   }
 
   function running(id: string): Loaded | null {
     const module = loaded.get(id)
-    return license?.modules.includes(id) && module?.status === 'running' ? module : null
+    return activeLicense()?.modules.includes(id) && module?.status === 'running' ? module : null
   }
 
-  function requireLicense(): LicenseSummary {
-    if (!license) throw new ModuleError('No license is active.')
-    return license
+  function setLicense(next: LicenseSummary | null): void {
+    license = next
+    watchExpiry(next?.expires ?? null)
+  }
+
+  /** At the end of the key's last day its modules stop, without waiting for a restart. */
+  function watchExpiry(expires: string | null): void {
+    if (expiryTimer) clearTimeout(expiryTimer)
+    expiryTimer = null
+    if (expires === null) return
+    const wait = expiryTime(expires) - deps.now()
+    expiryTimer = setTimeout(
+      () => (wait > MAX_TIMER_MS ? watchExpiry(expires) : void serial(expire)),
+      Math.min(Math.max(wait, 0), MAX_TIMER_MS)
+    )
+    expiryTimer.unref?.()
+  }
+
+  async function expire(): Promise<void> {
+    if (!license || !isExpired(license, deps.now())) return
+    deps.log.info(`[Modules] License ${license.id} expired`)
+    await unloadAll()
+    setLicense(null)
+    changed()
+  }
+
+  async function download(id: string): Promise<{ files: InstalledFiles; bundle: ModuleBundle }> {
+    const entry = (await fetchCatalog(deps.fetch)).find((candidate) => candidate.id === id)
+    if (!entry) throw new ModuleError('This module is not available for download.')
+    if (entry.apiVersion !== MODULE_API_VERSION)
+      throw new ModuleError('This module needs a different version of Talyx.')
+    const bytes = await fetchBundleBytes(deps.fetch, entry.url)
+    const bundle = readBundle(bytes, entry.signature, deps.keys)
+    if (bundle.id !== id) throw new ModuleError('The download is a different module.')
+    // The signature proves who built a bundle, not that it is current: an old signed one served
+    // again must not replace a newer install.
+    const installed = loaded.get(id)?.bundle?.version
+    if (installed && isOlderVersion(bundle.version, installed))
+      throw new ModuleError('The download is older than the installed version.')
+    return { files: { bytes, signature: entry.signature }, bundle }
   }
 
   async function loadLicensed(): Promise<void> {
-    for (const id of license?.modules ?? []) await load(id)
+    for (const id of activeLicense()?.modules ?? []) await load(id)
   }
 
   async function load(id: string): Promise<void> {
-    const dir = moduleDir(id)
-    let bytes: Buffer
-    let signature: string
+    if (!activeLicense()?.modules.includes(id)) return
+    let files: InstalledFiles | null
     try {
-      bytes = await readFile(join(dir, BUNDLE_FILE))
-      signature = await readFile(join(dir, SIGNATURE_FILE), 'utf8')
-    } catch {
-      // Not installed: a licensed module the user has not installed yet.
+      files = await readInstalled(moduleDir(id))
+    } catch (error) {
+      loaded.set(id, { ...blankModule(id), problem: errorMessage(error) })
+      deps.log.error(`[Modules] ${id} could not be read:`, error)
       return
     }
-    const module: Loaded = {
-      name: id,
-      version: '',
-      status: 'failed',
-      problem: null,
-      bundle: null,
-      handlers: new Map(),
-      deactivate: null
-    }
-    loaded.set(id, module)
+    if (files) loaded.set(id, await startModule(id, files))
+  }
+
+  async function startModule(id: string, files: InstalledFiles): Promise<Loaded> {
+    const module = blankModule(id)
     try {
-      const bundle = readBundle(bytes, signature, deps.keys)
+      const bundle = readBundle(files.bytes, files.signature, deps.keys)
       if (bundle.id !== id) throw new ModuleError('The installed files are a different module.')
       Object.assign(module, { bundle, name: bundle.name, version: bundle.version })
-      if (bundle.apiVersion !== MODULE_API_VERSION) {
-        module.status = 'incompatible'
-        module.problem = 'This version needs a different version of Talyx.'
-        return
-      }
+      if (bundle.apiVersion !== MODULE_API_VERSION)
+        return {
+          ...module,
+          status: 'incompatible',
+          problem: 'This version needs a different version of Talyx.'
+        }
       const main = runMain(id, bundle)
       module.deactivate = main.deactivate ?? null
-      await main.activate?.(contextFor(id, module))
+      await withinTimeout(() => main.activate?.(contextFor(id, module)), 'start')
       module.status = 'running'
       deps.log.info(`[Modules] Started ${id} ${bundle.version}`)
     } catch (error) {
-      module.status = 'failed'
       module.problem = errorMessage(error)
       deps.log.error(`[Modules] ${id} did not start:`, error)
     }
+    return module
   }
 
   async function unload(id: string): Promise<void> {
     const module = loaded.get(id)
     loaded.delete(id)
     try {
-      await module?.deactivate?.()
+      await withinTimeout(() => module?.deactivate?.(), 'stop')
     } catch (error) {
       // Its handlers are gone either way; a failed cleanup must not block an update.
       deps.log.warn(`[Modules] ${id} did not stop cleanly:`, error)
@@ -281,6 +347,42 @@ export function createModuleHost(deps: ModuleHostDeps) {
   }
 
   return { state, start, activate, deactivate, available, install, uninstall, invoke, file }
+}
+
+function blankModule(id: string): Loaded {
+  return {
+    name: id,
+    version: '',
+    status: 'failed',
+    problem: null,
+    bundle: null,
+    handlers: new Map(),
+    deactivate: null
+  }
+}
+
+/** A module's own start or stop, given up on after LIFECYCLE_TIMEOUT_MS. */
+async function withinTimeout(step: () => unknown, verb: 'start' | 'stop'): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(
+      () => reject(new ModuleError(`The module did not ${verb} within 10 seconds.`)),
+      LIFECYCLE_TIMEOUT_MS
+    )
+  })
+  try {
+    await Promise.race([Promise.resolve().then(step), timeout])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** Compares x.y.z; a pre-release suffix is ignored, so 1.0.0-beta counts as 1.0.0. */
+function isOlderVersion(candidate: string, installed: string): boolean {
+  const parts = (version: string): number[] => version.split('-')[0]!.split('.').map(Number)
+  const [a, b] = [parts(candidate), parts(installed)]
+  const differs = a.findIndex((part, index) => part !== b[index])
+  return differs !== -1 && a[differs]! < b[differs]!
 }
 
 /**

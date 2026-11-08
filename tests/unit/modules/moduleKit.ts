@@ -37,6 +37,7 @@ export const HELLO_MAIN = `
 const { join } = require('node:path')
 module.exports = {
   activate(ctx) {
+    globalThis.helloStarted = (globalThis.helloStarted ?? 0) + 1
     ctx.handle('greet', (input) => 'hello ' + input.name + ' from ' + join('a', 'b'))
   },
   deactivate() {
@@ -62,4 +63,14 @@ export function signBundle(
 ): { bytes: Buffer; signature: string } {
   const bytes = Buffer.from(JSON.stringify(bundle))
   return { bytes, signature: sign(null, bytes, signer.modulePrivate).toString('base64url') }
+}
+
+/** How often the hello module started and stopped in this test. */
+export function helloRuns(): { started: number; stopped: number } {
+  const counters = globalThis as { helloStarted?: number; helloStopped?: number }
+  return { started: counters.helloStarted ?? 0, stopped: counters.helloStopped ?? 0 }
+}
+
+export function resetHelloRuns(): void {
+  Object.assign(globalThis, { helloStarted: 0, helloStopped: 0 })
 }

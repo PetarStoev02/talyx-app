@@ -3,6 +3,7 @@ import { Menu, type MenuItemConstructorOptions } from 'electron'
 /** A dev run's View menu: reload and dev tools. */
 export const DEV_VIEW_ITEMS: MenuItemConstructorOptions[] = [
   { role: 'reload' },
+  { role: 'forceReload' },
   { role: 'toggleDevTools' },
   { type: 'separator' }
 ]

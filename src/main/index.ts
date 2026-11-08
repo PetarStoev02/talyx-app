@@ -312,10 +312,6 @@ app
     registerIpc()
     const launchedBy = activationRequestIn(process.argv)
     if (launchedBy) requestActivation(launchedBy)
-    // A module that fails is marked failed inside; nothing here may keep the window away.
-    await modules
-      .start()
-      .catch((error: unknown) => log.error('[Main] Modules did not start', error))
     // A theme switch (in Talyx or, on System, in the OS) repaints the window's ground too.
     nativeTheme.on('updated', () => {
       if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setBackgroundColor(groundColor())
@@ -323,6 +319,9 @@ app
     syncNativeTheme(settingsStore.store.theme)
     await adoptLoginItemState()
     showMainWindow(splash)
+    // Not awaited: modules run their own start code, which must never keep the window away. The
+    // page reads the modules once they announce themselves.
+    modules.start().catch((error: unknown) => log.error('[Main] Modules did not start', error))
     scheduleUpdateChecks()
 
     app.on('activate', () => {
