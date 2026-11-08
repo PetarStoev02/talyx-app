@@ -13,7 +13,7 @@ import type {
   OAuthSubmitResponse
 } from '@shared/engine/types'
 import type { TranslationKey } from '@shared/lib/i18n'
-import { AppError } from '@shared/lib/problem'
+import { AppError, isTimeout } from '@shared/lib/problem'
 
 export type { CustomEndpoint, OAuthStartResponse }
 
@@ -89,6 +89,8 @@ export class ProvidersError extends AppError {
 // The engine holds a long-poll this long at most, and answers `pending` when it runs out.
 const SIGN_IN_WAIT_SECONDS = 25
 const SIGN_IN_POLL_TIMEOUT_MS = 45_000
+// Starting a sign-in right after the gateway starts can take longer than the usual 30 s.
+const SIGN_IN_START_TIMEOUT_MS = 60_000
 const KEY_NAME = /(?:_API_KEY|_TOKEN|_KEY)$/
 const REDACTED = /^«redacted:(.+)»$/
 
@@ -293,14 +295,18 @@ export async function startSignIn(
     path: scoped(`/api/providers/oauth/${encodeURIComponent(providerId)}/start`, profile),
     method: 'POST',
     body: {},
-    profile
+    profile,
+    timeoutMs: SIGN_IN_START_TIMEOUT_MS
   })
 }
 
-/** Waits for a device-code sign-in to finish in the browser; `live()` false stops waiting. */
+/**
+ * Waits for a device-code sign-in to finish in the browser; `live()` false stops waiting. A poll
+ * that times out is asked again: the engine's session keeps waiting until `expiresAt` (epoch ms).
+ */
 export async function waitForSignIn(
   backend: ProvidersBackend,
-  sign: { providerId: string; sessionId: string; live: () => boolean }
+  sign: { providerId: string; sessionId: string; expiresAt: number; live: () => boolean }
 ): Promise<SignInResult> {
   const profile = backend.home
   const path = scoped(
@@ -309,12 +315,15 @@ export async function waitForSignIn(
     { wait: String(SIGN_IN_WAIT_SECONDS) }
   )
   while (sign.live()) {
-    const result = await backend.http<OAuthPollResponse>({
-      path,
-      profile,
-      timeoutMs: SIGN_IN_POLL_TIMEOUT_MS
-    })
+    const result = await backend
+      .http<OAuthPollResponse>({ path, profile, timeoutMs: SIGN_IN_POLL_TIMEOUT_MS })
+      .catch((error: unknown) => {
+        if (!isTimeout(error)) throw error
+        if (Date.now() < sign.expiresAt) return null
+        return { session_id: sign.sessionId, status: 'expired' } as OAuthPollResponse
+      })
     if (!sign.live()) break
+    if (!result) continue
     if (result.status === 'approved') return { status: 'approved' }
     if (result.status !== 'pending')
       return { status: 'failed', message: result.error_message || result.status }

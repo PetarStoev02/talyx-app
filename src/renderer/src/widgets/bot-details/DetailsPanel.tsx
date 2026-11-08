@@ -287,6 +287,9 @@ export function DetailsPanel({
                   load={chat && (() => chat.models(MANAGER))}
                   onSelect={(model) => update({ model })}
                 />
+                <span className="mt-1 block text-sm text-muted-foreground">
+                  {t('details.modelHint')}
+                </span>
                 {fieldProblem('model')}
               </div>
               <RoutinesSection bot={bot} backend={backend} />

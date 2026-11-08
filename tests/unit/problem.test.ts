@@ -16,14 +16,21 @@ describe('problems', () => {
     'Engine gateway connection closed',
     'Could not connect to Engine gateway (code 1006)',
     'fetch failed',
-    'connect ECONNREFUSED 127.0.0.1:8642',
-    'The operation timed out',
-    'TimeoutError: signal timed out'
+    'connect ECONNREFUSED 127.0.0.1:8642'
   ])('should call "%s" the engine being out of reach', (message) => {
     expect(problemOf(new Error(message))).toEqual({
       key: 'error.engineUnreachable',
       detail: message
     })
+  })
+
+  it.each([
+    "Error invoking remote method 'engine:http': TimeoutError: The operation was aborted due to timeout",
+    'The operation timed out',
+    'Engine gateway request timed out',
+    'request timed out after 30s: session.create'
+  ])('should call "%s" the engine being slow, not out of reach', (message) => {
+    expect(problemOf(new Error(message))).toEqual({ key: 'error.engineTimeout', detail: message })
   })
 
   it.each([

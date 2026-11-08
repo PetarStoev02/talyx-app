@@ -208,6 +208,8 @@ const en = {
   'details.descriptionHint': 'What this bot is for, in a line.',
   'details.model': 'Model',
   'details.modelDefault': 'Engine default',
+  'details.modelHint':
+    'This bot keeps its own model. Talyx’s model in Settings applies only to new bots.',
   'details.soul': 'SOUL.md',
   'details.save': 'Save',
   'details.saving': 'Saving…',
@@ -245,7 +247,9 @@ const en = {
   'routines.custom': 'Schedule line',
   // Short enough for the half-width field beside Schedule; the label already says what it is.
   'routines.customHint': 'e.g. 0 8 * * 1',
-  'routines.postToChat': 'Post to this chat',
+  'routines.postToChat': 'Send results to this chat (the bot reads and replies)',
+  'routines.postToChatHint':
+    'Each result reaches the bot as a new message. It reads it with this chat in view and replies here.',
   'routines.create': 'Create routine',
   'routines.open': 'Open {name}',
   'routines.save': 'Save',
@@ -324,6 +328,7 @@ const en = {
     'Something went wrong in Talyx. Try again; if it keeps happening, the log has the details.',
   'error.engineUnreachable':
     'Talyx cannot reach the engine right now. It reconnects by itself; try again in a moment.',
+  'error.engineTimeout': 'The engine took too long to answer; try again.',
   'crash.title': 'This part of Talyx stopped working.',
   'crash.body': 'Try again. If it keeps happening, reload Talyx; the error is in its log.',
   'crash.appTitle': 'Talyx stopped working.',
@@ -454,10 +459,10 @@ const en = {
   'providers.check': 'Check',
   'providers.checking': 'Checking…',
   'providers.checkOk': 'Works.',
-  'providers.checkModel': 'Works. It serves 1 model.',
+  'providers.checkModel': 'Reachable, lists 1 model.',
   'providers.checkUnreachable':
     'The provider could not be reached to check the key. You can still save it.',
-  'providers.checkModels': 'Works. It serves {count} models.',
+  'providers.checkModels': 'Reachable, lists {count} models.',
   'providers.save': 'Save',
   'providers.saving': 'Saving…',
   'providers.name': 'Name',
@@ -466,6 +471,8 @@ const en = {
   'providers.endpointModelsHint':
     'One per line. Bots can pick only these; the first is the endpoint’s default.',
   'providers.endpointModelsAdd': 'Models to add',
+  'providers.endpointModelsTyped':
+    'The server’s model list can be out of date. Type a model by hand if it is missing.',
   'providers.endpointModelsSaved':
     'One per line. Saved already: {models}. A saved model cannot be removed here yet.',
   'providers.endpointHint': 'Any OpenAI-compatible server, such as a local router.',
@@ -480,6 +487,9 @@ const en = {
   'providers.signInDone': 'Signed in to {name}.',
   'providers.signInFailed': 'The sign-in did not finish: {reason}',
   'providers.signInBack': 'Back to accounts',
+  'providers.signInDeviceCodeHint':
+    'If ChatGPT says to enable device code sign-in, turn it on in ChatGPT Security Settings, then try again.',
+  'providers.signInDeviceCodeLink': 'Open ChatGPT Security Settings',
   'providers.signInExternal': 'This account signs in with its own tool. Run this in a terminal:',
   'providers.copy': 'Copy',
   'providers.copied': 'Copied.',
