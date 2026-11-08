@@ -16,6 +16,8 @@ const NOTICE_KINDS = new Set([
   'failed_turn'
 ])
 const MESSAGE_AGENT = 'message_agent'
+// The id prefix of a reply streamed live, before the history reload gives it its stored row id.
+const LIVE_ID = 'live-'
 // The row the engine stores for a turn that failed after it reached the model.
 const FAILED_TURN = 'failed_turn'
 // The engine sends its spinner phrases and its provider waits as thinking text; a wait starts with
@@ -342,7 +344,7 @@ function withStreamingReply(transcript: Transcript, id: string): Transcript {
   if (lastStreamingReply(transcript) >= 0) return transcript
   const reply: BotItem = {
     kind: 'bot',
-    id: `live-${id}`,
+    id: `${LIVE_ID}${id}`,
     text: '',
     streaming: true,
     error: null,
@@ -438,15 +440,23 @@ function completeReply(transcript: Transcript, payload: Payload, id: string): Tr
     : { ...done, running: false }
 }
 
-// The failed reply is the last item; the message it answered is the newest one before it.
+// The failed reply is the last item. Before it, past this turn's tool lines and streamed text, is
+// the message it answered, unless a delivery or another client started the turn.
 function failedTurn(items: ChatItem[]): FailedTurn {
   const reply = items.length - 1
-  const asked = items.findLastIndex((item, index) => index < reply && item.kind === 'user')
-  const first = asked < 0 ? reply : asked
+  let start = reply
+  while (start > 0 && isTurnWork(items[start - 1])) start -= 1
+  const asked = items[start - 1]?.kind === 'user' ? start - 1 : -1
+  const first = asked < 0 ? start : asked
   return {
     after: items[first - 1]?.id ?? null,
     items: asked < 0 ? [items[reply]] : [items[asked], items[reply]]
   }
+}
+
+// Every finished turn reloads history, so streamed text not yet replaced by a stored row is this turn's.
+function isTurnWork(item: ChatItem): boolean {
+  return item.kind === 'tool' || (item.kind === 'bot' && item.id.startsWith(LIVE_ID))
 }
 
 // The engine's account of the failure, else the error it names.

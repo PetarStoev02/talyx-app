@@ -232,6 +232,41 @@ describe('bot chat', () => {
       ])
     })
 
+    it('should keep your message when the turn failed after its tools', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      await actions.send(MANAGER, { text: 'Summarise Q3', images: [] })
+      for (const [type, seq, payload] of [
+        ['message.start', 8, {}],
+        ['message.delta', 9, { text: 'Looking it up' }],
+        ['tool.start', 10, { tool_id: 't1', name: 'search_files' }],
+        ['tool.complete', 11, { tool_id: 't1' }],
+        ['message.complete', 12, { status: 'error', text: UNKNOWN_PROVIDER }]
+      ] as const)
+        handleEvent(actions, { type, seq, payload, session_id: 'manager-chat' } as GatewayEvent)
+      await actions.rebuild(MANAGER)
+      expect(visible()).toEqual([...before, ...failedWith(UNKNOWN_PROVIDER)])
+    })
+
+    it('should keep a failed turn no message of yours started where it was', async () => {
+      engine.chats[MANAGER].messages.push({
+        id: 3,
+        role: 'user',
+        content: 'Message from 🤖 CFO (@cfo): numbers'
+      })
+      await actions.open(MANAGER, 'manager-chat')
+      for (const [type, seq, payload] of [
+        ['message.start', 8, {}],
+        ['message.complete', 9, { status: 'error', text: UNKNOWN_PROVIDER }]
+      ] as const)
+        handleEvent(actions, { type, seq, payload, session_id: 'manager-chat' } as GatewayEvent)
+      await actions.rebuild(MANAGER)
+      expect(visible()).toEqual([
+        ...before,
+        { kind: 'bot', text: 'numbers', error: null },
+        { kind: 'bot', text: '', error: UNKNOWN_PROVIDER }
+      ])
+    })
+
     describe('that the engine still holds', () => {
       // A failed turn the engine kept for a client that missed its frame: resume carries it.
       const held = { user: 'Summarise Q3', assistant: '', error: NO_CREDENTIALS, status: 'error' }
