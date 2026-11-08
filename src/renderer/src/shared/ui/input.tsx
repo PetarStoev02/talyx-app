@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { ChevronDown } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 
 // Every field sits under its label's text, hence the top margin.
@@ -19,8 +20,22 @@ function Textarea({ className, ...props }: React.ComponentProps<'textarea'>): Re
   )
 }
 
+// The platform's own select, drawn with the model field's chevron and padding so the two match.
 function NativeSelect({ className, ...props }: React.ComponentProps<'select'>): React.JSX.Element {
-  return <select data-slot="native-select" className={cn(fieldClass, className)} {...props} />
+  return (
+    <span className="relative mt-2 block">
+      <select
+        data-slot="native-select"
+        className={cn(fieldClass, 'mt-0 appearance-none pr-9', className)}
+        {...props}
+      />
+      <ChevronDown
+        size={16}
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2"
+      />
+    </span>
+  )
 }
 
 export { Input, Textarea, NativeSelect }

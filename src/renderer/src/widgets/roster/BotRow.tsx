@@ -9,7 +9,7 @@ import { BotAvatar } from '@features/bots/BotAvatar'
 import type { Bot } from '@features/bots/types'
 import { ROSTER_DRAG, draggedItem, endRosterDrag, startRosterDrag } from './drag'
 import type { MenuAction } from '@shared/ui/menu'
-import { ROW_AVATAR_BOX } from './RoomRow'
+import { ROW_AVATAR_BOX, UnreadDot } from './RoomRow'
 
 export function BotRow({
   bot,
@@ -35,6 +35,7 @@ export function BotRow({
   const activity = useRoster((state) => state.activity[bot.name] ?? 'idle')
   const saving = useRoster((state) => state.saving)
   const preview = botPreview(bot) || t('roster.noMessages')
+  const dot = Boolean(unread) || activity === 'waiting'
   const status =
     activity === 'waiting'
       ? t('roster.statusWaiting')
@@ -95,7 +96,12 @@ export function BotRow({
             <span className={cn('min-w-0 flex-1', pinned && 'w-full')}>
               <span className={cn('flex items-baseline gap-2', pinned && 'justify-center')}>
                 <span
-                  className={cn('truncate text-base', selected ? 'font-semibold' : 'font-medium')}
+                  className={cn(
+                    'truncate',
+                    // A tile is narrow; one step down keeps names like "Researcher" whole.
+                    pinned ? 'text-sm' : 'text-base',
+                    selected ? 'font-semibold' : 'font-medium'
+                  )}
                 >
                   {botTitle(bot)}
                 </span>
@@ -105,15 +111,24 @@ export function BotRow({
                   </span>
                 )}
               </span>
-              <span className="block truncate text-sm text-muted-foreground">
-                {pinned ? status || t('roster.statusReady') : preview}
+              <span className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    'block min-w-0 flex-1 truncate text-muted-foreground',
+                    pinned ? 'text-xs' : 'text-sm'
+                  )}
+                >
+                  {pinned ? status || t('roster.statusReady') : preview}
+                </span>
+                {/* On the preview line, so every row's time keeps the same right edge. */}
+                {!pinned && dot && <UnreadDot />}
               </span>
             </span>
-            {(unread || activity === 'waiting') && (
-              <span
-                className="block-fade size-2 shrink-0 rounded-full bg-brand"
-                aria-hidden="true"
-              />
+            {/* In a tile's corner, so a tile with a dot is as tall as the others. */}
+            {pinned && dot && (
+              <span className="absolute top-2.5 right-2.5 flex">
+                <UnreadDot />
+              </span>
             )}
           </button>
         </OverflowTooltip>

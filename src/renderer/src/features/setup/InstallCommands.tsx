@@ -3,7 +3,7 @@ import { cn } from '@shared/lib/utils'
 import { Button } from '@shared/ui/button'
 import type { InstallSteps } from '../../../../shared/setup'
 import { CopyButton, ScreenTitle } from './ScreenParts'
-import { linkClass, panelClass, rowClass } from './screenStyles'
+import { linkClass, panelClass, rowClass, rowCopyClass } from './screenStyles'
 
 /** Screen 4: the verified commands, to run here (Install) or copy into a terminal. */
 export function InstallCommands({
@@ -48,7 +48,12 @@ export function InstallCommands({
         <Button className="px-5" onClick={onInstall}>
           {t('setup.install')}
         </Button>
-        <CopyButton text={steps.commands.join('\n')} label={t('setup.copyAll')} name={null} />
+        <CopyButton
+          text={steps.commands.join('\n')}
+          label={t('setup.copyAll')}
+          name={null}
+          className={rowCopyClass}
+        />
         <span className="ml-auto text-sm text-muted-foreground">
           {t('setup.installedAlready')}{' '}
           <button className={cn(linkClass, 'text-sm')} onClick={onChooseFile}>

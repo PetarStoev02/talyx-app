@@ -26,7 +26,6 @@ import { Loading, Skeleton, SkeletonRows } from '@shared/ui/skeleton'
 import { useFlip } from '@shared/hooks/useFlip'
 import { Reveal } from '@shared/ui/Reveal'
 import { useArrival } from '@shared/hooks/useStayMounted'
-import { cn } from '@shared/lib/utils'
 import type { MenuAction } from './RosterMenu'
 
 // `backend` must be a stable reference (see useRosterConnection).
@@ -156,22 +155,25 @@ export function Roster({
           orderPin={(from, to) => run(() => actions.orderPin(from, to))}
         />
       </div>
-      <div ref={folderArea} className={cn('scroll-y-stable min-h-0 flex-1 px-3 pb-3', arrival)}>
-        {/* Until the first read, the skeleton above stands in for the folders too. */}
-        {!loading &&
-          [...folders.filter((folder) => !folder.parentId), null].map((folder) => (
-            <FolderGroup
-              key={folder?.id ?? 'unassigned'}
-              folder={folder}
-              botActions={botActions}
-              folderActions={folderActions}
-              selectBot={selectBot}
-              selectRoom={selectRoom}
-              drops={drops}
-              roomActions={roomActions}
-            />
-          ))}
-        <HiddenAgents restore={(bot) => run(() => actions.hide(bot))} />
+      {/* The arrival runs on an inner box: the list's own animations drive its edge fades. */}
+      <div ref={folderArea} className="scroll-y-stable scroll-fade min-h-0 flex-1 px-3 pb-3">
+        <div className={arrival}>
+          {/* Until the first read, the skeleton above stands in for the folders too. */}
+          {!loading &&
+            [...folders.filter((folder) => !folder.parentId), null].map((folder) => (
+              <FolderGroup
+                key={folder?.id ?? 'unassigned'}
+                folder={folder}
+                botActions={botActions}
+                folderActions={folderActions}
+                selectBot={selectBot}
+                selectRoom={selectRoom}
+                drops={drops}
+                roomActions={roomActions}
+              />
+            ))}
+          <HiddenAgents restore={(bot) => run(() => actions.hide(bot))} />
+        </div>
       </div>
       {creating === 'folder' && (
         <FolderNameDialog

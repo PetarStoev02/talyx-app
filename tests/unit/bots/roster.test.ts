@@ -61,6 +61,21 @@ describe('roster layout', () => {
     expect(folderCount(nested, 'sub')).toBe(1)
     expect(folderCount(nested, null)).toBe(1)
   })
+  it("should count a folder's rooms with its bots, as the rows under it show", () => {
+    const withRooms: RosterSnapshot = {
+      ...snapshot([bot('a', { sectionId: 'team' })]),
+      folders: [{ id: 'team', name: 'Team' }],
+      rooms: [
+        { room_id: 'r1', name: 'One', members: [] },
+        { room_id: 'r2', name: 'Two', members: [] },
+        { room_id: 'r3', name: 'Pinned', members: [] }
+      ],
+      roomFolders: { r1: 'team', r2: null, r3: 'team' },
+      roomPins: ['r3']
+    }
+    expect(folderCount(withRooms, 'team')).toBe(2)
+    expect(folderCount(withRooms, null)).toBe(1)
+  })
   it('should put orphaned membership in Unassigned without showing hidden bots', () => {
     const orphan = bot('orphan', { sectionId: 'missing' })
     expect(folderBots(snapshot([orphan, bot('hidden', { hidden: true })]), null)).toEqual([orphan])

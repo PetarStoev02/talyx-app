@@ -3,7 +3,7 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { Button } from '@shared/ui/button'
 import { displayOutput, downloadFailed, hideEngineName } from './install'
 import { CopyButton, ScreenTitle, Spinner } from './ScreenParts'
-import { linkClass, panelClass, rowClass } from './screenStyles'
+import { linkClass, panelClass, rowClass, rowCopyClass } from './screenStyles'
 
 /** Screen 5: the install running, its output streaming in. */
 export function InstallRunning({
@@ -78,6 +78,7 @@ export function InstallStopped({
           text={hideEngineName(output, engineName)}
           label={t('setup.copyOutput')}
           name={null}
+          className={rowCopyClass}
         />
         {!failed && (
           <button className={linkClass} onClick={actions.chooseFile}>

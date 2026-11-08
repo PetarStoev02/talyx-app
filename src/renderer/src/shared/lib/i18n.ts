@@ -299,7 +299,7 @@ const en = {
   'roster.emptyFolderHint': 'Or drag a bot or room here.',
   'roster.oneBot': '1 bot',
   'roster.bots': '{count} bots',
-  'roster.statusWaiting': 'Waiting on you',
+  'roster.statusWaiting': 'Needs you',
   'roster.statusWorking': 'Working',
   'roster.statusUnread': 'Unread reply',
   'roster.statusReady': 'Ready',
@@ -462,6 +462,8 @@ const en = {
   'providers.stillOnBots': 'Still on: {bots}. Remove it again to try those bots.',
   'providers.addTitle': 'Add provider',
   'providers.editTitle': 'Edit {name}',
+  'providers.addHint':
+    'Connect with an API key, an account sign-in or your own endpoint. Every bot can use it.',
   'providers.kinds': 'Provider kind',
   'providers.kindKey': 'API key',
   'providers.kindAccount': 'Account',
@@ -521,7 +523,8 @@ const en = {
   'providers.errorModelNotSet': 'The engine did not change the model. Pick it again.',
   'providers.errorNotSignedOut': 'There was no sign-in to remove.',
   'providers.defaultTitle': 'Talyx’s model',
-  'providers.defaultHint': 'Talyx’s model. New bots start with it; other bots keep their own.',
+  'providers.defaultHint':
+    'Talyx answers on this model, and new bots start on it. Other bots keep their own.',
   'providers.defaultChanged': 'Talyx now uses {model}.',
   'update.label': 'Updates',
   'update.labelPending': 'Update ready',

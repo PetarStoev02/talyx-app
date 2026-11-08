@@ -67,22 +67,38 @@ export function RoomRow({
             <span className={cn('min-w-0 flex-1', pinned && 'w-full')}>
               <span
                 className={cn(
-                  'block truncate text-base',
+                  'block truncate',
+                  pinned ? 'text-sm' : 'text-base',
                   selected ? 'font-semibold' : 'font-medium'
                 )}
               >
                 {room.name}
               </span>
-              <span className="block truncate text-sm text-muted-foreground">
+              <span
+                className={cn(
+                  'block truncate text-muted-foreground',
+                  pinned ? 'text-xs' : 'text-sm'
+                )}
+              >
                 {pinned && unread ? t('roster.statusNewMessages') : count}
               </span>
             </span>
-            {unread && (
-              <span className="size-2 shrink-0 rounded-full bg-brand" aria-hidden="true" />
-            )}
+            {unread &&
+              (pinned ? (
+                // In the tile's corner, so a tile with a dot is as tall as the others.
+                <span className="absolute top-2.5 right-2.5 flex">
+                  <UnreadDot />
+                </span>
+              ) : (
+                <UnreadDot />
+              ))}
           </button>
         </OverflowTooltip>
       </div>
     </ContextMenuArea>
   )
+}
+
+export function UnreadDot(): React.JSX.Element {
+  return <span className="block-fade size-2 shrink-0 rounded-full bg-brand" aria-hidden="true" />
 }

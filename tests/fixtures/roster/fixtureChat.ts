@@ -43,7 +43,7 @@ const history: Record<string, Array<Record<string, unknown>>> = {
         '**Q3 margins are up 4 points**, to 41%.\n\n- Costs held flat\n- The September price change did the rest\n\nAnalyst can split it by region next.'
     }
   ],
-  // Waiting on you: its last answer is a question.
+  // Needs you: its last answer is a question.
   analyst: [
     { id: 1, role: 'user', content: 'Turn the Q3 margin numbers into a one-page report.' },
     {

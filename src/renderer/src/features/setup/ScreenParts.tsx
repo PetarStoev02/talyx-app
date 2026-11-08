@@ -61,11 +61,13 @@ export function Spinner(): React.JSX.Element {
 export function CopyButton({
   text,
   label,
-  name
+  name,
+  className
 }: {
   text: string
   label: string
   name: string | null
+  className?: string
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const [copied, setCopied] = useState(false)
@@ -80,7 +82,10 @@ export function CopyButton({
     <button
       type="button"
       aria-label={name ?? undefined}
-      className="h-7 shrink-0 rounded-full border border-border px-3 text-sm text-foreground hover:bg-foreground/10"
+      className={cn(
+        'h-7 shrink-0 rounded-full border border-border px-3 text-sm text-foreground hover:bg-foreground/10',
+        className
+      )}
       onClick={() =>
         void navigator.clipboard.writeText(text).then(
           () => setCopied(true),

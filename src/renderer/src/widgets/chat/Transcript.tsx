@@ -34,7 +34,9 @@ export function Transcript({
 
   return (
     <div className="relative min-h-0 flex-1">
-      <div ref={scroller} onScroll={onScroll} className="scroll-y-stable h-full">
+      {/* The edges fade while there is more to scroll, so a line under the name pill or above the
+          composer does not end in a hard cut. */}
+      <div ref={scroller} onScroll={onScroll} className="scroll-y-stable scroll-fade h-full">
         <ol className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-6">
           {items.map((item, index) => (
             <li key={item.id || index} className="flex flex-col">

@@ -64,7 +64,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          'fixed top-[50%] left-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] scroll-y-stable gap-4 overscroll-contain rounded-xl bg-card p-6',
+          'fixed top-[50%] left-[50%] z-50 grid [--surface-inset:1.5rem] [--surface:var(--card)] max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] scroll-y-stable gap-4 overscroll-contain rounded-xl bg-card p-6',
           className
         )}
         onOpenAutoFocus={(event) => {
