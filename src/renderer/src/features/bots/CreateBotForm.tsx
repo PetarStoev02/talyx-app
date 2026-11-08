@@ -137,7 +137,10 @@ export function CreateBotForm({
         </div>
       </div>
       {error && <ProblemMessage problem={error} />}
-      <div className="flex gap-2">
+      {/* Pinned to the bottom of the scrolling dialog or page, so Create shows in a short window.
+          A dialog sets the surface to cover what scrolls under it (`--surface`) and its padding
+          (`--surface-inset`), so the bar reaches its edge. */}
+      <div className="sticky bottom-[calc(-1*var(--surface-inset,0px))] -mb-6 flex gap-2 bg-[var(--surface,var(--background))] pt-3 pb-6">
         <Button type="submit" disabled={!id.ok || saving}>
           {submitLabel}
         </Button>

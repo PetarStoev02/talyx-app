@@ -52,7 +52,7 @@ export function AddProviderDialog({
             ? t('providers.editTitle').replace('{name}', editing.name)
             : t('providers.addTitle')}
         </DialogTitle>
-        <DialogDescription>{t('providers.hint')}</DialogDescription>
+        <DialogDescription>{t('providers.addHint')}</DialogDescription>
         {!editing && (
           <div role="group" aria-label={t('providers.kinds')} className="flex flex-wrap gap-2">
             {KINDS.map(([value, label]) => (

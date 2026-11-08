@@ -19,6 +19,7 @@ function PopoverTrigger({
 function PopoverContent({
   className,
   sideOffset = 8,
+  collisionPadding = 8,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>): React.JSX.Element {
   return (
@@ -26,6 +27,7 @@ function PopoverContent({
       <PopoverPrimitive.Content
         data-slot="popover-content"
         sideOffset={sideOffset}
+        collisionPadding={collisionPadding}
         className={cn(
           'z-50 w-80 max-w-[calc(100vw-2rem)] origin-(--radix-popover-content-transform-origin) rounded-2xl bg-popover p-4 text-sm text-popover-foreground shadow-lg ring-1 ring-border outline-none',
           className

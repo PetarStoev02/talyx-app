@@ -114,12 +114,15 @@ export function pinnedRooms(snapshot: RosterSnapshot): Room[] {
   return snapshot.roomPins.flatMap((id) => snapshot.rooms.filter((room) => room.room_id === id))
 }
 
-// A folder counts the bots in it and in its subfolders; Unassigned counts only its own.
+// A folder counts the bots and rooms in it and in its subfolders, so the count matches its rows;
+// Unassigned counts only its own.
 export function folderCount(snapshot: RosterSnapshot, folderId: string | null): number {
-  if (folderId === null) return folderBots(snapshot, null).length
+  const rows = (id: string | null): number =>
+    folderBots(snapshot, id).length + folderRooms(snapshot, id).length
+  if (folderId === null) return rows(null)
   return snapshot.folders
     .filter((folder) => isWithin(snapshot.folders, folder.id, folderId))
-    .reduce((total, folder) => total + folderBots(snapshot, folder.id).length, 0)
+    .reduce((total, folder) => total + rows(folder.id), 0)
 }
 
 export function isWithin(folders: Folder[], id: string, ancestorId: string): boolean {

@@ -159,6 +159,63 @@
   scrollbar-gutter: stable;
 }
 
+/* A scrolling list fades out at an edge only while there is more to scroll past it, so a cut-off
+   row reads as continuing. The scroll position drives the fade (a scroll-driven animation, no
+   script); with nothing to scroll the timeline is inactive and neither edge fades. The second mask
+   layer keeps the scrollbar's strip whole. */
+@property --fade-start {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --fade-end {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes scroll-fade-start {
+  from {
+    --fade-start: 0px;
+  }
+  to {
+    --fade-start: var(--fade-size);
+  }
+}
+@keyframes scroll-fade-end {
+  from {
+    --fade-end: var(--fade-size);
+  }
+  to {
+    --fade-end: 0px;
+  }
+}
+@utility scroll-fade {
+  --fade-size: 1.5rem;
+  mask-image:
+    linear-gradient(
+      to bottom,
+      transparent,
+      #000 var(--fade-start),
+      #000 calc(100% - var(--fade-end)),
+      transparent
+    ),
+    linear-gradient(#000, #000);
+  mask-size:
+    100% 100%,
+    12px 100%;
+  mask-position:
+    0 0,
+    right top;
+  mask-repeat: no-repeat;
+  animation:
+    scroll-fade-start linear both,
+    scroll-fade-end linear both;
+  animation-timeline: scroll(self), scroll(self);
+  animation-range:
+    0 var(--fade-size),
+    calc(100% - var(--fade-size)) 100%;
+}
+
 /* The tone step as a surface (sidebar, details panel). What sits on it takes the ground in place
    of the tone step, so a field or tile still reads one step away from its surface. */
 @utility tone-step {

@@ -194,13 +194,14 @@ export function DetailsPanel({
         </button>
         <BotAvatar bot={bot} place="hero" />
         <h2 className="max-w-full text-xl font-semibold wrap-break-word">{botTitle(bot)}</h2>
-        <p className="text-sm text-muted-foreground">
-          {[
-            loaded?.description,
-            loaded?.model && `${loaded.model.provider} · ${loaded.model.model}`
-          ]
-            .filter(Boolean)
-            .join(' · ') || bot.name}
+        {/* What it does, then its model on a line of its own. */}
+        <p className="text-sm text-balance text-muted-foreground">
+          {loaded?.description || (!loaded?.model && bot.name)}
+          {loaded?.model && (
+            <span className="block text-xs">
+              {loaded.model.provider} · {loaded.model.model}
+            </span>
+          )}
         </p>
       </header>
       <Tabs.Root
