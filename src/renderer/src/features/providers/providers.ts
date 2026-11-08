@@ -319,8 +319,8 @@ export async function waitForSignIn(
       .http<OAuthPollResponse>({ path, profile, timeoutMs: SIGN_IN_POLL_TIMEOUT_MS })
       .catch((error: unknown) => {
         if (!isTimeout(error)) throw error
-        const expired: OAuthPollResponse = { session_id: sign.sessionId, status: 'expired' }
-        return Date.now() < sign.expiresAt ? null : expired
+        if (Date.now() < sign.expiresAt) return null
+        return { session_id: sign.sessionId, status: 'expired' } as OAuthPollResponse
       })
     if (!sign.live()) break
     if (!result) continue
