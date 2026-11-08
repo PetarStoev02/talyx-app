@@ -4,6 +4,7 @@ import { Button } from '@shared/ui/button'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
 import { EXPECTED_ENGINE_VERSION } from '../../../../shared/engine'
 import { restartCommand } from './engineScreen'
+import { OutputLog } from './InstallOutput'
 import { CopyButton, ScreenTitle } from './ScreenParts'
 import { centeredPanelClass, linkClass, rowClass } from './screenStyles'
 
@@ -171,13 +172,16 @@ export function ProtocolMismatch({
 
 /**
  * Screen 6: the engine attached, where it was found, and notes for a newer engine or a gateway left
- * on old code (an update over a running gateway): restart it, then Try again.
+ * on old code (an update over a running gateway): restart it, then Try again. The last install's
+ * output stays one click away, for the warnings of an install that still succeeded.
  */
 export function EngineReady({
   screen,
+  install,
   actions
 }: {
   screen: { version: string; path: string; newer: boolean; stale: boolean }
+  install: { output: string; engineName: string | null }
   actions: { recheck: () => void; continue: () => void }
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
@@ -200,6 +204,16 @@ export function EngineReady({
       <Button className="px-5" onClick={actions.continue}>
         {t('setup.continue')}
       </Button>
+      {install.output && (
+        <details className="w-full max-w-xl text-left">
+          <summary className="cursor-pointer text-sm text-muted-foreground">
+            {t('setup.output')}
+          </summary>
+          <div className="mt-2">
+            <OutputLog output={install.output} engineName={install.engineName} />
+          </div>
+        </details>
+      )}
     </div>
   )
 }

@@ -24,6 +24,7 @@ import { AddProviderDialog } from './AddProviderDialog'
 import { DefaultModelSection } from './DefaultModelSection'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { useArrival } from '@shared/hooks/useStayMounted'
+import { reportError } from '@shared/lib/report'
 import { cn } from '@shared/lib/utils'
 import { failureText, reportSpread } from './feedback'
 
@@ -91,6 +92,22 @@ export function ProvidersSection({
   useEffect(() => {
     void load()
   }, [load])
+
+  // A provider may be added outside this form (another window, the engine's CLI). Only the list
+  // refreshes: revealed keys and loaded models stay, and a failed refresh keeps the list shown.
+  useEffect(() => {
+    const refresh = (): void =>
+      void loadProviders(backend).then(
+        (next) => {
+          setOverview(next)
+          setProblem(null)
+          reportOverview.current?.(next)
+        },
+        (error: unknown) => reportError('providers', error)
+      )
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
+  }, [backend])
 
   function hide(key: string): void {
     setRevealed((shown) =>

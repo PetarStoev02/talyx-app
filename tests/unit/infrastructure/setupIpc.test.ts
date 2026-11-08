@@ -30,6 +30,7 @@ const READY: InstallSteps = {
   kind: 'ready',
   commands: ['one', 'two'],
   engineVersion: '1.2.3',
+  engineName: null,
   releaseUrl: 'https://example.com/r'
 }
 

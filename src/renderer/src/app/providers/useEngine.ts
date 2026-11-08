@@ -15,6 +15,8 @@ interface EngineState {
   /** When an open socket was lost (ms since epoch), until it opens again; null while open. */
   lostAt: number | null
   check: () => Promise<void>
+  /** `check` without the checking state: the screen stays as it is until the answer differs. */
+  refresh: () => Promise<void>
   pickPath: () => Promise<void>
   /** Run the engine the install linked in the user bin; rejects when nothing is installed there. */
   useInstalled: () => Promise<void>
@@ -22,8 +24,7 @@ interface EngineState {
 
 /** Engine presence and attachment, as main reports it; the gateway socket opens once attached. */
 export const useEngine = create<EngineState>((set) => {
-  const settle = async (next: Promise<EngineStatus>): Promise<void> => {
-    set({ checking: true })
+  const apply = async (next: Promise<EngineStatus>): Promise<void> => {
     try {
       const status = await next
       set({ status })
@@ -39,6 +40,12 @@ export const useEngine = create<EngineState>((set) => {
           reason: null
         }
       })
+    }
+  }
+  const settle = async (next: Promise<EngineStatus>): Promise<void> => {
+    set({ checking: true })
+    try {
+      await apply(next)
     } finally {
       set({ checking: false })
     }
@@ -51,6 +58,7 @@ export const useEngine = create<EngineState>((set) => {
     everConnected: false,
     lostAt: null,
     check: () => settle(host.status()),
+    refresh: () => apply(host.status()),
     pickPath: () => settle(host.pickEnginePath()),
     useInstalled: async () => {
       // A missing install is the caller's to say, not an engine status: the status stays as it was.

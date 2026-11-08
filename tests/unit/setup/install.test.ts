@@ -1,11 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { InstallExit, InstallSteps } from '../../../src/shared/setup'
-import { displayOutput, useInstall, type SetupBackend } from '@features/setup/install'
+import {
+  displayOutput,
+  downloadFailed,
+  hideEngineName,
+  useInstall,
+  type SetupBackend
+} from '@features/setup/install'
 
 const ready: InstallSteps = {
   kind: 'ready',
   commands: ['one', 'two'],
   engineVersion: '0.22.7',
+  engineName: 'fakeengine',
   releaseUrl: 'https://example.test/release'
 }
 
@@ -144,5 +151,37 @@ describe('displayOutput', () => {
 
   it('should show a redraw still in progress at its latest state', () => {
     expect(displayOutput('Fetching 1/3\rFetching 2/3')).toBe('Fetching 2/3')
+  })
+})
+
+describe('downloadFailed', () => {
+  it('should spot an SSL error', () => {
+    expect(
+      downloadFailed('ssl.SSLError: [SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1000)')
+    ).toBe(true)
+  })
+
+  it('should spot a failed URL download', () => {
+    expect(downloadFailed('<urlopen error [Errno 8] nodename nor servname provided>')).toBe(true)
+  })
+
+  it('should not see a download error in other output', () => {
+    expect(downloadFailed('')).toBe(false)
+    expect(downloadFailed('error: the package index could not be reached')).toBe(false)
+  })
+})
+
+describe('hideEngineName', () => {
+  it("should show Talyx's engine command in place of the engine's own name, in any case", () => {
+    expect(
+      hideEngineName(
+        'Installing Fakeengine Agent into ~/.fakeengine\nFAKEENGINE_HOME set',
+        'fakeengine'
+      )
+    ).toBe('Installing talyx-engine Agent into ~/.talyx-engine\ntalyx-engine_HOME set')
+  })
+
+  it('should leave the output as it is when the name is unknown', () => {
+    expect(hideEngineName('Installing fakeengine', null)).toBe('Installing fakeengine')
   })
 })

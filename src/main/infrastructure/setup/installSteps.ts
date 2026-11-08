@@ -4,12 +4,16 @@ import { app } from 'electron'
 import log from 'electron-log'
 import { z } from 'zod'
 import type { InstallSteps } from '../../../shared/setup'
+import { ENGINE_COMMAND } from '../../../shared/engine'
 import { ENGINE_INSTALL_SHA256, sha256Hex } from './installPin'
 
 const RELEASES = 'https://github.com/PetarStoev02/talyx-app/releases'
 const INSTALL_FILE = 'engine-install.json'
 const REQUEST_TIMEOUT_MS = 10_000
 const MAX_FILE_BYTES = 64 * 1024
+// The install links the engine's own command as talyx-engine (`ln -sf ".../<name>" ".../talyx-engine"`),
+// so that link names the engine without the name ever being written here.
+const LINKED_COMMAND = new RegExp(`/([A-Za-z][A-Za-z0-9]*)"?\\s+"?\\S*/${ENGINE_COMMAND}\\b`)
 
 const PlatformSchema = z.object({ commands: z.array(z.string().min(1).max(4096)).min(1).max(20) })
 const InstallFileSchema = z.object({
@@ -45,7 +49,24 @@ export async function loadInstallSteps(source: InstallStepsSource): Promise<Inst
   const file = parseInstallFile(bytes)
   const steps = file?.platforms[platform]
   if (!file || !steps) return { kind: 'invalid', releaseUrl }
-  return { kind: 'ready', commands: steps.commands, engineVersion: file.engineVersion, releaseUrl }
+  const engineName = linkedEngineName(steps.commands)
+  // Without it the install output shows the engine's own name: the link step changed shape.
+  if (!engineName) log.warn('[Setup] No install command links the engine as talyx-engine')
+  return {
+    kind: 'ready',
+    commands: steps.commands,
+    engineVersion: file.engineVersion,
+    engineName,
+    releaseUrl
+  }
+}
+
+function linkedEngineName(commands: string[]): string | null {
+  for (const command of commands) {
+    const match = LINKED_COMMAND.exec(command)
+    if (match) return match[1].toLowerCase()
+  }
+  return null
 }
 
 function parseInstallFile(bytes: Uint8Array): z.infer<typeof InstallFileSchema> | null {

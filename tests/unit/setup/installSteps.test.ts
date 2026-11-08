@@ -52,8 +52,21 @@ describe('loadInstallSteps', () => {
       kind: 'ready',
       commands: ['echo one', 'echo two'],
       engineVersion: '0.22.7',
+      engineName: null,
       releaseUrl: RELEASE_URL
     })
+  })
+
+  it('should name the engine after the command the install links as talyx-engine', async () => {
+    const commands = [
+      'curl -fsSL https://example.test/install.sh | bash',
+      'mkdir -p "$HOME/.local/bin" && ln -sf "$HOME/.local/bin/fakeengine" "$HOME/.local/bin/talyx-engine"'
+    ]
+    const file = { ...FILE, platforms: { darwin: { commands } } }
+
+    const result = await loadInstallSteps(sourceFor(bytesOf(file)))
+
+    expect(result).toMatchObject({ kind: 'ready', engineName: 'fakeengine' })
   })
 
   it('should refuse a file whose bytes differ from the pinned hash', async () => {

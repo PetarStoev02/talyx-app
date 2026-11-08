@@ -48,6 +48,9 @@ export type EngineStatus =
  */
 export const EXPECTED_ENGINE_VERSION = '0.22.7'
 
+/** The command Talyx runs; the engine's own installer never names it this, so the user links it. */
+export const ENGINE_COMMAND = 'talyx-engine'
+
 export type EngineVersionFit = 'older' | 'same' | 'newer' | 'unknown'
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/

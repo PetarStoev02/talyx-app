@@ -13,8 +13,9 @@ import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { reportProvider, useSetup } from '../../../src/renderer/src/features/setup/store'
 import { useNavigation } from '../../../src/renderer/src/app/providers/useNavigation'
 import { assets, attachDouble, chat, providers, rosterBackend } from './engineDouble'
-import { fixtureSetup, setupMode, setupStuck } from './fixtureSetup'
+import { fixtureSetup, setupMode, setupOutside, setupStuck } from './fixtureSetup'
 import { fixtureUpdates, updateMode, updateNeedsOlderEngine } from './fixtureUpdates'
+import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/http'
 import './fixture.css'
 
 attachDouble()
@@ -22,7 +23,12 @@ attachDouble()
 // `?update=engine|both` is `old-after` too: an engine below the pin whose update the footer offers.
 const update = updateMode(location.search)
 const mode = setupMode(location.search) ?? (updateNeedsOlderEngine(update) ? 'old-after' : null)
-const setup = mode && fixtureSetup(mode, { stuck: setupStuck(location.search) })
+const setup =
+  mode &&
+  fixtureSetup(mode, {
+    stuck: setupStuck(location.search),
+    outside: setupOutside(location.search)
+  })
 // `old-after`: setup is done; the Agents page's engine gate runs its update through `window.api`.
 // `?update=<mode>` scripts the Talyx update the footer button offers; without it nothing is pending.
 Object.assign(window, {
@@ -40,6 +46,27 @@ Object.assign(window, {
 })
 // `?nudge`: no provider read yet, so Talyx's chat asks for one until Settings reads the endpoint.
 if (new URLSearchParams(location.search).has('nudge')) useSetup.getState().setHasProvider(false)
+
+// `&provider=elsewhere`: setup's provider step starts with no provider; one is added in "another
+// window" once this one loses focus, so the step finds it when the window gets focus again.
+const providerElsewhere = new URLSearchParams(location.search).get('provider') === 'elsewhere'
+let providerAdded = !providerElsewhere
+window.addEventListener('blur', () => (providerAdded = true), { once: true })
+const setupProviders: typeof providers = {
+  ...providers,
+  http: async <T,>(request: EngineApiRequest): Promise<T> => {
+    const answer = await providers.http<T>(request)
+    if (providerAdded || request.method) return answer
+    if (request.path.startsWith('/api/providers/custom-endpoints?'))
+      return { ...answer, endpoints: [] } as T
+    if (request.path.startsWith('/api/providers/oauth?')) {
+      const { providers: accounts } = answer as { providers: Array<{ status: object }> }
+      const signedOut = accounts.map((account) => ({ ...account, status: { logged_in: false } }))
+      return { providers: signedOut } as T
+    }
+    return answer
+  }
+}
 
 // The newest exported avatar image, so the PNG can be checked without an engine.
 function ExportedAvatar(): React.JSX.Element | null {
@@ -67,7 +94,7 @@ function Root(): React.JSX.Element {
       <Toaster position="bottom-right" closeButton />
       <SetupFlow
         providersForm={(onOverview) => (
-          <ProvidersSection backend={providers} chat={chat} onOverview={onOverview} />
+          <ProvidersSection backend={setupProviders} chat={chat} onOverview={onOverview} />
         )}
         roster={rosterBackend}
         chat={chat}

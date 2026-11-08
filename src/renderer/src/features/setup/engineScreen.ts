@@ -1,4 +1,4 @@
-import { engineVersionFit, type EngineStatus } from '../../../../shared/engine'
+import { engineVersionFit, isEngineCurrent, type EngineStatus } from '../../../../shared/engine'
 import type { InstallExit, InstallSteps } from '../../../../shared/setup'
 
 /** Which engine screen of the setup shows (the spec's screens 2 to 6b). */
@@ -33,10 +33,13 @@ export interface EngineScreenFacts {
 export function engineScreen(facts: EngineScreenFacts): EngineScreen {
   const { status, exit } = facts
   if (facts.running) return { kind: 'running' }
-  if (exit?.kind === 'failed') return { kind: 'stopped', index: exit.index, code: exit.code }
+  // A current engine found since (installed from a terminal, say) wins over the old failure.
+  if (exit?.kind === 'failed' && !(status && isEngineCurrent(status)))
+    return { kind: 'stopped', index: exit.index, code: exit.code }
   if (facts.checking || !status) return { kind: 'checking' }
-  // A finished install is judged by the check that follows it, not by the steps.
-  if (exit?.kind === 'ok') return installedScreen(status)
+  // A finished install is judged by the check that follows it, not by the steps; so is a failed
+  // one once a current engine turned up (only that gets past the failure above).
+  if (exit?.kind === 'ok' || exit?.kind === 'failed') return installedScreen(status)
   if (facts.wantsInstall || status.state === 'missing') return installScreen(facts.steps)
   return foundScreen(status)
 }
