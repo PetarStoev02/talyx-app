@@ -15,6 +15,7 @@ const reply = (id: string, text: string, error: string | null = null): ChatItem 
   text,
   streaming: false,
   error,
+  stopped: false,
   sender: null
 })
 

@@ -97,7 +97,7 @@ export function ChatPane({
           <Transcript items={items} loadImage={loadImage}>
             {activity && (
               <li>
-                <ActivityLine bot={bot} activity={activity} />
+                <ActivityLine bot={bot} activity={activity} wait={chat.transcript?.wait ?? null} />
               </li>
             )}
             {prompts.map((prompt) => (

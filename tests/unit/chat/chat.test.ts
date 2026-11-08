@@ -124,6 +124,103 @@ describe('bot chat', () => {
     })
   })
 
+  describe('a failed turn', () => {
+    const UNKNOWN_PROVIDER = "Unknown provider 'acme'. Send it again if you still want me to."
+    const NO_CREDENTIALS = 'No usable credentials found for provider acme'
+    const visible = (): Array<Record<string, unknown>> =>
+      (chat(MANAGER).transcript?.items ?? []).map((item) =>
+        item.kind === 'user'
+          ? { kind: item.kind, text: item.text }
+          : item.kind === 'bot'
+            ? { kind: item.kind, text: item.text, error: item.error }
+            : { kind: item.kind }
+      )
+    const before = [
+      { kind: 'user', text: 'Hello' },
+      { kind: 'bot', text: 'Hi there', error: null }
+    ]
+    const failedWith = (reason: string): Array<Record<string, unknown>> => [
+      { kind: 'user', text: 'Summarise Q3' },
+      { kind: 'bot', text: '', error: reason }
+    ]
+    // The engine's frame for a turn that never reached the model: the reason is its text.
+    const failSend = async (): Promise<void> => {
+      await actions.send(MANAGER, { text: 'Summarise Q3', images: [] })
+      handleEvent(actions, {
+        type: 'message.complete',
+        seq: 8,
+        payload: { status: 'error', text: UNKNOWN_PROVIDER },
+        session_id: 'manager-chat'
+      } as GatewayEvent)
+      await actions.rebuild(MANAGER)
+    }
+
+    it("should keep your message and the engine's reason after the chat reloads", async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      await failSend()
+      expect(visible()).toEqual([...before, ...failedWith(UNKNOWN_PROVIDER)])
+    })
+
+    it('should keep the failed turn in its place once later turns are stored', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      await failSend()
+      engine.chats[MANAGER].messages.push(
+        { id: 3, role: 'user', content: 'Try again' },
+        { id: 4, role: 'assistant', content: 'Done' }
+      )
+      await actions.rebuild(MANAGER)
+      await actions.open(MANAGER, 'manager-chat')
+      expect(visible()).toEqual([
+        ...before,
+        ...failedWith(UNKNOWN_PROVIDER),
+        { kind: 'user', text: 'Try again' },
+        { kind: 'bot', text: 'Done', error: null }
+      ])
+    })
+
+    it('should show the failed turn once when the engine stored it', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      engine.chats[MANAGER].messages.push(
+        { id: 3, role: 'user', content: 'Summarise Q3' },
+        {
+          id: 4,
+          role: 'assistant',
+          content: 'Your request was not processed.',
+          display_kind: 'failed_turn',
+          display_metadata: { error: UNKNOWN_PROVIDER }
+        }
+      )
+      await failSend()
+      expect(visible()).toEqual([...before, ...failedWith(UNKNOWN_PROVIDER)])
+    })
+
+    describe('that the engine still holds', () => {
+      // A failed turn the engine kept for a client that missed its frame: resume carries it.
+      const held = { user: 'Summarise Q3', assistant: '', error: NO_CREDENTIALS, status: 'error' }
+
+      it('should show it once when the chat opens', async () => {
+        engine.chats[MANAGER].inflight = held
+        await actions.open(MANAGER, 'manager-chat')
+        await actions.open(MANAGER, 'manager-chat')
+        expect(visible()).toEqual([...before, ...failedWith(NO_CREDENTIALS)])
+      })
+
+      it('should not repeat your message when the engine stored it', async () => {
+        engine.chats[MANAGER].messages.push({ id: 3, role: 'user', content: 'Summarise Q3' })
+        engine.chats[MANAGER].inflight = held
+        await actions.open(MANAGER, 'manager-chat')
+        expect(visible()).toEqual([...before, ...failedWith(NO_CREDENTIALS)])
+      })
+
+      it('should show the failed send once after the reload that follows it', async () => {
+        await actions.open(MANAGER, 'manager-chat')
+        engine.chats[MANAGER].inflight = { ...held, error: UNKNOWN_PROVIDER }
+        await failSend()
+        expect(visible()).toEqual([...before, ...failedWith(UNKNOWN_PROVIDER)])
+      })
+    })
+  })
+
   describe('sending', () => {
     it('should create one Bot Chat when two sends race', async () => {
       await actions.open(WORKER, null)

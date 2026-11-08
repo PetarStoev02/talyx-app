@@ -7,6 +7,8 @@ export type ChatItem =
       text: string
       streaming: boolean
       error: string | null
+      // The user stopped the turn part way: the text is what the bot wrote until then.
+      stopped: boolean
       // Who spoke: a room member, or a bot that delivered a message into this chat; null for the
       // chat's own bot. A delivery names its sender by @handle, which is the profile's name except
       // for Talyx (the engine's manager handle).
@@ -59,6 +61,17 @@ export interface Transcript {
   epoch: string | null
   // How far the streaming turn's reply is applied, when the engine stamps its frames; null otherwise.
   stream: StreamCursor | null
+  // What the engine says while it waits on a provider before retrying; null when it is not waiting.
+  wait: string | null
+  // The turns that failed here, oldest first. The engine never stores one, so a reload puts them
+  // back where they were.
+  failed: FailedTurn[]
+}
+
+/** A failed turn's message and error bubble, and the id of the item they followed (null: first). */
+export interface FailedTurn {
+  after: string | null
+  items: ChatItem[]
 }
 
 /**

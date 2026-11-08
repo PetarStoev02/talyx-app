@@ -10,6 +10,7 @@ import { useRoster } from '@features/bots/store'
 import { markdownImage } from '@features/chat/markdownImage'
 import { senderProfile } from '@features/chat/transcript'
 import type { MessageItem } from '@features/chat/types'
+import { CopyButton } from '@features/setup/ScreenParts'
 import { cn } from '@shared/lib/utils'
 
 // Links open in the browser through the window-open guard, never inside the app.
@@ -66,26 +67,48 @@ export function MessageBubble({
         )}
       </div>
     )
+  const copyable = !message.streaming && message.text.trim() !== ''
   const reply = (
-    <div
-      dir="auto"
-      className={cn(
-        'chat-markdown chat-bubble max-w-[85%] min-w-0 self-start rounded-3xl bg-secondary px-4 py-3 text-base break-words',
-        // The cursor sits after the last line of text, drawn by chat.css.
-        message.streaming && 'chat-streaming'
-      )}
-    >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={MARKDOWN_COMPONENTS}
-        urlTransform={urlTransform}
+    <div className="group flex max-w-[85%] min-w-0 flex-col items-start gap-1 self-start">
+      <div
+        dir="auto"
+        className={cn(
+          'chat-markdown chat-bubble max-w-full min-w-0 rounded-3xl bg-secondary px-4 py-3 text-base break-words',
+          // The cursor sits after the last line of text, drawn by chat.css.
+          message.streaming && 'chat-streaming'
+        )}
       >
-        {message.text}
-      </ReactMarkdown>
-      {message.error && (
-        <div className="mt-2">
-          <p className="text-destructive-text">{t('chat.replyFailed')}</p>
-          <p className="text-sm text-muted-foreground wrap-anywhere">{message.error}</p>
+        {(message.text || message.error === null) && (
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={MARKDOWN_COMPONENTS}
+            urlTransform={urlTransform}
+          >
+            {message.text}
+          </ReactMarkdown>
+        )}
+        {message.error !== null && (
+          <div className={cn(message.text && 'mt-2')}>
+            <p className="text-destructive-text">{t('chat.replyFailed')}</p>
+            {message.error && (
+              <p className="text-sm text-muted-foreground wrap-anywhere">{message.error}</p>
+            )}
+          </div>
+        )}
+      </div>
+      {(message.stopped || copyable) && (
+        <div className="flex items-center gap-3 px-2 text-sm text-muted-foreground">
+          {message.stopped && <span>{t('chat.replyStopped')}</span>}
+          {copyable && (
+            // Shown on hover; still in the tab order, and shown while it has focus.
+            <div className="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+              <CopyButton
+                text={message.text}
+                label={t('providers.copy')}
+                name={t('chat.copyReply')}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

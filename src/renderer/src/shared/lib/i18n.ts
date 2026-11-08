@@ -130,6 +130,8 @@ const en = {
   'chat.replied': '{name} replied',
   'chat.replyFailedAnnounce': '{name}’s reply failed',
   'chat.replyFailed': 'This reply did not finish. Send your message again to retry.',
+  'chat.replyStopped': 'Stopped',
+  'chat.copyReply': 'Copy reply',
   'chat.clarifyBack': 'Back',
   'chat.clarifyNext': 'Next',
   'chat.clarifySend': 'Send',
