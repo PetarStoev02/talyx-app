@@ -132,6 +132,8 @@ const en = {
   'chat.replyFailed': 'This reply did not finish. Send your message again to retry.',
   'chat.replyStopped': 'Stopped',
   'chat.copyReply': 'Copy reply',
+  'chat.replyCopied': 'Reply copied',
+  'chat.copyFailed': 'Copying did not work. Select the reply and copy it yourself.',
   'chat.clarifyBack': 'Back',
   'chat.clarifyNext': 'Next',
   'chat.clarifySend': 'Send',

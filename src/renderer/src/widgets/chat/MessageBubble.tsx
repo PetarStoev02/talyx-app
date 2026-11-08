@@ -10,8 +10,8 @@ import { useRoster } from '@features/bots/store'
 import { markdownImage } from '@features/chat/markdownImage'
 import { senderProfile } from '@features/chat/transcript'
 import type { MessageItem } from '@features/chat/types'
-import { CopyButton } from '@features/setup/ScreenParts'
 import { cn } from '@shared/lib/utils'
+import { CopyReplyButton } from './CopyReplyButton'
 
 // Links open in the browser through the window-open guard, never inside the app.
 const MARKDOWN_COMPONENTS: Components = {
@@ -73,7 +73,7 @@ export function MessageBubble({
       <div
         dir="auto"
         className={cn(
-          'chat-markdown chat-bubble max-w-full min-w-0 rounded-3xl bg-secondary px-4 py-3 text-base break-words',
+          'chat-markdown chat-bubble relative max-w-full min-w-0 rounded-3xl bg-secondary px-4 py-3 text-base break-words',
           // The cursor sits after the last line of text, drawn by chat.css.
           message.streaming && 'chat-streaming'
         )}
@@ -95,21 +95,10 @@ export function MessageBubble({
             )}
           </div>
         )}
+        {copyable && <CopyReplyButton text={message.text} />}
       </div>
-      {(message.stopped || copyable) && (
-        <div className="flex items-center gap-3 px-2 text-sm text-muted-foreground">
-          {message.stopped && <span>{t('chat.replyStopped')}</span>}
-          {copyable && (
-            // Shown on hover; still in the tab order, and shown while it has focus.
-            <div className="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-              <CopyButton
-                text={message.text}
-                label={t('providers.copy')}
-                name={t('chat.copyReply')}
-              />
-            </div>
-          )}
-        </div>
+      {message.stopped && (
+        <p className="px-2 text-sm text-muted-foreground">{t('chat.replyStopped')}</p>
       )}
     </div>
   )
