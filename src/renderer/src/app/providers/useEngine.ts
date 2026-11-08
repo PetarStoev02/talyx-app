@@ -7,6 +7,8 @@ import { reportError } from '@shared/lib/report'
 interface EngineState {
   status: EngineStatus | null
   checking: boolean
+  /** When the last check finished (ms since epoch), for "Checked just now"; null before the first. */
+  checkedAt: number | null
   /** The gateway socket's state, and when it last changed (ms since epoch). */
   connection: ConnectionState
   connectionSince: number
@@ -47,12 +49,13 @@ export const useEngine = create<EngineState>((set) => {
     try {
       await apply(next)
     } finally {
-      set({ checking: false })
+      set({ checking: false, checkedAt: Date.now() })
     }
   }
   return {
     status: null,
     checking: false,
+    checkedAt: null,
     connection: 'idle',
     connectionSince: Date.now(),
     everConnected: false,

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useEngine } from '@app/providers/useEngine'
@@ -7,6 +7,7 @@ import { Button } from '@shared/ui/button'
 import { engineSummary, type EngineSummary } from '@features/setup/engineSummary'
 import { RestartHint } from '@features/setup/EngineScreens'
 import { useUpdates } from '@features/updates/store'
+import { timeInWords } from '@features/bots/roster'
 
 const STATE_KEYS = {
   checking: 'settings.engineChecking',
@@ -21,6 +22,9 @@ const ACTION_KEYS = {
   update: 'settings.engineUpdate'
 } as const
 
+// "Checked just now" turns into "Checked 1 minute ago" without a click.
+const CHECKED_TICK_MS = 30_000
+
 /**
  * `debugConsole` is the engine-gated console: the page wraps it, since a widget cannot import the
  * engine gate. It mounts only while open, so a closed field sends nothing to the engine.
@@ -33,12 +37,19 @@ export function EngineSection({
   const t = useLanguage((s) => s.t)
   const status = useEngine((s) => s.status)
   const checking = useEngine((s) => s.checking)
+  const checkedAt = useEngine((s) => s.checkedAt)
   const check = useEngine((s) => s.check)
   const pickPath = useEngine((s) => s.pickPath)
   const navigate = useNavigation((s) => s.navigate)
   const requestEngineInstall = useUpdates((s) => s.requestEngineInstall)
   const summary: EngineSummary = engineSummary(status)
   const [consoleOpen, setConsoleOpen] = useState(false)
+  const [, setTick] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick((tick) => tick + 1), CHECKED_TICK_MS)
+    return () => clearInterval(timer)
+  }, [])
 
   function install(): void {
     // The Agents page's engine gate runs the install, with its output and restart step.
@@ -73,6 +84,12 @@ export function EngineSection({
         </Button>
         {summary.action && <Button onClick={install}>{t(ACTION_KEYS[summary.action])}</Button>}
       </div>
+      {checkedAt && (
+        // Keyed by the time, so each check fades the line in again even while it reads the same.
+        <p key={checkedAt} className="animate-arrive text-sm" aria-live="polite">
+          {t('settings.engineChecked').replace('{when}', timeInWords(checkedAt / 1000, t))}
+        </p>
+      )}
       <div className="space-y-3">
         <button
           className="flex items-center gap-2 text-base font-medium text-foreground"

@@ -398,6 +398,16 @@ const en = {
   'settings.engineInstall': 'Install the engine',
   'settings.engineUpdate': 'Update the engine',
   'settings.engineDebugConsole': 'Debug console',
+  'settings.engineChecked': 'Checked {when}',
+  'settings.about': 'About',
+  'settings.talyxVersion': 'Talyx {version}',
+  'settings.aboutEngineVersion': 'Engine {version}',
+  'settings.aboutEngineMissing': 'Engine not found',
+  'settings.copyDiagnostics': 'Copy diagnostics',
+  'settings.copyDiagnosticsDesc':
+    'For a bug report: the versions, your system and the end of the log. Keys and tokens are left out.',
+  'settings.diagnosticsCopied': 'Copied.',
+  'settings.errorDiagnostics': 'Talyx could not copy the diagnostics.',
   'settings.appearance': 'Appearance',
   'settings.errorSave':
     'Talyx could not save this setting. It applies until you quit; change it again to retry.',

@@ -49,3 +49,9 @@ export const updaterApi = {
   install: (): Promise<void> => window.api.installUpdate() as Promise<void>,
   onState: (cb: (state: UpdateState) => void): (() => void) => window.api.onUpdateState(cb)
 }
+
+export const appApi = {
+  version: (): Promise<string> => window.api.getAppVersion() as Promise<string>,
+  diagnostics: (engineVersion: string | null): Promise<string> =>
+    window.api.getDiagnostics(engineVersion) as Promise<string>
+}

@@ -8,6 +8,7 @@ import { APP_ROOT, registerAppScheme, serveRenderer } from './infrastructure/sec
 import { registerSettingsIpc } from './infrastructure/ipc/settings.ipc'
 import { cancelInstall, registerSetupIpc } from './infrastructure/ipc/setup.ipc'
 import { registerLogIpc } from './infrastructure/ipc/log.ipc'
+import { registerAppIpc } from './infrastructure/ipc/app.ipc'
 import { closeEngineSockets, registerEngineIpc } from './infrastructure/ipc/engine.ipc'
 import { registerUpdaterIpc, updates } from './infrastructure/ipc/updater.ipc'
 import { fetchLatestRelease } from './infrastructure/updater/releaseCheck'
@@ -51,6 +52,7 @@ function registerIpc(): void {
   registerSetupIpc()
   registerLogIpc()
   registerUpdaterIpc()
+  registerAppIpc()
   ipcMain.handle('theme:set-native', (_event, theme: unknown) =>
     syncNativeTheme(validateInput(ThemeSchema, theme))
   )

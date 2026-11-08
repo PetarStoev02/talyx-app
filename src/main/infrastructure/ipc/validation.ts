@@ -27,6 +27,9 @@ export const UserSettingsPartialSchema = z
 export const EnginePathSchema = z.string().refine(isAbsolute, 'enginePath must be an absolute path')
 
 /** A renderer failure for the log file; capped so a page cannot flood it. */
+/** The engine version a page shows, or null when no engine is attached. */
+export const EngineVersionSchema = z.string().max(200).nullable()
+
 export const RendererErrorSchema = z.object({
   scope: z.string().max(100),
   message: z.string().max(8000)
