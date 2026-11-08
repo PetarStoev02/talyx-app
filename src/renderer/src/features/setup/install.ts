@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { ENGINE_COMMAND } from '../../../../shared/engine'
 import type { InstallExit, InstallSteps } from '../../../../shared/setup'
 
 export interface SetupBackend {
@@ -17,8 +18,6 @@ const MAX_OUTPUT_CHARS = 200_000
 const ANSI_CSI = /\x1b\[[0-9;?]*[A-Za-z]/g
 // A download the engine's installer gave up on, e.g. a TLS handshake a VPN or proxy broke.
 const DOWNLOAD_ERROR = /SSL:|WRONG_VERSION_NUMBER|urlopen error/
-// What Talyx calls the engine: the command the install links it as.
-const ENGINE_COMMAND = 'talyx-engine'
 
 interface InstallState {
   steps: InstallSteps | null

@@ -63,7 +63,9 @@ export function InstallEngine({
   // The engine may change outside Talyx (installed from a terminal): look again on return.
   useEffect(() => {
     const refresh = (): void => {
-      if (!useInstall.getState().running) void useEngine.getState().refresh()
+      // A check already running (Try again, a chosen file) answers the same question.
+      if (!useInstall.getState().running && !useEngine.getState().checking)
+        void useEngine.getState().refresh()
     }
     window.addEventListener('focus', refresh)
     return () => window.removeEventListener('focus', refresh)

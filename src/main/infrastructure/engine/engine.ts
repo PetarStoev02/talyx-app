@@ -2,6 +2,7 @@ import { accessSync, constants, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { delimiter, isAbsolute, join } from 'node:path'
 import {
+  ENGINE_COMMAND,
   engineWire,
   parseEngineVersion,
   type EngineHttpRequest,
@@ -24,8 +25,6 @@ import {
   type GatewayTicketPurpose
 } from './gateway'
 
-/** The command Talyx runs; the engine's own installer never names it this, so the user links it. */
-export const ENGINE_COMMAND = 'talyx-engine'
 const DEFAULT_HTTP_TIMEOUT_MS = 30_000
 const WINDOWS_UNSUPPORTED = 'Talyx cannot attach to the engine on Windows yet'
 

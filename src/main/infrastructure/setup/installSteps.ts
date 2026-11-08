@@ -4,7 +4,7 @@ import { app } from 'electron'
 import log from 'electron-log'
 import { z } from 'zod'
 import type { InstallSteps } from '../../../shared/setup'
-import { ENGINE_COMMAND } from '../engine/engine'
+import { ENGINE_COMMAND } from '../../../shared/engine'
 import { ENGINE_INSTALL_SHA256, sha256Hex } from './installPin'
 
 const RELEASES = 'https://github.com/PetarStoev02/talyx-app/releases'
@@ -49,11 +49,14 @@ export async function loadInstallSteps(source: InstallStepsSource): Promise<Inst
   const file = parseInstallFile(bytes)
   const steps = file?.platforms[platform]
   if (!file || !steps) return { kind: 'invalid', releaseUrl }
+  const engineName = linkedEngineName(steps.commands)
+  // Without it the install output shows the engine's own name: the link step changed shape.
+  if (!engineName) log.warn('[Setup] No install command links the engine as talyx-engine')
   return {
     kind: 'ready',
     commands: steps.commands,
     engineVersion: file.engineVersion,
-    engineName: linkedEngineName(steps.commands),
+    engineName,
     releaseUrl
   }
 }
