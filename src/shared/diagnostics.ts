@@ -6,11 +6,14 @@ const REDACTED = '[redacted]'
 const SECRET_PATTERNS: Array<[RegExp, string]> = [
   // A password in a URL: scheme://user:password@host
   [/(\b[a-z][a-z0-9+.-]*:\/\/[^\s:/@]+):[^\s@/]+@/gi, `$1:${REDACTED}@`],
-  // An Authorization header value
-  [/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/g, `$1 ${REDACTED}`],
-  // A named field: api_key=..., "token": "...", OPENROUTER_API_KEY=..., password: ...
+  // An Authorization or Cookie header: the whole rest of the line, whatever the scheme
+  [/\b((?:proxy-)?authorization|(?:set-)?cookie)(["']?\s*[:=]\s*).*/gi, `$1$2${REDACTED}`],
+  // A bearer token without its header name ("basic" alone is too common a word to match)
+  [/\b(bearer)\s+[A-Za-z0-9._~+/=-]+/gi, `$1 ${REDACTED}`],
+  // A named field: api_key=..., "token": "...", OPENROUTER_API_KEY=..., password: '...'. A quoted
+  // value is hidden up to its closing quote, spaces and escapes included.
   [
-    /\b(\w*(?:api[_-]?key|apikey|token|secret|password|passwd|credential|authorization|ticket|cookie)\w*)(["']?\s*[:=]\s*["']?)[^\s"'&,;}]+/gi,
+    /\b(\w*(?:api[_-]?key|apikey|token|secret|password|passwd|credential|ticket)\w*)(["']?\s*[:=]\s*)(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^\s"'&,;}]+)/gi,
     `$1$2${REDACTED}`
   ],
   // Well-known key shapes, wherever they appear

@@ -56,6 +56,14 @@ describe('diagnostics', () => {
         'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U',
         'eyJhbGciOiJIUzI1NiJ9'
       ],
+      ['a quoted password with spaces', "{ password: 'correct horse battery staple' }", 'horse'],
+      ['a double-quoted token with an escape', '{"token":"ab\\"cd efgh"}', 'efgh'],
+      ['a lowercase bearer token', 'auth bearer abcdefghijklmnopqrstuvwxyz', 'abcdefghij'],
+      [
+        'any Authorization header value',
+        'Authorization: Digest username=x, response=abcdef',
+        'response=abcdef'
+      ],
       ['a password in a URL', 'proxy https://bob:pa55w0rd@proxy.local:8080', 'pa55w0rd'],
       [
         'a long opaque token',
@@ -82,7 +90,7 @@ describe('diagnostics', () => {
     })
 
     it('should keep ordinary log lines readable', () => {
-      const line = '[2026-11-08 10:00:00.123] [info] [Engine] Attached, version 0.9.0'
+      const line = '[2026-11-08 10:00:00.123] [info] [Engine] Attached, version 0.9.0 (basic setup)'
       expect(redactSecrets(line)).toBe(line)
     })
   })
