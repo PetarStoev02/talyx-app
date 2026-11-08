@@ -106,7 +106,7 @@ export function BotRow({
                   {botTitle(bot)}
                 </span>
                 {!pinned && (
-                  <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+                  <span className="ml-auto shrink-0 text-xs text-muted-foreground">
                     {timeInWords(botActivityTime(bot), t, now)}
                   </span>
                 )}
