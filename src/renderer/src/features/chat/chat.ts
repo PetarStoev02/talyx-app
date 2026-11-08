@@ -367,10 +367,11 @@ function withHeldFailure(
 ): Transcript {
   const last = transcript.items.at(-1)
   if (last?.kind === 'bot' && last.error !== null) return transcript
+  // A message the engine did store is the last item: the failure follows it.
   const sent = turn.user?.trim() ?? ''
-  const asked: ChatItem[] = sent
-    ? [{ kind: 'user', id: `failed-${seq}-user`, text: sent, images: [] }]
-    : []
+  const stored = last?.kind === 'user' && last.text === sent
+  const asked: ChatItem[] =
+    sent && !stored ? [{ kind: 'user', id: `failed-${seq}-user`, text: sent, images: [] }] : []
   const reply: ChatItem = {
     kind: 'bot',
     id: `failed-${seq}`,
@@ -380,10 +381,7 @@ function withHeldFailure(
     stopped: false,
     sender: null
   }
-  // A message the engine did store is the last item; the turn goes before it so it shows once.
-  const stored = last?.kind === 'user' && last.text === sent
-  const after = (stored ? transcript.items.at(-2) : last)?.id ?? null
-  return withFailedTurns(transcript, [{ after, items: [...asked, reply] }])
+  return withFailedTurns(transcript, [{ after: last?.id ?? null, items: [...asked, reply] }])
 }
 
 /** The live session info over what the chat showed before; absent fields keep their value. */

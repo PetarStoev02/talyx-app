@@ -194,6 +194,44 @@ describe('bot chat', () => {
       expect(visible()).toEqual([...before, ...failedWith(UNKNOWN_PROVIDER)])
     })
 
+    it('should show it once when the engine stored it after the tools it ran', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      engine.chats[MANAGER].messages.push(
+        { id: 3, role: 'user', content: 'Summarise Q3' },
+        { id: 4, role: 'assistant', content: 'Looking it up' },
+        {
+          id: 5,
+          role: 'assistant',
+          content: 'Your request was not processed.',
+          display_kind: 'failed_turn',
+          display_metadata: { error: UNKNOWN_PROVIDER }
+        }
+      )
+      await failSend()
+      expect(visible()).toEqual([
+        ...before,
+        { kind: 'user', text: 'Summarise Q3' },
+        { kind: 'bot', text: 'Looking it up', error: null },
+        { kind: 'bot', text: '', error: UNKNOWN_PROVIDER }
+      ])
+    })
+
+    it('should keep the failed send apart from the same words sent again', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      await failSend()
+      engine.chats[MANAGER].messages.push(
+        { id: 3, role: 'user', content: 'Summarise Q3' },
+        { id: 4, role: 'assistant', content: 'Margins are up.' }
+      )
+      await actions.rebuild(MANAGER)
+      expect(visible()).toEqual([
+        ...before,
+        ...failedWith(UNKNOWN_PROVIDER),
+        { kind: 'user', text: 'Summarise Q3' },
+        { kind: 'bot', text: 'Margins are up.', error: null }
+      ])
+    })
+
     describe('that the engine still holds', () => {
       // A failed turn the engine kept for a client that missed its frame: resume carries it.
       const held = { user: 'Summarise Q3', assistant: '', error: NO_CREDENTIALS, status: 'error' }

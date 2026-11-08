@@ -123,24 +123,33 @@ function applyPayload(transcript: Transcript, event: GatewayEvent, payload: Payl
 
 /**
  * Puts failed turns back into a transcript read from history, each after the item it followed. A
- * turn whose place is no longer loaded is dropped; a message the engine did store shows once.
+ * turn whose place is no longer loaded is dropped, and so is one the engine stored.
  */
 export function withFailedTurns(transcript: Transcript, turns: FailedTurn[]): Transcript {
   const items = [...transcript.items]
   const kept: FailedTurn[] = []
   for (const turn of turns) {
     const at = turn.after === null ? 0 : items.findIndex((item) => item.id === turn.after) + 1
-    if (turn.after !== null && at === 0) continue
-    // The engine stores a turn that failed after it reached the model: then it is already here.
-    const [first, ...rest] = turn.items
-    const next = items[at]
-    const sent = first?.kind === 'user' && next?.kind === 'user' && next.text === first.text
-    const reply = items[sent ? at + 1 : at]
-    if (reply?.kind === 'bot' && reply.error !== null) continue
-    items.splice(sent ? at + 1 : at, 0, ...(sent ? rest : turn.items))
+    if ((turn.after !== null && at === 0) || storedAt(items, at, turn.items[0])) continue
+    items.splice(at, 0, ...turn.items)
     kept.push(turn)
   }
   return { ...transcript, items, failed: [...transcript.failed, ...kept] }
+}
+
+/**
+ * The engine stores a turn that failed after it reached the model: its message, then before the
+ * next message a failed reply. The same words sent again and answered are another turn.
+ * Matched by place and words only: a resend of the same words that also fails and is stored hides
+ * the earlier failure the engine did not store. Matching on submission ids would tell them apart.
+ */
+function storedAt(items: ChatItem[], at: number, sent: ChatItem | undefined): boolean {
+  const next = items[at]
+  if (sent?.kind !== 'user' || next?.kind !== 'user' || next.text !== sent.text) return false
+  const end = items.findIndex((item, index) => index > at && item.kind === 'user')
+  return items
+    .slice(at + 1, end < 0 ? undefined : end)
+    .some((item) => item.kind === 'bot' && item.error !== null)
 }
 
 export function addPrompt(transcript: Transcript, prompt: ChatPrompt): Transcript {
