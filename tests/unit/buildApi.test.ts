@@ -33,6 +33,8 @@ describe('buildApi', () => {
     ['openEngineSocket', ['id-1', 'default'], 'engine:socket-open', ['id-1', 'default']],
     ['sendEngineSocket', ['id-1', '{}'], 'engine:socket-send', ['id-1', '{}']],
     ['closeEngineSocket', ['id-1'], 'engine:socket-close', ['id-1']],
+    ['getAppVersion', [], 'app:version', []],
+    ['getDiagnostics', ['0.9.0'], 'app:diagnostics', ['0.9.0']],
     ['getUpdateState', [], 'updater:status', []],
     ['downloadUpdate', [], 'updater:download', []],
     ['cancelUpdate', [], 'updater:cancel', []],
@@ -50,13 +52,15 @@ describe('buildApi', () => {
     expect(transport.calls).toEqual([{ channel, args: wireArgs }])
   })
 
-  it('should expose only the settings, engine, setup, log and updater surface', () => {
+  it('should expose only the settings, engine, setup, log, about and updater surface', () => {
     expect(Object.keys(buildApi(recordingTransport())).sort()).toEqual([
       'cancelInstall',
       'cancelUpdate',
       'closeEngineSocket',
       'downloadUpdate',
       'engineHttp',
+      'getAppVersion',
+      'getDiagnostics',
       'getEngineStatus',
       'getInstallSteps',
       'getSettings',

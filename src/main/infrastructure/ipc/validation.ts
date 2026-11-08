@@ -26,6 +26,9 @@ export const UserSettingsPartialSchema = z
  *  (the user bin's engine, no argument) write it. */
 export const EnginePathSchema = z.string().refine(isAbsolute, 'enginePath must be an absolute path')
 
+/** The engine as a page reports it for diagnostics ("0.22.7", "error (0.22.7)", "not found"). */
+export const EngineLabelSchema = z.string().max(200)
+
 /** A renderer failure for the log file; capped so a page cannot flood it. */
 export const RendererErrorSchema = z.object({
   scope: z.string().max(100),

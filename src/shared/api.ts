@@ -62,6 +62,10 @@ export function buildApi(transport: ApiTransport) {
     // A renderer failure, written to Talyx's log file by main
     logError: (report: { scope: string; message: string }) => invoke('log:error', report),
 
+    // About Talyx: its version, and the redacted diagnostics report for a bug report
+    getAppVersion: () => invoke('app:version'),
+    getDiagnostics: (engine: string) => invoke('app:diagnostics', engine),
+
     // Talyx update (main picks, downloads and verifies the release; the page only asks)
     getUpdateState: () => invoke('updater:status'),
     downloadUpdate: () => invoke('updater:download'),

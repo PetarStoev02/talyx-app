@@ -4,6 +4,7 @@ import { ChevronDown } from 'lucide-react'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { CheckItem, menuContentClass, menuLabelClass } from '@shared/ui/menu'
+import { cn } from '@shared/lib/utils'
 
 export interface ModelPick {
   provider: string
@@ -25,12 +26,14 @@ export function ModelPicker({
   selected,
   onSelect,
   labels,
+  contentClassName,
   children
 }: {
   load: () => Promise<ModelOptionProvider[]>
   selected: ModelPick | null
   onSelect: (pick: ModelPick) => void
   labels: ModelPickerLabels
+  contentClassName?: string
   children: React.ReactNode
 }): React.JSX.Element {
   const [providers, setProviders] = useState<ModelOptionProvider[] | null>(null)
@@ -51,7 +54,11 @@ export function ModelPicker({
     <DropdownMenu.Root onOpenChange={open}>
       {children}
       <DropdownMenu.Portal>
-        <DropdownMenu.Content sideOffset={4} align="start" className={menuContentClass}>
+        <DropdownMenu.Content
+          sideOffset={4}
+          align="start"
+          className={cn(menuContentClass, contentClassName)}
+        >
           {failure ? (
             <div role="alert" className="max-w-72 px-2.5 py-1.5">
               <p>{labels.failed}</p>
@@ -120,6 +127,8 @@ export function ModelField({
       selected={value}
       onSelect={onSelect}
       labels={labels}
+      // A field's menu lines up with the field: as wide as the trigger.
+      contentClassName="w-(--radix-dropdown-menu-trigger-width)"
     >
       <DropdownMenu.Trigger
         disabled={!load}

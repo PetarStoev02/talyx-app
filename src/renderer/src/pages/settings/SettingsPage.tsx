@@ -13,6 +13,7 @@ import { ProvidersSection } from '@widgets/providers'
 import { EngineGate } from '@widgets/engine-gate'
 import { DebugConsole, EngineSection } from '@widgets/settings-engine'
 import { StartupSection } from '@widgets/settings-startup'
+import { AboutSection } from '@widgets/settings-about'
 
 export function SettingsPage({
   providers,
@@ -46,6 +47,7 @@ export function SettingsPage({
       {/* The whole page scrolls, so the scrollbar sits at the window's edge, not the column's. */}
       <div className="scroll-y-stable min-h-0 flex-1">
         <div className="mx-auto w-full max-w-2xl space-y-10 p-6">
+          <AboutSection />
           <EngineSection
             debugConsole={
               <EngineGate>

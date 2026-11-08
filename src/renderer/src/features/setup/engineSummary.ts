@@ -51,3 +51,10 @@ export function engineSummary(status: EngineStatus | null): EngineSummary {
     action: older ? 'update' : null
   }
 }
+
+/** The engine in one line for a bug report: its version when attached, else its state. */
+export function engineLabel({ state, version }: EngineSummary): string {
+  if (state === 'attached' && version) return version
+  if (state === 'missing') return 'not found'
+  return version ? `${state} (${version})` : state
+}
