@@ -8,13 +8,13 @@ const SECRET_PATTERNS: Array<[RegExp, string]> = [
   [/(\b[a-z][a-z0-9+.-]*:\/\/[^\s:/@]+):[^\s@/]+@/gi, `$1:${REDACTED}@`],
   // An Authorization or Cookie header or field (proxy_authorization, session_cookie...): the
   // whole rest of the line, whatever the scheme
-  [/\b(\w*(?:authorization|cookie))(["']?\s*[:=]\s*).*/gi, `$1$2${REDACTED}`],
+  [/\b(\w*(?:authorization|cookie))(["']?[ \t]*[:=][ \t]*).*/gi, `$1$2${REDACTED}`],
   // A bearer token without its header name ("basic" alone is too common a word to match)
   [/\b(bearer)\s+[A-Za-z0-9._~+/=-]+/gi, `$1 ${REDACTED}`],
   // A named field: api_key=..., "token": "...", OPENROUTER_API_KEY=..., password: '...'. A quoted
   // value is hidden up to its closing quote, spaces and escapes included.
   [
-    /\b(\w*(?:api[_-]?key|apikey|token|secret|password|passwd|credential|ticket)\w*)(["']?\s*[:=]\s*)(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^\s"'&,;}]+)/gi,
+    /\b(\w*(?:api[_-]?key|apikey|token|secret|password|passwd|credential|ticket)\w*)(["']?[ \t]*[:=][ \t]*)(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^\s"'&,;}]+)/gi,
     `$1$2${REDACTED}`
   ],
   // Well-known key shapes, wherever they appear
@@ -44,7 +44,8 @@ export function logTail(log: string, count: number): string {
 
 export interface Diagnostics {
   talyx: string
-  engine: string | null
+  /** The engine as the page shows it: its version, or its state when it is not attached. */
+  engine: string
   os: string
   log: string
   /** The user's home folder, shown as ~ so the user name stays out of the report. */
@@ -54,11 +55,16 @@ export interface Diagnostics {
 export function diagnosticsReport({ talyx, engine, os, log, home }: Diagnostics): string {
   const text = [
     `Talyx ${talyx}`,
-    engine ? `Engine ${engine}` : 'Engine not found',
+    `Engine ${engine}`,
     `OS ${os}`,
     '',
     'Last log lines:',
     log || '(no log lines)'
   ].join('\n')
-  return redactSecrets(home ? text.replaceAll(home, '~') : text)
+  return redactSecrets(home ? text.replace(homePattern(home), '~') : text)
+}
+
+// The home folder only as a whole path segment: /home/al must not turn /home/alice into ~ice.
+function homePattern(home: string): RegExp {
+  return new RegExp(`${home.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w.-])`, 'g')
 }

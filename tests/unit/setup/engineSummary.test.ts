@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { EngineStatus } from '../../../src/shared/engine'
-import { engineSummary } from '@features/setup/engineSummary'
+import { engineLabel, engineSummary } from '@features/setup/engineSummary'
 
 const path = '/usr/local/bin/talyx-engine'
 
@@ -50,5 +50,18 @@ describe('engineSummary', () => {
 
   it('should carry the message of an error and no path', () => {
     expect(engineSummary(failed(null, null))).toMatchObject({ message: 'no socket', path: null })
+  })
+})
+
+describe('engineLabel', () => {
+  it.each([
+    ['attached', engineSummary(attached('0.22.7')), '0.22.7'],
+    ['missing', engineSummary({ state: 'missing', enginePath: null } as EngineStatus), 'not found'],
+    ['before the first check', engineSummary(null), 'checking'],
+    ['failing with a version', engineSummary(failed('0.22.7', null)), 'error (0.22.7)'],
+    ['failing without a version', engineSummary(failed(null, null)), 'error'],
+    ['on another protocol', engineSummary(failed('0.30.0', 'protocol')), 'protocol (0.30.0)']
+  ])('should describe an engine that is %s', (_name, summary, label) => {
+    expect(engineLabel(summary)).toBe(label)
   })
 })

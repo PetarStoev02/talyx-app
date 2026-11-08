@@ -5,14 +5,14 @@ import { useEngine } from '@app/providers/useEngine'
 import { appApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
 import { Button } from '@shared/ui/button'
-import { engineSummary } from '@features/setup/engineSummary'
+import { engineLabel, engineSummary } from '@features/setup/engineSummary'
 
 const COPIED_MS = 1500
 
 /** Which Talyx and engine run here, and a redacted report to paste into a bug report. */
 export function AboutSection(): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const engineVersion = engineSummary(useEngine((s) => s.status)).version
+  const engine = engineSummary(useEngine((s) => s.status))
   const [version, setVersion] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -34,7 +34,7 @@ export function AboutSection(): React.JSX.Element {
       // The write starts inside the click with the report still pending: awaiting the report first
       // can outlive the click's permission to write, and the browser then refuses the copy.
       const report = appApi
-        .diagnostics(engineVersion)
+        .diagnostics(engineLabel(engine))
         .then((text) => new Blob([text], { type: 'text/plain' }))
       await navigator.clipboard.write([new ClipboardItem({ 'text/plain': report })])
       setCopied(true)
@@ -53,11 +53,10 @@ export function AboutSection(): React.JSX.Element {
             {t('settings.talyxVersion').replace('{version}', version)}
           </p>
         )}
-        <p>
-          {engineVersion
-            ? t('settings.aboutEngineVersion').replace('{version}', engineVersion)
-            : t('settings.aboutEngineMissing')}
-        </p>
+        {engine.version && (
+          <p>{t('settings.aboutEngineVersion').replace('{version}', engine.version)}</p>
+        )}
+        {engine.state === 'missing' && <p>{t('settings.aboutEngineMissing')}</p>}
       </div>
       <div className="space-y-2">
         <p className="text-base">{t('settings.copyDiagnosticsDesc')}</p>

@@ -52,6 +52,6 @@ export const updaterApi = {
 
 export const appApi = {
   version: (): Promise<string> => window.api.getAppVersion() as Promise<string>,
-  diagnostics: (engineVersion: string | null): Promise<string> =>
-    window.api.getDiagnostics(engineVersion) as Promise<string>
+  diagnostics: (engine: string): Promise<string> =>
+    window.api.getDiagnostics(engine) as Promise<string>
 }

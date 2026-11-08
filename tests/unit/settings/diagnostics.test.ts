@@ -3,7 +3,7 @@ import { diagnosticsReport, logTail, redactSecrets } from '../../../src/shared/d
 
 const HOME = '/Users/someone'
 
-function report(log: string, engine: string | null = '0.9.0'): string {
+function report(log: string, engine = '0.9.0'): string {
   return diagnosticsReport({
     talyx: '1.0.2',
     engine,
@@ -23,8 +23,8 @@ describe('diagnostics', () => {
       expect(text).toContain('[info] Talyx started')
     })
 
-    it('should say the engine is not found when there is no engine version', () => {
-      expect(report('', null)).toContain('Engine not found')
+    it('should describe the engine as the page shows it', () => {
+      expect(report('', 'error (0.9.0)')).toContain('Engine error (0.9.0)')
     })
 
     it('should say the log is empty when there are no log lines', () => {
@@ -35,6 +35,12 @@ describe('diagnostics', () => {
       const text = report(`[warn] Command not found ${HOME}/.local/bin/talyx-engine`)
       expect(text).toContain('~/.local/bin/talyx-engine')
       expect(text).not.toContain(HOME)
+    })
+
+    it('should not shorten another folder that starts with the home folder name', () => {
+      const text = report(`${HOME}2/notes '${HOME}'`)
+      expect(text).toContain(`${HOME}2/notes`)
+      expect(text).toContain("'~'")
     })
   })
 
@@ -89,6 +95,10 @@ describe('diagnostics', () => {
         home: HOME
       })
       expect(text).not.toContain('leakedFromAWeirdPlace')
+    })
+
+    it('should not hide the next log line after a field name that ends a line', () => {
+      expect(redactSecrets('missing token:\n[info] next line')).toContain('[info] next line')
     })
 
     it('should keep ordinary log lines readable', () => {

@@ -64,7 +64,7 @@ export function buildApi(transport: ApiTransport) {
 
     // About Talyx: its version, and the redacted diagnostics report for a bug report
     getAppVersion: () => invoke('app:version'),
-    getDiagnostics: (engineVersion: string | null) => invoke('app:diagnostics', engineVersion),
+    getDiagnostics: (engine: string) => invoke('app:diagnostics', engine),
 
     // Talyx update (main picks, downloads and verifies the release; the page only asks)
     getUpdateState: () => invoke('updater:status'),
