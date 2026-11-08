@@ -9,8 +9,8 @@ describe('release configuration', () => {
     scripts: Record<string, string>
   }
 
-  it('should ship as 1.0.1 under the MIT licence', () => {
-    expect(pkg.version).toBe('1.0.1')
+  it('should ship as 1.0.2 under the MIT licence', () => {
+    expect(pkg.version).toBe('1.0.2')
     expect(pkg.license).toBe('MIT')
   })
 
