@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, powerMonitor } from 'electron'
 import log from 'electron-log'
 import { join } from 'path'
 import { optimizer, is } from './lib/electronUtils'
@@ -322,6 +322,8 @@ app
     // Not awaited: modules run their own start code, which must never keep the window away. The
     // page reads the modules once they announce themselves.
     modules.start().catch((error: unknown) => log.error('[Main] Modules did not start', error))
+    // Timers stop while the computer sleeps; a key that expired meanwhile stops its modules now.
+    powerMonitor.on('resume', () => void modules.recheckExpiry())
     scheduleUpdateChecks()
 
     app.on('activate', () => {
@@ -340,6 +342,8 @@ app
 
 // Only Talyx's sockets close; the engine gateway outlives the app and is never stopped here.
 app.on('before-quit', () => {
+  // Best effort: a module's deactivate gets its chance, but quitting does not wait for it.
+  void modules.stopAll()
   closeEngineSockets()
   cancelInstall()
   updates.cancel()

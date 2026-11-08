@@ -37,9 +37,23 @@ export async function fetchCatalog(fetchFn: typeof fetch): Promise<CatalogEntry[
 export async function fetchBundleBytes(fetchFn: typeof fetch, url: string): Promise<Buffer> {
   const response = await fetchOk(fetchFn, url)
   if (Number(response.headers.get('content-length') ?? 0) > MAX_BUNDLE_BYTES) throw tooLarge()
-  const bytes = Buffer.from(await response.arrayBuffer())
-  if (bytes.length > MAX_BUNDLE_BYTES) throw tooLarge()
-  return bytes
+  return readCapped(response)
+}
+
+/** The body, stopped as soon as it passes the cap: a missing or false length is not trusted. */
+async function readCapped(response: Response): Promise<Buffer> {
+  const chunks: Uint8Array[] = []
+  let total = 0
+  const reader = response.body?.getReader()
+  for (let chunk = await reader?.read(); chunk && !chunk.done; chunk = await reader?.read()) {
+    total += chunk.value.length
+    if (total > MAX_BUNDLE_BYTES) {
+      await reader?.cancel()
+      throw tooLarge()
+    }
+    chunks.push(chunk.value)
+  }
+  return Buffer.concat(chunks)
 }
 
 function tooLarge(): CatalogError {

@@ -63,9 +63,10 @@ export async function swapIn(dir: string): Promise<void> {
   await rm(previous, { recursive: true, force: true })
 }
 
+/** The module and anything an interrupted install or update left next to it. */
 export async function remove(dir: string): Promise<void> {
-  await rm(dir, { recursive: true, force: true })
-  await rm(previousDir(dir), { recursive: true, force: true })
+  for (const path of [dir, previousDir(dir), stagingDir(dir)])
+    await rm(path, { recursive: true, force: true })
 }
 
 async function restoreInterruptedSwap(dir: string): Promise<void> {

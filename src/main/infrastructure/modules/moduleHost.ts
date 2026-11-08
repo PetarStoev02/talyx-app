@@ -33,6 +33,10 @@ export class ModuleError extends Error {
   override name = 'ModuleError'
 }
 
+class ModuleTimeoutError extends ModuleError {
+  override name = 'ModuleTimeoutError'
+}
+
 type Handler = (input: unknown) => unknown
 
 /** What a module's main.js gets from Talyx: the whole contract on the main side. */
@@ -77,6 +81,8 @@ interface Loaded {
   bundle: ModuleBundle | null
   handlers: Map<string, Handler>
   deactivate: (() => unknown) | null
+  /** Its start timed out: whatever it still does reaches nothing (no actions, no engine). */
+  retired: boolean
 }
 
 export type ModuleHost = ReturnType<typeof createModuleHost>
@@ -178,6 +184,16 @@ export function createModuleHost(deps: ModuleHostDeps) {
       }
       return state()
     })
+  }
+
+  /** On resume from sleep: timers paused, so a key that expired meanwhile is handled now. */
+  function recheckExpiry(): Promise<void> {
+    return serial(expire)
+  }
+
+  /** On quit: give every module its deactivate, best effort, without touching the license. */
+  function stopAll(): Promise<void> {
+    return serial(unloadAll)
   }
 
   /** Removes the module's code; its data folder stays, so a reinstall picks up where it was. */
@@ -298,7 +314,11 @@ export function createModuleHost(deps: ModuleHostDeps) {
         }
       const main = runMain(id, bundle)
       module.deactivate = main.deactivate ?? null
-      await withinTimeout(() => main.activate?.(contextFor(id, module)), 'start')
+      const started = Promise.resolve().then(() => main.activate?.(contextFor(id, module)))
+      await withinTimeout(started, 'start').catch((error: unknown) => {
+        if (error instanceof ModuleTimeoutError) retireWhenSettled(id, module, started)
+        throw error
+      })
       module.status = 'running'
       deps.log.info(`[Modules] Started ${id} ${bundle.version}`)
     } catch (error) {
@@ -308,11 +328,29 @@ export function createModuleHost(deps: ModuleHostDeps) {
     return module
   }
 
+  /**
+   * A start that timed out may still finish later and start things. It is cut off from Talyx at
+   * once, and its deactivate runs once that start settles, whatever happened to the module since.
+   */
+  function retireWhenSettled(id: string, module: Loaded, started: Promise<unknown>): void {
+    const stop = module.deactivate
+    module.retired = true
+    module.deactivate = null
+    module.handlers.clear()
+    void started
+      .catch(() => undefined)
+      .then(() => stop?.())
+      .catch((error: unknown) => deps.log.warn(`[Modules] ${id} did not stop cleanly:`, error))
+  }
+
   async function unload(id: string): Promise<void> {
     const module = loaded.get(id)
     loaded.delete(id)
     try {
-      await withinTimeout(() => module?.deactivate?.(), 'stop')
+      await withinTimeout(
+        Promise.resolve().then(() => module?.deactivate?.()),
+        'stop'
+      )
     } catch (error) {
       // Its handlers are gone either way; a failed cleanup must not block an update.
       deps.log.warn(`[Modules] ${id} did not stop cleanly:`, error)
@@ -329,9 +367,14 @@ export function createModuleHost(deps: ModuleHostDeps) {
       handle: (name, handler) => {
         if (!ModuleActionSchema.safeParse(name).success)
           throw new ModuleError(`"${name}" is not a valid action name.`)
-        module.handlers.set(name, handler)
+        if (!module.retired) module.handlers.set(name, handler)
       },
-      engine: { http: deps.engineHttp },
+      engine: {
+        http: (request) =>
+          module.retired
+            ? Promise.reject(new ModuleError('The module was stopped.'))
+            : deps.engineHttp(request)
+      },
       log: deps.log
     }
   }
@@ -346,7 +389,19 @@ export function createModuleHost(deps: ModuleHostDeps) {
     return next
   }
 
-  return { state, start, activate, deactivate, available, install, uninstall, invoke, file }
+  return {
+    state,
+    start,
+    activate,
+    deactivate,
+    available,
+    install,
+    uninstall,
+    invoke,
+    file,
+    recheckExpiry,
+    stopAll
+  }
 }
 
 function blankModule(id: string): Loaded {
@@ -357,21 +412,23 @@ function blankModule(id: string): Loaded {
     problem: null,
     bundle: null,
     handlers: new Map(),
-    deactivate: null
+    deactivate: null,
+    retired: false
   }
 }
 
 /** A module's own start or stop, given up on after LIFECYCLE_TIMEOUT_MS. */
-async function withinTimeout(step: () => unknown, verb: 'start' | 'stop'): Promise<void> {
+async function withinTimeout(work: Promise<unknown>, verb: 'start' | 'stop'): Promise<void> {
   let timer: ReturnType<typeof setTimeout> | undefined
+  const seconds = LIFECYCLE_TIMEOUT_MS / 1000
   const timeout = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(
-      () => reject(new ModuleError(`The module did not ${verb} within 10 seconds.`)),
+      () => reject(new ModuleTimeoutError(`The module did not ${verb} within ${seconds} seconds.`)),
       LIFECYCLE_TIMEOUT_MS
     )
   })
   try {
-    await Promise.race([Promise.resolve().then(step), timeout])
+    await Promise.race([work, timeout])
   } finally {
     clearTimeout(timer)
   }

@@ -29,7 +29,7 @@ describe('module host', () => {
   let signer: TestSigner
   let savedKey: string | null
   let published: ModulesState[]
-  let files: Map<string, Buffer | object>
+  let files: Map<string, Buffer | ReadableStream | object>
   let host: ModuleHost
   let clock: number
   /** Set to hold the bundle download until the test releases it. */
@@ -69,6 +69,7 @@ describe('module host', () => {
     if (url === BUNDLE_URL && heldDownload) await heldDownload
     const body = files.get(url)
     if (body === undefined) return new Response(null, { status: 404, statusText: 'Not Found' })
+    if (body instanceof ReadableStream) return new Response(body)
     return new Response(Buffer.isBuffer(body) ? new Uint8Array(body) : JSON.stringify(body))
   }) as typeof fetch
 
@@ -267,6 +268,27 @@ describe('module host', () => {
     })
   })
 
+  describe('given the computer slept past the end of the key', () => {
+    it('should stop its modules when Talyx wakes', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer, { ...LICENSE, expires: '2026-11-08' }))
+      await host.install('hello')
+      clock = NOON + 24 * HOUR_MS
+      await host.recheckExpiry()
+      expect(published.at(-1)).toEqual({ license: null, modules: [] })
+      expect(helloRuns().stopped).toBe(1)
+    })
+  })
+
+  describe('when Talyx quits', () => {
+    it('should give every running module its deactivate and keep the license', async () => {
+      await installHello()
+      await host.stopAll()
+      expect(helloRuns().stopped).toBe(1)
+      expect(savedKey).not.toBeNull()
+    })
+  })
+
   describe('given a module that misbehaves', () => {
     it('should give up on a module that never finishes starting and keep going', async () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
@@ -280,6 +302,48 @@ describe('module host', () => {
         status: 'failed',
         problem: 'The module did not start within 10 seconds.'
       })
+    })
+
+    it('should cut off a module whose start finishes after it timed out', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      const main = `module.exports = {
+        activate: (ctx) => new Promise((resolve) => {
+          globalThis.finishStart = () => { ctx.handle('late', () => 'late'); resolve() }
+        }),
+        deactivate() { globalThis.helloStopped = (globalThis.helloStopped ?? 0) + 1 }
+      }`
+      publish(helloBundle({ files: { 'renderer.js': '', 'main.js': main } }))
+      await host.activate(issueKey(signer))
+      let settled = false
+      const installing = host.install('hello').finally(() => (settled = true))
+      while (!settled) await vi.advanceTimersByTimeAsync(1_000)
+      await installing
+      await host.uninstall('hello')
+      expect(helloRuns().stopped).toBe(0)
+      ;(globalThis as { finishStart?: () => void }).finishStart!()
+      await vi.waitFor(() => expect(helloRuns().stopped).toBe(1))
+      await expect(host.invoke('hello', 'late', null)).rejects.toThrow()
+    })
+
+    it('should stop reading a download as soon as it passes the size cap', async () => {
+      publish(helloBundle())
+      const chunk = new Uint8Array(1024 * 1024)
+      let pulled = 0
+      files.set(
+        BUNDLE_URL,
+        new ReadableStream({
+          pull: (controller) => {
+            pulled++
+            if (pulled > 100) controller.close()
+            else controller.enqueue(chunk)
+          }
+        })
+      )
+      await host.activate(issueKey(signer))
+      await expect(host.install('hello')).rejects.toThrow(
+        'The module download is larger than any module can be.'
+      )
+      expect(pulled).toBeLessThan(30)
     })
 
     it('should serve only the module page files, never inherited names', async () => {
