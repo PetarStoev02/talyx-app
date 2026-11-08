@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { Button } from '@shared/ui/button'
-import { displayOutput } from './install'
+import { displayOutput, downloadFailed, hideEngineName } from './install'
 import { CopyButton, ScreenTitle, Spinner } from './ScreenParts'
 import { linkClass, panelClass, rowClass } from './screenStyles'
 
 /** Screen 5: the install running, its output streaming in. */
 export function InstallRunning({
   output,
+  engineName,
   onCancel
 }: {
   output: string
+  engineName: string | null
   onCancel: () => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
@@ -22,7 +24,7 @@ export function InstallRunning({
           {t('setup.installingTitle')}
         </span>
       </ScreenTitle>
-      <OutputLog output={output} />
+      <OutputLog output={output} engineName={engineName} />
       <div className={rowClass}>
         <Button variant="ghost" className="bg-secondary px-5" onClick={onCancel}>
           {t('roster.cancel')}
@@ -39,10 +41,12 @@ export function InstallRunning({
  */
 export function InstallStopped({
   output,
+  engineName,
   failed,
   actions
 }: {
   output: string
+  engineName: string | null
   failed: { index: number; code: number } | null
   actions: { retry: () => void; showCommands: () => void; chooseFile: () => void }
 }): React.JSX.Element {
@@ -57,7 +61,12 @@ export function InstallStopped({
               .replace('{code}', String(failed.code))
           : t('setup.notFound')}
       </p>
-      <OutputLog output={output} />
+      {failed && downloadFailed(output) && (
+        <p className="rounded-xl bg-warning-subtle px-4 py-3 text-base text-foreground">
+          {t('setup.downloadHint')}
+        </p>
+      )}
+      <OutputLog output={output} engineName={engineName} />
       <div className={rowClass}>
         <Button className="px-5" onClick={actions.retry}>
           {t('action.tryAgain')}
@@ -65,7 +74,11 @@ export function InstallStopped({
         <Button variant="ghost" className="bg-secondary px-5" onClick={actions.showCommands}>
           {t('setup.showCommands')}
         </Button>
-        <CopyButton text={output} label={t('setup.copyOutput')} name={null} />
+        <CopyButton
+          text={hideEngineName(output, engineName)}
+          label={t('setup.copyOutput')}
+          name={null}
+        />
         {!failed && (
           <button className={linkClass} onClick={actions.chooseFile}>
             {t('engine.chooseFile')}
@@ -76,11 +89,23 @@ export function InstallStopped({
   )
 }
 
-/** The commands' output, terminal-style, kept scrolled to the end as it grows. */
-function OutputLog({ output }: { output: string }): React.JSX.Element {
+/**
+ * The commands' output, terminal-style, kept scrolled to the end as it grows; the engine's own
+ * name (`engineName`) shows as Talyx's.
+ */
+export function OutputLog({
+  output,
+  engineName
+}: {
+  output: string
+  engineName: string | null
+}): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const log = useRef<HTMLPreElement>(null)
-  const shown = useMemo(() => displayOutput(output), [output])
+  const shown = useMemo(
+    () => hideEngineName(displayOutput(output), engineName),
+    [output, engineName]
+  )
 
   useEffect(() => {
     if (log.current) log.current.scrollTop = log.current.scrollHeight

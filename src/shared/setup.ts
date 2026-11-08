@@ -7,7 +7,14 @@ export type InstallExit =
   | { kind: 'cancelled' }
 
 export type InstallSteps =
-  | { kind: 'ready'; commands: string[]; engineVersion: string; releaseUrl: string }
+  | {
+      kind: 'ready'
+      commands: string[]
+      engineVersion: string
+      /** The engine's own command name, which its install output prints; null when not found. */
+      engineName: string | null
+      releaseUrl: string
+    }
   | { kind: 'unavailable'; releaseUrl: string }
   | { kind: 'mismatch'; releaseUrl: string }
   | { kind: 'invalid'; releaseUrl: string }

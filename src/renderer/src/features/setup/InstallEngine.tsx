@@ -43,6 +43,7 @@ export function InstallEngine({
   const installWhenReady = useRef(false)
   const sawRun = useRef(false)
   const screen = engineScreen({ status, checking, wantsInstall, steps, running, exit })
+  const engineName = steps?.kind === 'ready' ? steps.engineName : null
 
   // The install store outlives this screen: an earlier visit's result must not decide this one.
   useLayoutEffect(() => {
@@ -58,6 +59,15 @@ export function InstallEngine({
     if (screen.kind === 'commands' && installWhenReady.current) startInstall(backend)
     if (screen.kind !== 'fetching') installWhenReady.current = false
   }, [screen.kind, backend])
+
+  // The engine may change outside Talyx (installed from a terminal): look again on return.
+  useEffect(() => {
+    const refresh = (): void => {
+      if (!useInstall.getState().running) void useEngine.getState().refresh()
+    }
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
+  }, [])
 
   useEffect(() => {
     const watch = watchRun(sawRun.current, running, exit)
@@ -124,6 +134,7 @@ export function InstallEngine({
       return (
         <InstallRunning
           output={output}
+          engineName={engineName}
           onCancel={() =>
             void useInstall
               .getState()
@@ -137,12 +148,19 @@ export function InstallEngine({
       return (
         <InstallStopped
           output={output}
+          engineName={engineName}
           failed={screen.kind === 'stopped' ? screen : null}
           actions={{ retry: install, showCommands, chooseFile }}
         />
       )
     case 'ready':
-      return <EngineReady screen={screen} actions={{ recheck, continue: onReady }} />
+      return (
+        <EngineReady
+          screen={screen}
+          install={{ output, engineName }}
+          actions={{ recheck, continue: onReady }}
+        />
+      )
     case 'still-older':
       return (
         <EngineStillOlder

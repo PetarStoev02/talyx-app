@@ -92,6 +92,13 @@ export function ProvidersSection({
     void load()
   }, [load])
 
+  // A provider may be added outside this form (Settings, another window, the engine's CLI).
+  useEffect(() => {
+    const reload = (): void => void load()
+    window.addEventListener('focus', reload)
+    return () => window.removeEventListener('focus', reload)
+  }, [load])
+
   function hide(key: string): void {
     setRevealed((shown) =>
       Object.fromEntries(Object.entries(shown).filter(([item]) => item !== key))

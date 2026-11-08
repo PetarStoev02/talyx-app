@@ -14,6 +14,7 @@ const ready: InstallSteps = {
   kind: 'ready',
   commands: ['echo one', 'echo two'],
   engineVersion: '0.22.7',
+  engineName: null,
   releaseUrl
 }
 
@@ -164,6 +165,22 @@ describe('engineScreen', () => {
         index: 1,
         code: 22
       })
+    })
+
+    it('should let a current engine found since win over an old failure', () => {
+      const exit = { kind: 'failed', index: 0, code: 1 } as const
+      expect(engineScreen(facts({ steps: ready, exit, status: attached('0.22.7') })).kind).toBe(
+        'ready'
+      )
+      const asked = facts({ steps: ready, exit, status: attached('0.22.7'), wantsInstall: true })
+      expect(engineScreen(asked).kind).toBe('ready')
+    })
+
+    it('should keep showing the failure while the engine found is still older', () => {
+      const exit = { kind: 'failed', index: 0, code: 1 } as const
+      expect(engineScreen(facts({ steps: ready, exit, status: attached('0.21.0') })).kind).toBe(
+        'stopped'
+      )
     })
 
     it('should return to the commands after a cancel', () => {

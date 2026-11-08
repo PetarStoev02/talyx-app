@@ -68,6 +68,7 @@ above; its Done opens the fixture on Talyx's chat. No `?setup` keeps the fixture
 | `offline`   | "Talyx could not get the install steps." with Try again and Choose file        |
 | `mismatch`  | The same screen with the hash-mismatch sentence                                |
 | `fail`      | The install stops in command 2 (exit 1): Try again, Show the commands, Copy    |
+| `ssl`       | The same stop on a TLS download error, with the network hint above the output  |
 | `old`       | Engine 0.21.0 is older: Update runs the install, Continue anyway moves on      |
 | `old-after` | No setup; the footer's update button offers the engine update (0.22.5), below  |
 | `windows`   | Windows' attach error; Install the engine shows the Windows sentence and link  |
@@ -80,6 +81,12 @@ button is gone. Add `&stuck=1` to `old` or
 `old-after` and the install leaves the older engine running: "Talyx still runs the engine at
 /usr/local/bin/talyx-engine, which is 0.21.0." (0.22.5 in `old-after`). Use the newly installed
 engine (or Choose file) then finds the expected engine in the user bin.
+
+The install output names a made-up engine (`fakeengine`), which setup shows as `talyx-engine`; the
+ready screen keeps it under a collapsed "Install output". Add `&outside=1` to `fail` or `ssl` and
+the engine is installed "from a terminal" after the failure: focusing the window moves the step to
+ready. `&provider=elsewhere` starts the provider step with no provider; one is added "in another
+window" when this one loses focus, and the step shows it when the window gets focus again.
 
 Update button (`fixtureUpdates.ts`): the sidebar footer is the app's own, so its update button takes the
 refresh button's place while an update is pending. `?update=<mode>` scripts what main reports; no

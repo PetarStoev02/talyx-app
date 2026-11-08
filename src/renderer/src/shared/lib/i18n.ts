@@ -65,6 +65,8 @@ const en = {
   'setup.notFound': 'The commands finished but Talyx cannot find the engine.',
   'setup.showCommands': 'Show the commands',
   'setup.copyOutput': 'Copy output',
+  'setup.downloadHint':
+    'A download from GitHub failed. This is usually the network (VPN, proxy, tunnel). Try again; finished parts are kept.',
   'setup.readyTitle': 'The engine is ready.',
   'setup.readyBadge': 'engine {version}',
   'setup.readyBody': 'Talyx found it and attached to its gateway.',
