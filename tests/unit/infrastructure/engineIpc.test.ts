@@ -12,6 +12,8 @@ const sockets = vi.hoisted(() => ({
 }))
 const settings = vi.hoisted(() => ({ store: { enginePath: null }, set: vi.fn() }))
 const files = vi.hoisted(() => ({ existsSync: vi.fn() }))
+const engineHttp = vi.hoisted(() => vi.fn())
+const log = vi.hoisted(() => ({ warn: vi.fn() }))
 // No real engine runs: status is a canned answer.
 const ATTACHED = { state: 'attached', path: '/somewhere/talyx-engine' }
 
@@ -20,7 +22,7 @@ vi.mock('electron', () => ({
   BrowserWindow: {},
   dialog: {}
 }))
-vi.mock('electron-log', () => ({ default: { warn: vi.fn() } }))
+vi.mock('electron-log', () => ({ default: log }))
 vi.mock('../../../src/main/infrastructure/storage/SettingsStore', () => ({
   settingsStore: settings
 }))
@@ -30,7 +32,7 @@ vi.mock('node:fs', async (original) => ({
 }))
 vi.mock('../../../src/main/infrastructure/engine/engine', async (original) => ({
   ...(await original<typeof import('../../../src/main/infrastructure/engine/engine')>()),
-  createEngine: () => ({ status: async () => ATTACHED })
+  createEngine: () => ({ status: async () => ATTACHED, http: engineHttp })
 }))
 vi.mock('../../../src/main/infrastructure/engine/engineSockets', () => ({
   EngineSockets: class {
@@ -41,6 +43,7 @@ vi.mock('../../../src/main/infrastructure/engine/engineSockets', () => ({
 }))
 
 import { registerEngineIpc } from '../../../src/main/infrastructure/ipc/engine.ipc'
+import { EngineHttpError } from '../../../src/main/infrastructure/engine/engine'
 
 function page(): { sender: { send: () => void; isDestroyed: () => boolean } } {
   return { sender: { send: () => undefined, isDestroyed: () => false } }
@@ -115,5 +118,49 @@ describe('using the installed engine', () => {
     files.existsSync.mockReturnValue(true)
     await invoke('engine:use-installed', page(), '/tmp/evil')
     expect(settings.set).toHaveBeenCalledWith({ enginePath: installed })
+  })
+})
+
+describe('engine requests', () => {
+  beforeEach(() => {
+    handlers.clear()
+    vi.clearAllMocks()
+    registerEngineIpc()
+  })
+
+  const request = {
+    path: '/api/providers/oauth/openai-codex/start?profile=default',
+    method: 'POST',
+    body: { secret: 'sk-body' }
+  }
+
+  it.each([
+    ['an error status', new EngineHttpError(502, 'sk-body in the answer'), 502],
+    [
+      'a timeout',
+      new DOMException('The operation was aborted due to timeout', 'TimeoutError'),
+      'TimeoutError'
+    ]
+  ])(
+    'should log a request that failed with %s by its path and status only',
+    async (_case, error, status) => {
+      engineHttp.mockRejectedValue(error)
+
+      await expect(invoke('engine:http', page(), request)).rejects.toBe(error)
+      expect(log.warn).toHaveBeenCalledWith(
+        '[Engine] Request failed:',
+        'POST',
+        '/api/providers/oauth/openai-codex/start',
+        status
+      )
+      expect(JSON.stringify(log.warn.mock.calls)).not.toMatch(/sk-body|profile=/)
+    }
+  )
+
+  it('should not log a transcript image the engine has already cleared', async () => {
+    engineHttp.mockRejectedValue(new EngineHttpError(404, 'gone'))
+
+    expect(await invoke('engine:http', page(), { path: '/api/media?path=a.png' })).toBeNull()
+    expect(log.warn).not.toHaveBeenCalled()
   })
 })

@@ -120,10 +120,13 @@ function createWindow(): BrowserWindow {
     title: app.name,
     show: false,
     autoHideMenuBar: true,
-    frame: false,
-    titleBarStyle: 'hiddenInset',
-    // Centered on the 56px title row (h-14 in AppShell and PageHeader).
-    trafficLightPosition: { x: 16, y: 22 },
+    // macOS hides the title bar behind the traffic lights; elsewhere the hidden styles leave a
+    // window with no border to resize and no buttons, so Linux keeps its native frame.
+    ...(isMac && {
+      titleBarStyle: 'hiddenInset',
+      // Centered on the 56px title row (h-14 in AppShell and PageHeader).
+      trafficLightPosition: { x: 16, y: 22 }
+    }),
     backgroundColor: groundColor(),
     icon: appIcon,
     webPreferences: {
@@ -202,7 +205,13 @@ function showMainWindow(splash: BrowserWindow): void {
 
 /** On macOS the window can be closed while the app keeps running; reopen it then. */
 function bringMainWindowForward(): void {
-  if (!mainWindow || mainWindow.isDestroyed()) {
+  // Still starting: the splash comes forward, and a second main window here would race
+  // showMainWindow, which shows the one window soon after.
+  if (!mainWindow) {
+    for (const win of BrowserWindow.getAllWindows()) if (win.isVisible()) win.focus()
+    return
+  }
+  if (mainWindow.isDestroyed()) {
     const win = createWindow()
     mainWindow = win
     win.once('ready-to-show', () => win.show())
@@ -253,6 +262,7 @@ app
     if (!rendererUrl) serveRenderer(join(__dirname, '../renderer'))
     if (!is.dev) setProductionMenu(process.platform)
     if (is.dev) app.dock?.setIcon(appIcon)
+    app.on('second-instance', bringMainWindowForward)
 
     app.on('browser-window-created', (_, window) =>
       optimizer.watchWindowShortcuts(window, { zoom: true })
@@ -277,8 +287,6 @@ app
     showMainWindow(splash)
     scheduleUpdateChecks()
 
-    // Registered only now: a launch during the splash must not race showMainWindow
-    app.on('second-instance', bringMainWindowForward)
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) bringMainWindowForward()
     })

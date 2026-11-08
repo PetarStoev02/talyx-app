@@ -351,6 +351,7 @@ describe('providers', () => {
         await waitForSignIn(engine.backend, {
           providerId: 'openai-codex',
           sessionId: start.session_id,
+          expiresAt: Date.now() + 600_000,
           live: () => true
         })
       ).toEqual({ status: 'approved' })
@@ -363,9 +364,54 @@ describe('providers', () => {
         await waitForSignIn(engine.backend, {
           providerId: 'openai-codex',
           sessionId: 's-device',
+          expiresAt: Date.now() + 600_000,
           live: () => true
         })
       ).toEqual({ status: 'failed', message: end })
+    })
+
+    it('should keep waiting after a poll times out while the sign-in is still open', async () => {
+      engine.polls.push('timeout', 'timeout', 'approved')
+
+      expect(
+        await waitForSignIn(engine.backend, {
+          providerId: 'openai-codex',
+          sessionId: 's-device',
+          expiresAt: Date.now() + 600_000,
+          live: () => true
+        })
+      ).toEqual({ status: 'approved' })
+      expect(engine.polls).toEqual([])
+    })
+
+    it('should report the sign-in expired when a poll times out after it expired', async () => {
+      engine.polls.push('timeout', 'approved')
+
+      expect(
+        await waitForSignIn(engine.backend, {
+          providerId: 'openai-codex',
+          sessionId: 's-device',
+          expiresAt: Date.now() - 1,
+          live: () => true
+        })
+      ).toEqual({ status: 'failed', message: 'expired' })
+    })
+
+    it('should not retry a poll that failed for another reason than time', async () => {
+      const original = engine.backend.http
+      engine.backend.http = async (request) => {
+        if (request.path.includes('/poll/')) throw new Error('fetch failed')
+        return original(request)
+      }
+
+      await expect(
+        waitForSignIn(engine.backend, {
+          providerId: 'openai-codex',
+          sessionId: 's-device',
+          expiresAt: Date.now() + 600_000,
+          live: () => true
+        })
+      ).rejects.toThrow('fetch failed')
     })
 
     it('should stop waiting once the dialog closes', async () => {
@@ -374,6 +420,7 @@ describe('providers', () => {
       const wait = waitForSignIn(engine.backend, {
         providerId: 'openai-codex',
         sessionId: 's-device',
+        expiresAt: Date.now() + 600_000,
         live: () => open
       })
       open = false

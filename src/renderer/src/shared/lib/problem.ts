@@ -22,19 +22,31 @@ export interface Problem {
 
 // Failures that mean the engine is out of reach, as the socket, fetch and the gateway word them.
 const UNREACHABLE =
-  /gateway (?:is )?not connected|gateway connection closed|could not connect to engine gateway|socket (?:is not open|failed|closed)|fetch failed|ECONNREFUSED|ECONNRESET|timed? ?out|TimeoutError/i
+  /gateway (?:is )?not connected|gateway connection closed|could not connect to engine gateway|socket (?:is not open|failed|closed)|fetch failed|ECONNREFUSED|ECONNRESET/i
+// A request the engine did not answer in time: it is running, only slow (or still starting).
+// Also matches "TimeoutError" and "aborted due to timeout".
+const TIMED_OUT = /timed? ?out/i
+
+/** True for a request the engine did not answer in time, as fetch and the socket word it. */
+export function isTimeout(error: unknown): boolean {
+  return TIMED_OUT.test(error instanceof Error ? error.message : String(error))
+}
 
 /**
- * Any thrown value as a Problem. An unknown error gets a headline by kind: the engine out of
- * reach, or something unexpected in Talyx itself; its own text stays as the detail.
+ * Any thrown value as a Problem. An unknown error gets a headline by kind: the engine too slow to
+ * answer, the engine out of reach, or something unexpected in Talyx itself; its own text stays as
+ * the detail.
  */
 export function problemOf(error: unknown): Problem {
   if (error instanceof AppError) return { key: error.key, detail: error.detail }
   const detail = error instanceof Error ? error.message : error ? String(error) : null
-  return {
-    key: detail && UNREACHABLE.test(detail) ? 'error.engineUnreachable' : 'error.unexpected',
-    detail
-  }
+  return { key: headlineOf(detail), detail }
+}
+
+function headlineOf(detail: string | null): TranslationKey {
+  if (detail && isTimeout(detail)) return 'error.engineTimeout'
+  if (detail && UNREACHABLE.test(detail)) return 'error.engineUnreachable'
+  return 'error.unexpected'
 }
 
 /** A failed action under its own headline (`key`), with the error's text as the detail. */

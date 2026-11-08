@@ -18,6 +18,9 @@ import { Input } from '@shared/ui/input'
 import { failureText } from './feedback'
 
 const linkClass = 'text-base underline underline-offset-4 hover:decoration-2'
+// OpenAI turns device-code sign-in off until the user enables it here; nothing can detect that.
+const CHATGPT = 'openai-codex'
+const CHATGPT_SECURITY_URL = 'https://chatgpt.com/#settings/Security'
 
 type Step =
   | { kind: 'starting' }
@@ -69,13 +72,13 @@ export function SignIn({
       const start = await startSignIn(backend, account.id)
       if (!live) return void cancelSignIn(backend, start.session_id).catch(() => undefined)
       session = start.session_id
-      window.open(start.flow === 'device_code' ? start.verification_url : start.auth_url)
       setStep({ kind: 'started', start })
       if (start.flow !== 'device_code') return
       finish(
         await waitForSignIn(backend, {
           providerId: account.id,
           sessionId: start.session_id,
+          expiresAt: Date.now() + start.expires_in * 1000,
           live: () => live
         })
       )
@@ -86,6 +89,17 @@ export function SignIn({
       if (session && !approved.current) void cancelSignIn(backend, session).catch(() => undefined)
     }
   }, [backend, account.id, account.flow, t])
+
+  // The browser opens only once the code is on screen, so the user has it when the page asks.
+  const signInUrl =
+    step.kind === 'started'
+      ? step.start.flow === 'device_code'
+        ? step.start.verification_url
+        : step.start.auth_url
+      : null
+  useEffect(() => {
+    if (signInUrl) window.open(signInUrl)
+  }, [signInUrl])
 
   async function submit(sessionId: string): Promise<void> {
     setBusy(true)
@@ -178,6 +192,14 @@ export function SignIn({
         <a href={start.verification_url} target="_blank" rel="noreferrer" className={linkClass}>
           {t('providers.signInOpen')}
         </a>
+        {account.id === CHATGPT && (
+          <p className="text-sm text-muted-foreground">
+            {t('providers.signInDeviceCodeHint')}{' '}
+            <a href={CHATGPT_SECURITY_URL} target="_blank" rel="noreferrer" className="underline">
+              {t('providers.signInDeviceCodeLink')}
+            </a>
+          </p>
+        )}
       </div>
     )
 
