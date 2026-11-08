@@ -100,6 +100,7 @@ export function ProvidersSection({
       void loadProviders(backend).then(
         (next) => {
           setOverview(next)
+          setProblem(null)
           reportOverview.current?.(next)
         },
         (error: unknown) => reportError('providers', error)
