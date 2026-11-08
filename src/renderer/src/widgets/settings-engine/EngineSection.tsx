@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useEngine } from '@app/providers/useEngine'
 import { useNavigation } from '@app/providers/useNavigation'
 import { Button } from '@shared/ui/button'
+import { cn } from '@shared/lib/utils'
 import { engineSummary, type EngineSummary } from '@features/setup/engineSummary'
 import { RestartHint } from '@features/setup/EngineScreens'
 import { useUpdates } from '@features/updates/store'
@@ -22,6 +23,9 @@ const ACTION_KEYS = {
   install: 'settings.engineInstall',
   update: 'settings.engineUpdate'
 } as const
+
+// A check can finish in a few milliseconds; the icon spins at least this long so the click shows.
+const MIN_SPIN_MS = 600
 
 /**
  * `debugConsole` is the engine-gated console: the page wraps it, since a widget cannot import the
@@ -47,10 +51,14 @@ export function EngineSection({
   // What a screen reader hears after Check again: the visible line below ages every minute, so it
   // is not a live region itself. Cleared first, so a second check is announced again.
   const [checkNote, setCheckNote] = useState('')
+  const [spinning, setSpinning] = useState(false)
 
   async function recheck(): Promise<void> {
     setCheckNote('')
-    await check()
+    setSpinning(true)
+    const spin = new Promise((resolve) => setTimeout(resolve, MIN_SPIN_MS))
+    await Promise.all([check(), spin])
+    setSpinning(false)
     setCheckNote(t('settings.engineChecked').replace('{when}', t('time.justNow')))
   }
 
@@ -82,9 +90,11 @@ export function EngineSection({
         <Button
           variant="secondary"
           className="bg-secondary hover:bg-foreground/10"
-          disabled={checking}
+          disabled={checking || spinning}
+          aria-busy={spinning}
           onClick={() => void recheck()}
         >
+          <RefreshCw className={cn(spinning && 'animate-spin motion-reduce:animate-none')} />
           {t('settings.engineCheck')}
         </Button>
         <Button
