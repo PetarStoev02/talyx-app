@@ -6,8 +6,9 @@ const REDACTED = '[redacted]'
 const SECRET_PATTERNS: Array<[RegExp, string]> = [
   // A password in a URL: scheme://user:password@host
   [/(\b[a-z][a-z0-9+.-]*:\/\/[^\s:/@]+):[^\s@/]+@/gi, `$1:${REDACTED}@`],
-  // An Authorization or Cookie header: the whole rest of the line, whatever the scheme
-  [/\b((?:proxy-)?authorization|(?:set-)?cookie)(["']?\s*[:=]\s*).*/gi, `$1$2${REDACTED}`],
+  // An Authorization or Cookie header or field (proxy_authorization, session_cookie...): the
+  // whole rest of the line, whatever the scheme
+  [/\b(\w*(?:authorization|cookie))(["']?\s*[:=]\s*).*/gi, `$1$2${REDACTED}`],
   // A bearer token without its header name ("basic" alone is too common a word to match)
   [/\b(bearer)\s+[A-Za-z0-9._~+/=-]+/gi, `$1 ${REDACTED}`],
   // A named field: api_key=..., "token": "...", OPENROUTER_API_KEY=..., password: '...'. A quoted

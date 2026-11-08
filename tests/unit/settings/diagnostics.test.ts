@@ -64,6 +64,8 @@ describe('diagnostics', () => {
         'Authorization: Digest username=x, response=abcdef',
         'response=abcdef'
       ],
+      ['a prefixed cookie field', 'session_cookie=private-session-value', 'private-session'],
+      ['a prefixed authorization field', 'proxy_authorization=Basic dXNlcjpwYXNz', 'dXNlcjpwYXNz'],
       ['a password in a URL', 'proxy https://bob:pa55w0rd@proxy.local:8080', 'pa55w0rd'],
       [
         'a long opaque token',
