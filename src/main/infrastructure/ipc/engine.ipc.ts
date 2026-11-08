@@ -148,8 +148,21 @@ async function engineHttp(request: EngineHttpRequest): Promise<unknown> {
   } catch (error) {
     if (error instanceof EngineHttpError && error.status === 404 && isMediaRead(request.path))
       return null
+    logFailedRequest(request, error)
     throw error
   }
+}
+
+// Path and status only: bodies and queries can hold keys, codes and chat text.
+function logFailedRequest(request: EngineHttpRequest, error: unknown): void {
+  const status =
+    error instanceof EngineHttpError
+      ? error.status
+      : error instanceof Error
+        ? error.name
+        : 'unknown error'
+  const path = new URL(request.path, 'http://engine').pathname
+  log.warn('[Engine] Request failed:', request.method ?? 'GET', path, status)
 }
 
 function isMediaRead(path: string): boolean {

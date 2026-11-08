@@ -325,14 +325,20 @@ export function RoutineForm({
           </label>
         )}
       </div>
-      <label className="flex items-center gap-2 text-base">
-        <input
-          type="checkbox"
-          checked={draft.postsToChat}
-          onChange={(event) => setDraft({ ...draft, postsToChat: event.target.checked })}
-        />
-        {t('routines.postToChat')}
-      </label>
+      <div>
+        <label className="flex items-center gap-2 text-base">
+          <input
+            type="checkbox"
+            checked={draft.postsToChat}
+            aria-describedby="routine-post-hint"
+            onChange={(event) => setDraft({ ...draft, postsToChat: event.target.checked })}
+          />
+          {t('routines.postToChat')}
+        </label>
+        <span id="routine-post-hint" className="mt-1 block text-sm text-muted-foreground">
+          {t('routines.postToChatHint')}
+        </span>
+      </div>
       {problem && <ProblemMessage problem={problem} />}
       {/* Stays in view while a long form scrolls; -bottom-6 covers the dialog's own padding so
           nothing scrolls visibly below it. Its top edge shows only while it is stuck, that is

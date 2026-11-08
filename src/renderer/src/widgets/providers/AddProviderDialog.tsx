@@ -323,6 +323,9 @@ function EndpointForm({
             ? t('providers.endpointModelsSaved').replace('{models}', editing.models.join(', '))
             : t('providers.endpointModelsHint')}
         </span>
+        <span className="mt-1 block text-sm text-muted-foreground">
+          {t('providers.endpointModelsTyped')}
+        </span>
       </label>
       <Note text={note} />
       <div className="flex items-center gap-4">

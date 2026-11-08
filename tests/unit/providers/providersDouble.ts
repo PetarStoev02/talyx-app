@@ -43,6 +43,12 @@ export interface ProfileConfig {
   model: { provider: string; model: string }
 }
 
+type Poll = OAuthPollResponse['status'] | 'timeout'
+
+// How a request that ran out of time reaches the renderer from main.
+const TIMED_OUT =
+  "Error invoking remote method 'engine:http': TimeoutError: The operation was aborted due to timeout"
+
 export interface ProvidersDouble {
   backend: ProvidersBackend
   profiles: Record<string, ProfileConfig>
@@ -51,8 +57,8 @@ export interface ProvidersDouble {
   writes: string[]
   /** The last body each route took. */
   bodies: Record<string, unknown>
-  /** The next polls answer these statuses, in order. */
-  polls: OAuthPollResponse['status'][]
+  /** The next polls answer these statuses, in order; `timeout` makes that poll time out. */
+  polls: Poll[]
   failOn: (profile: string) => void
 }
 
@@ -106,7 +112,7 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
   ]
   const writes: string[] = []
   const bodies: Record<string, unknown> = {}
-  const polls: OAuthPollResponse['status'][] = []
+  const polls: Poll[] = []
   const failing = new Set<string>()
 
   function answer(profile: string, method: string, path: string, body: Body): unknown {
@@ -201,6 +207,7 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
           }
     if (path.includes('/poll/')) {
       const status = polls.shift() ?? 'pending'
+      if (status === 'timeout') throw new Error(TIMED_OUT)
       if (status === 'approved') signIn(path)
       return { session_id: 's-device', status }
     }
