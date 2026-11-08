@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, nativeTheme } from 'electron'
 import log from 'electron-log'
 import { join } from 'path'
 import { optimizer, is } from './lib/electronUtils'
-import { setProductionMenu } from './lib/appMenu'
+import { DEV_VIEW_ITEMS, setAppMenu } from './lib/appMenu'
 import { installWebContentsGuard } from './infrastructure/security/webContentsGuard'
 import { APP_ROOT, registerAppScheme, serveRenderer } from './infrastructure/security/appProtocol'
 import { registerSettingsIpc } from './infrastructure/ipc/settings.ipc'
@@ -11,6 +11,14 @@ import { registerLogIpc } from './infrastructure/ipc/log.ipc'
 import { registerAppIpc } from './infrastructure/ipc/app.ipc'
 import { closeEngineSockets, registerEngineIpc } from './infrastructure/ipc/engine.ipc'
 import { registerUpdaterIpc, updates } from './infrastructure/ipc/updater.ipc'
+import {
+  modules,
+  registerModulesIpc,
+  requestActivation,
+  serveModuleFiles
+} from './infrastructure/ipc/modules.ipc'
+import { activationRequestFrom, activationRequestIn } from './infrastructure/modules/activationLink'
+import { ACTIVATION_LINK, type ActivationRequest } from '../shared/modules'
 import { fetchLatestRelease } from './infrastructure/updater/releaseCheck'
 import { settingsStore } from './infrastructure/storage/SettingsStore'
 import { syncLaunchAtLogin, systemLoginItemDeps } from './infrastructure/system/loginItem'
@@ -41,6 +49,13 @@ let mainWindow: BrowserWindow | null = null
 
 registerAppScheme()
 
+// macOS hands an opened talyx:// link here, also when the link is what starts Talyx.
+app.on('open-url', (event, url) => {
+  event.preventDefault()
+  const request = activationRequestFrom(url)
+  if (request) openActivation(request)
+})
+
 // Browser dev bridge: lets a plain browser tab at localhost:5173 drive the app in dev
 const devBridge = rendererUrl ? new DevBridge(Number(new URL(rendererUrl).port)) : null
 
@@ -53,6 +68,7 @@ function registerIpc(): void {
   registerLogIpc()
   registerUpdaterIpc()
   registerAppIpc()
+  registerModulesIpc()
   ipcMain.handle('theme:set-native', (_event, theme: unknown) =>
     syncNativeTheme(validateInput(ThemeSchema, theme))
   )
@@ -224,6 +240,12 @@ function bringMainWindowForward(): void {
   mainWindow.focus()
 }
 
+/** The activation dialog, from the menu or a link; the page shows it once it has loaded. */
+function openActivation(request: ActivationRequest): void {
+  requestActivation(request)
+  if (app.isReady()) bringMainWindowForward()
+}
+
 /** Feeds the newest release to the update button; a failed check keeps what it shows. */
 function scheduleUpdateChecks(): void {
   if (is.dev) return
@@ -262,9 +284,17 @@ app
 
     installWebContentsGuard(rendererUrl ? `${new URL(rendererUrl).origin}/` : APP_ROOT)
     if (!rendererUrl) serveRenderer(join(__dirname, '../renderer'))
-    if (!is.dev) setProductionMenu(process.platform)
+    serveModuleFiles()
+    setAppMenu(process.platform, () => openActivation({ key: null }), is.dev ? DEV_VIEW_ITEMS : [])
     if (is.dev) app.dock?.setIcon(appIcon)
-    app.on('second-instance', bringMainWindowForward)
+    // A dev run must not take over the links meant for the installed app.
+    else app.setAsDefaultProtocolClient(ACTIVATION_LINK.scheme)
+    // On Linux an opened link starts a second instance with the link as an argument.
+    app.on('second-instance', (_event, argv) => {
+      const request = activationRequestIn(argv)
+      if (request) requestActivation(request)
+      bringMainWindowForward()
+    })
 
     app.on('browser-window-created', (_, window) =>
       optimizer.watchWindowShortcuts(window, { zoom: true })
@@ -280,6 +310,12 @@ app
     await new Promise((resolve) => setTimeout(resolve, SPLASH_MIN_VISIBLE_MS))
 
     registerIpc()
+    const launchedBy = activationRequestIn(process.argv)
+    if (launchedBy) requestActivation(launchedBy)
+    // A module that fails is marked failed inside; nothing here may keep the window away.
+    await modules
+      .start()
+      .catch((error: unknown) => log.error('[Main] Modules did not start', error))
     // A theme switch (in Talyx or, on System, in the OS) repaints the window's ground too.
     nativeTheme.on('updated', () => {
       if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setBackgroundColor(groundColor())

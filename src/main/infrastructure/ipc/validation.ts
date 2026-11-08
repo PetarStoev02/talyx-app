@@ -52,6 +52,12 @@ export const EngineHttpRequestSchema = z.object({
   timeoutMs: z.number().int().positive().max(1_800_000).optional()
 })
 
+/** A pasted license key; the signature check decides whether it is one. */
+export const LicenseKeyInputSchema = z.string().min(1).max(2000)
+
+/** An action a module's main side registered with `ctx.handle`. */
+export const ModuleActionSchema = z.string().regex(/^[a-z][a-zA-Z0-9-]{0,63}$/)
+
 export function validateInput<T>(schema: z.ZodType<T>, input: unknown): T {
   return schema.parse(input)
 }

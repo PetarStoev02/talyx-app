@@ -1,6 +1,7 @@
 import { create } from 'zustand'
+import type { ModuleView } from '@features/modules/store'
 
-export type AppView = 'agents' | 'settings'
+export type AppView = 'agents' | 'settings' | ModuleView
 
 interface NavigationState {
   currentView: AppView

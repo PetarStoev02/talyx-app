@@ -52,25 +52,33 @@ describe('buildApi', () => {
     expect(transport.calls).toEqual([{ channel, args: wireArgs }])
   })
 
-  it('should expose only the settings, engine, setup, log, about and updater surface', () => {
+  it('should expose only the settings, engine, setup, log, about, updater and modules surface', () => {
     expect(Object.keys(buildApi(recordingTransport())).sort()).toEqual([
+      'activateLicense',
       'cancelInstall',
       'cancelUpdate',
       'closeEngineSocket',
+      'deactivateLicense',
       'downloadUpdate',
       'engineHttp',
       'getAppVersion',
+      'getAvailableModules',
       'getDiagnostics',
       'getEngineStatus',
       'getInstallSteps',
+      'getModulesState',
       'getSettings',
       'getUpdateState',
+      'installModule',
       'installUpdate',
+      'invokeModule',
       'logError',
+      'onActivationRequested',
       'onEngineSocketClosed',
       'onEngineSocketFrame',
       'onInstallExit',
       'onInstallOutput',
+      'onModulesState',
       'onUpdateState',
       'openEngineSocket',
       'pickEnginePath',
@@ -78,6 +86,8 @@ describe('buildApi', () => {
       'sendEngineSocket',
       'setNativeTheme',
       'setSettings',
+      'takeActivationRequest',
+      'uninstallModule',
       'useInstalledEngine'
     ])
   })

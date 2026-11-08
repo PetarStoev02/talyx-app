@@ -142,7 +142,7 @@ function senderSink(sender: Sender): SocketEventSink {
 // A transcript image the engine has since cleared from its cache answers 404. That is expected,
 // and the chat shows the file's name instead, so it resolves null rather than reaching Electron's
 // error log as a failed handler.
-async function engineHttp(request: EngineHttpRequest): Promise<unknown> {
+export async function engineHttp(request: EngineHttpRequest): Promise<unknown> {
   try {
     return await engine.http(request)
   } catch (error) {

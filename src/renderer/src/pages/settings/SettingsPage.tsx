@@ -14,6 +14,7 @@ import { EngineGate } from '@widgets/engine-gate'
 import { DebugConsole, EngineSection } from '@widgets/settings-engine'
 import { StartupSection } from '@widgets/settings-startup'
 import { AboutSection } from '@widgets/settings-about'
+import { ModulesSection } from '@widgets/modules'
 
 export function SettingsPage({
   providers,
@@ -48,6 +49,7 @@ export function SettingsPage({
       <div className="scroll-y-stable min-h-0 flex-1">
         <div className="mx-auto w-full max-w-2xl space-y-10 p-6">
           <AboutSection />
+          <ModulesSection />
           <EngineSection
             debugConsole={
               <EngineGate>

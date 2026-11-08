@@ -1,6 +1,7 @@
 import { net, protocol } from 'electron'
 import { isAbsolute, join, relative } from 'path'
 import { pathToFileURL } from 'url'
+import { MODULE_SCHEME } from '../../../shared/modules'
 
 const SCHEME = 'app'
 const HOST = 'talyx'
@@ -26,10 +27,18 @@ export function rendererFile(url: string, rendererDir: string): string | null {
   return inside && !inside.startsWith('..') && !isAbsolute(inside) ? file : null
 }
 
-/** Must run before the app is ready: a scheme's privileges are fixed at startup. */
+/**
+ * Must run before the app is ready: a scheme's privileges are fixed at startup, and every scheme
+ * goes in this one call. The module scheme serves module scripts to the page (modules.ipc.ts);
+ * it is cross-origin from the page, hence CORS.
+ */
 export function registerAppScheme(): void {
   protocol.registerSchemesAsPrivileged([
-    { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }
+    { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
+    {
+      scheme: MODULE_SCHEME,
+      privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true }
+    }
   ])
 }
 
