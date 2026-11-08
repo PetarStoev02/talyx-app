@@ -133,10 +133,18 @@ export function withFailedTurns(transcript: Transcript, turns: FailedTurn[]): Tr
   for (const turn of turns) {
     const at = turn.after === null ? 0 : items.findIndex((item) => item.id === turn.after) + 1
     if ((turn.after !== null && at === 0) || storedAt(items, at, turn.items[0])) continue
-    items.splice(at, 0, ...turn.items)
+    items.splice(placeOf(items, at, turn.items[0]), 0, ...turn.items)
     kept.push(turn)
   }
   return { ...transcript, items, failed: [...transcript.failed, ...kept] }
+}
+
+// A failed turn no message of yours started answered what came in before it (a delivery the
+// reload brought): it goes at the end of that run, before your next message.
+function placeOf(items: ChatItem[], at: number, first: ChatItem | undefined): number {
+  if (first?.kind === 'user') return at
+  const next = items.findIndex((item, index) => index >= at && item.kind === 'user')
+  return next < 0 ? items.length : next
 }
 
 /**
@@ -454,9 +462,13 @@ function failedTurn(items: ChatItem[]): FailedTurn {
   }
 }
 
-// Every finished turn reloads history, so streamed text not yet replaced by a stored row is this turn's.
+// Every finished turn reloads history, so streamed text not yet replaced by a stored row is this
+// turn's. A failed reply put back after the reload keeps its live id but ended an earlier turn.
 function isTurnWork(item: ChatItem): boolean {
-  return item.kind === 'tool' || (item.kind === 'bot' && item.id.startsWith(LIVE_ID))
+  return (
+    item.kind === 'tool' ||
+    (item.kind === 'bot' && item.error === null && item.id.startsWith(LIVE_ID))
+  )
 }
 
 // The engine's account of the failure, else the error it names.

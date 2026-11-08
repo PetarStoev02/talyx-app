@@ -267,6 +267,29 @@ describe('bot chat', () => {
       ])
     })
 
+    it('should keep a delivered turn that failed right after your failed send apart', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      await failSend()
+      engine.chats[MANAGER].messages.push({
+        id: 3,
+        role: 'user',
+        content: 'Message from 🤖 CFO (@cfo): numbers'
+      })
+      // The delivery shows only once the turn it started reloads the history.
+      for (const [type, seq, payload] of [
+        ['message.start', 20, {}],
+        ['message.complete', 21, { status: 'error', text: NO_CREDENTIALS }]
+      ] as const)
+        handleEvent(actions, { type, seq, payload, session_id: 'manager-chat' } as GatewayEvent)
+      await actions.rebuild(MANAGER)
+      expect(visible()).toEqual([
+        ...before,
+        ...failedWith(UNKNOWN_PROVIDER),
+        { kind: 'bot', text: 'numbers', error: null },
+        { kind: 'bot', text: '', error: NO_CREDENTIALS }
+      ])
+    })
+
     describe('that the engine still holds', () => {
       // A failed turn the engine kept for a client that missed its frame: resume carries it.
       const held = { user: 'Summarise Q3', assistant: '', error: NO_CREDENTIALS, status: 'error' }
