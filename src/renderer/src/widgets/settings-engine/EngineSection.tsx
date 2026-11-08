@@ -53,7 +53,10 @@ export function EngineSection({
   const [checkNote, setCheckNote] = useState('')
   const [spinning, setSpinning] = useState(false)
 
+  const busy = checking || spinning
+
   async function recheck(): Promise<void> {
+    if (busy) return
     setCheckNote('')
     setSpinning(true)
     const spin = new Promise((resolve) => setTimeout(resolve, MIN_SPIN_MS))
@@ -89,8 +92,9 @@ export function EngineSection({
       <div className="flex flex-wrap gap-2">
         <Button
           variant="secondary"
-          className="bg-secondary hover:bg-foreground/10"
-          disabled={checking || spinning}
+          // aria-disabled, not disabled: a disabled button drops keyboard focus to the page.
+          className="bg-secondary hover:bg-foreground/10 aria-disabled:opacity-50"
+          aria-disabled={busy}
           aria-busy={spinning}
           onClick={() => void recheck()}
         >
