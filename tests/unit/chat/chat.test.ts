@@ -250,6 +250,22 @@ describe('bot chat', () => {
         expect(visible()).toEqual([...before, ...failedWith(NO_CREDENTIALS)])
       })
 
+      it('should show it once when the engine later stores the failure', async () => {
+        engine.chats[MANAGER].messages.push({ id: 3, role: 'user', content: 'Summarise Q3' })
+        engine.chats[MANAGER].inflight = held
+        await actions.open(MANAGER, 'manager-chat')
+        engine.chats[MANAGER].messages.push({
+          id: 4,
+          role: 'assistant',
+          content: 'Your request was not processed.',
+          display_kind: 'failed_turn',
+          display_metadata: { error: NO_CREDENTIALS }
+        })
+        await actions.rebuild(MANAGER)
+        await actions.rebuild(MANAGER)
+        expect(visible()).toEqual([...before, ...failedWith(NO_CREDENTIALS)])
+      })
+
       it('should show the failed send once after the reload that follows it', async () => {
         await actions.open(MANAGER, 'manager-chat')
         engine.chats[MANAGER].inflight = { ...held, error: UNKNOWN_PROVIDER }

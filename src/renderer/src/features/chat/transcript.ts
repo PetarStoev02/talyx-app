@@ -139,16 +139,21 @@ export function withFailedTurns(transcript: Transcript, turns: FailedTurn[]): Tr
 
 /**
  * The engine stores a turn that failed after it reached the model: its message, then before the
- * next message a failed reply. The same words sent again and answered are another turn.
+ * next message a failed reply. A carried turn that is only a reply already follows its stored
+ * message. The same words sent again and answered are another turn.
  * Matched by place and words only: a resend of the same words that also fails and is stored hides
  * the earlier failure the engine did not store. Matching on submission ids would tell them apart.
  */
-function storedAt(items: ChatItem[], at: number, sent: ChatItem | undefined): boolean {
-  const next = items[at]
-  if (sent?.kind !== 'user' || next?.kind !== 'user' || next.text !== sent.text) return false
-  const end = items.findIndex((item, index) => index > at && item.kind === 'user')
+function storedAt(items: ChatItem[], at: number, first: ChatItem | undefined): boolean {
+  let from = at
+  if (first?.kind === 'user') {
+    const next = items[at]
+    if (next?.kind !== 'user' || next.text !== first.text) return false
+    from = at + 1
+  }
+  const end = items.findIndex((item, index) => index >= from && item.kind === 'user')
   return items
-    .slice(at + 1, end < 0 ? undefined : end)
+    .slice(from, end < 0 ? undefined : end)
     .some((item) => item.kind === 'bot' && item.error !== null)
 }
 
