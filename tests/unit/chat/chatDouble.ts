@@ -11,8 +11,12 @@ export interface ChatCall {
 export interface ChatDouble {
   backend: ChatBackend
   calls: ChatCall[]
-  // Every Bot Chat by profile: [session id, its stored messages].
-  chats: Record<string, { sessionId: string; messages: SessionMessage[] }>
+  // Every Bot Chat by profile: its session id, stored messages and the turn the engine still
+  // holds outside them (a failed turn is never stored; resume carries it until the next turn).
+  chats: Record<
+    string,
+    { sessionId: string; messages: SessionMessage[]; inflight?: Record<string, unknown> }
+  >
   failNext: (method: string, message: string) => void
   // Holds the next call to `method` until the returned release runs.
   holdNext: (method: string) => () => void
@@ -63,6 +67,7 @@ export function chatDouble(
           session_id: params.session_id,
           running: false,
           last_sequence: 7,
+          ...(chat?.inflight ? { inflight: chat.inflight } : {}),
           info: { model: '9-route-provider', provider: 'custom', reasoning_effort: 'medium' }
         }
       case 'GET /api/sessions':

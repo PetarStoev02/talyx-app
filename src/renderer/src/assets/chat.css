@@ -25,6 +25,9 @@
 }
 .chat-markdown pre {
   overflow-x: auto;
+  /* Long lines wrap, so none of the code hides past the bubble's edge. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   border-radius: 1rem;
   background: var(--secondary);
   padding: 0.75rem 1rem;
@@ -49,6 +52,11 @@
 .chat-markdown blockquote {
   padding-left: 1rem;
   color: var(--muted-foreground);
+}
+
+/* The copy button sits in the block's top corner; the code keeps clear of it. */
+.chat-code pre {
+  padding-inline-end: 2.75rem;
 }
 
 /* Inside a reply bubble, code steps back down to the ground so it still reads as a block. */

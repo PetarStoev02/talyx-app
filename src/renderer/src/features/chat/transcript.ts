@@ -1,6 +1,6 @@
 import type { GatewayEvent } from '@shared/engine/shared'
 import type { SessionMessage } from '@shared/engine/types'
-import type { ChatItem, ChatPrompt, StreamCursor, Transcript } from './types'
+import type { ChatItem, ChatPrompt, FailedTurn, StreamCursor, Transcript } from './types'
 
 // A message another bot delivered: `Message from 🤖 <name> (@<handle>): <text>`.
 const DELIVERY = /^Message from 🤖 (.+?) \(@([^\s)]+)\):\s*([\s\S]*)$/
@@ -16,6 +16,17 @@ const NOTICE_KINDS = new Set([
   'failed_turn'
 ])
 const MESSAGE_AGENT = 'message_agent'
+// The id prefix of a reply streamed live, before the history reload gives it its stored row id.
+const LIVE_ID = 'live-'
+// The row the engine stores for a turn that failed after it reached the model.
+const FAILED_TURN = 'failed_turn'
+// The engine sends its spinner phrases and its provider waits as thinking text; a wait starts with
+// this mark. Its notice has an em dash (from its code point: this repo never spells one), shown as
+// a comma like the rest of the app's copy.
+const WAIT_MARK = '⏳'
+const WAIT_DASH = new RegExp(`\\s*${String.fromCharCode(0x2014)}\\s*`, 'g')
+// Frames that mean the engine is no longer waiting: the turn went on or ended.
+const WAIT_ENDS = new Set(['message.delta', 'message.complete', 'tool.start', 'tool.complete'])
 const IMAGE_LINE = /^@image:(.+)$/gm
 const IMAGE_NOTE = /\[Image attached: ([^\]]+)\]/g
 // What the engine writes into a stored user message ahead of the typed text, matched by its fixed
@@ -48,7 +59,17 @@ export function fromHistory(
     for (const item of historyItem(message, calls))
       if (!isRestatedCopy(item, message, items)) items.push(item)
   }
-  return { sessionId, items, prompts: [], running, lastSeq: 0, epoch: null, stream: null }
+  return {
+    sessionId,
+    items,
+    prompts: [],
+    running,
+    lastSeq: 0,
+    epoch: null,
+    stream: null,
+    wait: null,
+    failed: []
+  }
 }
 
 /**
@@ -68,6 +89,11 @@ export function applyEvent(transcript: Transcript, event: GatewayEvent): Transcr
     transcript = { ...transcript, lastSeq: event.seq }
   }
   const payload = (event.payload ?? {}) as Payload
+  const next = applyPayload(transcript, event, payload)
+  return WAIT_ENDS.has(event.type) && next.wait !== null ? { ...next, wait: null } : next
+}
+
+function applyPayload(transcript: Transcript, event: GatewayEvent, payload: Payload): Transcript {
   switch (event.type) {
     case 'message.start':
       return startReply(transcript, payload, String(event.seq ?? ''))
@@ -77,6 +103,8 @@ export function applyEvent(transcript: Transcript, event: GatewayEvent): Transcr
         : transcript
     case 'message.complete':
       return completeReply(transcript, payload, String(event.seq ?? ''))
+    case 'thinking.delta':
+      return typeof payload.text === 'string' ? waitFor(transcript, payload.text) : transcript
     case 'tool.start':
       return startTool(transcript, payload)
     case 'tool.complete':
@@ -93,6 +121,50 @@ export function applyEvent(transcript: Transcript, event: GatewayEvent): Transcr
     default:
       return transcript
   }
+}
+
+/**
+ * Puts failed turns back into a transcript read from history, each after the item it followed. A
+ * turn whose place is no longer loaded is dropped, and so is one the engine stored.
+ */
+export function withFailedTurns(transcript: Transcript, turns: FailedTurn[]): Transcript {
+  const items = [...transcript.items]
+  const kept: FailedTurn[] = []
+  for (const turn of turns) {
+    const at = turn.after === null ? 0 : items.findIndex((item) => item.id === turn.after) + 1
+    if ((turn.after !== null && at === 0) || storedAt(items, at, turn.items[0])) continue
+    items.splice(placeOf(items, at, turn.items[0]), 0, ...turn.items)
+    kept.push(turn)
+  }
+  return { ...transcript, items, failed: [...transcript.failed, ...kept] }
+}
+
+// A failed turn no message of yours started answered what came in before it (a delivery the
+// reload brought): it goes at the end of that run, before your next message.
+function placeOf(items: ChatItem[], at: number, first: ChatItem | undefined): number {
+  if (first?.kind === 'user') return at
+  const next = items.findIndex((item, index) => index >= at && item.kind === 'user')
+  return next < 0 ? items.length : next
+}
+
+/**
+ * The engine stores a turn that failed after it reached the model: its message, then before the
+ * next message a failed reply. A carried turn that is only a reply already follows its stored
+ * message. The same words sent again and answered are another turn.
+ * Matched by place and words only: a resend of the same words that also fails and is stored hides
+ * the earlier failure the engine did not store. Matching on submission ids would tell them apart.
+ */
+function storedAt(items: ChatItem[], at: number, first: ChatItem | undefined): boolean {
+  let from = at
+  if (first?.kind === 'user') {
+    const next = items[at]
+    if (next?.kind !== 'user' || next.text !== first.text) return false
+    from = at + 1
+  }
+  const end = items.findIndex((item, index) => index >= from && item.kind === 'user')
+  return items
+    .slice(from, end < 0 ? undefined : end)
+    .some((item) => item.kind === 'bot' && item.error !== null)
 }
 
 export function addPrompt(transcript: Transcript, prompt: ChatPrompt): Transcript {
@@ -128,16 +200,40 @@ function historyItem(
     if (delivery) {
       const [, name, profile, body] = delivery
       return [
-        { kind: 'bot', id, text: body, streaming: false, error: null, sender: { name, profile } }
+        {
+          kind: 'bot',
+          id,
+          text: body,
+          streaming: false,
+          error: null,
+          stopped: false,
+          sender: { name, profile }
+        }
       ]
     }
     if (message.display_kind && NOTICE_KINDS.has(message.display_kind))
       return [{ kind: 'notice', id, text: noticeText(message, text) }]
     return [userItem(id, text)]
   }
+  if (message.role === 'assistant' && message.display_kind === FAILED_TURN) {
+    // Its text is a fixed notice; the metadata names what went wrong.
+    const reason = parseArgs(message.display_metadata).error
+    return [failedReply(id, typeof reason === 'string' && reason ? reason : text)]
+  }
   if (message.role === 'assistant')
     return text.trim()
-      ? [{ kind: 'bot', id, text, streaming: false, error: null, sender: null }]
+      ? [
+          {
+            kind: 'bot',
+            id,
+            text,
+            streaming: false,
+            error: null,
+            // The engine marks the reply a stop cut short, so a reopened chat still says so.
+            stopped: parseArgs(message.display_metadata).interrupted === true,
+            sender: null
+          }
+        ]
       : []
   if (message.role === 'tool') {
     const call = calls.get(message.tool_call_id ?? '')
@@ -248,14 +344,19 @@ function lastStreamingReply(transcript: Transcript): number {
   return last?.kind === 'bot' && last.streaming ? index : -1
 }
 
+function failedReply(id: string, error: string): BotItem {
+  return { kind: 'bot', id, text: '', streaming: false, error, stopped: false, sender: null }
+}
+
 function withStreamingReply(transcript: Transcript, id: string): Transcript {
   if (lastStreamingReply(transcript) >= 0) return transcript
   const reply: BotItem = {
     kind: 'bot',
-    id: `live-${id}`,
+    id: `${LIVE_ID}${id}`,
     text: '',
     streaming: true,
     error: null,
+    stopped: false,
     sender: null
   }
   return { ...transcript, items: [...transcript.items, reply] }
@@ -328,17 +429,61 @@ function appendText(transcript: Transcript, text: string, id: string): Transcrip
 
 function completeReply(transcript: Transcript, payload: Payload, id: string): Transcript {
   const failed = payload.status === 'error'
-  // The final text covers the whole turn; it fills the reply only when nothing streamed into it.
   const text = typeof payload.text === 'string' ? payload.text : ''
   if (lastStreamingReply(transcript) < 0 && !text && !failed)
     return { ...transcript, running: false }
+  // A failed turn's text is the engine's account of the failure unless it says the text is a
+  // partial answer; the account shows as the error, not as a reply.
+  const answer = failed && payload.partial !== true ? '' : text
   const done = updateReply(withStreamingReply(transcript, id), (reply) => ({
     ...reply,
-    text: reply.text || text,
+    // The final text covers the whole turn; it fills the reply only when nothing streamed into it.
+    text: reply.text || answer,
     streaming: false,
-    error: failed ? String(payload.error ?? payload.failure_reason ?? '') || null : null
+    error: failed ? failureReason(payload, answer ? '' : text) : null,
+    stopped: payload.status === 'interrupted'
   }))
-  return { ...done, running: false }
+  return failed
+    ? { ...done, running: false, failed: [...done.failed, failedTurn(done.items)] }
+    : { ...done, running: false }
+}
+
+// The failed reply is the last item. Before it, past this turn's tool lines and streamed text, is
+// the message it answered, unless a delivery or another client started the turn.
+function failedTurn(items: ChatItem[]): FailedTurn {
+  const reply = items.length - 1
+  let start = reply
+  while (start > 0 && isTurnWork(items[start - 1])) start -= 1
+  const asked = items[start - 1]?.kind === 'user' ? start - 1 : -1
+  const first = asked < 0 ? start : asked
+  return {
+    after: items[first - 1]?.id ?? null,
+    items: asked < 0 ? [items[reply]] : [items[asked], items[reply]]
+  }
+}
+
+// Every finished turn reloads history, so streamed text not yet replaced by a stored row is this
+// turn's. A failed reply put back after the reload keeps its live id but ended an earlier turn.
+function isTurnWork(item: ChatItem): boolean {
+  return (
+    item.kind === 'tool' ||
+    (item.kind === 'bot' && item.error === null && item.id.startsWith(LIVE_ID))
+  )
+}
+
+// The engine's account of the failure, else the error it names.
+function failureReason(payload: Payload, account: string): string {
+  const reason = [account, payload.error, payload.failure_reason].find(
+    (value) => typeof value === 'string' && value.trim()
+  )
+  return typeof reason === 'string' ? reason : ''
+}
+
+// A wait notice shows until the engine clears it with empty text or the turn moves on.
+function waitFor(transcript: Transcript, text: string): Transcript {
+  if (text.startsWith(WAIT_MARK))
+    return { ...transcript, wait: text.slice(WAIT_MARK.length).replace(WAIT_DASH, ', ').trim() }
+  return text ? transcript : { ...transcript, wait: null }
 }
 
 // A tool line ends the reply segment before it; text after the tool starts a new one.

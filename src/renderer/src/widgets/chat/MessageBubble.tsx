@@ -11,6 +11,7 @@ import { markdownImage } from '@features/chat/markdownImage'
 import { senderProfile } from '@features/chat/transcript'
 import type { MessageItem } from '@features/chat/types'
 import { cn } from '@shared/lib/utils'
+import { CodeBlock } from './CodeBlock'
 
 // Links open in the browser through the window-open guard, never inside the app.
 const MARKDOWN_COMPONENTS: Components = {
@@ -30,6 +31,12 @@ const MARKDOWN_COMPONENTS: Components = {
       )
     return <>{image.label}</>
   }
+}
+
+// A finished reply's code blocks can be copied; while it streams the code is not whole yet.
+const FINISHED_COMPONENTS: Components = {
+  ...MARKDOWN_COMPONENTS,
+  pre: ({ children }) => <CodeBlock>{children}</CodeBlock>
 }
 
 // The default transform drops data: URLs; image sources reach the img override raw, which decides.
@@ -67,26 +74,35 @@ export function MessageBubble({
       </div>
     )
   const reply = (
-    <div
-      dir="auto"
-      className={cn(
-        'chat-markdown chat-bubble max-w-[85%] min-w-0 self-start rounded-3xl bg-secondary px-4 py-3 text-base break-words',
-        // The cursor sits after the last line of text, drawn by chat.css.
-        message.streaming && 'chat-streaming'
-      )}
-    >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={MARKDOWN_COMPONENTS}
-        urlTransform={urlTransform}
+    <div className="flex max-w-[85%] min-w-0 flex-col items-start gap-1 self-start">
+      <div
+        dir="auto"
+        className={cn(
+          'chat-markdown chat-bubble max-w-full min-w-0 rounded-3xl bg-secondary px-4 py-3 text-base break-words',
+          // The cursor sits after the last line of text, drawn by chat.css.
+          message.streaming && 'chat-streaming'
+        )}
       >
-        {message.text}
-      </ReactMarkdown>
-      {message.error && (
-        <div className="mt-2">
-          <p className="text-destructive-text">{t('chat.replyFailed')}</p>
-          <p className="text-sm text-muted-foreground wrap-anywhere">{message.error}</p>
-        </div>
+        {(message.text || message.error === null) && (
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={message.streaming ? MARKDOWN_COMPONENTS : FINISHED_COMPONENTS}
+            urlTransform={urlTransform}
+          >
+            {message.text}
+          </ReactMarkdown>
+        )}
+        {message.error !== null && (
+          <div className={cn(message.text && 'mt-2')}>
+            <p className="text-destructive-text">{t('chat.replyFailed')}</p>
+            {message.error && (
+              <p className="text-sm text-muted-foreground wrap-anywhere">{message.error}</p>
+            )}
+          </div>
+        )}
+      </div>
+      {message.stopped && (
+        <p className="px-2 text-sm text-muted-foreground">{t('chat.replyStopped')}</p>
       )}
     </div>
   )

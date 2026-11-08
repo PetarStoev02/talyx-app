@@ -9,15 +9,18 @@ import type { TurnActivity } from '@features/chat/turns'
 const SECOND_MS = 1000
 
 /**
- * The one line a working bot shows: its newest tool, how many it ran and how long the turn has
- * taken, updated in place. It mounts when the turn starts, so the clock counts from then.
+ * The one line a working bot shows: its newest tool (or the engine's notice while it waits on a
+ * provider), how many it ran and how long the turn has taken, updated in place. It mounts when the
+ * turn starts, so the clock counts from then.
  */
 export function ActivityLine({
   bot,
-  activity
+  activity,
+  wait
 }: {
   bot: Bot
   activity: TurnActivity
+  wait: string | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const [started] = useState(() => Date.now())
@@ -30,11 +33,13 @@ export function ActivityLine({
   const target = useRoster((state) =>
     tool?.target ? state.snapshot.bots.find((each) => each.name === tool.target) : undefined
   )
-  const doing = !tool
-    ? t('chat.typing').replace('{name}', botTitle(bot))
-    : tool.target
-      ? t('chat.asking').replace('{name}', target ? botTitle(target) : tool.target)
-      : tool.label
+  const doing =
+    wait ??
+    (!tool
+      ? t('chat.typing').replace('{name}', botTitle(bot))
+      : tool.target
+        ? t('chat.asking').replace('{name}', target ? botTitle(target) : tool.target)
+        : tool.label)
   const count = tools === 1 ? t('chat.toolSoFar') : t('chat.toolsSoFar')
   const parts = [
     doing,

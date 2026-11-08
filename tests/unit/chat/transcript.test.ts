@@ -64,6 +64,7 @@ describe('chat transcript', () => {
           text: 'done',
           streaming: false,
           error: null,
+          stopped: false,
           sender: { name: 'CFO', profile: 'cfo' }
         },
         {
@@ -72,6 +73,7 @@ describe('chat transcript', () => {
           text: 'Margins are up.',
           streaming: false,
           error: null,
+          stopped: false,
           sender: null
         }
       ])
@@ -189,6 +191,7 @@ describe('chat transcript', () => {
         text: 'Margins are up.\n\n- Costs flat',
         streaming: false,
         error: null,
+        stopped: false,
         sender: { name: 'Agro Ops CFO', profile: 'agro-ops-cfo' }
       })
     })
@@ -378,6 +381,137 @@ describe('chat transcript', () => {
 
     it('should follow the running flag from session info', () => {
       expect(applyEvent(empty(), event('session.info', { running: true }, 1)).running).toBe(true)
+    })
+  })
+
+  describe('turns that end early', () => {
+    const asked = (): Transcript => history({ id: 1, role: 'user', content: 'Summarise Q3' })
+    const NO_CREDENTIALS = 'No usable credentials found for provider acme'
+
+    it("should keep a failed turn with the engine's account of it as an error bubble", () => {
+      // The text is the engine's account; `error` may be only a code.
+      const failed = replay(
+        asked(),
+        event('message.start', {}, 1),
+        event('message.complete', { status: 'error', text: NO_CREDENTIALS, error: 'auth' }, 2)
+      )
+      expect(failed.items).toEqual([
+        { kind: 'user', id: '1', text: 'Summarise Q3', images: [] },
+        {
+          kind: 'bot',
+          id: 'live-1',
+          text: '',
+          streaming: false,
+          error: NO_CREDENTIALS,
+          stopped: false,
+          sender: null
+        }
+      ])
+      expect(failed.running).toBe(false)
+    })
+
+    it('should keep the text a failed turn wrote before it failed', () => {
+      const failed = replay(
+        asked(),
+        event('message.delta', { text: 'Margins are' }, 1),
+        event(
+          'message.complete',
+          { status: 'error', text: 'Margins are', error: 'Stream cut', partial: true },
+          2
+        )
+      )
+      expect(failed.items.at(-1)).toMatchObject({ text: 'Margins are', error: 'Stream cut' })
+    })
+
+    it('should name the error when a failed turn has no account of it', () => {
+      const failed = replay(
+        asked(),
+        event('message.complete', { status: 'error', error: NO_CREDENTIALS }, 1)
+      )
+      expect(failed.items.at(-1)).toMatchObject({ text: '', error: NO_CREDENTIALS })
+    })
+
+    it('should show a failed turn the engine stored as an error bubble', () => {
+      const transcript = history(
+        { id: 1, role: 'user', content: 'Summarise Q3' },
+        {
+          id: 2,
+          role: 'assistant',
+          content: 'Your request was not processed.',
+          display_kind: 'failed_turn',
+          display_metadata: { error: 'HTTP 429: Rate limit exceeded' }
+        },
+        {
+          id: 3,
+          role: 'assistant',
+          content: 'Your request was not processed.',
+          display_kind: 'failed_turn'
+        }
+      )
+      expect(transcript.items.slice(1)).toMatchObject([
+        { kind: 'bot', text: '', error: 'HTTP 429: Rate limit exceeded' },
+        { kind: 'bot', text: '', error: 'Your request was not processed.' }
+      ])
+    })
+
+    it('should mark a stopped turn and keep its partial reply', () => {
+      const stopped = replay(
+        asked(),
+        event('message.delta', { text: 'Margins are' }, 1),
+        event('message.complete', { status: 'interrupted', text: 'Margins are' }, 2)
+      )
+      expect(stopped.items.at(-1)).toMatchObject({
+        text: 'Margins are',
+        streaming: false,
+        error: null,
+        stopped: true
+      })
+    })
+
+    it('should mark a stopped reply read back from history', () => {
+      const transcript = history(
+        { id: 1, role: 'user', content: 'Summarise Q3' },
+        {
+          id: 2,
+          role: 'assistant',
+          content: 'Margins are',
+          display_metadata: { interrupted: true }
+        },
+        { id: 3, role: 'assistant', content: 'Done', display_metadata: '{"interrupted":false}' }
+      )
+      expect(transcript.items.slice(1)).toMatchObject([
+        { text: 'Margins are', stopped: true },
+        { text: 'Done', stopped: false }
+      ])
+    })
+
+    describe('provider waits', () => {
+      // The engine's notice has an em dash, built from its code point since this repo never
+      // spells one.
+      const WAIT = `⏳ waiting on provider ${String.fromCharCode(0x2014)} retrying in 600s (attempt 1/3)`
+      const waiting = (): Transcript =>
+        replay(asked(), event('message.start', {}, 1), event('thinking.delta', { text: WAIT }, 2))
+
+      it('should show the wait notice while the engine waits on a provider', () => {
+        expect(waiting().wait).toBe('waiting on provider, retrying in 600s (attempt 1/3)')
+      })
+
+      it('should not show the thinking phrases that are not waits', () => {
+        const thinking = replay(asked(), event('thinking.delta', { text: 'pondering…' }, 1))
+        expect(thinking.wait).toBeNull()
+        expect(replay(waiting(), event('thinking.delta', { text: 'pondering…' }, 3)).wait).toBe(
+          'waiting on provider, retrying in 600s (attempt 1/3)'
+        )
+      })
+
+      it.each([
+        ['the reply streams on', event('message.delta', { text: 'Margins' }, 3)],
+        ['a tool starts', event('tool.start', { tool_id: 't1', name: 'search' }, 3)],
+        ['the turn ends', event('message.complete', { status: 'error', error: 'Rate limited' }, 3)],
+        ['the engine clears it', event('thinking.delta', { text: '' }, 3)]
+      ])('should clear the wait notice when %s', (_when, next) => {
+        expect(replay(waiting(), next).wait).toBeNull()
+      })
     })
   })
 

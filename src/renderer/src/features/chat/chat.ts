@@ -7,8 +7,8 @@ import type { TranslationKey } from '@shared/lib/i18n'
 import { failureOf } from '@shared/lib/problem'
 import { useChat } from './store'
 import type { ChatInfo, ChatState } from './store'
-import { applyEvent, fromHistory, settlePrompt } from './transcript'
-import type { ApprovalChoice, Transcript } from './types'
+import { applyEvent, fromHistory, settlePrompt, withFailedTurns } from './transcript'
+import type { ApprovalChoice, ChatItem, Transcript } from './types'
 
 /** The bot's chat is the profile's hidden session with this exact title. */
 export const BOT_CHAT_TITLE = 'Bot Chat'
@@ -73,7 +73,7 @@ interface ResumeSnapshot {
   replay_epoch?: string
   running?: boolean
   last_sequence?: number
-  inflight?: { assistant?: string } | null
+  inflight?: { assistant?: string; user?: string; error?: string } | null
 }
 
 export function chatActions(backend: ChatBackend): ChatActions {
@@ -345,12 +345,43 @@ function rebuilt(
     ].reduce((current, event) => applyEvent(current, event as GatewayEvent), transcript)
   }
   const same = previous?.sessionId === sessionId
+  transcript = withFailedTurns(transcript, same ? previous.failed : [])
+  if (!resume.running && resume.inflight?.error)
+    transcript = withHeldFailure(transcript, resume.inflight, resume.last_sequence ?? 0)
   return {
     ...transcript,
     prompts: same ? previous.prompts : [],
     lastSeq: resume.last_sequence ?? (same ? previous.lastSeq : 0),
     epoch: resume.replay_epoch ?? (same ? previous.epoch : null)
   }
+}
+
+/**
+ * A failed turn the engine holds for a client that missed its frame, until the next turn starts:
+ * what was sent, what the bot wrote and why it failed. A chat that saw the frame already has it.
+ */
+function withHeldFailure(
+  transcript: Transcript,
+  turn: NonNullable<ResumeSnapshot['inflight']>,
+  seq: number
+): Transcript {
+  const last = transcript.items.at(-1)
+  if (last?.kind === 'bot' && last.error !== null) return transcript
+  // A message the engine did store is the last item: the failure follows it.
+  const sent = turn.user?.trim() ?? ''
+  const stored = last?.kind === 'user' && last.text === sent
+  const asked: ChatItem[] =
+    sent && !stored ? [{ kind: 'user', id: `failed-${seq}-user`, text: sent, images: [] }] : []
+  const reply: ChatItem = {
+    kind: 'bot',
+    id: `failed-${seq}`,
+    text: turn.assistant ?? '',
+    streaming: false,
+    error: turn.error ?? '',
+    stopped: false,
+    sender: null
+  }
+  return withFailedTurns(transcript, [{ after: last?.id ?? null, items: [...asked, reply] }])
 }
 
 /** The live session info over what the chat showed before; absent fields keep their value. */

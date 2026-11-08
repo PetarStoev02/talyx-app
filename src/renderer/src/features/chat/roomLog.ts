@@ -47,7 +47,17 @@ function roomItem(event: RoomEvent, { memberOf, t }: RoomLabels): MessageItem[] 
   }
   if (event.kind === 'message.member')
     return text.trim()
-      ? [{ kind: 'bot', id, text, streaming: false, error: null, sender: memberOf(event.actor.id) }]
+      ? [
+          {
+            kind: 'bot',
+            id,
+            text,
+            streaming: false,
+            error: null,
+            stopped: false,
+            sender: memberOf(event.actor.id)
+          }
+        ]
       : []
   const notice =
     event.kind === 'room.activity' && event.payload.status === 'bounded'

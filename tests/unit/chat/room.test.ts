@@ -417,6 +417,7 @@ describe('room transcript', () => {
         text: 'Plus: cash.',
         streaming: false,
         error: null,
+        stopped: false,
         sender: { name: 'Acme CFO', profile: 'acme-cfo' }
       },
       {
@@ -425,6 +426,7 @@ describe('room transcript', () => {
         text: 'Summary.',
         streaming: false,
         error: null,
+        stopped: false,
         sender: { name: 'Talyx', profile: 'default' }
       }
     ])
