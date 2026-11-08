@@ -7,8 +7,8 @@ const COPIED_MS = 1500
 
 /**
  * Copies a reply's markdown from the bubble's top corner. It shows on hover of the reply and while
- * it has focus, and stays in the tab order; the bubble's own background keeps text from showing
- * through it.
+ * it has focus, and stays in the tab order; its own background hides the text under it. Hidden, it
+ * lets clicks through, so selecting that text does not copy.
  */
 export function CopyReplyButton({ text }: { text: string }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
@@ -33,7 +33,7 @@ export function CopyReplyButton({ text }: { text: string }): React.JSX.Element {
         type="button"
         aria-label={t('chat.copyReply')}
         onClick={copy}
-        className="absolute end-2 top-2 inline-flex size-7 items-center justify-center rounded-full bg-secondary text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100"
+        className="absolute end-2 top-2 inline-flex size-7 items-center justify-center rounded-full bg-secondary text-muted-foreground pointer-events-none opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 hover:text-foreground focus-visible:pointer-events-auto focus-visible:opacity-100"
       >
         {copied ? <Check size={16} /> : <Copy size={16} />}
       </button>

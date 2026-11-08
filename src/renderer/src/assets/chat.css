@@ -1,5 +1,6 @@
 /* Bot replies are markdown; their elements get the app's type steps, not the browser's. */
-.chat-markdown > * + * {
+/* The reply's copy button sits in the corner, outside the flow: it gets no gap. */
+.chat-markdown > * + :not(button) {
   margin-top: 0.75rem;
 }
 .chat-markdown h1,
