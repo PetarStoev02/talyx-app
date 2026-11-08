@@ -67,6 +67,10 @@ export function AboutSection(): React.JSX.Element {
         >
           {copied ? t('settings.diagnosticsCopied') : t('settings.copyDiagnostics')}
         </Button>
+        {/* A focused button's new label is not reliably read out; this region is. */}
+        <p role="status" className="sr-only">
+          {copied ? t('settings.diagnosticsCopied') : ''}
+        </p>
       </div>
     </section>
   )

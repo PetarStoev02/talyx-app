@@ -44,6 +44,15 @@ export function EngineSection({
   const requestEngineInstall = useUpdates((s) => s.requestEngineInstall)
   const summary: EngineSummary = engineSummary(status)
   const [consoleOpen, setConsoleOpen] = useState(false)
+  // What a screen reader hears after Check again: the visible line below ages every minute, so it
+  // is not a live region itself. Cleared first, so a second check is announced again.
+  const [checkNote, setCheckNote] = useState('')
+
+  async function recheck(): Promise<void> {
+    setCheckNote('')
+    await check()
+    setCheckNote(t('settings.engineChecked').replace('{when}', t('time.justNow')))
+  }
 
   function install(): void {
     // The Agents page's engine gate runs the install, with its output and restart step.
@@ -74,7 +83,7 @@ export function EngineSection({
           variant="secondary"
           className="bg-secondary hover:bg-foreground/10"
           disabled={checking}
-          onClick={() => void check()}
+          onClick={() => void recheck()}
         >
           {t('settings.engineCheck')}
         </Button>
@@ -90,10 +99,13 @@ export function EngineSection({
       </div>
       {checkedAt && (
         // Keyed by the time, so each check fades the line in again even while it reads the same.
-        <p key={checkedAt} className="animate-arrive text-sm" aria-live="polite">
+        <p key={checkedAt} className="animate-arrive text-sm">
           {t('settings.engineChecked').replace('{when}', timeInWords(checkedAt / 1000, t, now))}
         </p>
       )}
+      <p role="status" className="sr-only">
+        {checkNote}
+      </p>
       <div className="space-y-3">
         <button
           className="flex items-center gap-2 text-base font-medium text-foreground"
