@@ -66,5 +66,5 @@ export function diagnosticsReport({ talyx, engine, os, log, home }: Diagnostics)
 
 // The home folder only as a whole path segment: /home/al must not turn /home/alice into ~ice.
 function homePattern(home: string): RegExp {
-  return new RegExp(`${home.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w.-])`, 'g')
+  return new RegExp(`${home.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-]|\\.\\w)`, 'g')
 }

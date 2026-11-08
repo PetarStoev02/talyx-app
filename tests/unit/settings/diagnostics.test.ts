@@ -42,6 +42,10 @@ describe('diagnostics', () => {
       expect(text).toContain(`${HOME}2/notes`)
       expect(text).toContain("'~'")
     })
+
+    it('should shorten the home folder at the end of a sentence', () => {
+      expect(report(`cwd is ${HOME}.`)).toContain('cwd is ~.')
+    })
   })
 
   describe('redaction', () => {
