@@ -11,7 +11,7 @@ import { markdownImage } from '@features/chat/markdownImage'
 import { senderProfile } from '@features/chat/transcript'
 import type { MessageItem } from '@features/chat/types'
 import { cn } from '@shared/lib/utils'
-import { CopyReplyButton } from './CopyReplyButton'
+import { CodeBlock } from './CodeBlock'
 
 // Links open in the browser through the window-open guard, never inside the app.
 const MARKDOWN_COMPONENTS: Components = {
@@ -31,6 +31,12 @@ const MARKDOWN_COMPONENTS: Components = {
       )
     return <>{image.label}</>
   }
+}
+
+// A finished reply's code blocks can be copied; while it streams the code is not whole yet.
+const FINISHED_COMPONENTS: Components = {
+  ...MARKDOWN_COMPONENTS,
+  pre: ({ children }) => <CodeBlock>{children}</CodeBlock>
 }
 
 // The default transform drops data: URLs; image sources reach the img override raw, which decides.
@@ -67,13 +73,12 @@ export function MessageBubble({
         )}
       </div>
     )
-  const copyable = !message.streaming && message.text.trim() !== ''
   const reply = (
-    <div className="group flex max-w-[85%] min-w-0 flex-col items-start gap-1 self-start">
+    <div className="flex max-w-[85%] min-w-0 flex-col items-start gap-1 self-start">
       <div
         dir="auto"
         className={cn(
-          'chat-markdown chat-bubble relative max-w-full min-w-0 rounded-3xl bg-secondary px-4 py-3 text-base break-words',
+          'chat-markdown chat-bubble max-w-full min-w-0 rounded-3xl bg-secondary px-4 py-3 text-base break-words',
           // The cursor sits after the last line of text, drawn by chat.css.
           message.streaming && 'chat-streaming'
         )}
@@ -81,7 +86,7 @@ export function MessageBubble({
         {(message.text || message.error === null) && (
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
-            components={MARKDOWN_COMPONENTS}
+            components={message.streaming ? MARKDOWN_COMPONENTS : FINISHED_COMPONENTS}
             urlTransform={urlTransform}
           >
             {message.text}
@@ -95,7 +100,6 @@ export function MessageBubble({
             )}
           </div>
         )}
-        {copyable && <CopyReplyButton text={message.text} />}
       </div>
       {message.stopped && (
         <p className="px-2 text-sm text-muted-foreground">{t('chat.replyStopped')}</p>

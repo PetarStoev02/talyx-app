@@ -1,6 +1,5 @@
 /* Bot replies are markdown; their elements get the app's type steps, not the browser's. */
-/* The reply's copy button sits in the corner, outside the flow: it gets no gap. */
-.chat-markdown > * + :not(button) {
+.chat-markdown > * + * {
   margin-top: 0.75rem;
 }
 .chat-markdown h1,
@@ -26,6 +25,9 @@
 }
 .chat-markdown pre {
   overflow-x: auto;
+  /* Long lines wrap, so none of the code hides past the bubble's edge. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   border-radius: 1rem;
   background: var(--secondary);
   padding: 0.75rem 1rem;
@@ -50,6 +52,11 @@
 .chat-markdown blockquote {
   padding-left: 1rem;
   color: var(--muted-foreground);
+}
+
+/* The copy button sits in the block's top corner; the code keeps clear of it. */
+.chat-code pre {
+  padding-inline-end: 2.75rem;
 }
 
 /* Inside a reply bubble, code steps back down to the ground so it still reads as a block. */
