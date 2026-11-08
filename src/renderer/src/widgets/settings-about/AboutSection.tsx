@@ -60,7 +60,11 @@ export function AboutSection(): React.JSX.Element {
       </div>
       <div className="space-y-2">
         <p className="text-base">{t('settings.copyDiagnosticsDesc')}</p>
-        <Button variant="secondary" onClick={() => void copyDiagnostics()}>
+        <Button
+          variant="secondary"
+          className="bg-secondary hover:bg-foreground/10"
+          onClick={() => void copyDiagnostics()}
+        >
           {copied ? t('settings.diagnosticsCopied') : t('settings.copyDiagnostics')}
         </Button>
       </div>

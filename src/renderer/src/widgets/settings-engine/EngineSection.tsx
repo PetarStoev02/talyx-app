@@ -70,10 +70,20 @@ export function EngineSection({
       </div>
       {summary.stale && summary.path && <RestartHint path={summary.path} recheck={null} />}
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" disabled={checking} onClick={() => void check()}>
+        <Button
+          variant="secondary"
+          className="bg-secondary hover:bg-foreground/10"
+          disabled={checking}
+          onClick={() => void check()}
+        >
           {t('settings.engineCheck')}
         </Button>
-        <Button variant="secondary" disabled={checking} onClick={() => void pickPath()}>
+        <Button
+          variant="secondary"
+          className="bg-secondary hover:bg-foreground/10"
+          disabled={checking}
+          onClick={() => void pickPath()}
+        >
           {t('engine.chooseFile')}
         </Button>
         {summary.action && <Button onClick={install}>{t(ACTION_KEYS[summary.action])}</Button>}
