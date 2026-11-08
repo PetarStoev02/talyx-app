@@ -86,8 +86,9 @@ deb:
 # No native dependencies, so nothing is compiled against Electron's headers.
 npmRebuild: false
 # The static AppImage runtime carries its own FUSE 3 code, so the AppImage starts on systems
-# without libfuse.so.2 (the legacy runtime's requirement). electron-updater replaces the whole
-# file on an update, so it works the same with either runtime.
+# without libfuse.so.2 (the legacy runtime's requirement). Self-update is unaffected: both
+# runtimes get the same AppRun and embedded blockmap, and electron-updater moves the new file over
+# the old one.
 toolsets:
   appimage: '1.0.3'
 # Any local process could otherwise run code as Talyx and inherit its permissions.
