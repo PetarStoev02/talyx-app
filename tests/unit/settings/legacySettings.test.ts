@@ -1,4 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+
+// migrateSettings is pure; without the mock, importing the store needs the Electron binary.
+vi.mock('electron', () => ({ app: {} }))
+
 import { migrateSettings } from '../../../src/main/infrastructure/storage/SettingsStore'
 
 describe('migrateSettings', () => {
