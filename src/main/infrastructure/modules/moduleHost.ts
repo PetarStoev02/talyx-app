@@ -186,7 +186,10 @@ export function createModuleHost(deps: ModuleHostDeps) {
     })
   }
 
-  /** On resume from sleep: timers paused, so a key that expired meanwhile is handled now. */
+  /**
+   * On resume from sleep: timers paused, so a key that expired meanwhile is handled now, and one
+   * still valid gets its timer set again from the real clock.
+   */
   function recheckExpiry(): Promise<void> {
     return serial(expire)
   }
@@ -260,7 +263,8 @@ export function createModuleHost(deps: ModuleHostDeps) {
   }
 
   async function expire(): Promise<void> {
-    if (!license || !isExpired(license, deps.now())) return
+    if (!license) return
+    if (!isExpired(license, deps.now())) return watchExpiry(license.expires)
     deps.log.info(`[Modules] License ${license.id} expired`)
     await unloadAll()
     setLicense(null)
@@ -329,14 +333,14 @@ export function createModuleHost(deps: ModuleHostDeps) {
   }
 
   /**
-   * A start that timed out may still finish later and start things. It is cut off from Talyx at
-   * once, and its deactivate runs once that start settles, whatever happened to the module since.
+   * A start that timed out may still finish later and start things. It is cut off from the engine
+   * at once (its actions are already unreachable: it never counts as running), and its deactivate
+   * runs once that start settles, whatever happened to the module since, even after a reinstall.
    */
   function retireWhenSettled(id: string, module: Loaded, started: Promise<unknown>): void {
     const stop = module.deactivate
     module.retired = true
     module.deactivate = null
-    module.handlers.clear()
     void started
       .catch(() => undefined)
       .then(() => stop?.())
@@ -367,7 +371,7 @@ export function createModuleHost(deps: ModuleHostDeps) {
       handle: (name, handler) => {
         if (!ModuleActionSchema.safeParse(name).success)
           throw new ModuleError(`"${name}" is not a valid action name.`)
-        if (!module.retired) module.handlers.set(name, handler)
+        module.handlers.set(name, handler)
       },
       engine: {
         http: (request) =>

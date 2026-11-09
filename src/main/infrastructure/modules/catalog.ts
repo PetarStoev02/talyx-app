@@ -44,14 +44,11 @@ export async function fetchBundleBytes(fetchFn: typeof fetch, url: string): Prom
 async function readCapped(response: Response): Promise<Buffer> {
   const chunks: Uint8Array[] = []
   let total = 0
-  const reader = response.body?.getReader()
-  for (let chunk = await reader?.read(); chunk && !chunk.done; chunk = await reader?.read()) {
-    total += chunk.value.length
-    if (total > MAX_BUNDLE_BYTES) {
-      await reader?.cancel()
-      throw tooLarge()
-    }
-    chunks.push(chunk.value)
+  // Leaving the loop early (the throw) cancels the stream.
+  for await (const chunk of response.body ?? []) {
+    total += chunk.length
+    if (total > MAX_BUNDLE_BYTES) throw tooLarge()
+    chunks.push(chunk)
   }
   return Buffer.concat(chunks)
 }

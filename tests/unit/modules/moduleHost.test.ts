@@ -34,6 +34,7 @@ describe('module host', () => {
   let clock: number
   /** Set to hold the bundle download until the test releases it. */
   let heldDownload: Promise<void> | null
+  let engineHttp: ReturnType<typeof vi.fn>
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'talyx-modules-'))
@@ -43,6 +44,7 @@ describe('module host', () => {
     files = new Map()
     clock = NOON
     heldDownload = null
+    engineHttp = vi.fn(async () => null)
     host = newHost()
     resetHelloRuns()
   })
@@ -58,7 +60,7 @@ describe('module host', () => {
       keys: signer.keys,
       fetch: fakeFetch,
       licenseKey: { read: () => savedKey, write: (key) => (savedKey = key) },
-      engineHttp: async () => null,
+      engineHttp,
       log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
       publish: (state) => published.push(state),
       now: () => clock
@@ -280,6 +282,22 @@ describe('module host', () => {
     })
   })
 
+  describe('given the computer slept but woke before the end of the key', () => {
+    it('should still stop its modules at the end of the last day', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      publish(helloBundle())
+      await host.activate(issueKey(signer, { ...LICENSE, expires: '2026-11-08' }))
+      await host.install('hello')
+      clock = NOON + 6 * HOUR_MS
+      await host.recheckExpiry()
+      expect(helloRuns().stopped).toBe(0)
+      clock = NOON + 12 * HOUR_MS
+      await vi.advanceTimersByTimeAsync(6 * HOUR_MS)
+      expect(published.at(-1)).toEqual({ license: null, modules: [] })
+      expect(helloRuns().stopped).toBe(1)
+    })
+  })
+
   describe('when Talyx quits', () => {
     it('should give every running module its deactivate and keep the license', async () => {
       await installHello()
@@ -308,7 +326,11 @@ describe('module host', () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
       const main = `module.exports = {
         activate: (ctx) => new Promise((resolve) => {
-          globalThis.finishStart = () => { ctx.handle('late', () => 'late'); resolve() }
+          globalThis.finishStart = () => {
+            ctx.handle('late', () => 'late')
+            globalThis.lateHttp = ctx.engine.http({ method: 'GET', path: '/x' }).catch((e) => e.message)
+            resolve()
+          }
         }),
         deactivate() { globalThis.helloStopped = (globalThis.helloStopped ?? 0) + 1 }
       }`
@@ -323,6 +345,10 @@ describe('module host', () => {
       ;(globalThis as { finishStart?: () => void }).finishStart!()
       await vi.waitFor(() => expect(helloRuns().stopped).toBe(1))
       await expect(host.invoke('hello', 'late', null)).rejects.toThrow()
+      expect(await (globalThis as { lateHttp?: Promise<unknown> }).lateHttp).toBe(
+        'The module was stopped.'
+      )
+      expect(engineHttp).not.toHaveBeenCalled()
     })
 
     it('should stop reading a download as soon as it passes the size cap', async () => {
