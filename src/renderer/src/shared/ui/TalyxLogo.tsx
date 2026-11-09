@@ -1,5 +1,4 @@
-import { useId } from 'react'
-import { TALYX_CUTS, TALYX_SILHOUETTE } from './talyxMark'
+import { TALYX_CUTS, TALYX_CUTS_SMALL, TALYX_SILHOUETTE, TALYX_SMALL_MAX } from './talyxMark'
 
 interface TalyxLogoProps {
   size?: number
@@ -7,7 +6,7 @@ interface TalyxLogoProps {
 }
 
 export function TalyxLogo({ size = 32, className }: TalyxLogoProps): React.JSX.Element {
-  const maskId = useId()
+  const cuts = size <= TALYX_SMALL_MAX ? TALYX_CUTS_SMALL : TALYX_CUTS
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -16,13 +15,7 @@ export function TalyxLogo({ size = 32, className }: TalyxLogoProps): React.JSX.E
       height={size}
       className={className}
     >
-      <mask id={maskId}>
-        <path d={TALYX_SILHOUETTE} fill="white" />
-        {TALYX_CUTS.map((cut) => (
-          <path key={cut} d={cut} fill="black" />
-        ))}
-      </mask>
-      <rect width="226" height="251" fill="currentColor" mask={`url(#${maskId})`} />
+      <path d={[TALYX_SILHOUETTE, ...cuts].join(' ')} fill="currentColor" fillRule="evenodd" />
     </svg>
   )
 }

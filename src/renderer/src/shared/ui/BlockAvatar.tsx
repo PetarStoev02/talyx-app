@@ -38,29 +38,29 @@ const EXPRESSIONS: Record<
 // (bottom left, bottom right, top right, top left) where the face sits.
 const TALYX = {
   top: [
-    [113, 0],
-    [226, 63],
-    [113, 125],
-    [0, 63]
+    [113, -4.67],
+    [225.73, 60.41],
+    [113, 125.5],
+    [0.27, 60.41]
   ],
   left: [
-    [0, 63],
-    [113, 125],
-    [113, 251],
-    [0, 188]
+    [0.27, 60.41],
+    [113, 125.5],
+    [113, 255.67],
+    [0.27, 190.59]
   ],
   right: [
-    [113, 125],
-    [226, 63],
-    [226, 188],
-    [113, 251]
+    [113, 125.5],
+    [225.73, 60.41],
+    [225.73, 190.59],
+    [113, 255.67]
   ],
   // The logo's front plate, the largest flat area on the left face.
   front: [
-    [27, 178],
-    [112, 228],
-    [112, 140],
-    [27, 88]
+    [24.42, 176.64],
+    [113, 227.78],
+    [113, 125.5],
+    [24.42, 74.36]
   ]
 } satisfies Record<string, Point[]>
 const TALYX_TONES = { top: '#e9e9ee', left: '#2a2a30', right: '#141418', stripe: '#7a7a84' }
