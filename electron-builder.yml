@@ -7,6 +7,13 @@ publish:
   provider: github
   owner: PetarStoev02
   repo: talyx-app
+# talyx:// links (talyx://activate?key=...) open Talyx: CFBundleURLTypes on macOS, the
+# x-scheme-handler MimeType in the Linux desktop entry. An AppImage without a desktop entry
+# may get no handler; "Enter License Key..." in the app menu works everywhere.
+protocols:
+  - name: Talyx
+    schemes:
+      - talyx
 directories:
   buildResources: build
 files:

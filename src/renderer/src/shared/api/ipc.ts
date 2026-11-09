@@ -5,6 +5,7 @@ import { problemOf } from '@shared/lib/problem'
 import { reportError } from '@shared/lib/report'
 import type { InstallExit, InstallSteps } from '../../../../shared/setup'
 import type { UpdateState } from '../../../../shared/updater'
+import type { ActivationRequest, AvailableModule, ModulesState } from '../../../../shared/modules'
 
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system'
@@ -54,4 +55,23 @@ export const appApi = {
   version: (): Promise<string> => window.api.getAppVersion() as Promise<string>,
   diagnostics: (engine: string): Promise<string> =>
     window.api.getDiagnostics(engine) as Promise<string>
+}
+
+export const modulesApi = {
+  state: (): Promise<ModulesState> => window.api.getModulesState() as Promise<ModulesState>,
+  takeActivationRequest: (): Promise<ActivationRequest | null> =>
+    window.api.takeActivationRequest() as Promise<ActivationRequest | null>,
+  activate: (key: string): Promise<ModulesState> =>
+    window.api.activateLicense(key) as Promise<ModulesState>,
+  deactivate: (): Promise<ModulesState> => window.api.deactivateLicense() as Promise<ModulesState>,
+  available: (): Promise<AvailableModule[]> =>
+    window.api.getAvailableModules() as Promise<AvailableModule[]>,
+  install: (id: string): Promise<ModulesState> =>
+    window.api.installModule(id) as Promise<ModulesState>,
+  uninstall: (id: string): Promise<ModulesState> =>
+    window.api.uninstallModule(id) as Promise<ModulesState>,
+  invoke: (id: string, action: string, input: unknown): Promise<unknown> =>
+    window.api.invokeModule(id, action, input),
+  onState: (cb: (state: ModulesState) => void): (() => void) => window.api.onModulesState(cb),
+  onActivationRequested: (cb: () => void): (() => void) => window.api.onActivationRequested(cb)
 }

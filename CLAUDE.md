@@ -143,7 +143,11 @@ src/main/
     ├── engine/                 # engine.ts (Engine: CLI, attach, tickets, REST),
     │                           # gateway.ts (vendored attach + ticket mint), engineSockets.ts
     ├── ipc/                    # settings.ipc.ts, engine.ipc.ts, setup.ipc.ts (the engine install),
-    │                           # updater.ipc.ts (update download and open), validation.ts (zod at the boundary)
+    │                           # updater.ipc.ts (update download and open), validation.ts (zod at the boundary),
+    │                           # modules.ipc.ts (modules: license, install, talyx-module:// files)
+    ├── modules/                # signing.ts (license keys and signed module bundles, Ed25519),
+    │                           # catalog.ts (the published module list), moduleHost.ts (install, load, run),
+    │                           # activationLink.ts (talyx://activate links)
     ├── security/               # webContentsGuard (no new windows, no navigation away),
     │                           # appProtocol.ts (serves the packaged renderer over app://)
     ├── setup/                  # installPin.ts (the hash pin), installSteps.ts (loads the install file), installRunner.ts (runs it)
@@ -181,7 +185,8 @@ src/renderer/src/
 ├── features/         # bots (roster data, folders, pins, unread, details, routines, create, rooms),
 │                     # chat (transcript, use cases, hosted rooms polled over `groups.*`),
 │                     # providers (keys, endpoints and sign-ins over REST; writes go to every bot),
-│                     # setup (which step comes first, the engine install and its screens)
+│                     # setup (which step comes first, the engine install and its screens),
+│                     # modules (license state, module pages; nothing shows without a key)
 └── shared/           # Reusable: ui/ (shadcn), hooks/, api/ (IPC wrappers), lib/,
                       # engine/ (vendored engine client; host.ts is the facade features use)
 ```

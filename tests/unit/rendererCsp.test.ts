@@ -17,7 +17,12 @@ describe('renderer CSP', () => {
     expect(directive(page, 'img-src')).toBe("'self' data:")
   })
 
-  it.each(['index.html', 'splash.html'])('should run only the app scripts in %s', (page) => {
-    expect(directive(page, 'script-src')).toBe("'self'")
+  it('should run only its own scripts in the splash', () => {
+    expect(directive('splash.html', 'script-src')).toBe("'self'")
+  })
+
+  // Module scripts come from main's talyx-module: scheme, which serves only signature-checked code.
+  it('should run only the app scripts and the installed modules in the main window', () => {
+    expect(directive('index.html', 'script-src')).toBe("'self' talyx-module:")
   })
 })

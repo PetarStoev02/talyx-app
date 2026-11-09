@@ -13,7 +13,8 @@ describe('migrateSettings', () => {
       enginePath: null,
       lastSelection: null,
       setupDone: false,
-      launchAtLogin: false
+      launchAtLogin: false,
+      licenseKey: null
     })
   })
 
@@ -32,7 +33,8 @@ describe('migrateSettings', () => {
       enginePath: null,
       lastSelection: null,
       setupDone: false,
-      launchAtLogin: false
+      launchAtLogin: false,
+      licenseKey: null
     })
   })
 

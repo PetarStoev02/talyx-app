@@ -16,6 +16,8 @@ export interface UserSettings {
   setupDone: boolean
   /** Whether the OS starts Talyx at login; main keeps it true to the OS (see index.ts). */
   launchAtLogin: boolean
+  /** The module license key; set only through `modules:activate`, which checks it first. */
+  licenseKey: string | null
 }
 
 const defaults: UserSettings = {
@@ -24,7 +26,8 @@ const defaults: UserSettings = {
   enginePath: null,
   lastSelection: null,
   setupDone: false,
-  launchAtLogin: false
+  launchAtLogin: false,
+  licenseKey: null
 }
 
 function getSettingsPath(): string {
@@ -51,6 +54,7 @@ export function migrateSettings(raw: Record<string, unknown>): UserSettings {
     settings.lastSelection = null
   if (typeof settings.setupDone !== 'boolean') settings.setupDone = false
   if (typeof settings.launchAtLogin !== 'boolean') settings.launchAtLogin = false
+  if (typeof settings.licenseKey !== 'string') settings.licenseKey = null
   return settings
 }
 

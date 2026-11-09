@@ -3,6 +3,7 @@
 // import 'electron': it compiles in both the node and web tsconfigs.
 
 import type { EngineHttpRequest } from './engine'
+import type { ModulesState } from './modules'
 import type { InstallExit } from './setup'
 import type { UpdateState } from './updater'
 
@@ -72,7 +73,22 @@ export function buildApi(transport: ApiTransport) {
     cancelUpdate: () => invoke('updater:cancel'),
     installUpdate: () => invoke('updater:install'),
     onUpdateState: (callback: (state: UpdateState) => void) =>
-      transport.on('updater:state', (state) => callback(state as UpdateState))
+      transport.on('updater:state', (state) => callback(state as UpdateState)),
+
+    // Modules (main checks the license and every module's signature; the page names ids only)
+    getModulesState: () => invoke('modules:state'),
+    takeActivationRequest: () => invoke('modules:take-activation'),
+    activateLicense: (key: string) => invoke('modules:activate', key),
+    deactivateLicense: () => invoke('modules:deactivate'),
+    getAvailableModules: () => invoke('modules:available'),
+    installModule: (id: string) => invoke('modules:install', id),
+    uninstallModule: (id: string) => invoke('modules:uninstall', id),
+    invokeModule: (id: string, action: string, input: unknown) =>
+      invoke('modules:invoke', id, action, input),
+    onModulesState: (callback: (state: ModulesState) => void) =>
+      transport.on('modules:state', (state) => callback(state as ModulesState)),
+    onActivationRequested: (callback: () => void) =>
+      transport.on('modules:activation-requested', () => callback())
   }
 }
 

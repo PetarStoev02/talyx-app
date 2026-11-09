@@ -13,6 +13,8 @@ import { useKeyboardShortcuts } from '@shared/hooks/useKeyboardShortcuts'
 import { reportError } from '@shared/lib/report'
 import { AgentsPage } from '@pages/agents'
 import { SettingsPage } from '@pages/settings'
+import { ModulePage } from '@pages/module'
+import { ActivationDialog } from '@widgets/modules'
 import { TooltipProvider } from '@shared/ui/tooltip'
 import { Roster, RosterAdd, RosterRefresh } from '@widgets/roster'
 import { ConnectionBanner, EngineSplash } from '@widgets/engine-gate'
@@ -23,6 +25,7 @@ import { useRoster } from '@features/bots/store'
 import { setupVisibility } from '@features/setup/steps'
 import { useSetup } from '@features/setup/store'
 import { useEngine } from '@app/providers/useEngine'
+import { moduleIdOf, runningModules, useModules } from '@features/modules/store'
 import { useSelectionMemory } from '@app/providers/useSelectionMemory'
 
 function App(): React.JSX.Element {
@@ -44,10 +47,23 @@ function App(): React.JSX.Element {
   // Once shown, setup stays until its Done, even when a step it ran completes everything.
   const [inSetup, setInSetup] = useState(false)
   if ((visibility === 'show' || forced) && !inSetup) setInSetup(true)
-  const pages = {
-    agents: <AgentsPage chat={chat} roster={rosterBackend} />,
-    settings: <SettingsPage providers={providers} chat={chat} />
-  }
+  const modules = runningModules(useModules((s) => s.state))
+  const openModule = modules.find((module) => module.id === moduleIdOf(currentView))
+  const page =
+    currentView === 'settings' ? (
+      <SettingsPage providers={providers} chat={chat} />
+    ) : openModule ? (
+      <ModulePage module={openModule} />
+    ) : (
+      // Also a module page whose module stopped or was removed: back to the agents.
+      <AgentsPage chat={chat} roster={rosterBackend} />
+    )
+
+  // A module page whose module stopped, expired or was removed hands back to the agents, so a
+  // later key does not jump straight to it.
+  useEffect(() => {
+    if (moduleIdOf(currentView) && !openModule) navigate('agents')
+  }, [currentView, openModule, navigate])
 
   useEffect(() => {
     useSetup
@@ -99,6 +115,7 @@ function App(): React.JSX.Element {
         // Important: sonner's own border rule sits outside the CSS layers, so a layered utility loses.
         toastOptions={{ className: 'border-0!' }}
       />
+      <ActivationDialog />
       {inSetup ? (
         <SetupFlow
           providersForm={
@@ -131,7 +148,7 @@ function App(): React.JSX.Element {
           <ConnectionBanner />
           {/* A page you switch to fades in; the one you left is gone at once. */}
           <main key={currentView} className="animate-arrive min-h-0 flex-1 overflow-hidden">
-            <ErrorBoundary scope={currentView}>{pages[currentView]}</ErrorBoundary>
+            <ErrorBoundary scope={currentView}>{page}</ErrorBoundary>
           </main>
         </AppShell>
       )}
