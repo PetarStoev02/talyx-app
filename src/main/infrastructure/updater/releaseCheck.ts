@@ -5,6 +5,8 @@ const LATEST_RELEASE_API = 'https://api.github.com/repos/PetarStoev02/talyx-app/
 const RELEASE_PAGE_PREFIX = 'https://github.com/PetarStoev02/talyx-app/releases/'
 
 const RELEASE_ASSET_PREFIX = 'https://github.com/PetarStoev02/talyx-app/releases/download/'
+// Served from GitHub's CDN, without the API's 60 requests an hour per IP address.
+const LATEST_FEED_PREFIX = 'https://github.com/PetarStoev02/talyx-app/releases/latest/download/'
 const CHECKSUMS_ASSET_NAME = 'SHA256SUMS'
 // electron-updater's feed for the installs that update themselves.
 const UPDATE_FEED_NAME: Partial<Record<NodeJS.Platform, string>> = {
@@ -157,8 +159,34 @@ function readAssets(raw: unknown): ReleaseAsset[] {
 }
 
 /**
- * Asks GitHub for the latest published release newer than this Talyx.
- * Drafts and pre-releases are invisible to this endpoint.
+ * The latest release's version from its update feed, or null when the feed cannot be read (a
+ * release without one, no connection): the API then answers instead.
+ */
+async function feedVersion(
+  fetchFn: typeof fetch,
+  platform: NodeJS.Platform,
+  currentVersion: string
+): Promise<string | null> {
+  // A deb install reads latest-linux.yml too: only the version matters here.
+  const feed = UPDATE_FEED_NAME[platform]
+  if (!feed) return null
+  try {
+    const response = await fetchFn(`${LATEST_FEED_PREFIX}${feed}`, {
+      headers: { 'User-Agent': `Talyx/${currentVersion}` },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    })
+    if (!response.ok) return null
+    const match = /^version:\s*['"]?([^\s'"]+)/m.exec(await response.text())
+    return match && parse(match[1]) ? match[1] : null
+  } catch (err) {
+    log.warn('Update check: feed unreadable:', err instanceof Error ? err.message : String(err))
+    return null
+  }
+}
+
+/**
+ * Asks GitHub for the latest published release newer than this Talyx: the update feed first, then
+ * the API only for a newer release, for its notes. Drafts and pre-releases are invisible to both.
  */
 export async function fetchLatestRelease(
   fetchFn: typeof fetch,
@@ -169,6 +197,8 @@ export async function fetchLatestRelease(
     appImage: Boolean(process.env['APPIMAGE'])
   }
 ): Promise<ReleaseCheck> {
+  const latest = await feedVersion(fetchFn, target.platform, currentVersion)
+  if (latest && !isNewerVersion(latest, currentVersion)) return { kind: 'up-to-date' }
   try {
     const response = await fetchFn(LATEST_RELEASE_API, {
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': `Talyx/${currentVersion}` },

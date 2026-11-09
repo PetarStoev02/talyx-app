@@ -70,6 +70,12 @@ describe('next', () => {
       { kind: 'found', release: v2 },
       { kind: 'available', release: v2 }
     ],
+    [
+      'a ready self-update finds a newer one',
+      { kind: 'ready', release: summary('1.0.0', true, true) },
+      { kind: 'found', release: summary('1.1.0', true, true) },
+      { kind: 'ready', release: summary('1.0.0', true, true) }
+    ],
     ['failed finds the same version', failed, { kind: 'found', release: v1 }, failed],
     [
       'available finds the same version with an installer added',
@@ -183,49 +189,32 @@ describe('update store', () => {
     expect(install).toHaveBeenCalledOnce()
   })
 
-  it('should download a release it installs itself in the background, then wait for the restart click', async () => {
+  it('should wait for the click before downloading a release it installs itself, then for the restart click', async () => {
     const { updates, published, download, install } = store()
     updates.found(found('1.0.0', true, true))
     await settle()
+    expect(download).not.toHaveBeenCalled()
+    expect(updates.current()).toEqual({ kind: 'available', release: summary('1.0.0', true, true) })
 
-    expect(download).toHaveBeenCalledOnce()
+    await updates.startDownload()
     expect(published.map((s) => s.kind)).toEqual(['available', 'downloading', 'ready'])
-    expect(updates.current()).toEqual({ kind: 'ready', release: summary('1.0.0', true, true) })
     expect(install).not.toHaveBeenCalled()
 
     await updates.install()
     expect(install).toHaveBeenCalledOnce()
   })
 
-  it('should download a newer self-installing release found after one is ready', async () => {
-    const { updates, download } = store()
+  it('should keep offering the restart into a downloaded self-update when a newer release appears', async () => {
+    const { updates, download, install } = store()
     updates.found(found('1.0.0', true, true))
-    await settle()
+    await updates.startDownload()
     updates.found(found('1.1.0', true, true))
     await settle()
 
-    expect(download).toHaveBeenCalledTimes(2)
-    expect(updates.current()).toEqual({ kind: 'ready', release: summary('1.1.0', true, true) })
-  })
-
-  it('should not download again by itself after a background download failed', async () => {
-    const { updates, download } = store()
-    download.mockRejectedValueOnce(new ReleaseDownloadError('checksum', 'sha512 mismatch'))
-    updates.found(found('1.0.0', true, true, null))
-    await settle()
-    expect(logger.warn).toHaveBeenCalledWith('[Updater] v1.0.0 failed (checksum)')
-    expect(updates.current()).toEqual({
-      kind: 'failed',
-      release: summary('1.0.0', true, true),
-      reason: 'checksum'
-    })
-
-    updates.found(found('1.0.0', true, true))
-    await settle()
     expect(download).toHaveBeenCalledOnce()
-
-    await updates.startDownload()
-    expect(updates.current().kind).toBe('ready')
+    expect(updates.current()).toEqual({ kind: 'ready', release: summary('1.0.0', true, true) })
+    await updates.install()
+    expect(install).toHaveBeenCalledOnce()
   })
 
   it('should refuse to install anything before a download is verified', async () => {

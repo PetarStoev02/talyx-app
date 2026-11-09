@@ -19,6 +19,9 @@ export function next(state: UpdateState, event: UpdateEvent): UpdateState {
     case 'found':
       // A running download is never swapped out; the next check sees the newer release.
       if (state.kind === 'downloading') return state
+      // A downloaded self-update installs on quit whatever is offered; it stays until the restart,
+      // and the release after it is offered then.
+      if (state.kind === 'ready' && state.release.automatic) return state
       if (!event.release) return state.kind === 'none' ? state : NONE
       if (state.kind !== 'none' && state.release.version === event.release.version) {
         // Assets or notes added after publishing reach an idle state; a finished download stays.
@@ -121,8 +124,6 @@ export function createUpdateStore(deps: UpdateStoreDeps): UpdateStore {
       if (!apply({ kind: 'found', release: found?.summary ?? null })) return
       release = state.kind === 'none' ? null : found
       installer = null
-      // A release Talyx installs itself downloads in the background; it restarts only on a click.
-      if (found?.summary.automatic) void startDownload()
     },
 
     startDownload,

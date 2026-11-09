@@ -67,11 +67,14 @@ Talyx 1.0 ships for macOS and Linux (no Windows build yet). The macOS releases a
 Developer ID, run with the hardened runtime (`build/entitlements.mac.plist` lists and justifies
 each exception) and are notarized: the .app and the DMG are both stapled, so Gatekeeper opens them
 with no warning. Linux builds are not signed. Talyx updates itself on macOS and in the AppImage with
-electron-updater (GitHub provider, `publish` in `electron-builder.yml`): after the release check
-finds a release with `latest-mac.yml` / `latest-linux.yml`, it downloads in the background
-(sha512 from the yml; on macOS Squirrel.Mac also requires the same code signature), the update
-button offers Restart to update, and quitting installs it. It never restarts unasked. A deb, or a
-release without the feed, falls back: the release page for the deb, otherwise the installer
+electron-updater (GitHub provider, `publish` in `electron-builder.yml`). The release check runs
+15 seconds after start, hourly, on wake and on window focus (at most every 15 minutes), one at a
+time; Settings → About has Check for updates. It reads the version from the latest release's
+`latest-mac.yml` / `latest-linux.yml` (CDN, no API rate limit) and calls the GitHub API only for a
+newer release. The update button then offers the release with Download and Later: nothing
+downloads until the click (sha512 from the yml; on macOS Squirrel.Mac also requires the same code
+signature), then it offers Restart to update, and quitting installs it. It never downloads or
+restarts unasked. A deb, or a release without the feed, falls back: the release page for the deb, otherwise the installer
 download checked against `SHA256SUMS`, which the user opens.
 
 Electron 44 needs macOS 13 or newer; every macOS version Talyx runs on requires a Developer ID
@@ -153,8 +156,9 @@ src/main/
     ├── setup/                  # installPin.ts (the hash pin), installSteps.ts (loads the install file), installRunner.ts (runs it)
     ├── storage/SettingsStore.ts # settings.json in userData
     ├── system/loginItem.ts     # launch at login: macOS login item, Linux autostart .desktop
-    └── updater/                # releaseCheck.ts (GitHub latest-release check), selfUpdate.ts
-                                # (electron-updater: background download, restart to update),
+    └── updater/                # releaseCheck.ts (GitHub latest-release check), releaseChecks.ts
+                                # (one check at a time, the staleness limits), selfUpdate.ts
+                                # (electron-updater: download on click, restart to update),
                                 # releaseDownload.ts (fallback installer download, checked against
                                 # SHA256SUMS), updateState.ts (the update state machine),
                                 # openInstaller.ts (the fallback: the user runs it)
@@ -354,7 +358,8 @@ try {
 - Settings are a JSON file (`settings.json` in userData). No local database.
 - Old features are deleted, not kept dormant; git history and `legacy/file-organizer` keep them.
 - Builds for macOS (Developer ID signed, notarized) and Linux (unsigned). Automatic updates on
-  macOS and the AppImage (electron-updater; restart only on the user's click, else on quit); the
+  macOS and the AppImage (electron-updater; download and restart only on the user's click, else
+  install on quit); the
   deb updates from the release page.
 - Free and open source (MIT). No account, no server, no telemetry.
 - Website (`website/`) on Vercel: it describes 1.0 and runs cookieless PostHog page analytics

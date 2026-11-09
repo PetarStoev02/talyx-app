@@ -10,7 +10,7 @@ import { cancelInstall, registerSetupIpc } from './infrastructure/ipc/setup.ipc'
 import { registerLogIpc } from './infrastructure/ipc/log.ipc'
 import { registerAppIpc } from './infrastructure/ipc/app.ipc'
 import { closeEngineSockets, registerEngineIpc } from './infrastructure/ipc/engine.ipc'
-import { registerUpdaterIpc, updates } from './infrastructure/ipc/updater.ipc'
+import { registerUpdaterIpc, releaseChecks, updates } from './infrastructure/ipc/updater.ipc'
 import {
   modules,
   registerModulesIpc,
@@ -19,7 +19,6 @@ import {
 } from './infrastructure/ipc/modules.ipc'
 import { activationRequestFrom, activationRequestIn } from './infrastructure/modules/activationLink'
 import { ACTIVATION_LINK, type ActivationRequest } from '../shared/modules'
-import { fetchLatestRelease } from './infrastructure/updater/releaseCheck'
 import { settingsStore } from './infrastructure/storage/SettingsStore'
 import { syncLaunchAtLogin, systemLoginItemDeps } from './infrastructure/system/loginItem'
 import { ThemeSchema, validateInput, type Theme } from './infrastructure/ipc/validation'
@@ -28,7 +27,9 @@ import icon from '../../resources/talyx-icon.png?asset'
 
 /** Long enough for the window to settle; short enough to land in the first minute. */
 const STARTUP_UPDATE_CHECK_DELAY_MS = 15_000
-const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60_000
+// Talyx has no server to push a release; asking GitHub this often notices one within the hour.
+const UPDATE_CHECK_INTERVAL_MS = 60 * 60_000
+const FOCUS_UPDATE_CHECK_MIN_MS = 15 * 60_000
 const SPLASH_LOAD_TIMEOUT_MS = 5_000
 const SPLASH_MIN_VISIBLE_MS = 500
 const WINDOW_SHOW_TIMEOUT_MS = 8_000
@@ -246,16 +247,14 @@ function openActivation(request: ActivationRequest): void {
   if (app.isReady()) bringMainWindowForward()
 }
 
-/** Feeds the newest release to the update button; a failed check keeps what it shows. */
+/** Feeds the newest release to the update button: after start, hourly, on wake and on focus. */
 function scheduleUpdateChecks(): void {
   if (is.dev) return
-  const check = async (): Promise<void> => {
-    const result = await fetchLatestRelease(fetch, app.getVersion())
-    if (result.kind === 'available') updates.found(result.release)
-    else if (result.kind === 'up-to-date') updates.found(null)
-  }
-  setTimeout(() => void check(), STARTUP_UPDATE_CHECK_DELAY_MS)
-  setInterval(() => void check(), UPDATE_CHECK_INTERVAL_MS)
+  setTimeout(() => void releaseChecks.check(), STARTUP_UPDATE_CHECK_DELAY_MS)
+  setInterval(() => void releaseChecks.check(), UPDATE_CHECK_INTERVAL_MS)
+  // The interval does not catch up after sleep.
+  powerMonitor.on('resume', () => releaseChecks.checkIfOlderThan(UPDATE_CHECK_INTERVAL_MS))
+  app.on('browser-window-focus', () => releaseChecks.checkIfOlderThan(FOCUS_UPDATE_CHECK_MIN_MS))
 }
 
 /** The OS is the truth: a login item removed in System Settings must show as off in Talyx. */

@@ -135,11 +135,14 @@ describe('updater IPC', () => {
     expect(electron.openPath).not.toHaveBeenCalled()
   })
 
-  it('should hand a self-installing release to the self-update and restart only on install', async () => {
+  it('should self-update a release only on request and restart only on install', async () => {
     const automatic = { ...RELEASE, summary: { ...RELEASE.summary, automatic: true } }
     ipc.updates.found(automatic)
     await settle()
+    expect(electron.downloadSelfUpdate).not.toHaveBeenCalled()
 
+    await invoke('updater:download')
+    await settle()
     expect(electron.downloadSelfUpdate).toHaveBeenCalledOnce()
     expect(electron.downloadRelease).not.toHaveBeenCalled()
     expect(invoke('updater:status')).toEqual({ kind: 'ready', release: automatic.summary })
