@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, protocol } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, protocol } from 'electron'
 import log from 'electron-log'
 import {
   MODULE_SCHEME,
@@ -28,6 +28,15 @@ export const modules = createModuleHost({
   },
   // Module code is signed, but its requests take the same checks as the page's.
   engineHttp: (request) => engineHttp(validateInput(EngineHttpRequestSchema, request)),
+  pickFolder: async (title) => {
+    const window = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
+    // macOS's open panel ignores `title` and shows `message`, so both carry it.
+    const options = { title, message: title, properties: ['openDirectory' as const] }
+    const picked = window
+      ? await dialog.showOpenDialog(window, options)
+      : await dialog.showOpenDialog(options)
+    return picked.canceled ? null : (picked.filePaths[0] ?? null)
+  },
   log,
   publish: (state) => broadcast('modules:state', state),
   now: Date.now
@@ -89,8 +98,14 @@ export function serveModuleFiles(): void {
     const file = modules.file(url.hostname, url.pathname.slice(1))
     if (!file) return new Response(null, { status: 404 })
     // The page imports it as a module script from another origin (app:// or the dev server).
+    // Never cached: the files come from memory anyway, and a cached stylesheet would outlive a
+    // reinstall of the same version.
     return new Response(file.body, {
-      headers: { 'Content-Type': file.type, 'Access-Control-Allow-Origin': '*' }
+      headers: {
+        'Content-Type': file.type,
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-store'
+      }
     })
   })
 }

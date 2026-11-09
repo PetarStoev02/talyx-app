@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Toaster } from 'sonner'
 import { ErrorBoundary } from '@app/ErrorBoundary'
-import { AppShell } from '@widgets/app-shell'
+import { AppShell, ModuleSidebar } from '@widgets/app-shell'
 import { useNavigation } from '@app/providers/useNavigation'
 import { useRosterBackend } from '@app/providers/useRosterBackend'
 import { useChatBackend } from '@app/providers/useChatBackend'
@@ -103,6 +103,16 @@ function App(): React.JSX.Element {
 
   if (!engineKnown || (visibility === 'loading' && !inSetup)) return <EngineSplash />
 
+  const roster = rosterBackend && (
+    <ErrorBoundary scope="roster">
+      <Roster
+        backend={rosterBackend}
+        models={chat?.models ?? null}
+        onSelect={() => navigate('agents')}
+      />
+    </ErrorBoundary>
+  )
+
   return (
     <TooltipProvider>
       <Toaster
@@ -133,17 +143,8 @@ function App(): React.JSX.Element {
         <AppShell
           titleEnd={rosterBackend && <RosterAdd />}
           footerEnd={rosterBackend && <RosterRefresh backend={rosterBackend} />}
-          roster={
-            rosterBackend && (
-              <ErrorBoundary scope="roster">
-                <Roster
-                  backend={rosterBackend}
-                  models={chat?.models ?? null}
-                  onSelect={() => navigate('agents')}
-                />
-              </ErrorBoundary>
-            )
-          }
+          roster={roster}
+          sidebar={openModule && <ModuleSidebar module={openModule} />}
         >
           <ConnectionBanner />
           {/* A page you switch to fades in; the one you left is gone at once. */}

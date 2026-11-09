@@ -46,6 +46,8 @@ export interface ModuleContext {
   /** Answers the module page's `invoke(name, input)`. The module validates its own input. */
   handle: (name: string, handler: Handler) => void
   engine: { http: (request: unknown) => Promise<unknown> }
+  /** The system's folder chooser, over Talyx's window: the chosen folder, or null if cancelled. */
+  pickFolder: (options?: { title?: string }) => Promise<string | null>
   log: ModuleLog
 }
 
@@ -68,6 +70,8 @@ export interface ModuleHostDeps {
   /** The saved license key (settings.json), read and written only through the host. */
   licenseKey: { read: () => string | null; write: (key: string | null) => void }
   engineHttp: (request: unknown) => Promise<unknown>
+  /** Opens the folder chooser with this title; resolves to the folder, or null if cancelled. */
+  pickFolder: (title: string) => Promise<string | null>
   log: ModuleLog
   publish: (state: ModulesState) => void
   now: () => number
@@ -388,6 +392,10 @@ export function createModuleHost(deps: ModuleHostDeps) {
             ? Promise.reject(new ModuleError('The module was stopped.'))
             : deps.engineHttp(request)
       },
+      pickFolder: (options) =>
+        module.retired
+          ? Promise.reject(new ModuleError('The module was stopped.'))
+          : deps.pickFolder(folderTitle(options?.title)),
       log: deps.log
     }
   }
@@ -445,6 +453,16 @@ async function withinTimeout(work: Promise<unknown>, verb: 'start' | 'stop'): Pr
   } finally {
     clearTimeout(timer)
   }
+}
+
+const DEFAULT_FOLDER_TITLE = 'Choose a folder'
+const MAX_FOLDER_TITLE = 200
+
+/** A module names the chooser; anything that is not a short string gets the plain title. */
+function folderTitle(title: unknown): string {
+  return typeof title === 'string' && title.trim() && title.length <= MAX_FOLDER_TITLE
+    ? title.trim()
+    : DEFAULT_FOLDER_TITLE
 }
 
 /** Compares x.y.z; a pre-release suffix is ignored, so 1.0.0-beta counts as 1.0.0. */

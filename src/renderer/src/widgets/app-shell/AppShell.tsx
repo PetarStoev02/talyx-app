@@ -4,6 +4,7 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { settingsApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
 import { SIDEBAR_WIDTH, clampSidebarWidth } from '../../../../shared/sidebar'
+import { SectionSwitch } from './SectionSwitch'
 import { SidebarFooter } from './SidebarFooter'
 
 const isMac = (window.electron?.platform ?? 'darwin') === 'darwin'
@@ -15,11 +16,14 @@ const KEY_STEP_PX = 16
 export function AppShell({
   children,
   roster,
+  sidebar,
   titleEnd,
   footerEnd
 }: {
   children: React.ReactNode
   roster: React.ReactNode | null
+  // A module's own sidebar while its page is open; it hides the roster without unmounting it.
+  sidebar?: React.ReactNode
   // The far end of the title row: the roster's `+`.
   titleEnd: React.ReactNode
   // The far end of the footer row: the roster's refresh (the update button while one is pending).
@@ -52,7 +56,13 @@ export function AppShell({
             {titleEnd}
           </span>
         </div>
-        {roster ?? <div className="flex-1" />}
+        <SectionSwitch />
+        {sidebar}
+        {/* Always here, so switching sections never remounts it (it polls the bots); hidden
+            while a module's sidebar stands before it. */}
+        <div data-roster className="contents [[data-module-sidebar]~&]:hidden">
+          {roster ?? <div className="flex-1" />}
+        </div>
         <SidebarFooter withRoster={!!roster} end={footerEnd} />
         <SidebarResizer
           width={width}

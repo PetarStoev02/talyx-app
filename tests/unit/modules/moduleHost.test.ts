@@ -37,6 +37,7 @@ describe('module host', () => {
   /** Set to hold the bundle download until the test releases it. */
   let heldDownload: Promise<void> | null
   let engineHttp: ReturnType<typeof vi.fn>
+  let pickFolder: ReturnType<typeof vi.fn>
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'talyx-modules-'))
@@ -48,6 +49,7 @@ describe('module host', () => {
     heldDownload = null
     serverAcceptsKey = true
     engineHttp = vi.fn(async () => null)
+    pickFolder = vi.fn(async () => '/Users/ada/Code/api')
     host = newHost()
     resetHelloRuns()
   })
@@ -64,6 +66,7 @@ describe('module host', () => {
       fetch: fakeFetch,
       licenseKey: { read: () => savedKey, write: (key) => (savedKey = key) },
       engineHttp,
+      pickFolder,
       log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
       publish: (state) => published.push(state),
       now: () => clock
@@ -197,6 +200,19 @@ describe('module host', () => {
       await expect(host.install('hello')).rejects.toThrow(
         'This module needs a different version of Talyx.'
       )
+    })
+
+    it.each([
+      ['its own title', '{ title: "Where is acme/api?" }', 'Where is acme/api?'],
+      ['no title', 'undefined', 'Choose a folder'],
+      ['a title that is not text', '{ title: 42 }', 'Choose a folder']
+    ])('should let a module ask for a folder with %s', async (_, options, title) => {
+      const main = `module.exports = { activate(ctx) { ctx.handle('pick', () => ctx.pickFolder(${options})) } }`
+      publish(helloBundle({ files: { 'renderer.js': '', 'main.js': main } }))
+      await host.activate(issueKey(signer))
+      await host.install('hello')
+      expect(await host.invoke('hello', 'pick', null)).toBe('/Users/ada/Code/api')
+      expect(pickFolder).toHaveBeenCalledWith(title)
     })
 
     it('should mark a module whose main side throws as failed and keep the app going', async () => {

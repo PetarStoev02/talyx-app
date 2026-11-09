@@ -2,6 +2,8 @@
 const en = {
   'nav.agents': 'Agents',
   'nav.settings': 'Settings',
+  'nav.sections': 'Sections',
+  'nav.unread': '{section}, new replies',
   'sidebar.resize': 'Resize sidebar',
   'engine.checking': 'Looking for the engine…',
   'engine.missingTitle': 'Talyx needs its engine.',
@@ -560,6 +562,7 @@ const en = {
   'update.ageMinutes': '{count}m ago',
   'update.ageHours': '{count}h ago',
   'modules.title': 'Modules',
+  'modules.sidebarLoading': 'Loading {name}…',
   'modules.activateTitle': 'Enter license key',
   'modules.activateHint': 'Paste the key from your purchase email.',
   'modules.licenseKey': 'License key',
