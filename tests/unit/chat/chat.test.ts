@@ -60,6 +60,22 @@ describe('bot chat', () => {
       expect(chat(MANAGER).sessionId).toBe('manager-chat')
     })
 
+    it("should read a bot's newest replies as text, finding its chat by title", async () => {
+      const replies = await actions.recent(MANAGER, 40)
+      expect(replies.length).toBeGreaterThan(0)
+      expect(replies.every((reply) => typeof reply === 'string')).toBe(true)
+      expect(call('GET /api/sessions')?.params).toMatchObject({
+        path: '/api/sessions/manager-chat/messages',
+        limit: '40',
+        order: 'latest'
+      })
+    })
+
+    it('should have no replies, and create no chat, for a bot never chatted with', async () => {
+      expect(await actions.recent(WORKER, 40)).toEqual([])
+      expect(methods()).not.toContain('session.create')
+    })
+
     it('should show an empty chat and create nothing for a bot never chatted with', async () => {
       await actions.open(WORKER, null)
       expect(chat(WORKER)).toMatchObject({ sessionId: null, transcript: null, loading: false })

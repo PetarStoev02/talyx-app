@@ -1,6 +1,8 @@
 import * as React from 'react'
 import * as jsxRuntime from 'react/jsx-runtime'
 import { modulesApi } from '@shared/api/ipc'
+import type { ChatActions } from '@features/chat/chat'
+import { moduleChat, type ModuleChat } from './moduleChat'
 import { MODULE_API_VERSION, MODULE_SCHEME } from '../../../../shared/modules'
 
 /** What a module's page component gets from Talyx: the whole contract on the page side. */
@@ -17,6 +19,8 @@ export interface ModulePageHost {
   apiVersion: number
   /** True where Talyx draws a module's Sidebar export; older Talyx has none, so the page navigates. */
   sidebar: boolean
+  /** The bots' chats: send a bot a message, read its replies. Older Talyx has none. */
+  chat: ModuleChat
   React: typeof React
   jsxRuntime: typeof jsxRuntime
 }
@@ -39,8 +43,21 @@ export interface ModuleParts {
   icon: React.ComponentType | null
 }
 
+// Set by the app once the engine's chat is up; modules reach it only through the host.
+let chatActions: ChatActions | null = null
+
+export function provideModuleChat(actions: ChatActions | null): void {
+  chatActions = actions
+}
+
 export async function importModule(id: string, version: string): Promise<ModuleParts> {
-  window.talyxModuleHost ??= { apiVersion: MODULE_API_VERSION, sidebar: true, React, jsxRuntime }
+  window.talyxModuleHost ??= {
+    apiVersion: MODULE_API_VERSION,
+    sidebar: true,
+    chat: moduleChat(() => chatActions),
+    React,
+    jsxRuntime
+  }
   const url = `${MODULE_SCHEME}://${id}/renderer.js?v=${encodeURIComponent(version)}`
   const loaded = (await import(/* @vite-ignore */ url)) as Record<string, unknown>
   if (typeof loaded.default !== 'function') throw new Error(`The ${id} module has no page to show.`)
