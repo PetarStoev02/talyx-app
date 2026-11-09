@@ -26,18 +26,39 @@ declare global {
 }
 
 /**
- * The page component a module exports by default. The version is in the URL so an update
- * imports the new file instead of the one this page already loaded.
+ * What a module's renderer.js exports: its page (the default export), and optionally `Sidebar`,
+ * drawn in Talyx's sidebar while its page is open, and `Icon`, drawn on its button in the sidebar's
+ * switch. The version is in the URL so an update imports the new file instead of the one this page
+ * already loaded; one URL imports once, so the page and its sidebar share the module's state.
  */
+export interface ModuleParts {
+  page: React.ComponentType<ModulePageProps>
+  sidebar: React.ComponentType<ModulePageProps> | null
+  icon: React.ComponentType | null
+}
+
+export async function importModule(id: string, version: string): Promise<ModuleParts> {
+  window.talyxModuleHost ??= { apiVersion: MODULE_API_VERSION, React, jsxRuntime }
+  const url = `${MODULE_SCHEME}://${id}/renderer.js?v=${encodeURIComponent(version)}`
+  const loaded = (await import(/* @vite-ignore */ url)) as Record<string, unknown>
+  if (typeof loaded.default !== 'function') throw new Error(`The ${id} module has no page to show.`)
+  return {
+    page: loaded.default as React.ComponentType<ModulePageProps>,
+    sidebar: componentOrNull(loaded.Sidebar) as React.ComponentType<ModulePageProps> | null,
+    icon: componentOrNull(loaded.Icon) as React.ComponentType | null
+  }
+}
+
+/** The page component a module exports by default. */
 export async function importModulePage(
   id: string,
   version: string
 ): Promise<React.ComponentType<ModulePageProps>> {
-  window.talyxModuleHost ??= { apiVersion: MODULE_API_VERSION, React, jsxRuntime }
-  const url = `${MODULE_SCHEME}://${id}/renderer.js?v=${encodeURIComponent(version)}`
-  const loaded = (await import(/* @vite-ignore */ url)) as { default?: unknown }
-  if (typeof loaded.default !== 'function') throw new Error(`The ${id} module has no page to show.`)
-  return loaded.default as React.ComponentType<ModulePageProps>
+  return (await importModule(id, version)).page
+}
+
+function componentOrNull(value: unknown): React.ComponentType<never> | null {
+  return typeof value === 'function' ? (value as React.ComponentType<never>) : null
 }
 
 export function moduleStyleUrl(id: string, version: string): string {
