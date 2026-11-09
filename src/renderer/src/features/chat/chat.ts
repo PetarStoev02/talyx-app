@@ -44,6 +44,8 @@ export interface ChatDraft {
 
 export interface ChatActions {
   open: (profile: string, chatId: string | null) => Promise<void>
+  /** The bot's newest replies as text, oldest first; none when it has no chat yet. */
+  recent: (profile: string, limit: number) => Promise<string[]>
   rebuild: (profile: string) => Promise<void>
   /** False when nothing was sent; the caller keeps the draft. */
   send: (profile: string, draft: ChatDraft) => Promise<boolean>
@@ -202,6 +204,19 @@ export function chatActions(backend: ChatBackend): ChatActions {
       // Opening never creates a chat; the first send does.
       else update(profile, { sessionId: null, transcript: null, loading: false })
     }),
+
+    recent: async (profile, limit) => {
+      const sessionId = sessionOf(profile) ?? (await findChat(profile))
+      if (!sessionId) return []
+      const query = new URLSearchParams({ profile, limit: String(limit), order: 'latest' })
+      const { messages } = await backend.http<{ messages: SessionMessage[] }>({
+        path: `/api/sessions/${encodeURIComponent(sessionId)}/messages?${query}`,
+        profile
+      })
+      return fromHistory(sessionId, messages, false).items.flatMap((item) =>
+        item.kind === 'bot' ? [item.text] : []
+      )
+    },
 
     rebuild: guarded('chat.errorLoad', async (profile) => {
       const sessionId = sessionOf(profile)

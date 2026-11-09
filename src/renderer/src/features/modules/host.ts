@@ -3,6 +3,25 @@ import * as jsxRuntime from 'react/jsx-runtime'
 import { modulesApi } from '@shared/api/ipc'
 import { MODULE_API_VERSION, MODULE_SCHEME } from '../../../../shared/modules'
 
+/** A bot as a module sees it: its profile id, the name you know it by, and whether it is Talyx. */
+export interface ModuleBot {
+  id: string
+  name: string
+  manager: boolean
+}
+
+/**
+ * The bots' chats, for a module's page: the same path as typing in the chat, so the message shows
+ * there, and Talyx's chat answers the bot's questions and approvals as usual.
+ */
+export interface ModuleChat {
+  bots: () => ModuleBot[]
+  /** Sends `text` to the bot's chat, starting the chat if it has none. */
+  send: (bot: string, text: string) => Promise<void>
+  /** The bot's newest replies, oldest first. */
+  replies: (bot: string, limit?: number) => Promise<string[]>
+}
+
 /** What a module's page component gets from Talyx: the whole contract on the page side. */
 export interface ModulePageProps {
   /** Calls an action the module's main side registered with `ctx.handle`. */
@@ -17,6 +36,8 @@ export interface ModulePageHost {
   apiVersion: number
   /** True where Talyx draws a module's Sidebar export; older Talyx has none, so the page navigates. */
   sidebar: boolean
+  /** The bots' chats: send a bot a message, read its replies. Older Talyx has none. */
+  chat?: ModuleChat
   React: typeof React
   jsxRuntime: typeof jsxRuntime
 }
@@ -39,8 +60,21 @@ export interface ModuleParts {
   icon: React.ComponentType | null
 }
 
+// Set by the app layer, which owns the chat; modules reach it only through the host.
+let provided: ModuleChat | undefined
+
+export function provideModuleChat(chat: ModuleChat): void {
+  provided = chat
+}
+
 export async function importModule(id: string, version: string): Promise<ModuleParts> {
-  window.talyxModuleHost ??= { apiVersion: MODULE_API_VERSION, sidebar: true, React, jsxRuntime }
+  window.talyxModuleHost ??= {
+    apiVersion: MODULE_API_VERSION,
+    sidebar: true,
+    chat: provided,
+    React,
+    jsxRuntime
+  }
   const url = `${MODULE_SCHEME}://${id}/renderer.js?v=${encodeURIComponent(version)}`
   const loaded = (await import(/* @vite-ignore */ url)) as Record<string, unknown>
   if (typeof loaded.default !== 'function') throw new Error(`The ${id} module has no page to show.`)
