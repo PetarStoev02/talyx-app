@@ -22,7 +22,7 @@ export function AppShell({
 }: {
   children: React.ReactNode
   roster: React.ReactNode | null
-  // What the sidebar shows instead of the roster while a module's page is open.
+  // A module's own sidebar while its page is open; it hides the roster without unmounting it.
   sidebar?: React.ReactNode
   // The far end of the title row: the roster's `+`.
   titleEnd: React.ReactNode
@@ -57,7 +57,12 @@ export function AppShell({
           </span>
         </div>
         <SectionSwitch />
-        {sidebar ?? roster ?? <div className="flex-1" />}
+        {sidebar}
+        {/* Always here, so switching sections never remounts it (it polls the bots); hidden
+            while a module's sidebar stands before it. */}
+        <div data-roster className="contents [[data-module-sidebar]~&]:hidden">
+          {roster ?? <div className="flex-1" />}
+        </div>
         <SidebarFooter withRoster={!!roster} end={footerEnd} />
         <SidebarResizer
           width={width}

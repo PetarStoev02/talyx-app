@@ -144,7 +144,7 @@ function App(): React.JSX.Element {
           titleEnd={rosterBackend && <RosterAdd />}
           footerEnd={rosterBackend && <RosterRefresh backend={rosterBackend} />}
           roster={roster}
-          sidebar={openModule && <ModuleSidebar module={openModule} roster={roster} />}
+          sidebar={openModule && <ModuleSidebar module={openModule} />}
         >
           <ConnectionBanner />
           {/* A page you switch to fades in; the one you left is gone at once. */}

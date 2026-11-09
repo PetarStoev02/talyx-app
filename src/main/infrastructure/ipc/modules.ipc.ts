@@ -30,7 +30,8 @@ export const modules = createModuleHost({
   engineHttp: (request) => engineHttp(validateInput(EngineHttpRequestSchema, request)),
   pickFolder: async (title) => {
     const window = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
-    const options = { title, properties: ['openDirectory' as const] }
+    // macOS's open panel ignores `title` and shows `message`, so both carry it.
+    const options = { title, message: title, properties: ['openDirectory' as const] }
     const picked = window
       ? await dialog.showOpenDialog(window, options)
       : await dialog.showOpenDialog(options)

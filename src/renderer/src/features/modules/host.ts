@@ -15,6 +15,8 @@ export interface ModulePageProps {
  */
 export interface ModulePageHost {
   apiVersion: number
+  /** True where Talyx draws a module's Sidebar export; older Talyx has none, so the page navigates. */
+  sidebar: boolean
   React: typeof React
   jsxRuntime: typeof jsxRuntime
 }
@@ -38,7 +40,7 @@ export interface ModuleParts {
 }
 
 export async function importModule(id: string, version: string): Promise<ModuleParts> {
-  window.talyxModuleHost ??= { apiVersion: MODULE_API_VERSION, React, jsxRuntime }
+  window.talyxModuleHost ??= { apiVersion: MODULE_API_VERSION, sidebar: true, React, jsxRuntime }
   const url = `${MODULE_SCHEME}://${id}/renderer.js?v=${encodeURIComponent(version)}`
   const loaded = (await import(/* @vite-ignore */ url)) as Record<string, unknown>
   if (typeof loaded.default !== 'function') throw new Error(`The ${id} module has no page to show.`)
@@ -47,14 +49,6 @@ export async function importModule(id: string, version: string): Promise<ModuleP
     sidebar: componentOrNull(loaded.Sidebar) as React.ComponentType<ModulePageProps> | null,
     icon: componentOrNull(loaded.Icon) as React.ComponentType | null
   }
-}
-
-/** The page component a module exports by default. */
-export async function importModulePage(
-  id: string,
-  version: string
-): Promise<React.ComponentType<ModulePageProps>> {
-  return (await importModule(id, version)).page
 }
 
 function componentOrNull(value: unknown): React.ComponentType<never> | null {
