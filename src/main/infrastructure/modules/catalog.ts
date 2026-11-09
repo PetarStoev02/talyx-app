@@ -1,11 +1,15 @@
 import { z } from 'zod/v4'
 import { ModuleIdSchema } from './signing'
 
-/** The published list of modules: built, signed bundles only, never their source. */
-export const CATALOG_URL =
-  'https://github.com/PetarStoev02/talyx-modules-dist/releases/latest/download/index.json'
+/**
+ * The published list of modules: built, signed bundles only, never their source. The server
+ * answers only a valid license key, and lists and serves only the modules that key unlocks.
+ */
+export const CATALOG_URL = 'https://modules.talyx.app/index.json'
 
 const FETCH_TIMEOUT_MS = 30_000
+const UNAUTHORIZED = 401
+const FORBIDDEN = 403
 /** Far above any real module; stops a broken or hostile server from filling memory. */
 export const MAX_BUNDLE_BYTES = 20 * 1024 * 1024
 
@@ -28,14 +32,24 @@ export class CatalogError extends Error {
 }
 
 /** The catalog's entries. The URL and versions here are only hints: the signature decides. */
-export async function fetchCatalog(fetchFn: typeof fetch): Promise<CatalogEntry[]> {
-  const parsed = CatalogSchema.safeParse(await fetchJson(fetchFn, CATALOG_URL))
+export async function fetchCatalog(
+  fetchFn: typeof fetch,
+  licenseKey: string
+): Promise<CatalogEntry[]> {
+  const parsed = CatalogSchema.safeParse(await fetchJson(fetchFn, CATALOG_URL, licenseKey))
   if (!parsed.success) throw new CatalogError('The module list is damaged.')
   return parsed.data.modules
 }
 
-export async function fetchBundleBytes(fetchFn: typeof fetch, url: string): Promise<Buffer> {
-  const response = await fetchOk(fetchFn, url)
+/** Only from the catalog's own server: the license key is never sent anywhere else. */
+export async function fetchBundleBytes(
+  fetchFn: typeof fetch,
+  url: string,
+  licenseKey: string
+): Promise<Buffer> {
+  if (new URL(url).origin !== new URL(CATALOG_URL).origin)
+    throw new CatalogError('The module list points to a download Talyx does not trust.')
+  const response = await fetchOk(fetchFn, url, licenseKey)
   if (Number(response.headers.get('content-length') ?? 0) > MAX_BUNDLE_BYTES) throw tooLarge()
   return readCapped(response)
 }
@@ -57,8 +71,8 @@ function tooLarge(): CatalogError {
   return new CatalogError('The module download is larger than any module can be.')
 }
 
-async function fetchJson(fetchFn: typeof fetch, url: string): Promise<unknown> {
-  const response = await fetchOk(fetchFn, url)
+async function fetchJson(fetchFn: typeof fetch, url: string, licenseKey: string): Promise<unknown> {
+  const response = await fetchOk(fetchFn, url, licenseKey)
   try {
     return await response.json()
   } catch {
@@ -66,15 +80,22 @@ async function fetchJson(fetchFn: typeof fetch, url: string): Promise<unknown> {
   }
 }
 
-async function fetchOk(fetchFn: typeof fetch, url: string): Promise<Response> {
+async function fetchOk(fetchFn: typeof fetch, url: string, licenseKey: string): Promise<Response> {
   let response: Response
   try {
-    response = await fetchFn(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+    response = await fetchFn(url, {
+      headers: { authorization: `Bearer ${licenseKey}` },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
+    })
   } catch (error) {
     throw new CatalogError(
       `Talyx could not reach the module download (${error instanceof Error ? error.message : String(error)}).`
     )
   }
+  if (response.status === UNAUTHORIZED)
+    throw new CatalogError('The module server did not accept this license key.')
+  if (response.status === FORBIDDEN)
+    throw new CatalogError('Your license does not include this module.')
   if (!response.ok)
     throw new CatalogError(
       `The module download answered ${response.status} ${response.statusText}.`
