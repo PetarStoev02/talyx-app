@@ -1,9 +1,26 @@
 import * as React from 'react'
 import * as jsxRuntime from 'react/jsx-runtime'
 import { modulesApi } from '@shared/api/ipc'
-import type { ChatActions } from '@features/chat/chat'
-import { moduleChat, type ModuleChat } from './moduleChat'
 import { MODULE_API_VERSION, MODULE_SCHEME } from '../../../../shared/modules'
+
+/** A bot as a module sees it: its profile id, the name you know it by, and whether it is Talyx. */
+export interface ModuleBot {
+  id: string
+  name: string
+  manager: boolean
+}
+
+/**
+ * The bots' chats, for a module's page: the same path as typing in the chat, so the message shows
+ * there, and Talyx's chat answers the bot's questions and approvals as usual.
+ */
+export interface ModuleChat {
+  bots: () => ModuleBot[]
+  /** Sends `text` to the bot's chat, starting the chat if it has none. */
+  send: (bot: string, text: string) => Promise<void>
+  /** The bot's newest replies, oldest first. */
+  replies: (bot: string, limit?: number) => Promise<string[]>
+}
 
 /** What a module's page component gets from Talyx: the whole contract on the page side. */
 export interface ModulePageProps {
@@ -20,7 +37,7 @@ export interface ModulePageHost {
   /** True where Talyx draws a module's Sidebar export; older Talyx has none, so the page navigates. */
   sidebar: boolean
   /** The bots' chats: send a bot a message, read its replies. Older Talyx has none. */
-  chat: ModuleChat
+  chat?: ModuleChat
   React: typeof React
   jsxRuntime: typeof jsxRuntime
 }
@@ -43,18 +60,18 @@ export interface ModuleParts {
   icon: React.ComponentType | null
 }
 
-// Set by the app once the engine's chat is up; modules reach it only through the host.
-let chatActions: ChatActions | null = null
+// Set by the app layer, which owns the chat; modules reach it only through the host.
+let provided: ModuleChat | undefined
 
-export function provideModuleChat(actions: ChatActions | null): void {
-  chatActions = actions
+export function provideModuleChat(chat: ModuleChat): void {
+  provided = chat
 }
 
 export async function importModule(id: string, version: string): Promise<ModuleParts> {
   window.talyxModuleHost ??= {
     apiVersion: MODULE_API_VERSION,
     sidebar: true,
-    chat: moduleChat(() => chatActions),
+    chat: provided,
     React,
     jsxRuntime
   }

@@ -26,7 +26,7 @@ import { setupVisibility } from '@features/setup/steps'
 import { useSetup } from '@features/setup/store'
 import { useEngine } from '@app/providers/useEngine'
 import { moduleIdOf, runningModules, useModules } from '@features/modules/store'
-import { provideModuleChat } from '@features/modules/host'
+import { useModuleChat } from '@app/providers/moduleChat'
 import { useSelectionMemory } from '@app/providers/useSelectionMemory'
 
 function App(): React.JSX.Element {
@@ -39,7 +39,7 @@ function App(): React.JSX.Element {
   // Here, not in the page: replies keep marking bots unread while another page is open.
   const chat = useChatBackend()
   // A module's page sends to the bots through the same chat as the page you type in.
-  useEffect(() => provideModuleChat(chat), [chat])
+  useModuleChat(chat)
   const providers = useProvidersBackend()
   const setup = useSetupBackend()
   const engineKnown = useEngine((s) => s.status !== null)

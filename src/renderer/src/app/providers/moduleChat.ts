@@ -1,29 +1,12 @@
+import { useEffect } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { MANAGER } from '@features/bots/details'
 import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { useChat } from '@features/chat/store'
 import type { ChatActions } from '@features/chat/chat'
+import { provideModuleChat, type ModuleChat } from '@features/modules/host'
 import { problemText } from '@shared/lib/problem'
-
-/** A bot as a module sees it: its profile id, the name you know it by, and whether it is Talyx. */
-export interface ModuleBot {
-  id: string
-  name: string
-  manager: boolean
-}
-
-/**
- * The bots' chats, for a module's page: the same path as typing in the chat, so the message shows
- * there, and Talyx's chat answers the bot's questions and approvals as usual.
- */
-export interface ModuleChat {
-  bots: () => ModuleBot[]
-  /** Sends `text` to the bot's chat, starting the chat if it has none. */
-  send: (bot: string, text: string) => Promise<void>
-  /** The bot's newest replies, oldest first. */
-  replies: (bot: string, limit?: number) => Promise<string[]>
-}
 
 export class ModuleChatError extends Error {
   override name = 'ModuleChatError'
@@ -33,6 +16,17 @@ export class ModuleChatError extends Error {
 const MAX_TEXT = 20_000
 const DEFAULT_REPLIES = 40
 const MAX_REPLIES = 200
+
+// The app's chat right now; the module chat reads it on every call, so a reconnect needs no new host.
+let current: ChatActions | null = null
+
+/** Gives module pages the bots' chats, on whichever chat the app has now. */
+export function useModuleChat(chat: ChatActions | null): void {
+  useEffect(() => provideModuleChat(moduleChat(() => current)), [])
+  useEffect(() => {
+    current = chat
+  }, [chat])
+}
 
 export function moduleChat(actions: () => ChatActions | null): ModuleChat {
   const connected = (): ChatActions => {
@@ -52,6 +46,8 @@ export function moduleChat(actions: () => ChatActions | null): ModuleChat {
       knownBot(bot)
       if (typeof text !== 'string' || !text.trim() || text.length > MAX_TEXT)
         throw new ModuleChatError(`A message is 1 to ${MAX_TEXT} characters.`)
+      // As the chat page does: find the bot's chat first, so the send goes there, not a new one.
+      if (!useChat.getState().chats[bot]?.sessionId) await chat.open(bot, null)
       if (await chat.send(bot, { text, images: [] })) return
       const problem = useChat.getState().chats[bot]?.error
       const t = useLanguage.getState().t

@@ -2,20 +2,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { useChat } from '../../../src/renderer/src/features/chat/store'
 import type { ChatActions } from '../../../src/renderer/src/features/chat/chat'
-import { ModuleChatError, moduleChat } from '../../../src/renderer/src/features/modules/moduleChat'
+import { ModuleChatError, moduleChat } from '../../../src/renderer/src/app/providers/moduleChat'
 
 const bot = (name: string, display_name?: string): object => ({ meta: {}, name, display_name })
 
 describe('a module page talking to the bots', () => {
   let send: ReturnType<typeof vi.fn>
   let recent: ReturnType<typeof vi.fn>
+  let open: ReturnType<typeof vi.fn>
   let connected: boolean
-  const chat = moduleChat(() => (connected ? ({ send, recent } as unknown as ChatActions) : null))
+  const chat = moduleChat(() =>
+    connected ? ({ send, recent, open } as unknown as ChatActions) : null
+  )
 
   beforeEach(() => {
     connected = true
     send = vi.fn(async () => true)
     recent = vi.fn(async () => ['[run acme/api#7] step=plan'])
+    open = vi.fn(async () => undefined)
     useRoster.setState({
       snapshot: {
         bots: [bot('default', 'Talyx'), bot('t3-tots', 'T3 Tots')],
@@ -42,6 +46,16 @@ describe('a module page talking to the bots', () => {
       text: 'Start a Workflows run for acme/api#7',
       images: []
     })
+  })
+
+  it("should find the bot's existing chat before the first send, and not again after", async () => {
+    await chat.send('default', 'first')
+    expect(open).toHaveBeenCalledWith('default', null)
+    expect(open.mock.invocationCallOrder[0]).toBeLessThan(send.mock.invocationCallOrder[0])
+    useChat.setState({ chats: { default: { sessionId: 's1' } } } as never)
+    open.mockClear()
+    await chat.send('default', 'second')
+    expect(open).not.toHaveBeenCalled()
   })
 
   it('should read the bot’s newest replies, with the limit kept in bounds', async () => {
