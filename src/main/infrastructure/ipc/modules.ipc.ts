@@ -97,8 +97,14 @@ export function serveModuleFiles(): void {
     const file = modules.file(url.hostname, url.pathname.slice(1))
     if (!file) return new Response(null, { status: 404 })
     // The page imports it as a module script from another origin (app:// or the dev server).
+    // Never cached: the files come from memory anyway, and a cached stylesheet would outlive a
+    // reinstall of the same version.
     return new Response(file.body, {
-      headers: { 'Content-Type': file.type, 'Access-Control-Allow-Origin': '*' }
+      headers: {
+        'Content-Type': file.type,
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-store'
+      }
     })
   })
 }
