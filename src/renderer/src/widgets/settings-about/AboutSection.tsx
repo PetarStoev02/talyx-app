@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useEngine } from '@app/providers/useEngine'
-import { appApi } from '@shared/api/ipc'
+import { useUpdates } from '@features/updates/store'
+import { appApi, updaterApi } from '@shared/api/ipc'
+import type { TranslationKey } from '@shared/lib/i18n'
 import { reportError } from '@shared/lib/report'
 import { Button } from '@shared/ui/button'
 import { engineLabel, engineSummary } from '@features/setup/engineSummary'
+import type { UpdateCheck } from '../../../../shared/updater'
 
 const COPIED_MS = 1500
 
@@ -15,6 +18,9 @@ export function AboutSection(): React.JSX.Element {
   const engine = engineSummary(useEngine((s) => s.status))
   const [version, setVersion] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [checking, setChecking] = useState(false)
+  const [check, setCheck] = useState<UpdateCheck | null>(null)
+  const requestNotice = useUpdates((s) => s.requestNotice)
 
   useEffect(() => {
     appApi
@@ -28,6 +34,20 @@ export function AboutSection(): React.JSX.Element {
     const timer = setTimeout(() => setCopied(false), COPIED_MS)
     return () => clearTimeout(timer)
   }, [copied])
+
+  async function checkForUpdate(): Promise<void> {
+    setChecking(true)
+    try {
+      const result = await updaterApi.check()
+      setCheck(result)
+      if (result.kind === 'available') requestNotice()
+    } catch (error) {
+      reportError('about', error)
+      setCheck({ kind: 'failed' })
+    } finally {
+      setChecking(false)
+    }
+  }
 
   async function copyDiagnostics(): Promise<void> {
     try {
@@ -58,6 +78,19 @@ export function AboutSection(): React.JSX.Element {
         )}
         {engine.state === 'missing' && <p>{t('settings.aboutEngineMissing')}</p>}
       </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          variant="secondary"
+          className="bg-secondary hover:bg-foreground/10"
+          disabled={checking}
+          onClick={() => void checkForUpdate()}
+        >
+          {t(checking ? 'settings.checkingUpdates' : 'settings.checkUpdates')}
+        </Button>
+        <p role="status" className="text-base">
+          {!checking && check && checkLabel(check, t)}
+        </p>
+      </div>
       <div className="space-y-2">
         <p className="text-base">{t('settings.copyDiagnosticsDesc')}</p>
         <Button
@@ -74,4 +107,15 @@ export function AboutSection(): React.JSX.Element {
       </div>
     </section>
   )
+}
+
+function checkLabel(check: UpdateCheck, t: (key: TranslationKey) => string): string {
+  switch (check.kind) {
+    case 'available':
+      return t('settings.updateAvailable').replace('{version}', check.version)
+    case 'up-to-date':
+      return t('settings.upToDate')
+    case 'failed':
+      return t('settings.updateCheckFailed')
+  }
 }

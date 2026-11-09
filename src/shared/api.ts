@@ -69,6 +69,7 @@ export function buildApi(transport: ApiTransport) {
 
     // Talyx update (main picks, downloads and verifies the release; the page only asks)
     getUpdateState: () => invoke('updater:status'),
+    checkForUpdate: () => invoke('updater:check'),
     downloadUpdate: () => invoke('updater:download'),
     cancelUpdate: () => invoke('updater:cancel'),
     installUpdate: () => invoke('updater:install'),

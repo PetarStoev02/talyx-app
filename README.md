@@ -17,7 +17,7 @@ Builds come from the [GitHub releases](https://github.com/PetarStoev02/talyx-app
 - **macOS 13 or newer.** Open the DMG and drag Talyx to Applications, then open it. The Mac builds are signed with Developer ID, run with the hardened runtime and are notarized by Apple, so macOS opens them without a warning.
 - **Linux (x64).** Download `Talyx-x86_64.AppImage`, make it executable (`chmod +x`) and run it, or install `Talyx-amd64.deb` with `sudo apt install ./Talyx-amd64.deb`. There is no Windows build yet: it comes once the engine runs there.
 
-Talyx checks GitHub for a newer release when it starts and once a day. On macOS and in the AppImage it updates itself: it downloads the update in the background, checks it against the sha512 in the release's `latest-mac.yml` or `latest-linux.yml`, and the footer update button then offers **Restart to update**. Talyx never restarts by itself; if you do not click, the update installs when you quit. On macOS the update installs only when the new app carries the same Developer ID signature as the one running. The deb cannot update itself: the update button opens the release page, and you install the new deb the same way as the first.
+Talyx checks GitHub for a newer release shortly after it starts, every hour, when the computer wakes and when you come back to its window; Settings → About has **Check for updates**. Each check reads the version from the release's update feed and asks the GitHub API for the notes only when a newer release exists. A new release shows in the footer update button with its highlights, **Download** and **Later**: nothing downloads until you click. On macOS and in the AppImage it updates itself: it downloads the update, checks it against the sha512 in the release's `latest-mac.yml` or `latest-linux.yml`, and the footer update button then offers **Restart to update**. Talyx never restarts by itself; if you do not click, the update installs when you quit. On macOS the update installs only when the new app carries the same Developer ID signature as the one running. The deb cannot update itself: the update button opens the release page, and you install the new deb the same way as the first.
 
 ## Engine
 
@@ -66,7 +66,7 @@ Releases are built by the **Release** workflow on GitHub Actions: Actions → Re
 
 ## Privacy
 
-Talyx has no server, no account and no telemetry. The only network calls Talyx makes itself are three to GitHub: the update check; the update itself from the release (in the background on macOS and in the AppImage, or the installer and its `SHA256SUMS` when you click Download); and, at first-run setup, the release's `engine-install.json`, the steps that install the engine. What your bots send to their model providers is between the engine and those providers; Talyx itself sends nothing anywhere else. Third-party components are listed in [CREDITS.md](CREDITS.md).
+Talyx has no server, no account and no telemetry. The only network calls Talyx makes itself are three to GitHub: the update check; the update itself from the release when you click Download (through the update feed on macOS and in the AppImage, otherwise the installer and its `SHA256SUMS`); and, at first-run setup, the release's `engine-install.json`, the steps that install the engine. What your bots send to their model providers is between the engine and those providers; Talyx itself sends nothing anywhere else. Third-party components are listed in [CREDITS.md](CREDITS.md).
 
 ## Contributing
 

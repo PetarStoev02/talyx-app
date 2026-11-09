@@ -9,12 +9,16 @@ import {
   type ReleaseCheck
 } from '../../../src/main/infrastructure/updater/releaseCheck'
 
-function respond(body: unknown, ok = true): typeof fetch {
-  return vi.fn(async () => ({
-    ok,
-    status: ok ? 200 : 404,
-    json: async () => body
-  })) as unknown as typeof fetch
+const FEED = 'https://github.com/PetarStoev02/talyx-app/releases/latest/download/'
+const API = 'https://api.github.com/repos/PetarStoev02/talyx-app/releases/latest'
+
+/** The API answers `body`; the update feed answers `feed`, or is missing (a 404) when null. */
+function respond(body: unknown, ok = true, feed: string | null = null): typeof fetch {
+  return vi.fn(async (url: string) =>
+    url.startsWith(FEED)
+      ? { ok: feed !== null, status: feed === null ? 404 : 200, text: async () => feed }
+      : { ok, status: ok ? 200 : 404, json: async () => body }
+  ) as unknown as typeof fetch
 }
 
 describe('isNewerVersion', () => {
@@ -59,15 +63,13 @@ describe('fetchLatestRelease', () => {
         checksums: null
       }
     })
-    expect(vi.mocked(fetchFn).mock.calls[0][0]).toBe(
-      'https://api.github.com/repos/PetarStoev02/talyx-app/releases/latest'
-    )
+    expect(vi.mocked(fetchFn).mock.calls.at(-1)?.[0]).toBe(API)
   })
 
   it('should give the fetch a timeout signal so a hung request fails', async () => {
     const fetchFn = respond({ tag_name: 'v0.11.1', html_url: `${RELEASE_PAGE}v0.11.1` })
     await fetchLatestRelease(fetchFn, '0.11.0')
-    const init = vi.mocked(fetchFn).mock.calls[0][1]
+    const init = vi.mocked(fetchFn).mock.calls.at(-1)?.[1]
     expect(init?.signal).toBeInstanceOf(AbortSignal)
   })
 
@@ -82,6 +84,43 @@ describe('fetchLatestRelease', () => {
   it('should report up to date when the latest release is not newer', async () => {
     const fetchFn = respond({ tag_name: 'v0.11.0', html_url: `${RELEASE_PAGE}v0.11.0` })
     expect(await fetchLatestRelease(fetchFn, '0.11.0')).toEqual({ kind: 'up-to-date' })
+  })
+
+  describe('update feed', () => {
+    const mac = { platform: 'darwin', arch: 'arm64', appImage: false } as const
+    const deb = { platform: 'linux', arch: 'x64', appImage: false } as const
+    const latest = { tag_name: 'v0.12.0', html_url: `${RELEASE_PAGE}v0.12.0` }
+    const urls = (fetchFn: typeof fetch): unknown[] =>
+      vi.mocked(fetchFn).mock.calls.map((c) => c[0])
+
+    it('should answer up to date from the feed alone, without the rate-limited API', async () => {
+      const fetchFn = respond(latest, true, 'version: 0.11.0\nfiles:\n')
+      expect(await fetchLatestRelease(fetchFn, '0.11.0', mac)).toEqual({ kind: 'up-to-date' })
+      expect(urls(fetchFn)).toEqual([`${FEED}latest-mac.yml`])
+    })
+
+    it('should ask the API for the notes only when the feed names a newer version', async () => {
+      const fetchFn = respond(latest, true, "version: '0.12.0'\n")
+      const check = await fetchLatestRelease(fetchFn, '0.11.0', mac)
+      expect(check.kind).toBe('available')
+      expect(urls(fetchFn)).toEqual([`${FEED}latest-mac.yml`, API])
+    })
+
+    it('should read the Linux feed for a deb install too', async () => {
+      const fetchFn = respond(latest, true, 'version: 0.11.0\n')
+      expect(await fetchLatestRelease(fetchFn, '0.11.0', deb)).toEqual({ kind: 'up-to-date' })
+      expect(urls(fetchFn)).toEqual([`${FEED}latest-linux.yml`])
+    })
+
+    it.each([
+      ['missing', null],
+      ['without a version', 'files: []\n'],
+      ['naming no version number', 'version: latest\n']
+    ])('should fall back to the API when the feed is %s', async (_name, feed) => {
+      const fetchFn = respond(latest, true, feed)
+      expect((await fetchLatestRelease(fetchFn, '0.11.0', mac)).kind).toBe('available')
+      expect(urls(fetchFn).at(-1)).toBe(API)
+    })
   })
 
   it('should report a failure when GitHub answers with an error', async () => {

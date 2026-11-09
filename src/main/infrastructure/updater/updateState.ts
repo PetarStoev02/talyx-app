@@ -121,8 +121,6 @@ export function createUpdateStore(deps: UpdateStoreDeps): UpdateStore {
       if (!apply({ kind: 'found', release: found?.summary ?? null })) return
       release = state.kind === 'none' ? null : found
       installer = null
-      // A release Talyx installs itself downloads in the background; it restarts only on a click.
-      if (found?.summary.automatic) void startDownload()
     },
 
     startDownload,

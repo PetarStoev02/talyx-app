@@ -47,20 +47,25 @@ const lookLabels: Record<Look, TranslationKey> = {
 export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const engineInstalling = useInstall((s) => s.running)
-  const [open, setOpen] = useState(false)
+  const [opened, setOpened] = useState(false)
   // Opened by a click, a key or focus inside: it stays until dismissed, and focus moves in and back.
   const pinned = useRef(false)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const look = buttonLook(items, engineInstalling)
   const talyx = items.find((item) => item.kind === 'talyx')?.state
   const percent = talyx?.kind === 'downloading' ? Math.floor(fraction(talyx) * 100) : 0
+  // Settings' "Check for updates" found a release: it shows here, where its actions are.
+  const noticeRequested = useUpdates((s) => s.noticeRequested)
+  const clearNotice = useUpdates((s) => s.clearNotice)
+  const open = opened || noticeRequested
 
   useEffect(() => () => clearTimeout(timer.current), [])
 
   function show(next: boolean, pin: boolean): void {
     clearTimeout(timer.current)
     if (next) pinned.current = pin
-    setOpen(next)
+    else clearNotice()
+    setOpened(next)
   }
 
   function hover(event: React.PointerEvent, entering: boolean): void {
@@ -109,7 +114,7 @@ export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Elem
               onInstall={() => show(false, true)}
             />
           ) : (
-            <TalyxRow key="talyx" state={item.state} />
+            <TalyxRow key="talyx" state={item.state} onLater={() => show(false, true)} />
           )
         )}
       </PopoverContent>
@@ -218,18 +223,39 @@ function EngineRow({
   )
 }
 
-function TalyxRow({ state }: { state: TalyxState }): React.JSX.Element {
+function TalyxRow({
+  state,
+  onLater
+}: {
+  state: TalyxState
+  onLater: () => void
+}): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const { release } = state
   const openRelease = (): void => void window.open(release.url)
+  const age = state.kind === 'available' ? ageLabel(release.publishedAt, t) : null
 
   return (
     <section className="flex flex-col gap-2 p-4">
       <h3 className="text-base font-semibold text-foreground">{talyxTitle(state, t)}</h3>
-      {state.kind === 'available' && (
-        <p className="text-muted-foreground">
-          {[release.version, ageLabel(release.publishedAt, t)].filter(Boolean).join(' · ')}
-        </p>
+      {age && <p className="text-muted-foreground">{age}</p>}
+      {state.kind === 'downloading' && (
+        <div
+          role="progressbar"
+          aria-label={t('update.labelDownloading').replace(
+            '{percent}',
+            String(Math.floor(fraction(state) * 100))
+          )}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.floor(fraction(state) * 100)}
+          className="h-1.5 overflow-hidden rounded-full bg-foreground/15"
+        >
+          <div
+            className="h-full rounded-full bg-foreground transition-[width] duration-300"
+            style={{ width: `${fraction(state) * 100}%` }}
+          />
+        </div>
       )}
       {state.kind === 'failed' ? (
         <p className="text-muted-foreground">{t(failureKeys[state.reason])}</p>
@@ -261,7 +287,7 @@ function TalyxRow({ state }: { state: TalyxState }): React.JSX.Element {
         </>
       )}
       <div className="flex flex-wrap gap-2 pt-1">
-        <TalyxActions state={state} onOpenRelease={openRelease} />
+        <TalyxActions state={state} onOpenRelease={openRelease} onLater={onLater} />
       </div>
     </section>
   )
@@ -269,10 +295,12 @@ function TalyxRow({ state }: { state: TalyxState }): React.JSX.Element {
 
 function TalyxActions({
   state,
-  onOpenRelease
+  onOpenRelease,
+  onLater
 }: {
   state: TalyxState
   onOpenRelease: () => void
+  onLater: () => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const releasePage = (
@@ -302,7 +330,13 @@ function TalyxActions({
           <Button onClick={() => act(updaterApi.download)}>
             {t(state.kind === 'failed' ? 'action.tryAgain' : 'update.download')}
           </Button>
-          {state.kind === 'failed' && releasePage}
+          {state.kind === 'failed' ? (
+            releasePage
+          ) : (
+            <Button variant="secondary" onClick={onLater}>
+              {t('update.later')}
+            </Button>
+          )}
         </>
       )
   }
@@ -312,7 +346,7 @@ function talyxTitle(state: TalyxState, t: (key: TranslationKey) => string): stri
   const { version } = state.release
   switch (state.kind) {
     case 'available':
-      return t('update.available')
+      return t('update.available').replace('{version}', version)
     case 'downloading':
       return t('update.downloading')
         .replace('{version}', version)

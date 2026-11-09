@@ -4,7 +4,7 @@ import { t } from '@shared/lib/i18n'
 import { problemOf } from '@shared/lib/problem'
 import { reportError } from '@shared/lib/report'
 import type { InstallExit, InstallSteps } from '../../../../shared/setup'
-import type { UpdateState } from '../../../../shared/updater'
+import type { UpdateCheck, UpdateState } from '../../../../shared/updater'
 import type { ActivationRequest, AvailableModule, ModulesState } from '../../../../shared/modules'
 
 export interface AppSettings {
@@ -45,6 +45,7 @@ export const setupApi = {
 
 export const updaterApi = {
   state: (): Promise<UpdateState> => window.api.getUpdateState() as Promise<UpdateState>,
+  check: (): Promise<UpdateCheck> => window.api.checkForUpdate() as Promise<UpdateCheck>,
   download: (): Promise<void> => window.api.downloadUpdate() as Promise<void>,
   cancel: (): Promise<void> => window.api.cancelUpdate() as Promise<void>,
   install: (): Promise<void> => window.api.installUpdate() as Promise<void>,
