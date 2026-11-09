@@ -1,5 +1,6 @@
 import { useLanguage } from '@app/providers/useLanguage'
 import { MANAGER } from '@features/bots/details'
+import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { useChat } from '@features/chat/store'
 import type { ChatActions } from '@features/chat/chat'
@@ -43,7 +44,7 @@ export function moduleChat(actions: () => ChatActions | null): ModuleChat {
     bots: () =>
       useRoster.getState().snapshot.bots.map((bot) => ({
         id: bot.name,
-        name: bot.display_name || bot.name,
+        name: botTitle(bot),
         manager: bot.name === MANAGER
       })),
     send: async (bot, text) => {
