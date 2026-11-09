@@ -11,19 +11,21 @@ export interface ReleaseChecksDeps {
 export interface ReleaseChecks {
   /** Checks GitHub now, or joins the check already running. */
   check: () => Promise<UpdateCheck>
-  /** Checks only when the last check started more than `maxAgeMs` ago. */
+  /** Checks only when the last check that reached GitHub started more than `maxAgeMs` ago. */
   checkIfOlderThan: (maxAgeMs: number) => void
 }
 
 /** One release check at a time, whoever asks: the timer, a wake, a focus or the Settings button. */
 export function createReleaseChecks(deps: ReleaseChecksDeps): ReleaseChecks {
   let running: Promise<UpdateCheck> | null = null
-  let lastStarted = -Infinity
+  // Counted from creation: the first focus of the window must not run ahead of the startup check.
+  let lastChecked = deps.now()
 
-  async function run(): Promise<UpdateCheck> {
+  async function run(started: number): Promise<UpdateCheck> {
     const result = await deps.fetchLatest()
-    // A failed check keeps what the update button shows.
+    // A failed check keeps what the update button shows, and the next wake or focus tries again.
     if (result.kind === 'failed') return result
+    lastChecked = started
     if (result.kind === 'up-to-date') {
       deps.found(null)
       return result
@@ -34,15 +36,14 @@ export function createReleaseChecks(deps: ReleaseChecksDeps): ReleaseChecks {
 
   function check(): Promise<UpdateCheck> {
     if (running) return running
-    lastStarted = deps.now()
-    running = run().finally(() => (running = null))
+    running = run(deps.now()).finally(() => (running = null))
     return running
   }
 
   return {
     check,
     checkIfOlderThan(maxAgeMs) {
-      if (deps.now() - lastStarted > maxAgeMs) void check()
+      if (deps.now() - lastChecked > maxAgeMs) void check()
     }
   }
 }

@@ -70,6 +70,12 @@ describe('next', () => {
       { kind: 'found', release: v2 },
       { kind: 'available', release: v2 }
     ],
+    [
+      'a ready self-update finds a newer one',
+      { kind: 'ready', release: summary('1.0.0', true, true) },
+      { kind: 'found', release: summary('1.1.0', true, true) },
+      { kind: 'ready', release: summary('1.0.0', true, true) }
+    ],
     ['failed finds the same version', failed, { kind: 'found', release: v1 }, failed],
     [
       'available finds the same version with an installer added',
@@ -198,15 +204,17 @@ describe('update store', () => {
     expect(install).toHaveBeenCalledOnce()
   })
 
-  it('should offer a newer self-installing release found after one is ready, without downloading it', async () => {
-    const { updates, download } = store()
+  it('should keep offering the restart into a downloaded self-update when a newer release appears', async () => {
+    const { updates, download, install } = store()
     updates.found(found('1.0.0', true, true))
     await updates.startDownload()
     updates.found(found('1.1.0', true, true))
     await settle()
 
     expect(download).toHaveBeenCalledOnce()
-    expect(updates.current()).toEqual({ kind: 'available', release: summary('1.1.0', true, true) })
+    expect(updates.current()).toEqual({ kind: 'ready', release: summary('1.0.0', true, true) })
+    await updates.install()
+    expect(install).toHaveBeenCalledOnce()
   })
 
   it('should refuse to install anything before a download is verified', async () => {

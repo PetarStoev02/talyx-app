@@ -61,6 +61,11 @@ export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Elem
 
   useEffect(() => () => clearTimeout(timer.current), [])
 
+  // A notice Settings opened counts as opened by a click: it stays until dismissed.
+  function isPinned(): boolean {
+    return pinned.current || noticeRequested
+  }
+
   function show(next: boolean, pin: boolean): void {
     clearTimeout(timer.current)
     if (next) pinned.current = pin
@@ -72,7 +77,7 @@ export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Elem
     if (event.pointerType !== 'mouse') return
     clearTimeout(timer.current)
     if (entering && !open) timer.current = setTimeout(() => show(true, false), HOVER_OPEN_MS)
-    if (!entering && open && !pinned.current)
+    if (!entering && open && !isPinned())
       timer.current = setTimeout(() => show(false, false), HOVER_CLOSE_MS)
   }
 
@@ -86,7 +91,7 @@ export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Elem
           onClick={(event) => {
             // A click pins a popover the pointer opened instead of closing it.
             event.preventDefault()
-            show(!(open && pinned.current), true)
+            show(!(open && isPinned()), true)
           }}
           className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
         >
@@ -101,8 +106,8 @@ export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Elem
         onPointerLeave={(event) => hover(event, false)}
         onFocus={() => (pinned.current = true)}
         // Hovering never takes focus from where the user was typing, nor gives it back to the button.
-        onOpenAutoFocus={(event) => !pinned.current && event.preventDefault()}
-        onCloseAutoFocus={(event) => !pinned.current && event.preventDefault()}
+        onOpenAutoFocus={(event) => !isPinned() && event.preventDefault()}
+        onCloseAutoFocus={(event) => !isPinned() && event.preventDefault()}
         className="flex flex-col divide-y divide-border p-0"
       >
         {items.map((item) =>

@@ -63,17 +63,34 @@ describe('release checks', () => {
     expect(fetchLatest).toHaveBeenCalledTimes(2)
   })
 
+  it('should leave the first check to the startup timer, not to the first focus', async () => {
+    const { checks, fetchLatest, clock } = setup()
+    clock.now = 15_000
+    checks.checkIfOlderThan(15 * 60_000)
+    await Promise.resolve()
+    expect(fetchLatest).not.toHaveBeenCalled()
+  })
+
   it('should check on wake or focus only when the last check is older than the limit', async () => {
     const { checks, fetchLatest, clock } = setup()
+    clock.now = HOUR + 1
     checks.checkIfOlderThan(HOUR)
     await vi.waitFor(() => expect(fetchLatest).toHaveBeenCalledOnce())
 
-    clock.now = HOUR
+    clock.now = 2 * HOUR
     checks.checkIfOlderThan(HOUR)
     await Promise.resolve()
     expect(fetchLatest).toHaveBeenCalledOnce()
 
+    clock.now = 2 * HOUR + 2
+    checks.checkIfOlderThan(HOUR)
+    await vi.waitFor(() => expect(fetchLatest).toHaveBeenCalledTimes(2))
+  })
+
+  it('should try again on the next wake or focus after a failed check', async () => {
+    const { checks, fetchLatest, clock } = setup({ kind: 'failed' })
     clock.now = HOUR + 1
+    await checks.check()
     checks.checkIfOlderThan(HOUR)
     await vi.waitFor(() => expect(fetchLatest).toHaveBeenCalledTimes(2))
   })
