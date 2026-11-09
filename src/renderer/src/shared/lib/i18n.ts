@@ -562,6 +562,7 @@ const en = {
   'update.ageMinutes': '{count}m ago',
   'update.ageHours': '{count}h ago',
   'modules.title': 'Modules',
+  'modules.sidebarLoading': 'Loading {name}…',
   'modules.activateTitle': 'Enter license key',
   'modules.activateHint': 'Paste the key from your purchase email.',
   'modules.licenseKey': 'License key',

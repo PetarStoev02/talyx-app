@@ -24,7 +24,7 @@ export function SectionSwitch(): React.JSX.Element | null {
   return (
     <nav
       aria-label={t('nav.sections')}
-      className="mx-3 mb-3 flex shrink-0 gap-1 rounded-full bg-background/70 p-1"
+      className="mx-3 mb-3 flex shrink-0 gap-1 rounded-full bg-foreground/[0.05] p-1"
     >
       {sections.map((section) => (
         <SectionButton
@@ -72,8 +72,12 @@ function SectionButton({
   )
 }
 
-/** The module's own icon once its renderer.js is in; the generic one until then, or without. */
+/**
+ * The module's own icon once its renderer.js is in; an empty slot of the same size until then, so
+ * the generic icon never flashes; the generic one for a module without its own.
+ */
 function ModuleIcon({ module }: { module: ModuleSummary }): React.JSX.Element {
-  const Icon = useModuleParts(module)?.icon
-  return Icon ? <Icon /> : <Blocks aria-hidden="true" />
+  const parts = useModuleParts(module)
+  if (parts === undefined) return <span aria-hidden="true" className="size-4 shrink-0" />
+  return parts?.icon ? <parts.icon /> : <Blocks aria-hidden="true" />
 }
