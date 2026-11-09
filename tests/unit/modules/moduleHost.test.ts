@@ -20,7 +20,7 @@ import {
   type TestSigner
 } from './moduleKit'
 
-const BUNDLE_URL = 'https://downloads.example/hello-1.0.0.json'
+const BUNDLE_URL = new URL('/bundles/hello-1.0.0.json', CATALOG_URL).href
 const NOON = Date.parse('2026-11-08T12:00:00Z')
 const HOUR_MS = 60 * 60_000
 
@@ -32,6 +32,8 @@ describe('module host', () => {
   let files: Map<string, Buffer | ReadableStream | object>
   let host: ModuleHost
   let clock: number
+  /** The download server's answer to any key: false stands for a key it has revoked. */
+  let serverAcceptsKey: boolean
   /** Set to hold the bundle download until the test releases it. */
   let heldDownload: Promise<void> | null
   let engineHttp: ReturnType<typeof vi.fn>
@@ -44,6 +46,7 @@ describe('module host', () => {
     files = new Map()
     clock = NOON
     heldDownload = null
+    serverAcceptsKey = true
     engineHttp = vi.fn(async () => null)
     host = newHost()
     resetHelloRuns()
@@ -67,7 +70,11 @@ describe('module host', () => {
     })
   }
 
-  const fakeFetch = (async (url: string) => {
+  /** The download server: it answers only the saved license key. */
+  const fakeFetch = (async (url: string, init?: RequestInit) => {
+    const authorization = new Headers(init?.headers).get('authorization')
+    if (!serverAcceptsKey || authorization !== `Bearer ${savedKey}`)
+      return new Response(null, { status: 401, statusText: 'Unauthorized' })
     if (url === BUNDLE_URL && heldDownload) await heldDownload
     const body = files.get(url)
     if (body === undefined) return new Response(null, { status: 404, statusText: 'Not Found' })
@@ -158,6 +165,23 @@ describe('module host', () => {
       await host.activate(issueKey(signer))
       await expect(host.install('hello')).rejects.toThrow('The module is not signed by Talyx.')
       expect(existsSync(join(root, 'modules', 'hello'))).toBe(false)
+    })
+
+    it('should refuse a catalog that points the download at another server', async () => {
+      publish(helloBundle(), { url: 'https://elsewhere.example/hello-1.0.0.json' })
+      await host.activate(issueKey(signer))
+      await expect(host.install('hello')).rejects.toThrow(
+        'The module list points to a download Talyx does not trust.'
+      )
+    })
+
+    it('should explain when the download server refuses the license key', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer))
+      serverAcceptsKey = false
+      await expect(host.available()).rejects.toThrow(
+        'The module server did not accept this license key.'
+      )
     })
 
     it('should refuse a module the license does not unlock', async () => {

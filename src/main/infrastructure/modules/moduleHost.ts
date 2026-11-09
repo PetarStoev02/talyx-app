@@ -154,7 +154,7 @@ export function createModuleHost(deps: ModuleHostDeps) {
 
   async function available(): Promise<AvailableModule[]> {
     const unlocked = requireLicense().modules
-    const catalog = await fetchCatalog(deps.fetch)
+    const catalog = await fetchCatalog(deps.fetch, savedKey())
     return catalog
       .filter((entry) => unlocked.includes(entry.id))
       .map(({ id, name, version, apiVersion }) => ({
@@ -239,6 +239,13 @@ export function createModuleHost(deps: ModuleHostDeps) {
     return current
   }
 
+  /** The download server checks the same key the license was read from. */
+  function savedKey(): string {
+    const key = deps.licenseKey.read()
+    if (!key) throw new ModuleError('No license is active.')
+    return key
+  }
+
   function running(id: string): Loaded | null {
     const module = loaded.get(id)
     return activeLicense()?.modules.includes(id) && module?.status === 'running' ? module : null
@@ -272,11 +279,13 @@ export function createModuleHost(deps: ModuleHostDeps) {
   }
 
   async function download(id: string): Promise<{ files: InstalledFiles; bundle: ModuleBundle }> {
-    const entry = (await fetchCatalog(deps.fetch)).find((candidate) => candidate.id === id)
+    const entry = (await fetchCatalog(deps.fetch, savedKey())).find(
+      (candidate) => candidate.id === id
+    )
     if (!entry) throw new ModuleError('This module is not available for download.')
     if (entry.apiVersion !== MODULE_API_VERSION)
       throw new ModuleError('This module needs a different version of Talyx.')
-    const bytes = await fetchBundleBytes(deps.fetch, entry.url)
+    const bytes = await fetchBundleBytes(deps.fetch, entry.url, savedKey())
     const bundle = readBundle(bytes, entry.signature, deps.keys)
     if (bundle.id !== id) throw new ModuleError('The download is a different module.')
     // The signature proves who built a bundle, not that it is current: an old signed one served
