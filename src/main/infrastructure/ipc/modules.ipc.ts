@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, protocol } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, protocol } from 'electron'
 import log from 'electron-log'
 import {
   MODULE_SCHEME,
@@ -28,6 +28,14 @@ export const modules = createModuleHost({
   },
   // Module code is signed, but its requests take the same checks as the page's.
   engineHttp: (request) => engineHttp(validateInput(EngineHttpRequestSchema, request)),
+  pickFolder: async (title) => {
+    const window = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
+    const options = { title, properties: ['openDirectory' as const] }
+    const picked = window
+      ? await dialog.showOpenDialog(window, options)
+      : await dialog.showOpenDialog(options)
+    return picked.canceled ? null : (picked.filePaths[0] ?? null)
+  },
   log,
   publish: (state) => broadcast('modules:state', state),
   now: Date.now
