@@ -64,6 +64,11 @@ export interface ModulePageHost {
   chat?: ModuleChat
   /** Talyx's block avatars. Older Talyx has none, so a page keeps icons of its own. */
   avatars?: ModuleAvatars
+  /**
+   * True where the sidebar's `+` offers the module's `createItems`; older Talyx has none, so the
+   * page keeps a way to create of its own.
+   */
+  createItems?: boolean
   React: typeof React
   jsxRuntime: typeof jsxRuntime
 }
@@ -74,16 +79,46 @@ declare global {
   }
 }
 
+/** The icons a create item can name; Talyx draws them as its own menus' icons. */
+export const MODULE_CREATE_ICONS = [
+  'plus',
+  'task',
+  'workflow',
+  'folder',
+  'file',
+  'calendar'
+] as const
+export type ModuleCreateIcon = (typeof MODULE_CREATE_ICONS)[number]
+
+/** One thing a module can make, offered in the sidebar's `+` while its page is open. */
+export interface ModuleCreateItem {
+  id: string
+  label: string
+  icon?: ModuleCreateIcon
+  run: () => void
+}
+
+/**
+ * The module's part of the sidebar's `+`: its items (a list, or a function giving them when the
+ * menu opens) and the button's name, such as "Add a task or a workflow".
+ */
+export interface ModuleCreate {
+  label: string | null
+  items: () => unknown
+}
+
 /**
  * What a module's renderer.js exports: its page (the default export), and optionally `Sidebar`,
- * drawn in Talyx's sidebar while its page is open, and `Icon`, drawn on its button in the sidebar's
- * switch. The version is in the URL so an update imports the new file instead of the one this page
- * already loaded; one URL imports once, so the page and its sidebar share the module's state.
+ * drawn in Talyx's sidebar while its page is open, `Icon`, drawn on its button in the sidebar's
+ * switch, and `createItems` with `createLabel`, offered in the sidebar's `+`. The version is in the
+ * URL so an update imports the new file instead of the one this page already loaded; one URL
+ * imports once, so the page and its sidebar share the module's state.
  */
 export interface ModuleParts {
   page: React.ComponentType<ModulePageProps>
   sidebar: React.ComponentType<ModulePageProps> | null
   icon: React.ComponentType | null
+  create: ModuleCreate | null
 }
 
 export const MODULE_AVATARS: ModuleAvatars = {
@@ -105,6 +140,7 @@ export async function importModule(id: string, version: string): Promise<ModuleP
     sidebar: true,
     chat: provided,
     avatars: MODULE_AVATARS,
+    createItems: true,
     React,
     jsxRuntime
   }
@@ -114,8 +150,40 @@ export async function importModule(id: string, version: string): Promise<ModuleP
   return {
     page: loaded.default as React.ComponentType<ModulePageProps>,
     sidebar: componentOrNull(loaded.Sidebar) as React.ComponentType<ModulePageProps> | null,
-    icon: componentOrNull(loaded.Icon) as React.ComponentType | null
+    icon: componentOrNull(loaded.Icon) as React.ComponentType | null,
+    create: createOf(loaded)
   }
+}
+
+/** The module's create items as exported (a list, or a function), checked only when read. */
+export function createOf(loaded: Record<string, unknown>): ModuleCreate | null {
+  const items = loaded.createItems
+  if (!Array.isArray(items) && typeof items !== 'function') return null
+  return {
+    label: typeof loaded.createLabel === 'string' ? loaded.createLabel : null,
+    items: () => (typeof items === 'function' ? (items as () => unknown)() : items)
+  }
+}
+
+/**
+ * The create items the `+` shows, read when the menu opens: only well formed ones, and none when
+ * the module's function fails (reported by the caller), so a broken module never breaks the menu.
+ */
+export function createItemsOf(create: ModuleCreate): ModuleCreateItem[] {
+  const items = create.items()
+  return Array.isArray(items) ? items.filter(isCreateItem) : []
+}
+
+function isCreateItem(value: unknown): value is ModuleCreateItem {
+  if (typeof value !== 'object' || value === null) return false
+  const item = value as Record<string, unknown>
+  return (
+    typeof item.id === 'string' &&
+    typeof item.label === 'string' &&
+    item.label.trim() !== '' &&
+    typeof item.run === 'function' &&
+    (item.icon === undefined || MODULE_CREATE_ICONS.includes(item.icon as ModuleCreateIcon))
+  )
 }
 
 function componentOrNull(value: unknown): React.ComponentType<never> | null {
