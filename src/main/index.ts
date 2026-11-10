@@ -284,6 +284,8 @@ app
     installWebContentsGuard(rendererUrl ? `${new URL(rendererUrl).origin}/` : APP_ROOT)
     if (!rendererUrl) serveRenderer(join(__dirname, '../renderer'))
     serveModuleFiles()
+    // The browser tab of a dev run loads module pages through the bridge, not talyx-module://.
+    devBridge?.serveModuleFiles((id, name) => modules.file(id, name))
     setAppMenu(process.platform, () => openActivation({ key: null }), is.dev ? DEV_VIEW_ITEMS : [])
     if (is.dev) app.dock?.setIcon(appIcon)
     // A dev run must not take over the links meant for the installed app.

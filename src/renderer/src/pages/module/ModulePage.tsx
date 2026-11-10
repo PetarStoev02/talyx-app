@@ -1,11 +1,10 @@
 import { useEffect } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
-import { PageHeader } from '@shared/ui/page-header'
 import { moduleInvoker, moduleStyleUrl } from '@features/modules/host'
 import { useModuleParts } from '@features/modules/useModuleParts'
 import type { ModuleSummary } from '../../../../shared/modules'
 
-/** A module's page: its title row, then the component its renderer.js exports. */
+/** A module's page: the component its renderer.js exports, which draws its own header. */
 export function ModulePage({ module }: { module: ModuleSummary }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const { id, version, styled } = module
@@ -23,7 +22,6 @@ export function ModulePage({ module }: { module: ModuleSummary }): React.JSX.Ele
 
   return (
     <div className="flex h-full flex-col">
-      <PageHeader title={module.name} />
       <div className="min-h-0 flex-1">
         {parts ? (
           <parts.page invoke={moduleInvoker(id)} />

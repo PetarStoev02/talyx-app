@@ -390,6 +390,16 @@ describe('bot chat', () => {
       })
     })
 
+    it('should ask the engine to queue a message sent to wait behind a busy turn', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      await actions.send(MANAGER, { text: 'Next task', images: [], whenBusy: 'queue' })
+      expect(call('prompt.submit')?.params).toEqual({
+        session_id: 'manager-chat',
+        text: 'Next task',
+        queued: true
+      })
+    })
+
     it('should adopt the existing chat when the title is already in use', async () => {
       engine.chats[WORKER] = { sessionId: 'winner', messages: [] }
       await actions.open(WORKER, 'missing-from-roster')

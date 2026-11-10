@@ -51,7 +51,7 @@ export function moduleChat(actions: () => ChatActions | null): ModuleChat {
         throw new ModuleChatError(`A message is 1 to ${MAX_TEXT} characters.`)
       // As the chat page does: find the bot's chat first, so the send goes there, not a new one.
       if (!useChat.getState().chats[bot]?.sessionId) await chat.open(bot, null)
-      if (await chat.send(bot, { text, images: [] })) return
+      if (await chat.send(bot, { text, images: [], whenBusy: 'queue' })) return
       const problem = useChat.getState().chats[bot]?.error
       const t = useLanguage.getState().t
       throw new ModuleChatError(problem ? problemText(t, problem) : 'The message was not sent.')
