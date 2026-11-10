@@ -9,6 +9,11 @@ import log from 'electron-log'
 
 type IpcHandler = (event: unknown, ...args: unknown[]) => unknown
 type BroadcastListener = (channel: string, ...args: unknown[]) => void
+/** A running module's page file by module id and file name; null when there is none. */
+type ModuleFiles = (id: string, name: string) => { body: string; type: string } | null
+
+// Where a browser tab loads module page files: talyx-module:// only loads inside Electron.
+const MODULE_FILES = '/bridge/module/'
 
 const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
 
@@ -64,6 +69,7 @@ export class DevBridge {
   private sseClients = new Set<ServerResponse>()
   private server: Server | null = null
   private bridgePort = 0
+  private moduleFiles: ModuleFiles | null = null
   /** One stand-in for every browser tab, so the sockets a tab opens stay its own to use. */
   private readonly sender = {
     send: (channel: string, ...args: unknown[]): void => this.broadcast(channel, ...args),
@@ -104,6 +110,11 @@ export class DevBridge {
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
+  }
+
+  /** Serves running modules' page files to the browser tab, as talyx-module:// does in Electron. */
+  serveModuleFiles(files: ModuleFiles): void {
+    this.moduleFiles = files
   }
 
   start(port: number): Promise<void> {
@@ -153,6 +164,10 @@ export class DevBridge {
       })
       return
     }
+    if (req.method === 'GET' && req.url?.startsWith(MODULE_FILES)) {
+      this.serveModuleFile(req.url, res)
+      return
+    }
     // Lets a browser tab check it reached this app's bridge, not another dev run's.
     if (req.method === 'GET' && req.url === '/bridge/hello') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -172,5 +187,29 @@ export class DevBridge {
     }
     res.writeHead(404)
     res.end()
+  }
+
+  /** The module file a path names, or null for none, or for a malformed escape in it. */
+  private moduleFileAt(id: string, name: string): ReturnType<ModuleFiles> {
+    try {
+      return this.moduleFiles?.(decodeURIComponent(id), decodeURIComponent(name)) ?? null
+    } catch {
+      return null
+    }
+  }
+
+  private serveModuleFile(url: string, res: ServerResponse): void {
+    const [id = '', name = ''] = new URL(url, 'http://bridge').pathname
+      .slice(MODULE_FILES.length)
+      .split('/')
+    const file = this.moduleFileAt(id, name)
+    if (!file) {
+      res.writeHead(404)
+      res.end()
+      return
+    }
+    // Never cached, as in Electron: a reinstall of the same version must show.
+    res.writeHead(200, { 'Content-Type': file.type, 'Cache-Control': 'no-store' })
+    res.end(file.body)
   }
 }
