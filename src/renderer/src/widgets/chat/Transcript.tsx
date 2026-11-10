@@ -1,7 +1,8 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { MessageItem } from '@features/chat/types'
+import { briefsByRef } from '@features/chat/workflowLines'
 import { MessageBubble } from './MessageBubble'
 
 // How close to the end still counts as reading the newest message.
@@ -20,6 +21,10 @@ export function Transcript({
   const t = useLanguage((s) => s.t)
   const scroller = useRef<HTMLDivElement>(null)
   const [atEnd, setAtEnd] = useState(true)
+  const briefs = useMemo(
+    () => briefsByRef(items.flatMap((item) => (item.kind === 'user' ? [item.text] : []))),
+    [items]
+  )
 
   useLayoutEffect(() => {
     const element = scroller.current
@@ -40,7 +45,7 @@ export function Transcript({
         <ol className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-6">
           {items.map((item, index) => (
             <li key={item.id || index} className="flex flex-col">
-              <MessageBubble message={item} loadImage={loadImage} />
+              <MessageBubble message={item} loadImage={loadImage} briefs={briefs} />
             </li>
           ))}
           {children}

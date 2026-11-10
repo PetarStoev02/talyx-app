@@ -10,8 +10,11 @@ import { useRoster } from '@features/bots/store'
 import { markdownImage } from '@features/chat/markdownImage'
 import { senderProfile } from '@features/chat/transcript'
 import type { MessageItem } from '@features/chat/types'
+import { parseBrief, splitReply } from '@features/chat/workflowLines'
+import type { WorkflowBrief } from '@features/chat/workflowLines'
 import { cn } from '@shared/lib/utils'
 import { CodeBlock } from './CodeBlock'
+import { WorkflowBriefCard, WorkflowStatusRow } from './WorkflowParts'
 
 // Links open in the browser through the window-open guard, never inside the app.
 const MARKDOWN_COMPONENTS: Components = {
@@ -45,10 +48,13 @@ const urlTransform: UrlTransform = (url, _key, node) =>
 
 export function MessageBubble({
   message,
-  loadImage
+  loadImage,
+  briefs
 }: {
   message: MessageItem
   loadImage: (path: string) => Promise<string>
+  // The Workflows briefs in this chat by task, so a status line can name its task and step.
+  briefs: Record<string, WorkflowBrief>
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   if (message.kind === 'notice')
@@ -57,6 +63,8 @@ export function MessageBubble({
         {message.text}
       </p>
     )
+  const brief = message.kind === 'user' && message.images.length === 0 && parseBrief(message.text)
+  if (brief) return <WorkflowBriefCard brief={brief} text={message.text} />
   if (message.kind === 'user')
     return (
       <div className="ml-auto flex max-w-[80%] flex-col items-end gap-2">
@@ -83,15 +91,21 @@ export function MessageBubble({
           message.streaming && 'chat-streaming'
         )}
       >
-        {(message.text || message.error === null) && (
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={message.streaming ? MARKDOWN_COMPONENTS : FINISHED_COMPONENTS}
-            urlTransform={urlTransform}
-          >
-            {message.text}
-          </ReactMarkdown>
-        )}
+        {(message.text || message.error === null) &&
+          splitReply(message.text).map((part, index) =>
+            part.kind === 'status' ? (
+              <WorkflowStatusRow key={index} status={part.status} brief={briefs[part.status.ref]} />
+            ) : (
+              <ReactMarkdown
+                key={index}
+                remarkPlugins={[remarkGfm]}
+                components={message.streaming ? MARKDOWN_COMPONENTS : FINISHED_COMPONENTS}
+                urlTransform={urlTransform}
+              >
+                {part.text}
+              </ReactMarkdown>
+            )
+          )}
         {message.error !== null && (
           <div className={cn(message.text && 'mt-2')}>
             <p className="text-destructive-text">{t('chat.replyFailed')}</p>
