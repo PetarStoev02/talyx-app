@@ -138,10 +138,12 @@ describe('DevBridge over HTTP', () => {
     })
   }
 
+  let bridge: DevBridge
+
   async function withBridge(
     run: (port: number, handler: ReturnType<typeof vi.fn>) => Promise<void>
   ): Promise<void> {
-    const bridge = new DevBridge(5173)
+    bridge = new DevBridge(5173)
     const ipc = fakeIpcMain()
     bridge.installTap(ipc)
     const handler = vi.fn().mockResolvedValue('/home')
@@ -174,6 +176,24 @@ describe('DevBridge over HTTP', () => {
       })
       expect(status).toBe(200)
       expect(handler).toHaveBeenCalledOnce()
+    })
+  })
+
+  it('should serve a running module page file to the tab, where its own scheme cannot load', async () => {
+    await withBridge(async (port) => {
+      const files = {
+        'workflows/renderer.js': { body: 'export default 1', type: 'text/javascript' }
+      }
+      bridge.serveModuleFiles((id, name) => files[`${id}/${name}` as keyof typeof files] ?? null)
+      const found = await fetch(`http://127.0.0.1:${port}/bridge/module/workflows/renderer.js?v=1`)
+      expect(found.status).toBe(200)
+      expect(found.headers.get('content-type')).toBe('text/javascript')
+      expect(found.headers.get('cache-control')).toBe('no-store')
+      expect(await found.text()).toBe('export default 1')
+      const missing = await fetch(`http://127.0.0.1:${port}/bridge/module/workflows/main.js`)
+      expect(missing.status).toBe(404)
+      const malformed = await fetch(`http://127.0.0.1:${port}/bridge/module/%E0/renderer.js`)
+      expect(malformed.status).toBe(404)
     })
   })
 

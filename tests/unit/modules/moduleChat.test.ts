@@ -59,11 +59,12 @@ describe('a module page talking to the bots', () => {
     expect(plain.look).toEqual({ ...matchName('t3-tots'), faces: true })
   })
 
-  it("should send through the bot's chat, as typing would", async () => {
+  it("should send through the bot's chat, waiting behind a turn the bot is in", async () => {
     await chat.send('default', 'Start a Workflows run for acme/api#7')
     expect(send).toHaveBeenCalledWith('default', {
       text: 'Start a Workflows run for acme/api#7',
-      images: []
+      images: [],
+      whenBusy: 'queue'
     })
   })
 

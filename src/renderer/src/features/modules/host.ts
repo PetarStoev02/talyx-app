@@ -115,15 +115,14 @@ export interface ModuleCreate {
 
 /**
  * What a module's renderer.js exports: its page (the default export), and optionally `Sidebar`,
- * drawn in Talyx's sidebar while its page is open, `Icon`, drawn on its button in the sidebar's
- * switch, and `createItems` with `createLabel`, offered in the sidebar's `+`. The version is in the
+ * drawn in Talyx's sidebar while its page is open, and `createItems` with `createLabel`, offered
+ * in the sidebar's `+`. An `Icon` export from an older module is ignored. The version is in the
  * URL so an update imports the new file instead of the one this page already loaded; one URL
  * imports once, so the page and its sidebar share the module's state.
  */
 export interface ModuleParts {
   page: React.ComponentType<ModulePageProps>
   sidebar: React.ComponentType<ModulePageProps> | null
-  icon: React.ComponentType | null
   create: ModuleCreate | null
 }
 
@@ -151,13 +150,12 @@ export async function importModule(id: string, version: string): Promise<ModuleP
     React,
     jsxRuntime
   }
-  const url = `${MODULE_SCHEME}://${id}/renderer.js?v=${encodeURIComponent(version)}`
+  const url = moduleFileUrl(id, 'renderer.js', version)
   const loaded = (await import(/* @vite-ignore */ url)) as Record<string, unknown>
   if (typeof loaded.default !== 'function') throw new Error(`The ${id} module has no page to show.`)
   return {
     page: loaded.default as React.ComponentType<ModulePageProps>,
     sidebar: componentOrNull(loaded.Sidebar) as React.ComponentType<ModulePageProps> | null,
-    icon: componentOrNull(loaded.Icon) as React.ComponentType | null,
     create: createOf(loaded)
   }
 }
@@ -198,7 +196,16 @@ function componentOrNull(value: unknown): React.ComponentType<never> | null {
 }
 
 export function moduleStyleUrl(id: string, version: string): string {
-  return `${MODULE_SCHEME}://${id}/style.css?v=${encodeURIComponent(version)}`
+  return moduleFileUrl(id, 'style.css', version)
+}
+
+/**
+ * A module page file: from talyx-module:// in Electron, or through the dev bridge in a browser tab
+ * driving a dev run, where that scheme cannot load.
+ */
+function moduleFileUrl(id: string, file: string, version: string): string {
+  const base = window.electron?.bridged ? `/bridge/module/${id}` : `${MODULE_SCHEME}://${id}`
+  return `${base}/${file}?v=${encodeURIComponent(version)}`
 }
 
 export function moduleInvoker(id: string): ModulePageProps['invoke'] {

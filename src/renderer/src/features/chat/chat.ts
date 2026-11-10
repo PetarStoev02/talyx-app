@@ -40,6 +40,10 @@ export interface ChatImage {
 export interface ChatDraft {
   text: string
   images: ChatImage[]
+  // 'queue': when the bot is mid-turn, the message waits for that turn to end instead of
+  // redirecting it (the engine's default for a busy chat). Module pages send this way, so one
+  // workflow task's message never cuts into another's turn.
+  whenBusy?: 'queue'
 }
 
 export interface ChatActions {
@@ -241,7 +245,8 @@ export function chatActions(backend: ChatBackend): ChatActions {
         await backend.request(profile, 'prompt.submit', {
           session_id: sessionId,
           text,
-          ...(draft.images.length ? { attachments: draft.images } : {})
+          ...(draft.images.length ? { attachments: draft.images } : {}),
+          ...(draft.whenBusy === 'queue' ? { queued: true } : {})
         })
         return true
       } catch (error) {
