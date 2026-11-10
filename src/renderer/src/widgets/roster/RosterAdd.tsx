@@ -19,7 +19,8 @@ export function RosterAdd({ module = null }: { module?: ModuleSummary | null }):
 }
 
 function AgentsAdd(): React.JSX.Element {
-  return <AddButton build={useAgentsMenu()} />
+  const t = useLanguage((s) => s.t)
+  return <AddButton label={t('roster.add')} build={useAgentsMenu()} />
 }
 
 function ModuleAdd({ module }: { module: ModuleSummary }): React.JSX.Element {
@@ -29,6 +30,8 @@ function ModuleAdd({ module }: { module: ModuleSummary }): React.JSX.Element {
   const label = t('modules.add').replace('{name}', module.name)
   return (
     <AddButton
+      // The name alone, so the module's items are built only when the menu opens.
+      label={parts?.create ? (parts.create.label ?? label) : t('roster.add')}
       build={() =>
         addMenu(parts ? { create: parts.create, label } : null, agents(), (error) =>
           reportError(`module:${module.id}:create`, error)
@@ -55,11 +58,11 @@ function useAgentsMenu(): () => AddMenu {
   })
 }
 
-function AddButton({ build }: { build: () => AddMenu }): React.JSX.Element {
+function AddButton({ label, build }: { label: string; build: () => AddMenu }): React.JSX.Element {
   const saving = useRoster((state) => state.saving)
   return (
     <RosterMenu
-      label={build().label}
+      label={label}
       disabled={saving}
       icon={<Plus size={16} />}
       // A white disc on the sidebar's tone, so the one create action stands out.
