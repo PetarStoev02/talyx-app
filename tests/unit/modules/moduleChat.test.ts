@@ -49,14 +49,14 @@ describe('a module page talking to the bots', () => {
       } as never
     })
     expect(chat.bots().map((known) => known.look)).toEqual([
-      { shape: 'talyx', hue: 0 },
-      { shape: 'slab', hue: 3 }
+      { shape: 'talyx', hue: 0, faces: true },
+      { shape: 'slab', hue: 3, faces: true }
     ])
   })
 
   it('should give a bot with no saved look the one its name picks, as the roster shows it', () => {
     const [, plain] = chat.bots()
-    expect(plain.look).toEqual(matchName('t3-tots'))
+    expect(plain.look).toEqual({ ...matchName('t3-tots'), faces: true })
   })
 
   it("should send through the bot's chat, as typing would", async () => {

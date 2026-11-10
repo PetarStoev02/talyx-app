@@ -6,11 +6,15 @@ import { BLOCK_HUES, BLOCK_SHAPES } from '@shared/ui/blockGeometry'
 import type { BlockShape } from '@shared/ui/blockGeometry'
 import { MODULE_API_VERSION, MODULE_SCHEME } from '../../../../shared/modules'
 
-/** A block avatar's look: one of the shapes in one of the hues; Talyx is its own `talyx` block. */
+/**
+ * A block avatar's look: one of the shapes in one of the hues, and whether its face is drawn (as
+ * the bot chose in its details); Talyx is its own `talyx` block.
+ */
 export interface ModuleLook {
   shape: BlockShape | 'talyx'
   // An index into the hues, below `avatars.hueCount`.
   hue: number
+  faces: boolean
 }
 
 /**

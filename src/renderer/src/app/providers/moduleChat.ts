@@ -6,7 +6,7 @@ import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { useChat } from '@features/chat/store'
 import type { ChatActions } from '@features/chat/chat'
-import { provideModuleChat, type ModuleChat, type ModuleLook } from '@features/modules/host'
+import { provideModuleChat, type ModuleChat } from '@features/modules/host'
 import { problemText } from '@shared/lib/problem'
 
 export class ModuleChatError extends Error {
@@ -42,7 +42,7 @@ export function moduleChat(actions: () => ChatActions | null): ModuleChat {
         name: botTitle(bot),
         manager: bot.name === MANAGER,
         // As the roster draws it: Talyx is its own block, the others their saved look.
-        look: bot.name === MANAGER ? { shape: 'talyx', hue: 0 } : lookShapeHue(bot)
+        look: bot.name === MANAGER ? { shape: 'talyx', hue: 0, faces: true } : lookOf(bot)
       })),
     send: async (bot, text) => {
       const chat = connected()
@@ -62,11 +62,6 @@ export function moduleChat(actions: () => ChatActions | null): ModuleChat {
       return chat.recent(bot, Math.min(Math.max(1, Math.floor(limit)), MAX_REPLIES))
     }
   }
-}
-
-function lookShapeHue(bot: Parameters<typeof lookOf>[0]): ModuleLook {
-  const { shape, hue } = lookOf(bot)
-  return { shape, hue }
 }
 
 function knownBot(bot: unknown): void {
