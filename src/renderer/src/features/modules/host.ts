@@ -75,7 +75,7 @@ export async function importModule(id: string, version: string): Promise<ModuleP
     React,
     jsxRuntime
   }
-  const url = `${MODULE_SCHEME}://${id}/renderer.js?v=${encodeURIComponent(version)}`
+  const url = moduleFileUrl(id, 'renderer.js', version)
   const loaded = (await import(/* @vite-ignore */ url)) as Record<string, unknown>
   if (typeof loaded.default !== 'function') throw new Error(`The ${id} module has no page to show.`)
   return {
@@ -90,7 +90,16 @@ function componentOrNull(value: unknown): React.ComponentType<never> | null {
 }
 
 export function moduleStyleUrl(id: string, version: string): string {
-  return `${MODULE_SCHEME}://${id}/style.css?v=${encodeURIComponent(version)}`
+  return moduleFileUrl(id, 'style.css', version)
+}
+
+/**
+ * A module page file: from talyx-module:// in Electron, or through the dev bridge in a browser tab
+ * driving a dev run, where that scheme cannot load.
+ */
+function moduleFileUrl(id: string, file: string, version: string): string {
+  const base = window.electron?.bridged ? `/bridge/module/${id}` : `${MODULE_SCHEME}://${id}`
+  return `${base}/${file}?v=${encodeURIComponent(version)}`
 }
 
 export function moduleInvoker(id: string): ModulePageProps['invoke'] {

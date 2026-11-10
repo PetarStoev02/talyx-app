@@ -81,7 +81,7 @@ export function installBrowserBridge(): void {
   })
   Object.assign(window, {
     api: buildApi(transport),
-    electron: { platform: 'darwin' }
+    electron: { platform: 'darwin', bridged: true }
   })
   console.info(
     '[Talyx] Browser dev bridge active: window.api forwards to the Electron main process'
