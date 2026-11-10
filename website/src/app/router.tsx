@@ -21,6 +21,7 @@ const FeaturePage = lazyRouteComponent(() => import('../pages/features/FeaturePa
 const ContactPage = lazyRouteComponent(() => import('../pages/contact/ContactPage'), 'ContactPage')
 const RoadmapPage = lazyRouteComponent(() => import('../pages/roadmap/RoadmapPage'), 'RoadmapPage')
 const LegalPage = lazyRouteComponent(() => import('../pages/legal/LegalPage'), 'LegalPage')
+const PricingPage = lazyRouteComponent(() => import('../pages/pricing/PricingPage'), 'PricingPage')
 const DesignPage = lazyRouteComponent(() => import('../pages/design/DesignPage'), 'DesignPage')
 
 const rootRoute = createRootRoute({
@@ -58,6 +59,12 @@ const roadmapRoute = createRoute({
   component: RoadmapPage
 })
 
+const pricingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/pricing',
+  component: PricingPage
+})
+
 const legalRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/legal/$slug',
@@ -78,6 +85,7 @@ const routeTree = rootRoute.addChildren([
   pressRoute,
   contactRoute,
   roadmapRoute,
+  pricingRoute,
   legalRoute,
   designRoute
 ])

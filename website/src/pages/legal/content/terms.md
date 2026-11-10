@@ -6,13 +6,13 @@
 
 ## 1. Acceptance
 
-By downloading, installing or using Talyx ("the App"), you agree to these Terms of Service.
+By downloading, installing or using Talyx ("the App"), or buying a Talyx module, you agree to these Terms of Service. They are an agreement between you and [SELLER LEGAL NAME] ("we", "us").
 
 ---
 
 ## 2. Licence
 
-Talyx is free and open source under the GNU Affero General Public License, version 3 only (AGPL-3.0-only). The full text is in the [LICENSE file](https://github.com/PetarStoev02/talyx-app/blob/main/LICENSE) in the source repository. There is nothing to buy, nothing to activate and no account to create.
+Talyx is free and open source under the GNU Affero General Public License, version 3 only (AGPL-3.0-only). The full text is in the [LICENSE file](https://github.com/PetarStoev02/talyx-app/blob/main/LICENSE) in the source repository. The App needs no purchase, no activation and no account. Optional paid modules are covered in Section 6.
 
 Your bots run on models from providers you choose. Any charges from those providers are between you and them (see Section 5).
 
@@ -46,25 +46,39 @@ Bots can take actions on your computer through the engine. Some actions ask for 
 
 ---
 
-## 6. Intellectual Property
+## 6. Paid Modules
 
-The source code is released under the AGPL-3.0 licence (Section 2). That licence does not cover this website's text and images, or the Talyx name and logo. It also does not cover Talyx modules, which are separate add-ons with their own licence. The name and logo are not licensed for use in other products, or to suggest that a product is endorsed by or affiliated with Talyx.
+Talyx modules add new kinds of work to the App, such as Workflows. They are optional, are not part of the open source code, and are sold for a one-time price shown on our [pricing page](/pricing).
 
----
-
-## 7. Limitation of Liability
-
-Talyx is provided "as is", without warranty of any kind, express or implied, including the warranties of merchantability, fitness for a particular purpose and non-infringement, as set out in the AGPL-3.0 licence. In no event are the authors liable for any claim, damages or other liability arising from the use of the App, including data loss, provider charges, or the consequences of actions your bots take. Keep backups of your files.
-
----
-
-## 8. Privacy
-
-See our [Privacy Policy](/legal/privacy) for how data moves between Talyx, the engine, your model providers and GitHub, and for what this website counts. Talyx has no server of its own.
+- **Who sells them.** Our order process is conducted by our online reseller Paddle.com. Paddle.com is the Merchant of Record for all our orders. Paddle provides all customer service inquiries and handles returns. Paddle's [buyer terms](https://www.paddle.com/legal/invoiced-consumer-terms) also apply to your purchase.
+- **Your license key.** After you pay, we email you a license key. It lets you install the modules you bought on your own computers. It is for you, not for sharing or resale.
+- **Updates.** A purchase includes every update we publish for the modules you bought, at no extra cost.
+- **Refunds.** You can ask for a full refund within 30 days of purchase. See the [refund policy](/legal/refund).
+- **Changes.** We may change prices for future purchases. A change never affects a purchase you have already made.
 
 ---
 
-## 9. Contact
+## 7. Intellectual Property
+
+The App's source code is released under the AGPL-3.0 licence (Section 2). That licence does not cover this website's text and images, or the Talyx name and logo. Paid modules are licensed to you under Section 6, not under the AGPL-3.0 licence. The name and logo are not licensed for use in other products, or to suggest that a product is endorsed by or affiliated with Talyx.
+
+---
+
+## 8. Limitation of Liability
+
+Talyx is provided "as is", without warranty of any kind, express or implied, including the warranties of merchantability, fitness for a particular purpose and non-infringement, as set out in the AGPL-3.0 licence. Paid modules are provided on the same basis, except for any rights consumer law gives you that cannot be excluded. In no event are the authors liable for any claim, damages or other liability arising from the use of the App, including data loss, provider charges, or the consequences of actions your bots take. Keep backups of your files.
+
+---
+
+## 9. Privacy
+
+See our [Privacy Policy](/legal/privacy) for how data moves between Talyx, the engine, your model providers and GitHub, and for what this website counts. The App has no server of its own; buying a module involves Paddle and our license server, as the Privacy Policy describes.
+
+---
+
+## 10. Contact
+
+Purchases, license keys and refunds: [SUPPORT EMAIL].
 
 Questions about these terms, bugs and ideas: [GitHub Issues](https://github.com/PetarStoev02/talyx-app/issues). Issues are public.
 

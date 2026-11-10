@@ -168,6 +168,18 @@ export const seoData: Record<string, PageMeta> = {
       'Talyx is free software under the AGPL-3.0 licence, provided as is. What the licence lets you do, and what the website and the app do not promise.',
     canonical: '/legal/terms'
   },
+  '/legal/refund': {
+    title: 'Refund Policy: Talyx | 30-Day Refunds on Modules',
+    description:
+      'Talyx modules are sold through Paddle.com, our Merchant of Record. Ask within 30 days of purchase for a full refund, no reason needed.',
+    canonical: '/legal/refund'
+  },
+  '/pricing': {
+    title: 'Pricing: Talyx | Free App, One-Time Modules',
+    description:
+      'Talyx is free and open source. Modules are a one-time purchase: Workflows $47, Talyx Pro with every module $92, with every later update included.',
+    canonical: '/pricing'
+  },
   '/legal/privacy': {
     title: 'Privacy Policy: Talyx | No Server, No Telemetry in the App',
     description:

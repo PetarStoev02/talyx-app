@@ -2,13 +2,16 @@
 
 **Last Updated:** November 2026
 
+This policy is published by [SELLER LEGAL NAME], who sells Talyx modules.
+
 ---
 
 ## 1. The Short Version
 
 - Talyx has no server, no account and no telemetry. The app sends nothing about you to us.
 - Your bots run on the engine, on your computer. What a bot sends goes from the engine to the model provider you set up for it, under that provider's terms. A bot's tools, like web search or a command it runs, can reach other services too. Some ask for your approval first.
-- On the internet, Talyx itself reaches only GitHub: to check for a new release, to download an update (in the background on macOS and in the AppImage; a deb install updates from the release page instead), and to fetch the engine's install steps. Those steps then download the engine.
+- On the internet, Talyx itself reaches only GitHub: to check for a new release, to download an update (in the background on macOS and in the AppImage; a deb install updates from the release page instead), and to fetch the engine's install steps. Those steps then download the engine. Only after you enter a module license key does Talyx also reach our module server, to download the modules you bought.
+- If you buy a module, Paddle.com handles the payment and we receive your email address and what you bought, to send you a license key. See Section 8.
 - This website counts page views and download clicks with PostHog, hosted in the EU, and measures page speed with Vercel Speed Insights, both without cookies.
 
 ---
@@ -43,7 +46,7 @@ When you add an API key or a custom endpoint in Settings, Talyx passes it to the
 
 ## 5. What Talyx Downloads
 
-Every download the app makes itself comes from GitHub, from the releases of `PetarStoev02/talyx-app`. GitHub sees each request like any other web request.
+Every download the app makes itself comes from GitHub, from the releases of `PetarStoev02/talyx-app`, except paid modules (Section 8). GitHub sees each request like any other web request.
 
 - **Release check.** Shortly after launch, and then once a day, Talyx asks GitHub whether a newer release exists.
 - **Update download.** On macOS and in the AppImage, Talyx downloads a new release in the background and checks it against the checksums in the release's `latest-mac.yml` or `latest-linux.yml`. On macOS the update must also be signed with the same Developer ID. It installs when you click Restart to update or when you quit Talyx; Talyx never restarts by itself. A Linux deb install downloads nothing: Talyx links to the release page instead.
@@ -81,18 +84,29 @@ Vercel hosts the site and keeps standard server logs of requests, like any web h
 
 ---
 
-## 8. Your Rights
+## 8. Buying a Module
 
-Talyx holds no data about you. The website's counts carry no name, account, cookie or IP address, so we cannot tell which are yours. We have nothing to access, correct or delete for you. Data you send to your model providers, GitHub, Vercel or PostHog is governed by their policies. Exercise your rights (access, correction, deletion, restriction, portability) with them directly.
+Talyx itself is free. If you buy a paid module:
+
+- **Paddle.** Paddle.com is our Merchant of Record. Paddle collects your payment details, name, email address, country and tax information, under [Paddle's privacy notice](https://www.paddle.com/legal/privacy). We never see your card details.
+- **What we receive.** Paddle tells us your email address, your country, what you bought and the order's ID. We use them to create your license key, send it to you, answer your questions and handle refunds.
+- **Your license key.** We email the key to you. It carries the modules you bought and is checked by our license server each time the App downloads a module. That check sees the key and your IP address, like any web request.
+- **How long.** We keep order records as long as tax and accounting law requires.
 
 ---
 
-## 9. Changes
+## 9. Your Rights
+
+The App holds no data about you. If you bought a module, we hold your order record (Section 8): write to [SUPPORT EMAIL] to access, correct or delete it, within what tax law lets us delete. The website's counts carry no name, account, cookie or IP address, so we cannot tell which are yours, so for them we have nothing to access, correct or delete. Data you send to your model providers, GitHub, Vercel or PostHog is governed by their policies. Exercise your rights (access, correction, deletion, restriction, portability) with them directly.
+
+---
+
+## 10. Changes
 
 When this policy changes, the new version is posted on this page with a new date.
 
 ---
 
-## 10. Contact
+## 11. Contact
 
-Privacy questions: [GitHub Issues](https://github.com/PetarStoev02/talyx-app/issues). Issues are public, so for anything sensitive use a [private security report](https://github.com/PetarStoev02/talyx-app/security/advisories/new).
+Privacy questions: [SUPPORT EMAIL], or [GitHub Issues](https://github.com/PetarStoev02/talyx-app/issues). Issues are public, so for anything sensitive use a [private security report](https://github.com/PetarStoev02/talyx-app/security/advisories/new).

@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import { GUTTER, STEP } from '@/shared/ui/page'
 
 import privacyMd from './content/privacy.md?raw'
+import refundMd from './content/refund.md?raw'
 import termsMd from './content/terms.md?raw'
 
 const pages: Record<string, { content: string; lead: string }> = {
@@ -14,7 +15,11 @@ const pages: Record<string, { content: string; lead: string }> = {
   },
   terms: {
     content: termsMd,
-    lead: 'The terms for using Talyx, which is free and open source under the AGPL-3.0 licence.'
+    lead: 'The terms for using Talyx, which is free and open source, and for buying its modules.'
+  },
+  refund: {
+    content: refundMd,
+    lead: 'How to get your money back for a Talyx module.'
   }
 }
 

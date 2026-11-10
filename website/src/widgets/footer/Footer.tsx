@@ -74,6 +74,16 @@ export function Footer() {
           >
             Terms
           </Link>
+          <Link
+            to="/legal/$slug"
+            params={{ slug: 'refund' }}
+            className="hover:text-[var(--color-text-primary)]"
+          >
+            Refunds
+          </Link>
+          <Link to="/pricing" className="hover:text-[var(--color-text-primary)]">
+            Pricing
+          </Link>
           <a href="/OFL-Geist.txt" className="hover:text-[var(--color-text-primary)]">
             Font licence
           </a>
