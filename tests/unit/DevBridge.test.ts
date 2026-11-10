@@ -192,6 +192,8 @@ describe('DevBridge over HTTP', () => {
       expect(await found.text()).toBe('export default 1')
       const missing = await fetch(`http://127.0.0.1:${port}/bridge/module/workflows/main.js`)
       expect(missing.status).toBe(404)
+      const malformed = await fetch(`http://127.0.0.1:${port}/bridge/module/%E0/renderer.js`)
+      expect(malformed.status).toBe(404)
     })
   })
 

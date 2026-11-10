@@ -189,11 +189,20 @@ export class DevBridge {
     res.end()
   }
 
+  /** The module file a path names, or null for none, or for a malformed escape in it. */
+  private moduleFileAt(id: string, name: string): ReturnType<ModuleFiles> {
+    try {
+      return this.moduleFiles?.(decodeURIComponent(id), decodeURIComponent(name)) ?? null
+    } catch {
+      return null
+    }
+  }
+
   private serveModuleFile(url: string, res: ServerResponse): void {
     const [id = '', name = ''] = new URL(url, 'http://bridge').pathname
       .slice(MODULE_FILES.length)
       .split('/')
-    const file = this.moduleFiles?.(decodeURIComponent(id), decodeURIComponent(name)) ?? null
+    const file = this.moduleFileAt(id, name)
     if (!file) {
       res.writeHead(404)
       res.end()
