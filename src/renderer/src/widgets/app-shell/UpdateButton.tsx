@@ -214,9 +214,10 @@ function EngineRow({
       {!installing && (
         <Button
           className="self-start"
-          onClick={() => {
-            // The Agents page's engine gate runs the install, with its output and restart step.
-            navigate('agents')
+          onClick={async () => {
+            // The Agents page's engine gate runs the install, with its output and restart step;
+            // a module page holding unsaved work may keep the user there, and then nothing starts.
+            if (!(await navigate('agents'))) return
             requestEngineInstall()
             onInstall()
           }}
