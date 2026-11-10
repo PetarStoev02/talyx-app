@@ -1,13 +1,37 @@
 import * as React from 'react'
 import * as jsxRuntime from 'react/jsx-runtime'
 import { modulesApi } from '@shared/api/ipc'
+import { BlockAvatar } from '@shared/ui/BlockAvatar'
+import { BLOCK_HUES, BLOCK_SHAPES } from '@shared/ui/blockGeometry'
+import type { BlockShape } from '@shared/ui/blockGeometry'
 import { MODULE_API_VERSION, MODULE_SCHEME } from '../../../../shared/modules'
 
-/** A bot as a module sees it: its profile id, the name you know it by, and whether it is Talyx. */
+/** A block avatar's look: one of the shapes in one of the hues; Talyx is its own `talyx` block. */
+export interface ModuleLook {
+  shape: BlockShape | 'talyx'
+  // An index into the hues, below `avatars.hueCount`.
+  hue: number
+}
+
+/**
+ * A bot as a module sees it: its profile id, the name you know it by, whether it is Talyx, and
+ * its avatar's look, to draw with the host's `avatars`.
+ */
 export interface ModuleBot {
   id: string
   name: string
   manager: boolean
+  look: ModuleLook
+}
+
+/**
+ * Talyx's block avatars, for a module page: the component the roster draws, and the shapes and
+ * the number of hues, so a module can offer a look of its own (a workflow's, say).
+ */
+export interface ModuleAvatars {
+  BlockAvatar: typeof BlockAvatar
+  shapes: readonly BlockShape[]
+  hueCount: number
 }
 
 /**
@@ -38,6 +62,8 @@ export interface ModulePageHost {
   sidebar: boolean
   /** The bots' chats: send a bot a message, read its replies. Older Talyx has none. */
   chat?: ModuleChat
+  /** Talyx's block avatars. Older Talyx has none, so a page keeps icons of its own. */
+  avatars?: ModuleAvatars
   React: typeof React
   jsxRuntime: typeof jsxRuntime
 }
@@ -60,6 +86,12 @@ export interface ModuleParts {
   icon: React.ComponentType | null
 }
 
+export const MODULE_AVATARS: ModuleAvatars = {
+  BlockAvatar,
+  shapes: BLOCK_SHAPES,
+  hueCount: BLOCK_HUES.length
+}
+
 // Set by the app layer, which owns the chat; modules reach it only through the host.
 let provided: ModuleChat | undefined
 
@@ -72,6 +104,7 @@ export async function importModule(id: string, version: string): Promise<ModuleP
     apiVersion: MODULE_API_VERSION,
     sidebar: true,
     chat: provided,
+    avatars: MODULE_AVATARS,
     React,
     jsxRuntime
   }

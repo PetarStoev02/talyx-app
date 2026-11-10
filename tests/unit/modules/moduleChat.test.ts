@@ -3,6 +3,7 @@ import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { useChat } from '../../../src/renderer/src/features/chat/store'
 import type { ChatActions } from '../../../src/renderer/src/features/chat/chat'
 import { ModuleChatError, moduleChat } from '../../../src/renderer/src/app/providers/moduleChat'
+import { matchName } from '../../../src/renderer/src/features/bots/look'
 
 const bot = (name: string, display_name?: string): object => ({ meta: {}, name, display_name })
 
@@ -34,10 +35,28 @@ describe('a module page talking to the bots', () => {
   })
 
   it('should list the bots by the names you know them by, marking Talyx', () => {
-    expect(chat.bots()).toEqual([
+    expect(chat.bots().map(({ id, name, manager }) => ({ id, name, manager }))).toEqual([
       { id: 'default', name: 'Talyx', manager: true },
       { id: 't3-tots', name: 'T3 Tots', manager: false }
     ])
+  })
+
+  it("should give each bot its avatar's look: Talyx its own block, the others their saved one", () => {
+    useRoster.setState({
+      snapshot: {
+        ...useRoster.getState().snapshot,
+        bots: [bot('default', 'Talyx'), { ...bot('t3-tots'), meta: { shape: 'slab', color: 3 } }]
+      } as never
+    })
+    expect(chat.bots().map((known) => known.look)).toEqual([
+      { shape: 'talyx', hue: 0 },
+      { shape: 'slab', hue: 3 }
+    ])
+  })
+
+  it('should give a bot with no saved look the one its name picks, as the roster shows it', () => {
+    const [, plain] = chat.bots()
+    expect(plain.look).toEqual(matchName('t3-tots'))
   })
 
   it("should send through the bot's chat, as typing would", async () => {
