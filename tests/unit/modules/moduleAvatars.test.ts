@@ -11,5 +11,6 @@ describe('the block avatars a module page gets from Talyx', () => {
   it('should offer every block shape and the number of hues, for a look picker', () => {
     expect(MODULE_AVATARS.shapes).toEqual(BLOCK_SHAPES)
     expect(MODULE_AVATARS.hueCount).toBe(BLOCK_HUES.length)
+    expect(MODULE_AVATARS.hues).toEqual(BLOCK_HUES)
   })
 })

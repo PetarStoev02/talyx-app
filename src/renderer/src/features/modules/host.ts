@@ -29,13 +29,15 @@ export interface ModuleBot {
 }
 
 /**
- * Talyx's block avatars, for a module page: the component the roster draws, and the shapes and
- * the number of hues, so a module can offer a look of its own (a workflow's, say).
+ * Talyx's block avatars, for a module page: the component the roster draws, the shapes, and the
+ * hues (oklch angles, in picker order; a look's `hue` is an index), so a module can draw looks of
+ * its own in the bots' colors.
  */
 export interface ModuleAvatars {
   BlockAvatar: typeof BlockAvatar
   shapes: readonly BlockShape[]
   hueCount: number
+  hues: readonly number[]
 }
 
 /**
@@ -128,7 +130,8 @@ export interface ModuleParts {
 export const MODULE_AVATARS: ModuleAvatars = {
   BlockAvatar,
   shapes: BLOCK_SHAPES,
-  hueCount: BLOCK_HUES.length
+  hueCount: BLOCK_HUES.length,
+  hues: BLOCK_HUES
 }
 
 // Set by the app layer, which owns the chat; modules reach it only through the host.
