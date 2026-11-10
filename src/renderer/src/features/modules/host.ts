@@ -4,6 +4,8 @@ import { modulesApi } from '@shared/api/ipc'
 import { BlockAvatar } from '@shared/ui/BlockAvatar'
 import { BLOCK_HUES, BLOCK_SHAPES } from '@shared/ui/blockGeometry'
 import type { BlockShape } from '@shared/ui/blockGeometry'
+import { setLeaveGuard } from './leaveGuard'
+import type { LeaveGuard } from './leaveGuard'
 import { MODULE_API_VERSION, MODULE_SCHEME } from '../../../../shared/modules'
 
 /**
@@ -75,6 +77,12 @@ export interface ModulePageHost {
    * page keeps a way to create of its own.
    */
   createItems?: boolean
+  /**
+   * Asks the page before Talyx navigates away from it (Agents, Settings, another module): the
+   * page sets a guard while it holds unsaved work and clears it with null. The guard answers
+   * false to keep the user there; its promise must settle. Older Talyx has none.
+   */
+  setLeaveGuard?: (guard: LeaveGuard | null) => void
   React: typeof React
   jsxRuntime: typeof jsxRuntime
 }
@@ -147,6 +155,7 @@ export async function importModule(id: string, version: string): Promise<ModuleP
     chat: provided,
     avatars: MODULE_AVATARS,
     createItems: true,
+    setLeaveGuard,
     React,
     jsxRuntime
   }

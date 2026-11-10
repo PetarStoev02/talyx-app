@@ -26,6 +26,7 @@ import { setupVisibility } from '@features/setup/steps'
 import { useSetup } from '@features/setup/store'
 import { useEngine } from '@app/providers/useEngine'
 import { moduleIdOf, runningModules, useModules } from '@features/modules/store'
+import { setLeaveGuard } from '@features/modules/leaveGuard'
 import { useModuleChat } from '@app/providers/moduleChat'
 import { useSelectionMemory } from '@app/providers/useSelectionMemory'
 
@@ -65,7 +66,11 @@ function App(): React.JSX.Element {
   // A module page whose module stopped, expired or was removed hands back to the agents, so a
   // later key does not jump straight to it.
   useEffect(() => {
-    if (moduleIdOf(currentView) && !openModule) navigate('agents')
+    if (moduleIdOf(currentView) && !openModule) {
+      // The page is gone, so nothing is left to ask.
+      setLeaveGuard(null)
+      navigate('agents')
+    }
   }, [currentView, openModule, navigate])
 
   useEffect(() => {
