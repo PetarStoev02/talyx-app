@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { MANAGER } from '@features/bots/details'
+import { lookOf } from '@features/bots/look'
 import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { useChat } from '@features/chat/store'
@@ -39,7 +40,9 @@ export function moduleChat(actions: () => ChatActions | null): ModuleChat {
       useRoster.getState().snapshot.bots.map((bot) => ({
         id: bot.name,
         name: botTitle(bot),
-        manager: bot.name === MANAGER
+        manager: bot.name === MANAGER,
+        // As the roster draws it: Talyx is its own block, the others their saved look.
+        look: bot.name === MANAGER ? { shape: 'talyx', hue: 0, faces: true } : lookOf(bot)
       })),
     send: async (bot, text) => {
       const chat = connected()

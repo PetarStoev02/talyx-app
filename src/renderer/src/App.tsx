@@ -144,7 +144,7 @@ function App(): React.JSX.Element {
         />
       ) : (
         <AppShell
-          titleEnd={rosterBackend && <RosterAdd />}
+          titleEnd={rosterBackend && <RosterAdd module={openModule ?? null} />}
           footerEnd={rosterBackend && <RosterRefresh backend={rosterBackend} />}
           roster={roster}
           sidebar={openModule && <ModuleSidebar module={openModule} />}
