@@ -100,6 +100,7 @@ Open the release page only show a toast.
 | `downloading` | A download already running (progress ring, Cancel back to available)            |
 | `ready`       | Ready: Restart to update                                                        |
 | `failed`      | A checksum failure: Try again (fails again) and Open the release page           |
+| `unsigned`    | A feed Talyx did not sign: the same, with the signature message                 |
 | `nodownload`  | Available with nothing Talyx can download itself: only Open the release page    |
 | `engine`      | The engine item only (0.22.5 below the pin); its action runs the engine install |
 | `both`        | The engine item above the Talyx item, one button                                |

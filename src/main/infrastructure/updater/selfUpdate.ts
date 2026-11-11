@@ -11,6 +11,7 @@ const CHECKSUM_MISMATCH = 'ERR_CHECKSUM_MISMATCH'
 
 let configured = false
 
+const NOT_FOUND = 404
 const FEED_TIMEOUT_MS = 10_000
 // A feed is a few hundred bytes; anything far larger is not one.
 const MAX_FEED_BYTES = 64 * 1024
@@ -72,7 +73,7 @@ export async function downloadSelfUpdate(
 /**
  * Refuses an update whose feed Talyx did not sign. electron-updater downloads exactly the files
  * of the update it offered and checks each against its sha512, so a signed feed of the same
- * version listing those sha512 means the files are the ones the release workflow built.
+ * version listing those files means they are the ones the release workflow built.
  */
 async function requireSignedFeed(
   source: FeedSource,
@@ -80,15 +81,19 @@ async function requireSignedFeed(
   signal: AbortSignal
 ): Promise<void> {
   const feed = UPDATE_FEED_NAME[process.platform]
-  // The version goes into a URL, and it comes from the feed that is not trusted yet.
-  if (!feed || !/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(offered.version))
-    throw new ReleaseDownloadError('signature', 'The update has no feed to check')
+  if (!feed) throw new ReleaseDownloadError('signature', 'The update has no feed to check')
+  // The version is the one the release check offered (downloadSelfUpdate), a plain x.y.z.
   const url = `${RELEASE_ASSET_PREFIX}v${offered.version}/${feed}`
   const read = async (from: string): Promise<Buffer> => {
     const response = await source.fetch(from, {
       signal: AbortSignal.any([signal, AbortSignal.timeout(FEED_TIMEOUT_MS)])
     })
-    if (!response.ok) throw new ReleaseDownloadError('signature', `${from}: ${response.status}`)
+    // Not there means not signed; any other answer is GitHub failing, and says nothing of that.
+    if (response.status === NOT_FOUND)
+      throw new ReleaseDownloadError('signature', `${from} is missing`)
+    if (!response.ok) throw new ReleaseDownloadError('other', `${from}: ${response.status}`)
+    if (Number(response.headers.get('content-length') ?? 0) > MAX_FEED_BYTES)
+      throw new ReleaseDownloadError('signature', `${from} is too large`)
     const bytes = Buffer.from(await response.arrayBuffer())
     if (bytes.length > MAX_FEED_BYTES)
       throw new ReleaseDownloadError('signature', `${from} is too large`)

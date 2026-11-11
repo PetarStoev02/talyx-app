@@ -154,6 +154,14 @@ jobs:
           ENGINE_INSTALL_JSON: ${{ secrets.ENGINE_INSTALL_JSON }}
         run: source scripts/release-lib.sh && write_install_file_from_secret release/engine-install.json
 
+      # sign-release takes the feeds from this artifact, not from the draft: a draft's files can
+      # be replaced by whoever can write to the repository, a run's artifacts by nobody.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: feeds
+          path: release/latest-*.yml
+          if-no-files-found: error
+
       # The update feeds (latest-*.yml) are not signed here: the key that signs them is never on
       # GitHub, so nobody who gets into the repository can sign an update. The owner signs the
       # draft's feeds with `npm run sign-release` before publishing; until then installed copies

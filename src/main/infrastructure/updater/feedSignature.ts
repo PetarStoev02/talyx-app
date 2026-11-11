@@ -5,10 +5,9 @@ import { publicKey } from '../modules/signing'
 
 /**
  * The update feed (latest-mac.yml, latest-linux.yml) names the files of a release and their
- * sha512. The release workflow signs it with a key GitHub's release page does not hold, so a
- * release someone else publishes on the repository cannot make Talyx install their files. The
- * private half never goes to GitHub: the owner signs a draft's feeds on their own machine
- * (npm run sign-release). Only the public half (Ed25519, JWK `x`) is here; scripts/sign-feed.mjs
+ * sha512. The owner signs it on their own machine (npm run sign-release, npm run release) with a
+ * key that never goes to GitHub, so a release someone else publishes on the repository cannot
+ * make Talyx install their files. Only the public half (Ed25519, JWK `x`) is here; scripts/sign-feed.mjs
  * checks its key against it.
  */
 export const UPDATE_FEED_KEY = publicKey('Ywgrlthvt99sP7u5iP1MRzMUV3lx1g7noxBi3T3R6PA')

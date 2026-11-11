@@ -93,8 +93,7 @@ release paths pass `forceCodeSigning`, notarize and staple the DMGs, and check t
 Releases come from the Release workflow (`.github/workflows/release.yml`, Actions → Release → Run
 workflow): macOS DMGs, Linux AppImage + deb, the real-engine smoke test on Linux, then a draft
 release `v<version>` with the update feed (`latest-*.yml`, the mac zips and their blockmaps),
-their signatures (`latest-*.yml.sig`), `engine-install.json` and `SHA256SUMS` (for checking a
-download by hand). Drafts are invisible to installed apps until published. Its body is the optional
+`engine-install.json` and `SHA256SUMS` (for checking a download by hand). Drafts are invisible to installed apps until published. Its body is the optional
 `highlights` input under `## Highlights`, then `docs/release-notes/<version>.md` (write it before
 releasing; no engine name), then GitHub's generated notes. It needs the secret
 `ENGINE_INSTALL_JSON` (base64 of `engine-install.json`), set once per file change with
@@ -103,9 +102,11 @@ releasing; no engine name), then GitHub's generated notes. It needs the secret
 secrets below and fails before the build when one is missing.
 
 The workflow does not sign the update feeds. After it, run `npm run sign-release`
-(`scripts/sign-release.sh`) on the owner's machine, then publish the draft. It signs only a draft
-tagged at a commit of `main` whose files were all uploaded by the workflow, and adds
-`latest-*.yml.sig`. A release published without it still shows in the update button, with its
+(`scripts/sign-release.sh`) on the owner's machine, then publish the draft. It signs the feeds
+the workflow run itself kept (its `feeds` artifact, which nothing outside that run can change),
+for a run of `release.yml` on `main` at the draft's commit, and only when the draft's feeds are
+those same bytes and every file in the draft was uploaded by a workflow. It adds
+`latest-*.yml.sig` to the draft. A release published without it still shows in the update button, with its
 release page instead of Download.
 
 `npm run release` (`scripts/release.sh`) is the local path, macOS DMGs only. Before it, write the

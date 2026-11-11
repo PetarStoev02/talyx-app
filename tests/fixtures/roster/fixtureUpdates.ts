@@ -1,7 +1,16 @@
 import { toast } from 'sonner'
 import type { ReleaseSummary, UpdateState } from '../../../src/shared/updater'
 
-const MODES = ['talyx', 'downloading', 'ready', 'failed', 'nodownload', 'engine', 'both'] as const
+const MODES = [
+  'talyx',
+  'downloading',
+  'ready',
+  'failed',
+  'unsigned',
+  'nodownload',
+  'engine',
+  'both'
+] as const
 export type UpdateMode = (typeof MODES)[number]
 
 const TICK_MS = 200
@@ -41,6 +50,7 @@ function startState(mode: UpdateMode | null): UpdateState {
     return { kind: 'downloading', release: found, received: 0, total: TOTAL_BYTES }
   if (mode === 'ready') return { kind: 'ready', release: found }
   if (mode === 'failed') return { kind: 'failed', release: found, reason: 'checksum' }
+  if (mode === 'unsigned') return { kind: 'failed', release: found, reason: 'signature' }
   if (mode === 'engine' || mode === null) return { kind: 'none' }
   return { kind: 'available', release: found }
 }
@@ -68,8 +78,12 @@ export function fixtureUpdates(mode: UpdateMode | null): Record<string, unknown>
     if (received < state.total) return publish({ ...state, received })
     stop()
     publish(
-      mode === 'failed'
-        ? { kind: 'failed', release: state.release, reason: 'checksum' }
+      mode === 'failed' || mode === 'unsigned'
+        ? {
+            kind: 'failed',
+            release: state.release,
+            reason: mode === 'failed' ? 'checksum' : 'signature'
+          }
         : { kind: 'ready', release: state.release }
     )
   }

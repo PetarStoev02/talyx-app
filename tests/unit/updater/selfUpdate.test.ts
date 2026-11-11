@@ -54,6 +54,7 @@ function releaseWith(files: Record<string, string>): typeof fetch {
     return {
       ok: body !== undefined,
       status: body === undefined ? 404 : 200,
+      headers: new Headers(),
       arrayBuffer: async () => new TextEncoder().encode(body).buffer
     }
   }) as unknown as typeof fetch
@@ -180,7 +181,7 @@ describe('downloadSelfUpdate', () => {
     })
 
     it.each(['../../../evil/repo', '1.0.6/../../x', ''])(
-      'should not build a URL from the version %j',
+      'should fetch nothing for a version %j that is not the one offered',
       async (version) => {
         updater.checkForUpdates.mockResolvedValueOnce({
           isUpdateAvailable: true,
@@ -191,6 +192,24 @@ describe('downloadSelfUpdate', () => {
         expect(fetchFn).not.toHaveBeenCalled()
       }
     )
+
+    it('should not call a feed GitHub failed to serve unsigned', async () => {
+      const failing = vi.fn(async () => ({ ok: false, status: 503 })) as unknown as typeof fetch
+      expect(failureOf(await download(failing).catch((e) => e))).toBe('other')
+      expect(updater.downloadUpdate).not.toHaveBeenCalled()
+    })
+
+    it('should refuse a feed that says it is far larger than a feed is', async () => {
+      const huge = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-length': String(10 * 1024 * 1024) }),
+        arrayBuffer: async () => {
+          throw new Error('read the body')
+        }
+      })) as unknown as typeof fetch
+      expect(failureOf(await download(huge).catch((e) => e))).toBe('signature')
+    })
 
     it.each([
       // The feed also lists the deb; under the AppImage's name it would replace the app.
