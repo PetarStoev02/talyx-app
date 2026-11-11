@@ -6,14 +6,23 @@ import {
   type AvailableModule,
   type LicenseSummary,
   type ModuleStatus,
-  type ModulesState
+  type ModulesState,
+  unlocksModule
 } from '../../../shared/modules'
 import { ModuleActionSchema } from '../ipc/validation'
 import { fetchBundleBytes, fetchCatalog } from './catalog'
-import { readInstalled, remove, stage, swapIn, type InstalledFiles } from './moduleFiles'
+import {
+  installedIds,
+  readInstalled,
+  remove,
+  stage,
+  swapIn,
+  type InstalledFiles
+} from './moduleFiles'
 import {
   expiryTime,
   isExpired,
+  ModuleIdSchema,
   readBundle,
   readLicense,
   type ModuleBundle,
@@ -28,6 +37,8 @@ const CONTENT_TYPES: Record<string, string> = {
 const LIFECYCLE_TIMEOUT_MS = 10_000
 /** setTimeout's ceiling (about 24.8 days); a later expiry is looked at again then. */
 const MAX_TIMER_MS = 2 ** 31 - 1
+/** In userData: one folder per installed module. */
+const MODULES_FOLDER = 'modules'
 
 export class ModuleError extends Error {
   override name = 'ModuleError'
@@ -108,9 +119,8 @@ export function createModuleHost(deps: ModuleHostDeps) {
   function state(): ModulesState {
     const current = activeLicense()
     if (!current) return { license: null, modules: [] }
-    const modules = current.modules.flatMap((id) => {
-      const module = loaded.get(id)
-      if (!module) return []
+    const modules = [...loaded].flatMap(([id, module]) => {
+      if (!unlocksModule(current, id)) return []
       const { name, version, status, problem, bundle } = module
       return [{ id, name, version, status, problem, styled: !!bundle?.files['style.css'] }]
     })
@@ -157,10 +167,10 @@ export function createModuleHost(deps: ModuleHostDeps) {
   }
 
   async function available(): Promise<AvailableModule[]> {
-    const unlocked = requireLicense().modules
+    const current = requireLicense()
     const catalog = await fetchCatalog(deps.fetch, savedKey())
     return catalog
-      .filter((entry) => unlocked.includes(entry.id))
+      .filter((entry) => unlocksModule(current, entry.id))
       .map(({ id, name, version, apiVersion }) => ({
         id,
         name,
@@ -172,7 +182,7 @@ export function createModuleHost(deps: ModuleHostDeps) {
   /** Install or update: download, check the signature, swap the folder in whole, load. */
   function install(id: string): Promise<ModulesState> {
     return serial(async () => {
-      if (!requireLicense().modules.includes(id))
+      if (!unlocksModule(requireLicense(), id))
         throw new ModuleError('Your license does not include this module.')
       const { files, bundle } = await download(id)
       const dir = moduleDir(id)
@@ -252,7 +262,8 @@ export function createModuleHost(deps: ModuleHostDeps) {
 
   function running(id: string): Loaded | null {
     const module = loaded.get(id)
-    return activeLicense()?.modules.includes(id) && module?.status === 'running' ? module : null
+    const current = activeLicense()
+    return current && unlocksModule(current, id) && module?.status === 'running' ? module : null
   }
 
   function setLicense(next: LicenseSummary | null): void {
@@ -300,12 +311,15 @@ export function createModuleHost(deps: ModuleHostDeps) {
     return { files: { bytes, signature: entry.signature }, bundle }
   }
 
+  /** Loads what is installed, not what the key names: a key for every module names none. */
   async function loadLicensed(): Promise<void> {
-    for (const id of activeLicense()?.modules ?? []) await load(id)
+    const installed = await installedIds(join(deps.root, MODULES_FOLDER))
+    for (const id of installed) if (ModuleIdSchema.safeParse(id).success) await load(id)
   }
 
   async function load(id: string): Promise<void> {
-    if (!activeLicense()?.modules.includes(id)) return
+    const current = activeLicense()
+    if (!current || !unlocksModule(current, id)) return
     let files: InstalledFiles | null
     try {
       files = await readInstalled(moduleDir(id))
@@ -401,7 +415,7 @@ export function createModuleHost(deps: ModuleHostDeps) {
   }
 
   function moduleDir(id: string): string {
-    return join(deps.root, 'modules', id)
+    return join(deps.root, MODULES_FOLDER, id)
   }
 
   function changed(): ModulesState {

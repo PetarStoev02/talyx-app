@@ -8,7 +8,7 @@ import {
   createModuleHost,
   type ModuleHost
 } from '../../../src/main/infrastructure/modules/moduleHost'
-import type { ModulesState } from '../../../src/shared/modules'
+import { ALL_MODULES, type ModulesState } from '../../../src/shared/modules'
 import {
   LICENSE,
   helloBundle,
@@ -272,6 +272,54 @@ describe('module host', () => {
       expect(savedKey).toBeNull()
       expect(host.file('hello', 'renderer.js')).toBeNull()
       expect(existsSync(join(root, 'modules', 'hello', 'bundle.json'))).toBe(true)
+    })
+  })
+
+  describe('given a license for every module', () => {
+    const EVERY_MODULE = { ...LICENSE, modules: [ALL_MODULES] }
+
+    it('should list every catalog module, also ones made after the key', async () => {
+      files.set(CATALOG_URL, {
+        modules: [entryFor(helloBundle()), entryFor(helloBundle({ id: 'later', name: 'Later' }))]
+      })
+      await host.activate(issueKey(signer, EVERY_MODULE))
+      expect((await host.available()).map((module) => module.id)).toEqual(['hello', 'later'])
+    })
+
+    it('should install and run a module the key does not name', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer, EVERY_MODULE))
+      const state = await host.install('hello')
+      expect(state.modules).toMatchObject([{ id: 'hello', status: 'running' }])
+      expect(await host.invoke('hello', 'greet', { name: 'Bo' })).toBe('hello Bo from a/b')
+    })
+
+    it('should run every installed module at the next start', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer, EVERY_MODULE))
+      await host.install('hello')
+      const restarted = newHost()
+      await restarted.start()
+      expect(restarted.state().modules).toMatchObject([{ id: 'hello', status: 'running' }])
+    })
+
+    it('should put back a version left aside by an update that was cut short', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer, EVERY_MODULE))
+      await host.install('hello')
+      await rename(join(root, 'modules', 'hello'), join(root, 'modules', 'hello.old'))
+      const restarted = newHost()
+      await restarted.start()
+      expect(restarted.state().modules).toMatchObject([{ id: 'hello', status: 'running' }])
+    })
+
+    it('should stop its modules when a key for other modules replaces it', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer, EVERY_MODULE))
+      await host.install('hello')
+      const state = await host.activate(issueKey(signer, { ...LICENSE, modules: ['other'] }))
+      expect(state.modules).toEqual([])
+      expect(host.file('hello', 'renderer.js')).toBeNull()
     })
   })
 

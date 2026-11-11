@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { moduleRows } from '../../../src/renderer/src/features/modules/rows'
-import type { AvailableModule, ModulesState } from '../../../src/shared/modules'
+import { ALL_MODULES, type AvailableModule, type ModulesState } from '../../../src/shared/modules'
 
 const license = { id: 'k', name: 'Ada', modules: ['hello'], expires: null }
 const installed = (version: string): ModulesState => ({
@@ -46,5 +46,19 @@ describe('module rows', () => {
 
   it('should leave out a module that is neither installed nor offered', () => {
     expect(moduleRows({ license, modules: [] }, [])).toEqual([])
+  })
+})
+
+describe('module rows for a license for every module', () => {
+  const everyModule = { ...license, modules: [ALL_MODULES] }
+
+  it('should show the installed modules and the ones the catalog offers', () => {
+    const state: ModulesState = { ...installed('1.0.0'), license: everyModule }
+    const available = [...offered('1.0.0'), { ...offered('2.0.0')[0]!, id: 'later', name: 'Later' }]
+
+    expect(moduleRows(state, available)).toMatchObject([
+      { id: 'hello', installed: '1.0.0', action: null },
+      { id: 'later', installed: null, action: 'install', offered: '2.0.0' }
+    ])
   })
 })

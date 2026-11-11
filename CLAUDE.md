@@ -176,6 +176,7 @@ src/main/
     │                           # updater.ipc.ts (update download and open), validation.ts (zod at the boundary),
     │                           # modules.ipc.ts (modules: license, install, talyx-module:// files)
     ├── modules/                # signing.ts (license keys and signed module bundles, Ed25519),
+    │                           # a key that names the module id `all` unlocks every module (shared/modules.ts),
     │                           # catalog.ts (the published module list), moduleHost.ts (install, load, run),
     │                           # activationLink.ts (talyx://activate links)
     ├── security/               # webContentsGuard (no new windows, no navigation away),

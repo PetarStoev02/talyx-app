@@ -1,8 +1,10 @@
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const BUNDLE_FILE = 'bundle.json'
 const SIGNATURE_FILE = 'bundle.sig'
+const STAGING_SUFFIX = '.tmp'
+const PREVIOUS_SUFFIX = '.old'
 
 /** A module's files as they sit on disk, not yet checked. */
 export interface InstalledFiles {
@@ -32,6 +34,24 @@ export async function readInstalled(dir: string): Promise<InstalledFiles | null>
   } catch (error) {
     throw new ModuleFilesError(`The installed module is incomplete (${errorCode(error)}).`)
   }
+}
+
+/**
+ * The ids of the modules with a folder in `modulesRoot`, installed or left aside by an update that
+ * was cut short (`readInstalled` puts that one back). No folder yet means none.
+ */
+export async function installedIds(modulesRoot: string): Promise<string[]> {
+  let names: string[]
+  try {
+    names = await readdir(modulesRoot)
+  } catch (error) {
+    if (isMissing(error)) return []
+    throw new ModuleFilesError(`The installed modules cannot be listed (${errorCode(error)}).`)
+  }
+  const ids = names
+    .filter((name) => !name.endsWith(STAGING_SUFFIX))
+    .map((name) => (name.endsWith(PREVIOUS_SUFFIX) ? name.slice(0, -PREVIOUS_SUFFIX.length) : name))
+  return [...new Set(ids)]
 }
 
 /** Writes a downloaded module next to `dir`, ready for `swapIn`. */
@@ -80,11 +100,11 @@ async function restoreInterruptedSwap(dir: string): Promise<void> {
 }
 
 function stagingDir(dir: string): string {
-  return `${dir}.tmp`
+  return `${dir}${STAGING_SUFFIX}`
 }
 
 function previousDir(dir: string): string {
-  return `${dir}.old`
+  return `${dir}${PREVIOUS_SUFFIX}`
 }
 
 function isMissing(error: unknown): boolean {

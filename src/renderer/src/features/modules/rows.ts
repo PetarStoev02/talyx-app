@@ -16,24 +16,25 @@ export interface ModuleRow {
 /**
  * One row per module the license unlocks: what is installed, merged with what the catalog offers
  * (null while the catalog is loading or could not be read, so installed modules still show).
+ * Main already keeps both lists to what the license unlocks, so the rows come from them and not
+ * from the ids the key names: a key for every module names none.
  */
 export function moduleRows(state: ModulesState, available: AvailableModule[] | null): ModuleRow[] {
-  return (state.license?.modules ?? []).flatMap((id) => {
+  if (!state.license) return []
+  const ids = new Set([...state.modules, ...(available ?? [])].map((module) => module.id))
+  return [...ids].map((id) => {
     const installed = state.modules.find((module) => module.id === id) ?? null
     const listed = available?.find((module) => module.id === id) ?? null
-    if (!installed && !listed) return []
     const offered =
       listed?.compatible && listed.version !== installed?.version ? listed.version : null
-    return [
-      {
-        id,
-        name: installed?.name ?? listed?.name ?? id,
-        installed: installed?.version ?? null,
-        status: installed?.status ?? null,
-        problem: installed?.problem ?? null,
-        action: offered ? (installed ? 'update' : 'install') : null,
-        offered
-      }
-    ]
+    return {
+      id,
+      name: installed?.name ?? listed?.name ?? id,
+      installed: installed?.version ?? null,
+      status: installed?.status ?? null,
+      problem: installed?.problem ?? null,
+      action: offered ? (installed ? 'update' : 'install') : null,
+      offered
+    }
   })
 }
