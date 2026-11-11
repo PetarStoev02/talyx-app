@@ -1,8 +1,8 @@
 import { ArrowRight } from 'lucide-react'
 import { REPO_URL } from '../../../shared/data/release'
 import { CTA_LABEL, MIN_MACOS } from '../../../shared/data/offer'
-import { GUTTER, STEP, stagger, Wallpaper } from '../../../shared/ui/page'
-import { RosterChatFragment } from '../../../shared/ui/RosterChatFragment'
+import { GUTTER, STEP, stagger } from '../../../shared/ui/page'
+import { HeroFilm } from './HeroFilm'
 
 export function HeroSection() {
   return (
@@ -53,13 +53,8 @@ export function HeroSection() {
         </div>
       </div>
 
-      <div
-        data-reveal
-        style={stagger(2)}
-        className="relative isolate mt-12 overflow-hidden rounded-2xl px-3 py-6 sm:p-8 md:mt-16 lg:px-16 lg:py-14"
-      >
-        <Wallpaper className="drift" />
-        <RosterChatFragment className="mx-auto max-w-[1040px]" />
+      <div data-reveal style={stagger(2)} className="mt-12 md:mt-16">
+        <HeroFilm />
       </div>
     </section>
   )
