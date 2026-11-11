@@ -1,15 +1,15 @@
 import log from 'electron-log'
 import type { Highlight, ReleaseSummary } from '../../../shared/updater'
+import { FEED_SIGNATURE_SUFFIX } from './feedSignature'
 
 const LATEST_RELEASE_API = 'https://api.github.com/repos/PetarStoev02/talyx-app/releases/latest'
 const RELEASE_PAGE_PREFIX = 'https://github.com/PetarStoev02/talyx-app/releases/'
 
-const RELEASE_ASSET_PREFIX = 'https://github.com/PetarStoev02/talyx-app/releases/download/'
+export const RELEASE_ASSET_PREFIX = 'https://github.com/PetarStoev02/talyx-app/releases/download/'
 // Served from GitHub's CDN, without the API's 60 requests an hour per IP address.
 const LATEST_FEED_PREFIX = 'https://github.com/PetarStoev02/talyx-app/releases/latest/download/'
-const CHECKSUMS_ASSET_NAME = 'SHA256SUMS'
 // electron-updater's feed for the installs that update themselves.
-const UPDATE_FEED_NAME: Partial<Record<NodeJS.Platform, string>> = {
+export const UPDATE_FEED_NAME: Partial<Record<NodeJS.Platform, string>> = {
   darwin: 'latest-mac.yml',
   linux: 'latest-linux.yml'
 }
@@ -17,17 +17,8 @@ const MAX_HIGHLIGHTS = 3
 
 const REQUEST_TIMEOUT_MS = 10_000
 
-export interface ReleaseAsset {
-  name: string
-  url: string
-  size: number
-}
-
 export interface FoundRelease {
   summary: ReleaseSummary
-  /** Installer for this computer; null when the release has none. Never leaves main. */
-  asset: ReleaseAsset | null
-  checksums: ReleaseAsset | null
 }
 
 export type ReleaseCheck =
@@ -91,49 +82,6 @@ export function countChanges(body: string): number {
   ).length
 }
 
-const INSTALLER_EXTENSION: Partial<Record<NodeJS.Platform, string>> = {
-  darwin: '.dmg',
-  win32: '.exe',
-  linux: '.appimage'
-}
-
-// The names a release file can use for each `process.arch` (electron-builder writes x86_64 and
-// amd64 for x64 on Linux).
-const ARCH_NAMES: Record<string, string[]> = {
-  x64: ['x64', 'amd64', 'x86_64'],
-  arm64: ['arm64', 'aarch64'],
-  ia32: ['ia32'],
-  arm: ['armv7l']
-}
-const KNOWN_ARCH_NAMES = Object.values(ARCH_NAMES).flat()
-
-function namesArch(fileName: string, archNames: string[]): boolean {
-  const lower = fileName.toLowerCase()
-  return archNames.some((arch) => new RegExp(`(^|[^a-z0-9])${arch}([^a-z0-9]|$)`).test(lower))
-}
-
-/**
- * The installer for this computer, matched by extension. A file naming this architecture wins; a
- * Mac needs one. Elsewhere a single file naming no architecture will do. Anything else
- * (another architecture only, or two candidates) is ambiguous: null.
- */
-export function pickAsset(
-  assets: ReleaseAsset[],
-  platform: NodeJS.Platform,
-  arch: string
-): ReleaseAsset | null {
-  const extension = INSTALLER_EXTENSION[platform]
-  if (!extension) return null
-  const matching = assets.filter((asset) => asset.name.toLowerCase().endsWith(extension))
-  const forArch = matching.filter((asset) => namesArch(asset.name, ARCH_NAMES[arch] ?? [arch]))
-  if (forArch.length > 0 || platform === 'darwin') return only(forArch)
-  return only(matching.filter((asset) => !namesArch(asset.name, KNOWN_ARCH_NAMES)))
-}
-
-function only(assets: ReleaseAsset[]): ReleaseAsset | null {
-  return assets.length === 1 ? assets[0] : null
-}
-
 function normalisedHref(url: string): string | null {
   try {
     return new URL(url).href
@@ -142,20 +90,18 @@ function normalisedHref(url: string): string | null {
   }
 }
 
-function readAssets(raw: unknown): ReleaseAsset[] {
+/** The names of the release's files that are served from the Talyx repository. */
+function assetNames(raw: unknown): string[] {
   if (!Array.isArray(raw)) return []
-  const assets: ReleaseAsset[] = []
+  const names: string[] = []
   for (const item of raw as Array<Record<string, unknown> | null>) {
     const name = item?.name
     const url = item?.browser_download_url
-    const size = item?.size
     if (typeof name !== 'string' || typeof url !== 'string') continue
-    if (typeof size !== 'number' || !Number.isFinite(size) || size < 0) continue
     // Compare the normalised URL, so a `../` segment cannot climb out of the repository.
-    const href = normalisedHref(url)
-    if (href?.startsWith(RELEASE_ASSET_PREFIX)) assets.push({ name, url: href, size })
+    if (normalisedHref(url)?.startsWith(RELEASE_ASSET_PREFIX)) names.push(name)
   }
-  return assets
+  return names
 }
 
 /**
@@ -222,17 +168,16 @@ export async function fetchLatestRelease(
       return { kind: 'failed' }
     }
     if (!isNewerVersion(body.tag_name, currentVersion)) return { kind: 'up-to-date' }
-    const assets = readAssets(body.assets)
-    // The in-app download replaces an AppImage; a deb install updates from the release page.
-    const asset =
-      target.platform === 'linux' && !target.appImage
-        ? null
-        : pickAsset(assets, target.platform, target.arch)
-    const checksums = assets.find((a) => a.name === CHECKSUMS_ASSET_NAME) ?? null
-    // A release without the feed (1.0.0 and older) still updates the manual way.
-    const selfUpdating = target.platform === 'darwin' || target.appImage
+    // Talyx downloads a release only through its signed update feed: an AppImage or a Mac
+    // install whose release has the feed and its signature. Anything else gets the release page.
+    const names = assetNames(body.assets)
     const feed = UPDATE_FEED_NAME[target.platform]
-    const automatic = selfUpdating && assets.some((a) => a.name === feed)
+    const selfUpdating = target.platform === 'darwin' || target.appImage
+    const downloadable =
+      selfUpdating &&
+      feed !== undefined &&
+      names.includes(feed) &&
+      names.includes(`${feed}${FEED_SIGNATURE_SUFFIX}`)
     const notes = typeof body.body === 'string' ? body.body : ''
     return {
       kind: 'available',
@@ -243,11 +188,8 @@ export async function fetchLatestRelease(
           publishedAt: typeof body.published_at === 'string' ? body.published_at : '',
           highlights: parseHighlights(notes),
           changes: countChanges(notes),
-          automatic,
-          downloadable: automatic || (asset !== null && checksums !== null)
-        },
-        asset,
-        checksums
+          downloadable
+        }
       }
     }
   } catch (err) {

@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { UPDATE_FEED_KEY } from '../../../src/main/infrastructure/updater/feedSignature'
 import type { FoundRelease } from '../../../src/main/infrastructure/updater/releaseCheck'
 
 type Handler = (event: unknown, ...args: unknown[]) => unknown
@@ -6,37 +7,22 @@ type Handler = (event: unknown, ...args: unknown[]) => unknown
 const handlers = new Map<string, Handler>()
 const electron = vi.hoisted(() => ({
   send: vi.fn(),
-  openPath: vi.fn(async () => ''),
-  showItemInFolder: vi.fn(),
-  chmod: vi.fn(async () => undefined),
-  downloadRelease: vi.fn(),
   downloadSelfUpdate: vi.fn(),
   restart: vi.fn(async () => undefined)
 }))
 
 vi.mock('electron', () => ({
   ipcMain: { handle: (channel: string, fn: Handler) => handlers.set(channel, fn) },
-  app: { getPath: (name: string) => `/home/me/${name}` },
-  shell: { openPath: electron.openPath, showItemInFolder: electron.showItemInFolder },
+  app: { getVersion: () => '0.11.0' },
   BrowserWindow: {
     getAllWindows: () => [{ webContents: { send: electron.send, isDestroyed: () => false } }]
   }
 }))
-vi.mock('fs/promises', async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  chmod: electron.chmod
-}))
 vi.mock('electron-log', () => ({ default: { warn: vi.fn(), info: vi.fn() } }))
-vi.mock('../../../src/main/infrastructure/updater/releaseDownload', async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  downloadRelease: electron.downloadRelease
-}))
-
 vi.mock('../../../src/main/infrastructure/updater/selfUpdate', () => ({
   downloadSelfUpdate: electron.downloadSelfUpdate
 }))
 
-const DOWNLOAD = 'https://github.com/PetarStoev02/talyx-app/releases/download/v1.0.0/'
 const RELEASE: FoundRelease = {
   summary: {
     version: '1.0.0',
@@ -44,13 +30,9 @@ const RELEASE: FoundRelease = {
     publishedAt: '',
     highlights: [],
     changes: 0,
-    automatic: false,
     downloadable: true
-  },
-  asset: { name: 'Talyx-arm64.dmg', url: `${DOWNLOAD}Talyx-arm64.dmg`, size: 10 },
-  checksums: { name: 'SHA256SUMS', url: `${DOWNLOAD}SHA256SUMS`, size: 1 }
+  }
 }
-const SAVED = '/home/me/downloads/Talyx-arm64.dmg'
 
 const invoke = (channel: string, ...args: unknown[]): unknown =>
   handlers.get(channel)!({ sender: {} }, ...args)
@@ -59,20 +41,13 @@ const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve,
 
 describe('updater IPC', () => {
   let ipc: typeof import('../../../src/main/infrastructure/ipc/updater.ipc')
-  const platform = process.platform
-
   beforeEach(async () => {
     handlers.clear()
     vi.clearAllMocks()
     vi.resetModules()
-    electron.downloadRelease.mockResolvedValue(SAVED)
     electron.downloadSelfUpdate.mockResolvedValue(electron.restart)
     ipc = await import('../../../src/main/infrastructure/ipc/updater.ipc')
     ipc.registerUpdaterIpc()
-  })
-
-  afterEach(() => {
-    Object.defineProperty(process, 'platform', { value: platform })
   })
 
   it('should report the current state and send every change to the windows', () => {
@@ -83,79 +58,42 @@ describe('updater IPC', () => {
     expect(electron.send).toHaveBeenCalledWith('updater:state', available)
   })
 
-  it('should download only the release main found, into the downloads folder', async () => {
+  it('should download only through the feed Talyx signed, whatever the page sends', async () => {
     ipc.updates.found(RELEASE)
     await invoke('updater:download', { url: 'https://evil.example/x.dmg' }, '/tmp/x')
     await settle()
 
-    expect(electron.downloadRelease).toHaveBeenCalledWith(
-      RELEASE,
-      expect.objectContaining({ dir: '/home/me/downloads' }),
+    expect(electron.downloadSelfUpdate).toHaveBeenCalledWith(
       expect.any(Function),
-      expect.any(AbortSignal)
+      expect.any(AbortSignal),
+      { fetch, key: UPDATE_FEED_KEY }
     )
     expect(invoke('updater:status')).toEqual({ kind: 'ready', release: RELEASE.summary })
   })
 
-  it('should refuse to open the installer until a download is verified', async () => {
+  it('should refuse to install until a download is verified', async () => {
     ipc.updates.found(RELEASE)
     await expect(invoke('updater:install')).rejects.toThrow('No verified download')
-    expect(electron.openPath).not.toHaveBeenCalled()
+    expect(electron.restart).not.toHaveBeenCalled()
   })
 
-  it('should open the verified file and never a path the page sends', async () => {
-    Object.defineProperty(process, 'platform', { value: 'darwin' })
+  it('should download only on request and restart only on install', async () => {
     ipc.updates.found(RELEASE)
-    await invoke('updater:download')
-    await settle()
-    await invoke('updater:install', '/Applications/Evil.app')
-
-    expect(electron.openPath).toHaveBeenCalledWith(SAVED)
-  })
-
-  it('should fail when the system cannot open the installer', async () => {
-    Object.defineProperty(process, 'platform', { value: 'win32' })
-    electron.openPath.mockResolvedValueOnce('No application is associated')
-    ipc.updates.found(RELEASE)
-    await invoke('updater:download')
-    await settle()
-
-    await expect(invoke('updater:install')).rejects.toThrow('could not be opened')
-  })
-
-  it('should make the AppImage executable and show it in its folder on Linux', async () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' })
-    ipc.updates.found(RELEASE)
-    await invoke('updater:download')
-    await settle()
-    await invoke('updater:install')
-
-    expect(electron.chmod).toHaveBeenCalledWith(SAVED, 0o755)
-    expect(electron.showItemInFolder).toHaveBeenCalledWith(SAVED)
-    expect(electron.openPath).not.toHaveBeenCalled()
-  })
-
-  it('should self-update a release only on request and restart only on install', async () => {
-    const automatic = { ...RELEASE, summary: { ...RELEASE.summary, automatic: true } }
-    ipc.updates.found(automatic)
     await settle()
     expect(electron.downloadSelfUpdate).not.toHaveBeenCalled()
 
     await invoke('updater:download')
     await settle()
     expect(electron.downloadSelfUpdate).toHaveBeenCalledOnce()
-    expect(electron.downloadRelease).not.toHaveBeenCalled()
-    expect(invoke('updater:status')).toEqual({ kind: 'ready', release: automatic.summary })
     expect(electron.restart).not.toHaveBeenCalled()
 
-    await invoke('updater:install')
+    await invoke('updater:install', '/Applications/Evil.app')
     expect(electron.restart).toHaveBeenCalledOnce()
-    expect(electron.openPath).not.toHaveBeenCalled()
   })
 
   it('should cancel a running download', async () => {
-    electron.downloadRelease.mockImplementationOnce(
-      (_found: unknown, _deps: unknown, _progress: unknown, signal: AbortSignal) =>
+    electron.downloadSelfUpdate.mockImplementationOnce(
+      (_progress: unknown, signal: AbortSignal) =>
         new Promise((_resolve, reject) => signal.addEventListener('abort', reject))
     )
     ipc.updates.found(RELEASE)

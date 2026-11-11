@@ -45,7 +45,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: source scripts/release-lib.sh && check_mac_signing_env
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: source scripts/release-lib.sh && check_mac_signing_env && check_update_signing_env
 
       - name: Install dependencies
         run: npm ci
@@ -154,8 +155,13 @@ jobs:
           ENGINE_INSTALL_JSON: ${{ secrets.ENGINE_INSTALL_JSON }}
         run: source scripts/release-lib.sh && write_install_file_from_secret release/engine-install.json
 
+      # Talyx downloads a release only when its feed carries this signature (feedSignature.ts).
+      - name: Sign the update feeds
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: node scripts/sign-feed.mjs release/latest-mac.yml release/latest-linux.yml
+
       # Bare file names, so users can run sha256sum -c SHA256SUMS --ignore-missing next to a download.
-      # It lists every file, including the installers the fallback in-app download checks.
       - name: Write SHA256SUMS
         working-directory: release
         run: sha256sum * > SHA256SUMS

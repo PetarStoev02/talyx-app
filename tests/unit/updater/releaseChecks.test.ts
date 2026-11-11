@@ -12,11 +12,8 @@ const RELEASE: FoundRelease = {
     publishedAt: '',
     highlights: [],
     changes: 0,
-    automatic: true,
     downloadable: true
-  },
-  asset: null,
-  checksums: null
+  }
 }
 const HOUR = 60 * 60_000
 

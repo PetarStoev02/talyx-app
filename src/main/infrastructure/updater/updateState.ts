@@ -1,7 +1,6 @@
 import log from 'electron-log'
 import type { ReleaseSummary, UpdateFailure, UpdateState } from '../../../shared/updater'
 import type { FoundRelease } from './releaseCheck'
-import { ReleaseDownloadError } from './releaseDownload'
 
 export type UpdateEvent =
   | { kind: 'found'; release: ReleaseSummary | null }
@@ -10,6 +9,16 @@ export type UpdateEvent =
   | { kind: 'verified' }
   | { kind: 'failed'; reason: UpdateFailure }
   | { kind: 'cancelled' }
+
+export class ReleaseDownloadError extends Error {
+  constructor(
+    readonly reason: UpdateFailure,
+    message: string
+  ) {
+    super(message)
+    this.name = 'ReleaseDownloadError'
+  }
+}
 
 const NONE: UpdateState = { kind: 'none' }
 
@@ -21,7 +30,7 @@ export function next(state: UpdateState, event: UpdateEvent): UpdateState {
       if (state.kind === 'downloading') return state
       // A downloaded self-update installs on quit whatever is offered; it stays until the restart,
       // and the release after it is offered then.
-      if (state.kind === 'ready' && state.release.automatic) return state
+      if (state.kind === 'ready') return state
       if (!event.release) return state.kind === 'none' ? state : NONE
       if (state.kind !== 'none' && state.release.version === event.release.version) {
         // Assets or notes added after publishing reach an idle state; a finished download stays.
@@ -41,7 +50,7 @@ export function next(state: UpdateState, event: UpdateEvent): UpdateState {
     case 'verified':
       return state.kind === 'downloading' ? { kind: 'ready', release: state.release } : state
     case 'failed':
-      // A download fails while downloading; a verified installer fails when it cannot be opened.
+      // A download fails while downloading; a verified one fails when the restart cannot start.
       if (state.kind !== 'downloading' && state.kind !== 'ready') return state
       return { kind: 'failed', release: state.release, reason: event.reason }
     case 'cancelled':
@@ -53,12 +62,11 @@ function sameRelease(a: ReleaseSummary, b: ReleaseSummary): boolean {
   return JSON.stringify(a) === JSON.stringify(b)
 }
 
-/** Installs a verified download: opens the installer, or restarts Talyx into the update. */
+/** Installs a verified download: restarts Talyx into the update. */
 export type Install = () => Promise<void>
 
 export interface UpdateStoreDeps {
   download: (
-    found: FoundRelease,
     onProgress: (received: number, total: number) => void,
     signal: AbortSignal
   ) => Promise<Install>
@@ -76,7 +84,7 @@ export interface UpdateStore {
 
 export function createUpdateStore(deps: UpdateStoreDeps): UpdateStore {
   let state: UpdateState = NONE
-  // What `state` is about, kept in main: the asset URLs never reach the renderer.
+  // What `state` is about.
   let release: FoundRelease | null = null
   let installer: Install | null = null
   let running: AbortController | null = null
@@ -91,14 +99,12 @@ export function createUpdateStore(deps: UpdateStoreDeps): UpdateStore {
 
   async function startDownload(): Promise<void> {
     const target = release
-    if (!target || !apply({ kind: 'download', total: target.asset?.size ?? 0 })) return
+    if (!target || !apply({ kind: 'download', total: 0 })) return
     const controller = new AbortController()
     running = controller
-    // A self-update has no installer asset; its version names it in the log.
-    const name = target.asset?.name ?? `v${target.summary.version}`
+    const name = `v${target.summary.version}`
     try {
       installer = await deps.download(
-        target,
         (received, total) => apply({ kind: 'progress', received, total }),
         controller.signal
       )
@@ -138,7 +144,7 @@ export function createUpdateStore(deps: UpdateStoreDeps): UpdateStore {
       try {
         await installer()
       } catch (error) {
-        // The file is gone or cannot be opened: offer Try again instead of a dead button.
+        // The restart did not start: offer Try again instead of a dead button.
         log.warn('[Updater] The update could not be installed')
         installer = null
         apply({ kind: 'failed', reason: 'other' })

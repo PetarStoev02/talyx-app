@@ -7,37 +7,26 @@ import {
   createUpdateStore,
   next,
   type Install,
+  ReleaseDownloadError,
   type UpdateEvent,
   type UpdateStoreDeps
 } from '../../../src/main/infrastructure/updater/updateState'
-import { ReleaseDownloadError } from '../../../src/main/infrastructure/updater/releaseDownload'
 import type { FoundRelease } from '../../../src/main/infrastructure/updater/releaseCheck'
 import type { ReleaseSummary, UpdateState } from '../../../src/shared/updater'
 
-function summary(version: string, downloadable = true, automatic = false): ReleaseSummary {
+function summary(version: string, downloadable = true): ReleaseSummary {
   return {
     version,
     url: `https://github.com/PetarStoev02/talyx-app/releases/tag/v${version}`,
     publishedAt: '',
     highlights: [],
     changes: 0,
-    automatic,
     downloadable
   }
 }
 
-function found(
-  version: string,
-  downloadable = true,
-  automatic = false,
-  installer: string | null = 'Talyx-arm64.dmg'
-): FoundRelease {
-  const download = 'https://github.com/PetarStoev02/talyx-app/releases/download/'
-  return {
-    summary: summary(version, downloadable, automatic),
-    asset: installer ? { name: installer, url: `${download}${installer}`, size: 10 } : null,
-    checksums: { name: 'SHA256SUMS', url: `${download}SHA256SUMS`, size: 1 }
-  }
+function found(version: string, downloadable = true): FoundRelease {
+  return { summary: summary(version, downloadable) }
 }
 
 const v1 = summary('1.0.0')
@@ -46,7 +35,7 @@ const NONE: UpdateState = { kind: 'none' }
 const available: UpdateState = { kind: 'available', release: v1 }
 const downloading: UpdateState = { kind: 'downloading', release: v1, received: 4, total: 10 }
 const ready: UpdateState = { kind: 'ready', release: v1 }
-const failed: UpdateState = { kind: 'failed', release: v1, reason: 'network' }
+const failed: UpdateState = { kind: 'failed', release: v1, reason: 'other' }
 const unavailable: UpdateState = { kind: 'available', release: summary('1.0.0', false) }
 
 describe('next', () => {
@@ -66,19 +55,13 @@ describe('next', () => {
     ['ready finds the same version', ready, { kind: 'found', release: v1 }, ready],
     [
       'ready finds a newer one',
-      ready,
-      { kind: 'found', release: v2 },
-      { kind: 'available', release: v2 }
-    ],
-    [
-      'a ready self-update finds a newer one',
-      { kind: 'ready', release: summary('1.0.0', true, true) },
-      { kind: 'found', release: summary('1.1.0', true, true) },
-      { kind: 'ready', release: summary('1.0.0', true, true) }
+      { kind: 'ready', release: summary('1.0.0') },
+      { kind: 'found', release: summary('1.1.0') },
+      { kind: 'ready', release: summary('1.0.0') }
     ],
     ['failed finds the same version', failed, { kind: 'found', release: v1 }, failed],
     [
-      'available finds the same version with an installer added',
+      'available finds the same version with its signed feed added',
       unavailable,
       { kind: 'found', release: v1 },
       available
@@ -179,40 +162,22 @@ describe('update store', () => {
     expect(download).not.toHaveBeenCalled()
     await updates.startDownload()
 
-    expect(download).toHaveBeenCalledWith(
-      found('1.0.0'),
-      expect.any(Function),
-      expect.any(AbortSignal)
-    )
-    expect(published.map((s) => s.kind)).toEqual(['available', 'downloading', 'ready'])
-    await updates.install()
-    expect(install).toHaveBeenCalledOnce()
-  })
-
-  it('should wait for the click before downloading a release it installs itself, then for the restart click', async () => {
-    const { updates, published, download, install } = store()
-    updates.found(found('1.0.0', true, true))
-    await settle()
-    expect(download).not.toHaveBeenCalled()
-    expect(updates.current()).toEqual({ kind: 'available', release: summary('1.0.0', true, true) })
-
-    await updates.startDownload()
-    expect(published.map((s) => s.kind)).toEqual(['available', 'downloading', 'ready'])
+    expect(download).toHaveBeenCalledWith(expect.any(Function), expect.any(AbortSignal))
     expect(install).not.toHaveBeenCalled()
-
+    expect(published.map((s) => s.kind)).toEqual(['available', 'downloading', 'ready'])
     await updates.install()
     expect(install).toHaveBeenCalledOnce()
   })
 
   it('should keep offering the restart into a downloaded self-update when a newer release appears', async () => {
     const { updates, download, install } = store()
-    updates.found(found('1.0.0', true, true))
+    updates.found(found('1.0.0'))
     await updates.startDownload()
-    updates.found(found('1.1.0', true, true))
+    updates.found(found('1.1.0'))
     await settle()
 
     expect(download).toHaveBeenCalledOnce()
-    expect(updates.current()).toEqual({ kind: 'ready', release: summary('1.0.0', true, true) })
+    expect(updates.current()).toEqual({ kind: 'ready', release: summary('1.0.0') })
     await updates.install()
     expect(install).toHaveBeenCalledOnce()
   })
@@ -241,22 +206,22 @@ describe('update store', () => {
     expect(updates.current().kind).toBe('ready')
   })
 
-  it('should fail with the download reason and log only the asset name and reason', async () => {
+  it('should fail with the download reason and log only the version and reason', async () => {
     const { updates, download } = store()
     download.mockRejectedValueOnce(new ReleaseDownloadError('checksum', 'mismatch'))
     updates.found(found('1.0.0'))
     await updates.startDownload()
 
     expect(updates.current()).toEqual({ kind: 'failed', release: v1, reason: 'checksum' })
-    expect(logger.warn).toHaveBeenCalledWith('[Updater] Talyx-arm64.dmg failed (checksum)')
+    expect(logger.warn).toHaveBeenCalledWith('[Updater] v1.0.0 failed (checksum)')
   })
 
   it('should return to available when the download is cancelled', async () => {
     const { updates, download } = store()
     download.mockImplementationOnce(
-      (_found, _progress, signal) =>
+      (_progress, signal) =>
         new Promise<Install>((_resolve, reject) =>
-          signal.addEventListener('abort', () => reject(new ReleaseDownloadError('network', 'x')))
+          signal.addEventListener('abort', () => reject(new ReleaseDownloadError('other', 'x')))
         )
     )
     updates.found(found('1.0.0'))

@@ -72,10 +72,13 @@ electron-updater (GitHub provider, `publish` in `electron-builder.yml`). The rel
 time; Settings → About has Check for updates. It reads the version from the latest release's
 `latest-mac.yml` / `latest-linux.yml` (CDN, no API rate limit) and calls the GitHub API only for a
 newer release. The update button then offers the release with Download and Later: nothing
-downloads until the click (sha512 from the yml; on macOS Squirrel.Mac also requires the same code
-signature), then it offers Restart to update, and quitting installs it. It never downloads or
-restarts unasked. A deb, or a release without the feed, falls back: the release page for the deb, otherwise the installer
-download checked against `SHA256SUMS`, which the user opens.
+downloads until the click, then it offers Restart to update, and quitting installs it. It never
+downloads or restarts unasked. The download is checked three ways: the feed must carry Talyx's
+Ed25519 signature (`latest-*.yml.sig`, made by `scripts/sign-feed.mjs`, checked against
+`UPDATE_FEED_KEY` in `updater/feedSignature.ts`), each file must match its sha512 in that feed, and
+on macOS Squirrel.Mac requires the same code signature. So a release someone else publishes on
+the repository cannot update an installed Talyx. A deb, or a release without the signed feed,
+gets the release page and no in-app download.
 
 Electron 44 needs macOS 13 or newer; every macOS version Talyx runs on requires a Developer ID
 app to be notarized, so a release is never shipped signed but not notarized.
@@ -88,13 +91,14 @@ release paths pass `forceCodeSigning`, notarize and staple the DMGs, and check t
 Releases come from the Release workflow (`.github/workflows/release.yml`, Actions → Release → Run
 workflow): macOS DMGs, Linux AppImage + deb, the real-engine smoke test on Linux, then a draft
 release `v<version>` with the update feed (`latest-*.yml`, the mac zips and their blockmaps),
-`engine-install.json` and `SHA256SUMS`. Drafts are invisible to installed apps until published. Its body is the optional
+their signatures (`latest-*.yml.sig`), `engine-install.json` and `SHA256SUMS` (for checking a
+download by hand). Drafts are invisible to installed apps until published. Its body is the optional
 `highlights` input under `## Highlights`, then `docs/release-notes/<version>.md` (write it before
 releasing; no engine name), then GitHub's generated notes. It needs the secret
 `ENGINE_INSTALL_JSON` (base64 of `engine-install.json`), set once per file change with
 `gh secret set ENGINE_INSTALL_JSON < <(base64 -i engine-install.json)`; each job checks it with
 `scripts/release-lib.sh`, which `release.sh` shares. The mac job also needs the five signing
-secrets below and fails before the build when one is missing.
+secrets and `UPDATE_SIGNING_KEY` below and fails before the build when one is missing.
 
 `npm run release` (`scripts/release.sh`) is the local path, macOS DMGs only. Before it, write the
 gitignored `release-highlights.md` at the repo root: 1-3 lines `- **Lead.** Text.`. The script puts
@@ -107,7 +111,7 @@ release) at the repo root. It is gitignored, and its SHA-256 must equal `ENGINE_
 `src/main/infrastructure/setup/installPin.ts`; the script also requires the file's `engineVersion` to equal
 `EXPECTED_ENGINE_VERSION` and exactly one commit hash in it, and refuses to release otherwise. Changing
 the commands means updating that pin in the same commit. It also needs the five signing
-variables below in the environment and refuses without them.
+variables and `UPDATE_SIGNING_KEY` below in the environment and refuses without them.
 
 #### Signing secrets
 
@@ -126,6 +130,14 @@ as an Actions secret on `PetarStoev02/talyx-app`:
   `xcrun notarytool history --apple-id <email> --team-id <team> --password <password>`.
 - `APPLE_TEAM_ID`: the team ID in the Developer ID certificate's name (`3Z52YUB6CN`).
   `gh secret set APPLE_TEAM_ID`.
+
+- `UPDATE_SIGNING_KEY`: base64 of the Ed25519 private key that signs the update feed. The key
+  lives outside git in `~/.config/talyx/keys/update.private.pem`; back it up to 1Password.
+  `gh secret set UPDATE_SIGNING_KEY < <(base64 -i ~/.config/talyx/keys/update.private.pem)`; for
+  `npm run release`, `export UPDATE_SIGNING_KEY=$(base64 -i ~/.config/talyx/keys/update.private.pem)`.
+  Its public half is `UPDATE_FEED_KEY`. Every installed Talyx refuses a feed signed with another
+  key, so a lost key means users update once by hand from the release page, to a build that
+  ships the new public key.
 
 The certificate expires after five years and the membership yearly; renew both before a release.
 
@@ -159,9 +171,8 @@ src/main/
     └── updater/                # releaseCheck.ts (GitHub latest-release check), releaseChecks.ts
                                 # (one check at a time, the staleness limits), selfUpdate.ts
                                 # (electron-updater: download on click, restart to update),
-                                # releaseDownload.ts (fallback installer download, checked against
-                                # SHA256SUMS), updateState.ts (the update state machine),
-                                # openInstaller.ts (the fallback: the user runs it)
+                                # feedSignature.ts (the update feed must be signed by Talyx),
+                                # updateState.ts (the update state machine)
 ```
 
 `src/shared/api.ts` is the single definition of `window.api`; the preload builds it over
@@ -359,7 +370,7 @@ try {
 - Old features are deleted, not kept dormant; git history and `legacy/file-organizer` keep them.
 - Builds for macOS (Developer ID signed, notarized) and Linux (unsigned). Automatic updates on
   macOS and the AppImage (electron-updater; download and restart only on the user's click, else
-  install on quit); the
+  install on quit; only through an update feed Talyx signed); the
   deb updates from the release page.
 - Free and open source (MIT). No account, no server, no telemetry.
 - Website (`website/`) on Vercel: it describes 1.0 and runs cookieless PostHog page analytics

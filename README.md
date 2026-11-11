@@ -57,7 +57,7 @@ npm run build:linux  # AppImage and deb in dist/ (x64)
 
 ## Release
 
-Releases are built by the **Release** workflow on GitHub Actions: Actions → Release → Run workflow. It builds the macOS DMGs and the Linux AppImage and deb, runs the real-engine smoke test on Linux, and creates a **draft** release `v<version>` with the installers, the update feed (`latest-mac.yml`, `latest-linux.yml`, the macOS zips and their blockmaps), `engine-install.json` and `SHA256SUMS`. Review the draft, then publish it. Installed copies see a release only once it is published: GitHub does not show drafts to them.
+Releases are built by the **Release** workflow on GitHub Actions: Actions → Release → Run workflow. It builds the macOS DMGs and the Linux AppImage and deb, runs the real-engine smoke test on Linux, and creates a **draft** release `v<version>` with the installers, the update feed (`latest-mac.yml`, `latest-linux.yml`, their signatures, the macOS zips and their blockmaps), `engine-install.json` and `SHA256SUMS`. Review the draft, then publish it. Installed copies see a release only once it is published: GitHub does not show drafts to them.
 
 - The release body is the optional **highlights** input (lines like `- **Lead.** Text.`, shown by the update button) above `docs/release-notes/<version>.md` and GitHub's generated notes. The form takes one line; for several, run `gh workflow run release.yml -f highlights="$(cat release-highlights.md)"`.
 - The workflow needs the secret `ENGINE_INSTALL_JSON`, the base64 of `engine-install.json`. Add it once, and again whenever the file changes: `gh secret set ENGINE_INSTALL_JSON < <(base64 -i engine-install.json)`. Each job checks it against `ENGINE_INSTALL_SHA256` and fails when it is missing or does not match.
@@ -66,7 +66,7 @@ Releases are built by the **Release** workflow on GitHub Actions: Actions → Re
 
 ## Privacy
 
-Talyx has no server, no account and no telemetry. The only network calls Talyx makes itself are three to GitHub: the update check; the update itself from the release when you click Download (through the update feed on macOS and in the AppImage, otherwise the installer and its `SHA256SUMS`); and, at first-run setup, the release's `engine-install.json`, the steps that install the engine. What your bots send to their model providers is between the engine and those providers; Talyx itself sends nothing anywhere else. Third-party components are listed in [CREDITS.md](CREDITS.md).
+Talyx has no server, no account and no telemetry. The only network calls Talyx makes itself are three to GitHub: the update check; the update itself from the release when you click Download (through the signed update feed, on macOS and in the AppImage); and, at first-run setup, the release's `engine-install.json`, the steps that install the engine. What your bots send to their model providers is between the engine and those providers; Talyx itself sends nothing anywhere else. Third-party components are listed in [CREDITS.md](CREDITS.md).
 
 ## Contributing
 
