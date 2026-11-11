@@ -105,8 +105,9 @@ The workflow does not sign the update feeds. After it, run `npm run sign-release
 (`scripts/sign-release.sh`) on the owner's machine, then publish the draft. It signs the feeds
 the workflow run itself kept (its `feeds` artifact, which nothing outside that run can change),
 for a run of `release.yml` on `main` at the draft's commit, and only when the draft's feeds are
-those same bytes and every file in the draft was uploaded by a workflow. It adds
-`latest-*.yml.sig` to the draft. A release published without it still shows in the update button, with its
+those same bytes and every file in the draft was uploaded by a workflow. It lists the commits
+since the last release and asks before it signs: that is the one human look at what reaches
+every installed Talyx. Then it adds `latest-*.yml.sig` to the draft. A release published without it still shows in the update button, with its
 release page instead of Download.
 
 `npm run release` (`scripts/release.sh`) is the local path, macOS DMGs only. Before it, write the

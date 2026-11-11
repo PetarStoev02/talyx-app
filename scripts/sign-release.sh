@@ -26,49 +26,74 @@ refuse() {
 
 check_update_signing_key
 
-# One line per release: draft or not, the commit it is tagged at, who uploaded its files (the
-# signatures this script adds aside).
+# The release with this tag: how many there are, draft or not, the commit it is tagged at, and
+# who uploaded its files (the signatures this script adds aside). "|" keeps an empty field in
+# its place, which a tab would not.
 RELEASE_FIELDS='[
-  (if has("draft") then .draft else "none" end),
-  (.target_commitish // ""),
-  ([.assets[]? | select(.name | endswith(".sig") | not) | .uploader.login] | unique | join(","))
-] | @tsv'
-RELEASE=$(gh api "repos/$REPO/releases" \
-  --jq "[.[] | select(.tag_name == \"$TAG\")][0] // {} | $RELEASE_FIELDS") ||
+  length,
+  (.[0] | if . == null then "none" else .draft end),
+  (.[0].target_commitish // ""),
+  ([.[0].assets[]? | select(.name | endswith(".sig") | not) | .uploader.login] | unique | join(","))
+] | map(tostring) | join("|")'
+RELEASE=$(gh api "repos/$REPO/releases?per_page=100" \
+  --jq "[.[] | select(.tag_name == \"$TAG\")] | $RELEASE_FIELDS") ||
   refuse "GitHub could not be read."
-IFS=$'\t' read -r DRAFT TARGET UPLOADERS <<< "$RELEASE"
-[ "$DRAFT" != none ] || refuse "There is no release $TAG. Run the Release workflow first."
+IFS='|' read -r COUNT DRAFT TARGET UPLOADERS <<< "$RELEASE"
+[ "$COUNT" != 0 ] || refuse "There is no release $TAG. Run the Release workflow first."
+# A draft has no tag of its own yet, so two can carry the same one: which would be signed?
+[ "$COUNT" = 1 ] || refuse "$COUNT releases are tagged $TAG. Delete the ones the Release workflow did not make."
 [ "$DRAFT" = true ] || refuse "$TAG is already published. Sign a release while it is a draft."
 [ "$UPLOADERS" = "$WORKFLOW_UPLOADER" ] ||
   refuse "$TAG has files not uploaded by a workflow (uploaded by: $UPLOADERS). Delete the draft and run the Release workflow again."
 
-git fetch --quiet origin main
+git fetch --quiet --tags origin main
 git merge-base --is-ancestor "$TARGET" origin/main 2>/dev/null ||
   refuse "$TAG was built from $TARGET, which is not a commit of main."
 
-RUN=$(gh run list --repo "$REPO" --workflow release.yml --branch main --event workflow_dispatch \
-  --commit "$TARGET" --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty') ||
-  refuse "GitHub could not be read."
-[ -n "$RUN" ] || refuse "No successful Release workflow run on main built $TARGET."
-
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
-BUILT="$WORK/built"
 DRAFTED="$WORK/drafted"
-gh run download "$RUN" --repo "$REPO" --name feeds --dir "$BUILT" ||
-  refuse "Release run $RUN kept no update feeds (its feeds artifact)."
-gh release download "$TAG" --repo "$REPO" --pattern 'latest-*.yml' --dir "$DRAFTED"
+gh release download "$TAG" --repo "$REPO" --pattern 'latest-*.yml' --dir "$DRAFTED" ||
+  refuse "$TAG has no update feed (latest-*.yml)."
 
-# The same feeds on both sides, byte for byte.
-[ "$(ls "$BUILT")" = "$(ls "$DRAFTED")" ] ||
-  refuse "$TAG's update feeds are not the ones run $RUN built: $(ls "$DRAFTED" | tr '\n' ' ')"
-for feed in "$BUILT"/latest-*.yml; do
-  cmp -s "$feed" "$DRAFTED/$(basename "$feed")" ||
-    refuse "$(basename "$feed") in $TAG differs from what run $RUN built. Delete the draft and run the Release workflow again."
+# The run that built this draft: a successful release.yml run on main at that commit whose feeds
+# are the draft's, byte for byte. The workflow can have run there more than once.
+RUNS=$(gh run list --repo "$REPO" --workflow release.yml --branch main --event workflow_dispatch \
+  --commit "$TARGET" --status success --limit 20 --json databaseId --jq '.[].databaseId') ||
+  refuse "GitHub could not be read."
+[ -n "$RUNS" ] || refuse "No successful Release workflow run on main built $TARGET."
+
+same_feeds() {
+  local feed
+  [ "$(ls "$1")" = "$(ls "$DRAFTED")" ] || return 1
+  for feed in "$1"/latest-*.yml; do
+    cmp -s "$feed" "$DRAFTED/$(basename "$feed")" || return 1
+  done
+}
+
+BUILT=""
+for RUN in $RUNS; do
+  gh run download "$RUN" --repo "$REPO" --name feeds --dir "$WORK/run-$RUN" 2> /dev/null || continue
+  if same_feeds "$WORK/run-$RUN"; then
+    BUILT="$WORK/run-$RUN"
+    break
+  fi
 done
+[ -n "$BUILT" ] ||
+  refuse "$TAG's update feeds are not what a Release run on main built from $TARGET. Delete the draft and run the Release workflow again."
 
-echo "Signing the update feeds of $TAG, built by run $RUN from $(git log -1 --format='%h %s' "$TARGET"):"
-grep -H -E '^version:|url:' "$BUILT"/latest-*.yml | sed "s|$BUILT/||"
+# This is the one moment a person looks at what is about to reach every installed Talyx: the
+# branch rules let code into main with no second reviewer.
+LAST=$(gh release list --repo "$REPO" --exclude-drafts --exclude-pre-releases --limit 1 \
+  --json tagName --jq '.[0].tagName // empty') || refuse "GitHub could not be read."
+echo "Release $TAG, built by run $RUN from $(git log -1 --format='%h %s' "$TARGET")."
+echo "Commits since ${LAST:-the first commit}:"
+git log --format='  %h %an %ad %s' --date=short ${LAST:+"$LAST.."}"$TARGET"
+echo "Update feeds:"
+grep -H -E '^version:|url:' "$BUILT"/latest-*.yml | sed "s|$BUILT/|  |" || true
+read -r -p "Sign these feeds? Type yes: " ANSWER
+[ "$ANSWER" = yes ] || refuse "Not signed."
+
 node scripts/sign-feed.mjs "$BUILT"/latest-*.yml
 gh release upload "$TAG" --repo "$REPO" --clobber "$BUILT"/latest-*.yml.sig
 
