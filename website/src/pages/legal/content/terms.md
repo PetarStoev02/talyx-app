@@ -48,7 +48,7 @@ Bots can take actions on your computer through the engine. Some actions ask for 
 
 ## 6. Intellectual Property
 
-The source code is released under the AGPL-3.0 licence (Section 2). That licence does not cover this website's text and images, or the Talyx name and logo. The name and logo are not licensed for use in other products, or to suggest that a product is endorsed by or affiliated with Talyx.
+The source code is released under the AGPL-3.0 licence (Section 2). That licence does not cover this website's text and images, or the Talyx name and logo. It also does not cover Talyx modules, which are separate add-ons with their own licence. The name and logo are not licensed for use in other products, or to suggest that a product is endorsed by or affiliated with Talyx.
 
 ---
 

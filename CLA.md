@@ -6,7 +6,7 @@ the rights to license every part of Talyx on other terms too. This agreement giv
 those rights for what you contribute. You keep the copyright in your work.
 
 "You" are every person who wrote part of the pull request. The person who opens it confirms that
-each of them agrees. "The maintainer" is Petar Stoev, the copyright holder of Talyx, and anyone
+each of them agrees. "The maintainer" is Petar Georgiev Stoev, the copyright holder of Talyx, and anyone
 those rights later pass to. "Your contribution" is any code, text, image or other material you
 submit to this repository.
 
