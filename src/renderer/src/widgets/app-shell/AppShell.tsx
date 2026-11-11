@@ -4,7 +4,6 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { settingsApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
 import { SIDEBAR_WIDTH, clampSidebarWidth } from '../../../../shared/sidebar'
-import { SectionSwitch } from './SectionSwitch'
 import { SidebarFooter } from './SidebarFooter'
 
 const isMac = (window.electron?.platform ?? 'darwin') === 'darwin'
@@ -56,14 +55,13 @@ export function AppShell({
             {titleEnd}
           </span>
         </div>
-        <SectionSwitch />
         {sidebar}
         {/* Always here, so switching sections never remounts it (it polls the bots); hidden
             while a module's sidebar stands before it. */}
         <div data-roster className="contents [[data-module-sidebar]~&]:hidden">
           {roster ?? <div className="flex-1" />}
         </div>
-        <SidebarFooter withRoster={!!roster} end={footerEnd} />
+        <SidebarFooter end={footerEnd} />
         <SidebarResizer
           width={width}
           label={t('sidebar.resize')}

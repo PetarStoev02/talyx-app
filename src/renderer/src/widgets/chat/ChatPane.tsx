@@ -10,6 +10,7 @@ import { useChat } from '@features/chat/store'
 import { useSetup } from '@features/setup/store'
 import { turnView } from '@features/chat/turns'
 import type { MessageItem } from '@features/chat/types'
+import { openSettings } from '@features/settings/sections'
 import { useRefocus } from '@shared/hooks/useRefocus'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { ActivityLine } from './ActivityLine'
@@ -152,7 +153,7 @@ export function ChatPane({
           <Button
             variant="secondary"
             className="bg-secondary hover:bg-foreground/10"
-            onClick={() => navigate('settings')}
+            onClick={() => openSettings('providers', navigate)}
           >
             {t('chat.openSettings')}
           </Button>

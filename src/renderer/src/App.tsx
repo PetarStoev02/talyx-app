@@ -14,6 +14,7 @@ import { reportError } from '@shared/lib/report'
 import { AgentsPage } from '@pages/agents'
 import { SettingsPage } from '@pages/settings'
 import { ModulePage } from '@pages/module'
+import { SettingsNav } from '@widgets/settings-nav'
 import { ActivationDialog } from '@widgets/modules'
 import { TooltipProvider } from '@shared/ui/tooltip'
 import { Roster, RosterAdd, RosterRefresh } from '@widgets/roster'
@@ -149,10 +150,20 @@ function App(): React.JSX.Element {
         />
       ) : (
         <AppShell
-          titleEnd={rosterBackend && <RosterAdd module={openModule ?? null} />}
+          titleEnd={
+            currentView === 'settings'
+              ? null
+              : rosterBackend && <RosterAdd module={openModule ?? null} />
+          }
           footerEnd={rosterBackend && <RosterRefresh backend={rosterBackend} />}
           roster={roster}
-          sidebar={openModule && <ModuleSidebar module={openModule} />}
+          sidebar={
+            openModule ? (
+              <ModuleSidebar module={openModule} />
+            ) : currentView === 'settings' ? (
+              <SettingsNav />
+            ) : undefined
+          }
         >
           <ConnectionBanner />
           {/* A page you switch to fades in; the one you left is gone at once. */}

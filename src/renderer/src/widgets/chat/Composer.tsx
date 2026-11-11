@@ -7,6 +7,7 @@ import { useNavigation } from '@app/providers/useNavigation'
 import type { ChatActions } from '@features/chat/chat'
 import type { ChatState } from '@features/chat/store'
 import { dataUrlOf, dictationProblem, useDictation } from '@features/chat/useDictation'
+import { openSettings } from '@features/settings/sections'
 import { problemOf, problemText } from '@shared/lib/problem'
 import { cn } from '@shared/lib/utils'
 import { ModelPicker } from '@shared/ui/ModelPicker'
@@ -80,7 +81,7 @@ export function Composer({
         duration: Infinity,
         action:
           problem.key === 'chat.dictationNoProvider'
-            ? { label: t('chat.openSettings'), onClick: () => navigate('settings') }
+            ? { label: t('chat.openSettings'), onClick: () => openSettings('providers', navigate) }
             : undefined
       })
     }
