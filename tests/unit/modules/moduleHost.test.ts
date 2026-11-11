@@ -8,7 +8,7 @@ import {
   createModuleHost,
   type ModuleHost
 } from '../../../src/main/infrastructure/modules/moduleHost'
-import type { ModulesState } from '../../../src/shared/modules'
+import { ALL_MODULES, type ModulesState } from '../../../src/shared/modules'
 import {
   LICENSE,
   helloBundle,
@@ -59,6 +59,7 @@ describe('module host', () => {
 
   afterEach(async () => {
     vi.useRealTimers()
+    vi.unstubAllGlobals()
     await rm(root, { recursive: true, force: true })
   })
 
@@ -272,6 +273,136 @@ describe('module host', () => {
       expect(savedKey).toBeNull()
       expect(host.file('hello', 'renderer.js')).toBeNull()
       expect(existsSync(join(root, 'modules', 'hello', 'bundle.json'))).toBe(true)
+    })
+  })
+
+  describe('given a license for every module', () => {
+    const EVERY_MODULE = { ...LICENSE, modules: [ALL_MODULES] }
+
+    it('should list every catalog module, also ones made after the key', async () => {
+      files.set(CATALOG_URL, {
+        modules: [entryFor(helloBundle()), entryFor(helloBundle({ id: 'later', name: 'Later' }))]
+      })
+      await host.activate(issueKey(signer, EVERY_MODULE))
+      expect((await host.available()).map((module) => module.id)).toEqual(['hello', 'later'])
+    })
+
+    it('should install and run a module the key does not name', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer, EVERY_MODULE))
+      const state = await host.install('hello')
+      expect(state.modules).toMatchObject([{ id: 'hello', status: 'running' }])
+      expect(await host.invoke('hello', 'greet', { name: 'Bo' })).toBe('hello Bo from a/b')
+    })
+
+    it('should run every installed module at the next start', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer, EVERY_MODULE))
+      await host.install('hello')
+      const restarted = newHost()
+      await restarted.start()
+      expect(restarted.state().modules).toMatchObject([{ id: 'hello', status: 'running' }])
+    })
+
+    it('should put back a version left aside by an update that was cut short', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer, EVERY_MODULE))
+      await host.install('hello')
+      await rename(join(root, 'modules', 'hello'), join(root, 'modules', 'hello.old'))
+      const restarted = newHost()
+      await restarted.start()
+      expect(restarted.state().modules).toMatchObject([{ id: 'hello', status: 'running' }])
+    })
+
+    it('should stop its modules when a key for other modules replaces it', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer, EVERY_MODULE))
+      await host.install('hello')
+      const state = await host.activate(issueKey(signer, { ...LICENSE, modules: ['other'] }))
+      expect(state.modules).toEqual([])
+      expect(host.file('hello', 'renderer.js')).toBeNull()
+    })
+
+    it('should skip what is in the modules folder but is not a module', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer, EVERY_MODULE))
+      await host.install('hello')
+      await writeFile(join(root, 'modules', '.DS_Store'), '')
+      await writeFile(join(root, 'modules', 'notes'), 'a file, not a module folder')
+      const restarted = newHost()
+      await restarted.start()
+      expect(restarted.state().modules.map((module) => module.id)).toEqual(['hello'])
+    })
+  })
+
+  describe('given installed modules', () => {
+    /** Installs `id` as a signed copy of hello, as an earlier key would have left it. */
+    async function leaveInstalled(id: string, overrides: object = {}): Promise<void> {
+      const { bytes, signature } = signBundle(signer, helloBundle({ id, ...overrides }))
+      await mkdir(join(root, 'modules', id), { recursive: true })
+      await writeFile(join(root, 'modules', id, 'bundle.json'), bytes)
+      await writeFile(join(root, 'modules', id, 'bundle.sig'), signature)
+    }
+
+    /** A module whose main side reports its own start, so a test can read the start order. */
+    function reportingStart(id: string): object {
+      return {
+        files: {
+          'renderer.js': 'export default function Page() {}',
+          'main.js': `module.exports = { activate() { globalThis.moduleStarted('${id}') } }`
+        }
+      }
+    }
+
+    it('should start them in the order the key names them', async () => {
+      const started: string[] = []
+      vi.stubGlobal('moduleStarted', (id: string) => started.push(id))
+      await leaveInstalled('alpha', reportingStart('alpha'))
+      await leaveInstalled('zeta', reportingStart('zeta'))
+      savedKey = issueKey(signer, { ...LICENSE, modules: ['zeta', 'alpha'] })
+      await host.start()
+      expect(started).toEqual(['zeta', 'alpha'])
+    })
+
+    it('should not start a module the saved license does not unlock', async () => {
+      await leaveInstalled('hello')
+      savedKey = issueKey(signer, { ...LICENSE, modules: ['other'] })
+      await host.start()
+      expect(host.state().modules).toEqual([])
+      expect(helloRuns().started).toBe(0)
+    })
+
+    it('should list them in the order the key names them', async () => {
+      await leaveInstalled('alpha')
+      await leaveInstalled('zeta')
+      savedKey = issueKey(signer, { ...LICENSE, modules: ['zeta', 'alpha'] })
+      await host.start()
+      expect(host.state().modules.map((module) => module.id)).toEqual(['zeta', 'alpha'])
+    })
+
+    it('should list them by id for a license for every module', async () => {
+      await leaveInstalled('zeta')
+      await leaveInstalled('alpha')
+      savedKey = issueKey(signer, { ...LICENSE, modules: [ALL_MODULES] })
+      await host.start()
+      expect(host.state().modules.map((module) => module.id)).toEqual(['alpha', 'zeta'])
+    })
+
+    it('should start with no modules when the modules folder cannot be listed', async () => {
+      await writeFile(join(root, 'modules'), 'a file where the folder belongs')
+      savedKey = issueKey(signer, { ...LICENSE, modules: [ALL_MODULES] })
+      const state = await host.start()
+      expect(state).toMatchObject({ license: { id: LICENSE.id }, modules: [] })
+    })
+
+    it('should start and show a named module as failed when its folder cannot be read', async () => {
+      await writeFile(join(root, 'modules'), 'a file where the folder belongs')
+      savedKey = issueKey(signer)
+      const state = await host.start()
+      expect(state).toMatchObject({
+        license: { id: LICENSE.id },
+        modules: [{ id: 'hello', status: 'failed' }]
+      })
     })
   })
 

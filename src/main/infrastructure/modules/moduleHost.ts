@@ -1,19 +1,29 @@
 import { join } from 'node:path'
 import { compileFunction } from 'node:vm'
 import {
+  ALL_MODULES,
   MODULE_API_VERSION,
   MODULE_SCHEME,
   type AvailableModule,
   type LicenseSummary,
   type ModuleStatus,
-  type ModulesState
+  type ModulesState,
+  unlocksModule
 } from '../../../shared/modules'
 import { ModuleActionSchema } from '../ipc/validation'
 import { fetchBundleBytes, fetchCatalog } from './catalog'
-import { readInstalled, remove, stage, swapIn, type InstalledFiles } from './moduleFiles'
+import {
+  installedIds,
+  readInstalled,
+  remove,
+  stage,
+  swapIn,
+  type InstalledFiles
+} from './moduleFiles'
 import {
   expiryTime,
   isExpired,
+  ModuleIdSchema,
   readBundle,
   readLicense,
   type ModuleBundle,
@@ -28,6 +38,8 @@ const CONTENT_TYPES: Record<string, string> = {
 const LIFECYCLE_TIMEOUT_MS = 10_000
 /** setTimeout's ceiling (about 24.8 days); a later expiry is looked at again then. */
 const MAX_TIMER_MS = 2 ** 31 - 1
+/** In userData: one folder per installed module. */
+const MODULES_FOLDER = 'modules'
 
 export class ModuleError extends Error {
   override name = 'ModuleError'
@@ -108,9 +120,8 @@ export function createModuleHost(deps: ModuleHostDeps) {
   function state(): ModulesState {
     const current = activeLicense()
     if (!current) return { license: null, modules: [] }
-    const modules = current.modules.flatMap((id) => {
-      const module = loaded.get(id)
-      if (!module) return []
+    const modules = [...loaded].sort(byKeyOrder(current)).flatMap(([id, module]) => {
+      if (!unlocksModule(current, id)) return []
       const { name, version, status, problem, bundle } = module
       return [{ id, name, version, status, problem, styled: !!bundle?.files['style.css'] }]
     })
@@ -157,10 +168,10 @@ export function createModuleHost(deps: ModuleHostDeps) {
   }
 
   async function available(): Promise<AvailableModule[]> {
-    const unlocked = requireLicense().modules
+    const current = requireLicense()
     const catalog = await fetchCatalog(deps.fetch, savedKey())
     return catalog
-      .filter((entry) => unlocked.includes(entry.id))
+      .filter((entry) => unlocksModule(current, entry.id))
       .map(({ id, name, version, apiVersion }) => ({
         id,
         name,
@@ -172,7 +183,7 @@ export function createModuleHost(deps: ModuleHostDeps) {
   /** Install or update: download, check the signature, swap the folder in whole, load. */
   function install(id: string): Promise<ModulesState> {
     return serial(async () => {
-      if (!requireLicense().modules.includes(id))
+      if (!unlocksModule(requireLicense(), id))
         throw new ModuleError('Your license does not include this module.')
       const { files, bundle } = await download(id)
       const dir = moduleDir(id)
@@ -252,7 +263,8 @@ export function createModuleHost(deps: ModuleHostDeps) {
 
   function running(id: string): Loaded | null {
     const module = loaded.get(id)
-    return activeLicense()?.modules.includes(id) && module?.status === 'running' ? module : null
+    const current = activeLicense()
+    return current && unlocksModule(current, id) && module?.status === 'running' ? module : null
   }
 
   function setLicense(next: LicenseSummary | null): void {
@@ -300,12 +312,32 @@ export function createModuleHost(deps: ModuleHostDeps) {
     return { files: { bytes, signature: entry.signature }, bundle }
   }
 
+  /**
+   * The modules the key names, in its order, exactly as before a key could name every module. A
+   * key for every module names none of them, so for it the installed ones follow.
+   */
   async function loadLicensed(): Promise<void> {
-    for (const id of activeLicense()?.modules ?? []) await load(id)
+    const current = activeLicense()
+    if (!current) return
+    const named = current.modules.filter((id) => id !== ALL_MODULES)
+    const installed = current.modules.includes(ALL_MODULES) ? await installedModuleIds() : []
+    for (const id of new Set([...named, ...installed])) await load(id)
+  }
+
+  /** A modules folder that cannot be listed loads nothing; the app and the license still start. */
+  async function installedModuleIds(): Promise<string[]> {
+    try {
+      const ids = await installedIds(join(deps.root, MODULES_FOLDER))
+      return ids.filter((id) => ModuleIdSchema.safeParse(id).success)
+    } catch (error) {
+      deps.log.error('[Modules] The installed modules could not be listed:', error)
+      return []
+    }
   }
 
   async function load(id: string): Promise<void> {
-    if (!activeLicense()?.modules.includes(id)) return
+    const current = activeLicense()
+    if (!current || !unlocksModule(current, id)) return
     let files: InstalledFiles | null
     try {
       files = await readInstalled(moduleDir(id))
@@ -401,7 +433,7 @@ export function createModuleHost(deps: ModuleHostDeps) {
   }
 
   function moduleDir(id: string): string {
-    return join(deps.root, 'modules', id)
+    return join(deps.root, MODULES_FOLDER, id)
   }
 
   function changed(): ModulesState {
@@ -423,6 +455,16 @@ export function createModuleHost(deps: ModuleHostDeps) {
     recheckExpiry,
     stopAll
   }
+}
+
+/** The order the key names its modules; a module it does not name (a key for every module) by id. */
+function byKeyOrder(license: LicenseSummary) {
+  const place = (id: string): number => {
+    const named = license.modules.indexOf(id)
+    return named === -1 ? license.modules.length : named
+  }
+  return ([a]: [string, Loaded], [b]: [string, Loaded]): number =>
+    place(a) - place(b) || a.localeCompare(b)
 }
 
 function blankModule(id: string): Loaded {

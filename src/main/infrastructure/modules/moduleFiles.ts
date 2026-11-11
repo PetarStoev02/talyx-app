@@ -1,8 +1,10 @@
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import type { Dirent } from 'node:fs'
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const BUNDLE_FILE = 'bundle.json'
 const SIGNATURE_FILE = 'bundle.sig'
+const PREVIOUS_SUFFIX = '.old'
 
 /** A module's files as they sit on disk, not yet checked. */
 export interface InstalledFiles {
@@ -32,6 +34,26 @@ export async function readInstalled(dir: string): Promise<InstalledFiles | null>
   } catch (error) {
     throw new ModuleFilesError(`The installed module is incomplete (${errorCode(error)}).`)
   }
+}
+
+/**
+ * The names of the module folders in `modulesRoot`. A module left aside by an update that was cut
+ * short counts as its module: `readInstalled` puts it back. No folder yet means none.
+ */
+export async function installedIds(modulesRoot: string): Promise<string[]> {
+  let entries: Dirent[]
+  try {
+    entries = await readdir(modulesRoot, { withFileTypes: true })
+  } catch (error) {
+    if (isMissing(error)) return []
+    throw new ModuleFilesError(`The installed modules cannot be listed (${errorCode(error)}).`)
+  }
+  const ids = entries
+    .filter((entry) => entry.isDirectory())
+    .map(({ name }) =>
+      name.endsWith(PREVIOUS_SUFFIX) ? name.slice(0, -PREVIOUS_SUFFIX.length) : name
+    )
+  return [...new Set(ids)]
 }
 
 /** Writes a downloaded module next to `dir`, ready for `swapIn`. */
@@ -84,7 +106,7 @@ function stagingDir(dir: string): string {
 }
 
 function previousDir(dir: string): string {
-  return `${dir}.old`
+  return `${dir}${PREVIOUS_SUFFIX}`
 }
 
 function isMissing(error: unknown): boolean {

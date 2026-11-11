@@ -16,10 +16,17 @@ export interface LicenseSummary {
   id: string
   /** Who the key was made for, as shown in Settings. */
   name: string
-  /** The module ids this key unlocks. */
+  /** The module ids this key unlocks, or ALL_MODULES for every module. Ask `unlocksModule`. */
   modules: string[]
   /** ISO date the key stops working; null for no end. */
   expires: string | null
+}
+
+/** A license that names this module id unlocks every module, also ones made after the key. */
+export const ALL_MODULES = 'all'
+
+export function unlocksModule(license: Pick<LicenseSummary, 'modules'>, id: string): boolean {
+  return license.modules.includes(id) || license.modules.includes(ALL_MODULES)
 }
 
 export type ModuleStatus = 'running' | 'failed' | 'incompatible'
