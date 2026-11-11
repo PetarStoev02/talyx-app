@@ -14,7 +14,7 @@ const pages: Record<string, { content: string; lead: string }> = {
   },
   terms: {
     content: termsMd,
-    lead: 'The terms for using Talyx, which is free and open source under the MIT licence.'
+    lead: 'The terms for using Talyx, which is free and open source under the AGPL-3.0 licence.'
   }
 }
 

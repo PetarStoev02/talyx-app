@@ -12,7 +12,7 @@ By downloading, installing or using Talyx ("the App"), you agree to these Terms 
 
 ## 2. Licence
 
-Talyx is free and open source under the MIT licence. The full text is in the [LICENSE file](https://github.com/PetarStoev02/talyx-app/blob/main/LICENSE) in the source repository. There is nothing to buy, nothing to activate and no account to create.
+Talyx is free and open source under the GNU Affero General Public License, version 3 only (AGPL-3.0-only). The full text is in the [LICENSE file](https://github.com/PetarStoev02/talyx-app/blob/main/LICENSE) in the source repository. There is nothing to buy, nothing to activate and no account to create.
 
 Your bots run on models from providers you choose. Any charges from those providers are between you and them (see Section 5).
 
@@ -48,13 +48,13 @@ Bots can take actions on your computer through the engine. Some actions ask for 
 
 ## 6. Intellectual Property
 
-The source code is released under the MIT licence (Section 2). The Talyx name and logo are not licensed for use in other products, or to suggest that a product is endorsed by or affiliated with Talyx.
+The source code is released under the AGPL-3.0 licence (Section 2). That licence does not cover this website's text and images, or the Talyx name and logo. It also does not cover Talyx modules, which are separate add-ons with their own licence. The name and logo are not licensed for use in other products, or to suggest that a product is endorsed by or affiliated with Talyx.
 
 ---
 
 ## 7. Limitation of Liability
 
-Talyx is provided "as is", without warranty of any kind, express or implied, including the warranties of merchantability, fitness for a particular purpose and non-infringement, as set out in the MIT licence. In no event are the authors liable for any claim, damages or other liability arising from the use of the App, including data loss, provider charges, or the consequences of actions your bots take. Keep backups of your files.
+Talyx is provided "as is", without warranty of any kind, express or implied, including the warranties of merchantability, fitness for a particular purpose and non-infringement, as set out in the AGPL-3.0 licence. In no event are the authors liable for any claim, damages or other liability arising from the use of the App, including data loss, provider charges, or the consequences of actions your bots take. Keep backups of your files.
 
 ---
 

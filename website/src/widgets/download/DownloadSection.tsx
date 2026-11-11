@@ -48,7 +48,7 @@ export function DownloadSection() {
       <div className="grid gap-14 md:grid-cols-12">
         <div data-reveal className="md:col-span-6" style={STEP.body}>
           <p className="max-w-[40ch]" style={STEP.lead}>
-            Free and open source under MIT. No account and no card.
+            Free and open source under AGPL-3.0. No account and no card.
           </p>
           <dl className="mt-10 space-y-5">
             {REQUIREMENTS.map(({ need, detail }) => (

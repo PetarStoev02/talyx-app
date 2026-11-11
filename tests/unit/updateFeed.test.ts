@@ -9,9 +9,9 @@ describe('release configuration', () => {
     scripts: Record<string, string>
   }
 
-  it('should ship as 1.0.5 under the MIT licence', () => {
+  it('should be version 1.0.5 and declare the AGPL-3.0-only licence', () => {
     expect(pkg.version).toBe('1.0.5')
-    expect(pkg.license).toBe('MIT')
+    expect(pkg.license).toBe('AGPL-3.0-only')
   })
 
   it('should update itself from the GitHub releases of this repository', () => {

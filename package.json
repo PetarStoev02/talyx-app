@@ -2,7 +2,7 @@
   "name": "talyx",
   "version": "1.0.5",
   "description": "Tally your agents: one roster, one chat, a manager who briefs you",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "engines": {
     "node": ">=22.12.0"
   },

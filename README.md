@@ -82,6 +82,14 @@ cd website && npm ci && npm run build
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Third-party credits are in [CREDITS.md](CREDITS.md).
+Talyx is free software under the GNU Affero General Public License, version 3 only (AGPL-3.0-only): see [LICENSE](LICENSE). Copyright (C) 2026 Petar Stoev.
+
+The licence does not cover:
+
+- **The Talyx name and logo**, including the logo and icon files in `resources/`, `build/` and `website/public/`. All rights reserved. A fork needs its own name and logo, and must not suggest that Talyx endorses it.
+- **The website's text and images**: the copy in `website/src/` and the images in `website/public/`. All rights reserved. The website's code is under the licence.
+- **Talyx modules.** They are separate, closed-source add-ons that are not in this repository and have their own licence.
+
+Releases up to 1.0.5 were published under the MIT licence and stay available under it. Third-party credits are in [CREDITS.md](CREDITS.md). To contribute, see [CONTRIBUTING.md](CONTRIBUTING.md) and the [Contributor Licence Agreement](CLA.md).
 
 <sub>The engine is [Hermes Agent](https://github.com/NousResearch/hermes-agent) by Nous Research (MIT), used as it ships.</sub>

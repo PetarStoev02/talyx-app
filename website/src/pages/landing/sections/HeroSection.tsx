@@ -41,7 +41,7 @@ export function HeroSection() {
               <ArrowRight className="size-4" />
             </a>
             <p className="text-[14px] text-[var(--color-text-secondary)]">
-              MIT licence. {MIN_MACOS} or newer, or Linux x64.{' '}
+              AGPL-3.0 licence. {MIN_MACOS} or newer, or Linux x64.{' '}
               <a
                 href={REPO_URL}
                 className="text-[var(--color-text-primary)] underline underline-offset-4"

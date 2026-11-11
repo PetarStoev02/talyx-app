@@ -387,7 +387,10 @@ try {
   macOS and the AppImage (electron-updater; download and restart only on the user's click, else
   install on quit; only through an update feed Talyx signed); the
   deb updates from the release page.
-- Free and open source (MIT). No account, no server, no telemetry.
+- Free and open source (AGPL-3.0-only after 1.0.5; MIT up to 1.0.5). Outside contributions need the
+  contributor agreement (`CLA.md`), so paid modules can ship beside the open code. The Talyx name
+  and logo and the website's text and images are not under the licence (README, License). No
+  account, no server, no telemetry.
 - Website (`website/`) on Vercel: it describes 1.0 and runs cookieless PostHog page analytics
   and Vercel Speed Insights (the app itself stays no-telemetry). Releases: GitHub Releases on `PetarStoev02/talyx-app`
   (the Release workflow creates a draft).

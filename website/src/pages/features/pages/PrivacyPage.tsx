@@ -74,7 +74,7 @@ export function PrivacyPage() {
         {
           title: 'Open source',
           description:
-            'Every line of Talyx is on GitHub under the MIT licence, so each claim on this page can be checked.'
+            'Every line of Talyx is on GitHub under the AGPL-3.0 licence, so each claim on this page can be checked.'
         }
       ]}
     />

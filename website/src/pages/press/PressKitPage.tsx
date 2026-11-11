@@ -21,7 +21,7 @@ const FACTS = [
     value: `${MIN_MACOS} or newer (Apple Silicon and Intel) and Linux x64. Windows comes later.`
   },
   { label: 'Price', value: 'Free, with no account' },
-  { label: 'Licence', value: 'Open source (MIT)' },
+  { label: 'Licence', value: 'Open source (AGPL-3.0)' },
   { label: 'Runs on', value: 'The engine, an agent backend that first-run setup installs' },
   { label: 'Models', value: 'Your own: API keys, account sign-ins or custom endpoints' },
   { label: 'Built with', value: 'Electron, React, TypeScript' }
@@ -41,7 +41,7 @@ const BOILERPLATE = [
   },
   {
     title: 'Long description, about 90 words',
-    text: 'Talyx is a desktop app to tally your AI agents. The roster on the left lists every bot, with pins, folders, unread marks and what each bot is doing. The chat on the right talks to the selected bot, with approvals and questions as cards. Talyx, the manager bot, hands work to the other bots and briefs you. Group rooms let several bots answer in one conversation. The bots run on the engine, which first-run setup installs. Talyx is free and open source under the MIT licence, for macOS and Linux.'
+    text: 'Talyx is a desktop app to tally your AI agents. The roster on the left lists every bot, with pins, folders, unread marks and what each bot is doing. The chat on the right talks to the selected bot, with approvals and questions as cards. Talyx, the manager bot, hands work to the other bots and briefs you. Group rooms let several bots answer in one conversation. The bots run on the engine, which first-run setup installs. Talyx is free and open source under the AGPL-3.0 licence, for macOS and Linux.'
   }
 ]
 
