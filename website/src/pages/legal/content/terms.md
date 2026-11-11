@@ -6,7 +6,7 @@
 
 ## 1. Acceptance
 
-By downloading, installing or using Talyx ("the App"), or buying a Talyx module, you agree to these Terms of Service. They are an agreement between you and [SELLER LEGAL NAME] ("we", "us").
+By downloading, installing or using Talyx ("the App"), or buying a Talyx module, you agree to these Terms of Service. They are an agreement between you and Petar Georgiev Stoev ("we", "us").
 
 ---
 
@@ -78,7 +78,7 @@ See our [Privacy Policy](/legal/privacy) for how data moves between Talyx, the e
 
 ## 10. Contact
 
-Purchases, license keys and refunds: [SUPPORT EMAIL].
+Purchases, license keys and refunds: [support@talyx.app](mailto:support@talyx.app).
 
 Questions about these terms, bugs and ideas: [GitHub Issues](https://github.com/PetarStoev02/talyx-app/issues). Issues are public.
 

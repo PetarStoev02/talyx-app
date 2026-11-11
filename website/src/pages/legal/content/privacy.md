@@ -2,7 +2,7 @@
 
 **Last Updated:** November 2026
 
-This policy is published by [SELLER LEGAL NAME], who sells Talyx modules.
+This policy is published by Petar Georgiev Stoev, who sells Talyx modules.
 
 ---
 
@@ -97,7 +97,7 @@ Talyx itself is free. If you buy a paid module:
 
 ## 9. Your Rights
 
-The App holds no data about you. If you bought a module, we hold your order record (Section 8): write to [SUPPORT EMAIL] to access, correct or delete it, within what tax law lets us delete. The website's counts carry no name, account, cookie or IP address, so we cannot tell which are yours, so for them we have nothing to access, correct or delete. Data you send to your model providers, GitHub, Vercel or PostHog is governed by their policies. Exercise your rights (access, correction, deletion, restriction, portability) with them directly.
+The App holds no data about you. If you bought a module, we hold your order record (Section 8): write to [support@talyx.app](mailto:support@talyx.app) to access, correct or delete it, within what tax law lets us delete. The website's counts carry no name, account, cookie or IP address, so we cannot tell which are yours, so for them we have nothing to access, correct or delete. Data you send to your model providers, GitHub, Vercel or PostHog is governed by their policies. Exercise your rights (access, correction, deletion, restriction, portability) with them directly.
 
 ---
 
@@ -109,4 +109,4 @@ When this policy changes, the new version is posted on this page with a new date
 
 ## 11. Contact
 
-Privacy questions: [SUPPORT EMAIL], or [GitHub Issues](https://github.com/PetarStoev02/talyx-app/issues). Issues are public, so for anything sensitive use a [private security report](https://github.com/PetarStoev02/talyx-app/security/advisories/new).
+Privacy questions: [support@talyx.app](mailto:support@talyx.app), or [GitHub Issues](https://github.com/PetarStoev02/talyx-app/issues). Issues are public, so for anything sensitive use a [private security report](https://github.com/PetarStoev02/talyx-app/security/advisories/new).
