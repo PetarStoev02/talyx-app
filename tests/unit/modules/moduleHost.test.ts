@@ -336,12 +336,32 @@ describe('module host', () => {
 
   describe('given installed modules', () => {
     /** Installs `id` as a signed copy of hello, as an earlier key would have left it. */
-    async function leaveInstalled(id: string): Promise<void> {
-      const { bytes, signature } = signBundle(signer, helloBundle({ id }))
+    async function leaveInstalled(id: string, overrides: object = {}): Promise<void> {
+      const { bytes, signature } = signBundle(signer, helloBundle({ id, ...overrides }))
       await mkdir(join(root, 'modules', id), { recursive: true })
       await writeFile(join(root, 'modules', id, 'bundle.json'), bytes)
       await writeFile(join(root, 'modules', id, 'bundle.sig'), signature)
     }
+
+    /** A module whose main side reports its own start, so a test can read the start order. */
+    function reportingStart(id: string): object {
+      return {
+        files: {
+          'renderer.js': 'export default function Page() {}',
+          'main.js': `module.exports = { activate() { globalThis.moduleStarted('${id}') } }`
+        }
+      }
+    }
+
+    it('should start them in the order the key names them', async () => {
+      const started: string[] = []
+      Object.assign(globalThis, { moduleStarted: (id: string) => started.push(id) })
+      await leaveInstalled('alpha', reportingStart('alpha'))
+      await leaveInstalled('zeta', reportingStart('zeta'))
+      savedKey = issueKey(signer, { ...LICENSE, modules: ['zeta', 'alpha'] })
+      await host.start()
+      expect(started).toEqual(['zeta', 'alpha'])
+    })
 
     it('should not start a module the saved license does not unlock', async () => {
       await leaveInstalled('hello')
@@ -369,9 +389,19 @@ describe('module host', () => {
 
     it('should start with no modules when the modules folder cannot be listed', async () => {
       await writeFile(join(root, 'modules'), 'a file where the folder belongs')
-      savedKey = issueKey(signer)
+      savedKey = issueKey(signer, { ...LICENSE, modules: [ALL_MODULES] })
       const state = await host.start()
       expect(state).toMatchObject({ license: { id: LICENSE.id }, modules: [] })
+    })
+
+    it('should start and show a named module as failed when its folder cannot be read', async () => {
+      await writeFile(join(root, 'modules'), 'a file where the folder belongs')
+      savedKey = issueKey(signer)
+      const state = await host.start()
+      expect(state).toMatchObject({
+        license: { id: LICENSE.id },
+        modules: [{ id: 'hello', status: 'failed' }]
+      })
     })
   })
 

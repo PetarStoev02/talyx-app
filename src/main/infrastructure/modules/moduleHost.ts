@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import { compileFunction } from 'node:vm'
 import {
+  ALL_MODULES,
   MODULE_API_VERSION,
   MODULE_SCHEME,
   type AvailableModule,
@@ -311,9 +312,16 @@ export function createModuleHost(deps: ModuleHostDeps) {
     return { files: { bytes, signature: entry.signature }, bundle }
   }
 
-  /** Loads what is installed, not what the key names: a key for every module names none. */
+  /**
+   * The modules the key names, in its order, exactly as before a key could name every module. A
+   * key for every module names none of them, so for it the installed ones follow.
+   */
   async function loadLicensed(): Promise<void> {
-    for (const id of await installedModuleIds()) await load(id)
+    const current = activeLicense()
+    if (!current) return
+    const named = current.modules.filter((id) => id !== ALL_MODULES)
+    const installed = current.modules.includes(ALL_MODULES) ? await installedModuleIds() : []
+    for (const id of new Set([...named, ...installed])) await load(id)
   }
 
   /** A modules folder that cannot be listed loads nothing; the app and the license still start. */

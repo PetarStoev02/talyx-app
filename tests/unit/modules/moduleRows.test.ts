@@ -62,3 +62,26 @@ describe('module rows for a license for every module', () => {
     ])
   })
 })
+
+describe('module rows for a key that names several modules', () => {
+  const twoModules = { ...license, modules: ['zeta', 'alpha'] }
+  const module = (id: string): AvailableModule => ({ ...offered('1.0.0')[0]!, id, name: id })
+
+  it('should keep the order the key names them when the catalog lists them another way', () => {
+    const rows = moduleRows({ license: twoModules, modules: [] }, [module('alpha'), module('zeta')])
+
+    expect(rows.map((row) => row.id)).toEqual(['zeta', 'alpha'])
+  })
+
+  it('should keep that order when only the later one is installed', () => {
+    const state: ModulesState = {
+      license: twoModules,
+      modules: [{ ...installed('1.0.0').modules[0]!, id: 'alpha', name: 'alpha' }]
+    }
+
+    expect(moduleRows(state, [module('alpha'), module('zeta')]).map((row) => row.id)).toEqual([
+      'zeta',
+      'alpha'
+    ])
+  })
+})
