@@ -41,7 +41,7 @@ const softwareJsonLd = {
     availability: 'https://schema.org/InStock'
   },
   isAccessibleForFree: true,
-  license: 'https://opensource.org/license/mit',
+  license: 'https://www.gnu.org/licenses/agpl-3.0.html',
   codeRepository: REPO_URL,
   description:
     'A free, open-source desktop app for your AI bots: one roster, one chat, and a manager bot that hands work to the other bots and briefs you. The bots run on the engine, which first-run setup installs.',
@@ -67,7 +67,7 @@ export const faqEntries = [
   },
   {
     q: 'Is it free?',
-    a: 'Yes. Talyx is free and open source under the MIT licence, with no account and no card. Your model provider bills you for what your bots use, if it charges.'
+    a: 'Yes. Talyx is free and open source under the AGPL-3.0 licence, with no account and no card. Your model provider bills you for what your bots use, if it charges.'
   },
   {
     q: 'Can Talyx see my chats?',
@@ -163,9 +163,9 @@ export const seoData: Record<string, PageMeta> = {
     canonical: '/contact'
   },
   '/legal/terms': {
-    title: 'Terms of Use: Talyx | MIT Licence, No Warranty',
+    title: 'Terms of Use: Talyx | AGPL-3.0 Licence, No Warranty',
     description:
-      'Talyx is free software under the MIT licence, provided as is. What the licence lets you do, and what the website and the app do not promise.',
+      'Talyx is free software under the AGPL-3.0 licence, provided as is. What the licence lets you do, and what the website and the app do not promise.',
     canonical: '/legal/terms'
   },
   '/legal/privacy': {

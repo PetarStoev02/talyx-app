@@ -36,11 +36,15 @@ During `npm run dev` the interface also runs in a browser at `http://localhost:5
 
 5. Format with `npm run format` (Prettier: single quotes, no semicolons, 100 columns).
 6. Commit in the form `type: imperative description`, for example `fix: keep the sidebar state across restarts`. Types: `feat`, `fix`, `docs`, `refactor`, `chore`, `ci`, `test`.
-7. Open a pull request against `main`. Say what it changes and how you tested it. CI must pass before it is merged.
+7. Open a pull request against `main`. Say what it changes and how you tested it, and tick the contributor agreement box. CI must pass before it is merged.
 
 ## Good to know
 
 - Talyx is a client of the agent engine. Orchestration (bot-to-bot messages, group rooms, routines) belongs in the engine, not in the app.
 - The website lives in `website/` (`cd website && npm ci && npm run dev`).
 
-By contributing you agree that your work is released under the [MIT License](LICENSE) and that you follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+## Licence and the contributor agreement
+
+Talyx is released under the [AGPL-3.0 licence](LICENSE), and your contribution is published under it too. Before a pull request can be merged, you also agree to the [Contributor Licence Agreement](CLA.md) by ticking its box in the pull request. It lets the maintainer license your contribution on other terms as well, which the closed-source Talyx modules need. You keep the copyright in your work.
+
+By contributing you also agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
