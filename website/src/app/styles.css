@@ -224,9 +224,6 @@ body {
   .js [data-reveal].is-in {
     transform: none;
   }
-  .drift {
-    animation: drift 24s ease-in-out infinite alternate;
-  }
   .card-swap {
     animation: card-swap 600ms var(--ease-out);
   }
@@ -249,14 +246,6 @@ body {
 @keyframes line-up {
   to {
     transform: none;
-  }
-}
-@keyframes drift {
-  from {
-    transform: scale(1.08) translateX(-2%);
-  }
-  to {
-    transform: scale(1.08) translateX(2%);
   }
 }
 @keyframes card-swap {
