@@ -39,19 +39,16 @@ const REMOVED = [
     'custom-taxonomies',
     'cross-platform'
   ].map((slug) => `/features/${slug}`),
-  '/pricing',
   '/checkout',
   '/account',
-  '/admin',
-  '/legal/refund'
+  '/admin'
 ]
 
 const SUCCESSOR: Record<string, string> = {
   '/features/assistant': '/features/manager',
   '/features/quick-search': '/features/manager',
   '/features/privacy-offline': '/features/privacy',
-  '/features/cross-platform': '/#download',
-  '/legal/refund': '/legal/terms'
+  '/features/cross-platform': '/#download'
 }
 
 function matches(source: string, path: string): boolean {
@@ -115,9 +112,11 @@ describe('website routes', () => {
         ].map((slug) => `/features/${slug}`),
         '/roadmap',
         '/press',
+        '/pricing',
         '/contact',
         '/legal/terms',
-        '/legal/privacy'
+        '/legal/privacy',
+        '/legal/refund'
       ])
     })
 

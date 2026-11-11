@@ -17,10 +17,11 @@ function files(path: string): string[] {
 
 const SITE = ROOTS.flatMap(files).filter((f) => /\.(tsx?|md|html|mjs|json|svg|txt|xml)$/.test(f))
 
-/** Claims that are not true of Talyx: free, signed on macOS, macOS and Linux only. */
+/**
+ * Claims that are not true of Talyx: the app is free, signed on macOS, macOS and Linux only.
+ * Prices, refunds and license keys are not here: the pricing and legal pages sell the modules.
+ */
 const RETIRED = [
-  /\$\d/,
-  /\bpricing\b/i,
   /free trial|\b\d+[- ]day trial|trial (?:ends|expires|info)/i,
   /railway|talyxapp-production/i,
   /\bstripe\b/i,
@@ -29,7 +30,6 @@ const RETIRED = [
   // release notes word it.
   /\bwindows\b(?! comes later\.)(?!',\s+description: 'It comes once the engine runs there\.')/i,
   /built-in AI|local AI|on-device AI/i,
-  /refund/i,
   /not (?:signed|notari[sz]ed)|open anyway|com\.apple\.quarantine/i,
   /windows (?:is )?(?:planned|coming)|coming to windows/i,
   /auto-?updat|updates? (?:are )?delivered automatically/i,
@@ -37,7 +37,6 @@ const RETIRED = [
   /taxonom/i,
   /vision credits?/i,
   /plausible|@vercel\/analytics|datafast/i,
-  /licen[cs]e key/i,
   /100% offline|fully offline|works offline/i,
   // The file organizer's claims. Code like `.sort(` or `sortOrder` is not prose.
   /(?<![.\w])sort(?:s|ed|ing)?\b(?!\()/i,
@@ -54,9 +53,7 @@ const RETIRED = [
  * the paths must contain the retired words. Nothing else may.
  */
 const REDIRECT_SOURCES: Record<string, string[]> = {
-  [/refund/i.source]: ['website/vercel.json'],
   [/taxonom/i.source]: ['website/vercel.json'],
-  [/\bpricing\b/i.source]: ['website/vercel.json'],
   [/(?<![.\w])sort(?:s|ed|ing)?\b(?!\()/i.source]: ['website/vercel.json'],
   [/watch[ -]folders?/i.source]: ['website/vercel.json']
 }
