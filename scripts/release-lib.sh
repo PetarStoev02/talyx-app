@@ -94,6 +94,17 @@ check_mac_signing_env() {
   return 1
 }
 
+# Talyx downloads an update only when its feed is signed with this key (scripts/sign-feed.mjs).
+# It stays on the owner's machine: a key on GitHub could be taken by whoever gets into the repo.
+UPDATE_KEY_FILE="$HOME/.config/talyx/keys/update.private.pem"
+
+check_update_signing_key() {
+  [ -f "$UPDATE_KEY_FILE" ] && return 0
+  echo "✗ The update feed must be signed. Missing: $UPDATE_KEY_FILE." >&2
+  echo "  CLAUDE.md → Builds → Signing secrets says where it comes from." >&2
+  return 1
+}
+
 # electron-builder notarizes and staples the .app but not the DMG around it. A DMG downloaded from
 # the release carries the quarantine attribute, so it is notarized and stapled too: Gatekeeper then
 # accepts it without reaching Apple.

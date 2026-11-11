@@ -1,3 +1,4 @@
+import { generateKeyPairSync, sign } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const fakes = vi.hoisted(() => {
@@ -33,10 +34,46 @@ vi.mock('electron-updater', () => ({
 }))
 
 import { downloadSelfUpdate } from '../../../src/main/infrastructure/updater/selfUpdate'
-import { ReleaseDownloadError } from '../../../src/main/infrastructure/updater/releaseDownload'
+import { ReleaseDownloadError } from '../../../src/main/infrastructure/updater/updateState'
 
 const { updater, squirrel } = fakes
 const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+
+// The release's update feed as the release workflow publishes it, signed with a key made here.
+const keys = generateKeyPairSync('ed25519')
+const RELEASE = 'https://github.com/PetarStoev02/talyx-app/releases/download/v1.0.6/'
+const HASH = 'c2hhNTEyLW9mLXRoZS1maWxl'
+const FEED_TEXT = `version: 1.0.6\nfiles:\n  - url: Talyx-x86_64.AppImage\n    sha512: ${HASH}\n    size: 10\n  - url: Talyx-amd64.deb\n    sha512: ZGViLWhhc2g=\n    size: 20\npath: Talyx-x86_64.AppImage\nsha512: ${HASH}\n`
+const FILE = { url: 'Talyx-x86_64.AppImage', sha512: HASH, size: 10 }
+const OFFERED = { version: '1.0.6', files: [FILE] }
+
+/** A release serving `files` by name; a name it lacks is a 404. */
+function releaseWith(files: Record<string, string>): typeof fetch {
+  return vi.fn(async (url: string) => {
+    const body = files[url.replace(RELEASE, '')]
+    return {
+      ok: body !== undefined,
+      status: body === undefined ? 404 : 200,
+      headers: new Headers(),
+      arrayBuffer: async () => new TextEncoder().encode(body).buffer
+    }
+  }) as unknown as typeof fetch
+}
+
+function signedRelease(feed = 'latest-linux.yml', text = FEED_TEXT): typeof fetch {
+  const signature = sign(null, Buffer.from(text), keys.privateKey).toString('base64')
+  return releaseWith({ [feed]: text, [`${feed}.sig`]: `${signature}\n` })
+}
+
+const download = (
+  fetchFn: typeof fetch = signedRelease(),
+  signal = new AbortController().signal,
+  progress = vi.fn()
+): Promise<() => Promise<void>> =>
+  downloadSelfUpdate(
+    { version: '1.0.6', onProgress: progress, signal },
+    { fetch: fetchFn, key: keys.publicKey }
+  )
 
 function failureOf(error: unknown): string | null {
   return error instanceof ReleaseDownloadError ? error.reason : null
@@ -49,7 +86,7 @@ describe('downloadSelfUpdate', () => {
     vi.clearAllMocks()
     fakes.tokens.length = 0
     Object.defineProperty(process, 'platform', { value: 'linux' })
-    updater.checkForUpdates.mockResolvedValue({ isUpdateAvailable: true })
+    updater.checkForUpdates.mockResolvedValue({ isUpdateAvailable: true, updateInfo: OFFERED })
     updater.downloadUpdate.mockImplementation(async () => {
       updater.emit('download-progress', { transferred: 5, total: 10 })
       return ['/cache/Talyx-x86_64.AppImage']
@@ -62,7 +99,7 @@ describe('downloadSelfUpdate', () => {
 
   it('should download with progress and leave the restart to the caller', async () => {
     const progress = vi.fn()
-    const restart = await downloadSelfUpdate(progress, new AbortController().signal)
+    const restart = await download(signedRelease(), new AbortController().signal, progress)
 
     expect(updater.autoDownload).toBe(false)
     expect(updater.autoInstallOnAppQuit).toBe(true)
@@ -74,9 +111,18 @@ describe('downloadSelfUpdate', () => {
     expect(updater.quitAndInstall).toHaveBeenCalledOnce()
   })
 
+  it('should download nothing when the release is not the version that was offered', async () => {
+    updater.checkForUpdates.mockResolvedValueOnce({
+      isUpdateAvailable: true,
+      updateInfo: { ...OFFERED, version: '1.0.5' }
+    })
+    expect(failureOf(await download().catch((e) => e))).toBe('other')
+    expect(updater.downloadUpdate).not.toHaveBeenCalled()
+  })
+
   it('should fail when the feed has no newer version for this computer', async () => {
     updater.checkForUpdates.mockResolvedValueOnce({ isUpdateAvailable: false })
-    const error = await downloadSelfUpdate(vi.fn(), new AbortController().signal).catch((e) => e)
+    const error = await download().catch((e) => e)
     expect(failureOf(error)).toBe('other')
     expect(updater.downloadUpdate).not.toHaveBeenCalled()
   })
@@ -86,17 +132,113 @@ describe('downloadSelfUpdate', () => {
     ['ERR_UPDATER_CHANNEL_FILE_NOT_FOUND', 'other']
   ])('should report a %s download error as %s', async (code, reason) => {
     updater.downloadUpdate.mockRejectedValueOnce(Object.assign(new Error('x'), { code }))
-    const error = await downloadSelfUpdate(vi.fn(), new AbortController().signal).catch((e) => e)
+    const error = await download().catch((e) => e)
     expect(failureOf(error)).toBe(reason)
   })
 
   it('should cancel the download when the signal aborts', async () => {
     const controller = new AbortController()
     updater.downloadUpdate.mockImplementationOnce(() => new Promise(() => undefined))
-    void downloadSelfUpdate(vi.fn(), controller.signal)
+    void download(signedRelease(), controller.signal)
     await settle()
     controller.abort()
     expect(fakes.tokens[0].cancelled).toBe(true)
+  })
+
+  describe('a feed Talyx did not sign', () => {
+    const other = generateKeyPairSync('ed25519')
+    const signedBy = (key: typeof keys.privateKey, text = FEED_TEXT): string =>
+      sign(null, Buffer.from(text), key).toString('base64')
+    const feed = 'latest-linux.yml'
+
+    it.each([
+      ['has no signature', releaseWith({ [feed]: FEED_TEXT })],
+      ['is missing', releaseWith({})],
+      [
+        'is signed with another key',
+        releaseWith({ [feed]: FEED_TEXT, [`${feed}.sig`]: signedBy(other.privateKey) })
+      ],
+      [
+        'was changed after signing',
+        releaseWith({
+          [feed]: FEED_TEXT.replaceAll(HASH, 'b3RoZXI='),
+          [`${feed}.sig`]: signedBy(keys.privateKey)
+        })
+      ],
+      ['has a signature that is not one', releaseWith({ [feed]: FEED_TEXT, [`${feed}.sig`]: 'x' })],
+      [
+        'is signed but lists other files than the update offered',
+        signedRelease(feed, FEED_TEXT.replaceAll(HASH, 'b3RoZXI='))
+      ],
+      [
+        'is signed but for another version',
+        signedRelease(feed, FEED_TEXT.replace('1.0.6', '1.0.5'))
+      ]
+    ])('should download nothing when the feed %s', async (_name, fetchFn) => {
+      const error = await download(fetchFn).catch((e) => e)
+      expect(failureOf(error)).toBe('signature')
+      expect(updater.downloadUpdate).not.toHaveBeenCalled()
+    })
+
+    it.each(['../../../evil/repo', '1.0.6/../../x', ''])(
+      'should fetch nothing for a version %j that is not the one offered',
+      async (version) => {
+        updater.checkForUpdates.mockResolvedValueOnce({
+          isUpdateAvailable: true,
+          updateInfo: { ...OFFERED, version }
+        })
+        const fetchFn = signedRelease()
+        expect(failureOf(await download(fetchFn).catch((e) => e))).toBe('other')
+        expect(fetchFn).not.toHaveBeenCalled()
+      }
+    )
+
+    it('should not call a feed GitHub failed to serve unsigned', async () => {
+      const failing = vi.fn(async () => ({ ok: false, status: 503 })) as unknown as typeof fetch
+      expect(failureOf(await download(failing).catch((e) => e))).toBe('other')
+      expect(updater.downloadUpdate).not.toHaveBeenCalled()
+    })
+
+    it('should refuse a feed that says it is far larger than a feed is', async () => {
+      const huge = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-length': String(10 * 1024 * 1024) }),
+        arrayBuffer: async () => {
+          throw new Error('read the body')
+        }
+      })) as unknown as typeof fetch
+      expect(failureOf(await download(huge).catch((e) => e))).toBe('signature')
+    })
+
+    it.each([
+      // The feed also lists the deb; under the AppImage's name it would replace the app.
+      ['another signed file under this name', { ...FILE, sha512: 'ZGViLWhhc2g=', size: 20 }],
+      ['this file under another name', { ...FILE, url: 'Other.AppImage' }],
+      ['this file with another size', { ...FILE, size: 11 }],
+      ['this file with no size', { url: FILE.url, sha512: HASH }]
+    ])('should refuse an update offering %s', async (_name, file) => {
+      updater.checkForUpdates.mockResolvedValueOnce({
+        isUpdateAvailable: true,
+        updateInfo: { version: '1.0.6', files: [file] }
+      })
+      expect(failureOf(await download().catch((e) => e))).toBe('signature')
+      expect(updater.downloadUpdate).not.toHaveBeenCalled()
+    })
+
+    it.each([[[]], [undefined]])('should refuse an update whose files are %j', async (files) => {
+      updater.checkForUpdates.mockResolvedValueOnce({
+        isUpdateAvailable: true,
+        updateInfo: { version: '1.0.6', files }
+      })
+      expect(failureOf(await download().catch((e) => e))).toBe('signature')
+    })
+
+    it('should refuse a signed file that is not a feed', async () => {
+      expect(
+        failureOf(await download(signedRelease('latest-linux.yml', 'hello')).catch((e) => e))
+      ).toBe('signature')
+    })
   })
 
   describe('on macOS', () => {
@@ -104,7 +246,7 @@ describe('downloadSelfUpdate', () => {
 
     it('should be ready only once Squirrel has staged the signed update', async () => {
       let ready = false
-      const running = downloadSelfUpdate(vi.fn(), new AbortController().signal).then(() => {
+      const running = download(signedRelease('latest-mac.yml')).then(() => {
         ready = true
       })
       await settle()
@@ -118,7 +260,7 @@ describe('downloadSelfUpdate', () => {
     })
 
     it('should fail when Squirrel refuses the update, as it does for a different signature', async () => {
-      const running = downloadSelfUpdate(vi.fn(), new AbortController().signal).catch((e) => e)
+      const running = download(signedRelease('latest-mac.yml')).catch((e) => e)
       await settle()
       squirrel.emit('error', new Error('Code signature did not match'))
       expect(failureOf(await running)).toBe('other')
@@ -127,7 +269,7 @@ describe('downloadSelfUpdate', () => {
 
     it('should not leave a Squirrel refusal unhandled when the download fails first', async () => {
       updater.downloadUpdate.mockRejectedValueOnce(new Error('offline'))
-      const error = await downloadSelfUpdate(vi.fn(), new AbortController().signal).catch((e) => e)
+      const error = await download(signedRelease('latest-mac.yml')).catch((e) => e)
       expect(failureOf(error)).toBe('other')
       expect(squirrel.listenerCount('error')).toBe(0)
     })

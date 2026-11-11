@@ -31,6 +31,7 @@
     "build:mac": "electron-vite build && electron-builder --mac --publish never",
     "build:linux": "electron-vite build && electron-builder --linux --x64 --publish never",
     "release": "bash scripts/release.sh",
+    "sign-release": "bash scripts/sign-release.sh",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:smoke": "vitest run --config vitest.smoke.config.ts"
@@ -41,6 +42,7 @@
     "clsx": "^2.1.1",
     "electron-log": "^5.4.3",
     "electron-updater": "6.8.11",
+    "js-yaml": "4.3.2",
     "lucide-react": "^0.577.0",
     "nanostores": "1.4.2",
     "radix-ui": "^1.4.3",
@@ -56,6 +58,7 @@
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
     "@electron-toolkit/eslint-config-ts": "^3.1.0",
     "@electron-toolkit/tsconfig": "^2.0.0",
+    "@types/js-yaml": "4.0.9",
     "@types/node": "^24.9.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

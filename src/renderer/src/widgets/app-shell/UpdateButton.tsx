@@ -22,8 +22,7 @@ const RING_LENGTH = 2 * Math.PI * RING_RADIUS
 
 const failureKeys: Record<UpdateFailure, TranslationKey> = {
   checksum: 'update.failedChecksum',
-  network: 'update.failedNetwork',
-  'too-large': 'update.failedTooLarge',
+  signature: 'update.failedSignature',
   other: 'update.failedOther'
 }
 
@@ -322,14 +321,10 @@ function TalyxActions({
         </Button>
       )
     case 'ready':
-      return (
-        <Button onClick={() => act(updaterApi.install)}>
-          {t(state.release.automatic ? 'update.restart' : 'update.openInstaller')}
-        </Button>
-      )
+      return <Button onClick={() => act(updaterApi.install)}>{t('update.restart')}</Button>
     case 'available':
     case 'failed':
-      // No installer or checksums for this computer in the release: only its page.
+      // Nothing Talyx can download itself for this computer in the release: only its page.
       if (!state.release.downloadable) return releasePage
       return (
         <>
@@ -358,10 +353,7 @@ function talyxTitle(state: TalyxState, t: (key: TranslationKey) => string): stri
         .replace('{version}', version)
         .replace('{percent}', String(Math.floor(fraction(state) * 100)))
     case 'ready':
-      return t(state.release.automatic ? 'update.readyRestart' : 'update.ready').replace(
-        '{version}',
-        version
-      )
+      return t('update.readyRestart').replace('{version}', version)
     case 'failed':
       return t('update.failed').replace('{version}', version)
   }

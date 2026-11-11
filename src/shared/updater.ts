@@ -11,15 +11,13 @@ export interface ReleaseSummary {
   changes: number
   /**
    * True when Talyx downloads this release itself, on the user's click, and installs it on restart
-   * or quit (macOS and AppImage, when the release has their latest-*.yml); false when the user
-   * opens the installer.
+   * or quit: macOS and AppImage, when the release has their latest-*.yml and its signature.
+   * Otherwise the update button offers the release page.
    */
-  automatic: boolean
-  /** True when the release has what the download needs: the update feed, or installer and SHA256SUMS. */
   downloadable: boolean
 }
 
-export type UpdateFailure = 'checksum' | 'network' | 'too-large' | 'other'
+export type UpdateFailure = 'checksum' | 'signature' | 'other'
 
 export type UpdateState =
   | { kind: 'none' }
