@@ -1,9 +1,9 @@
+import type { Dirent } from 'node:fs'
 import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const BUNDLE_FILE = 'bundle.json'
 const SIGNATURE_FILE = 'bundle.sig'
-const STAGING_SUFFIX = '.tmp'
 const PREVIOUS_SUFFIX = '.old'
 
 /** A module's files as they sit on disk, not yet checked. */
@@ -37,20 +37,22 @@ export async function readInstalled(dir: string): Promise<InstalledFiles | null>
 }
 
 /**
- * The ids of the modules with a folder in `modulesRoot`, installed or left aside by an update that
- * was cut short (`readInstalled` puts that one back). No folder yet means none.
+ * The names of the module folders in `modulesRoot`. A module left aside by an update that was cut
+ * short counts as its module: `readInstalled` puts it back. No folder yet means none.
  */
 export async function installedIds(modulesRoot: string): Promise<string[]> {
-  let names: string[]
+  let entries: Dirent[]
   try {
-    names = await readdir(modulesRoot)
+    entries = await readdir(modulesRoot, { withFileTypes: true })
   } catch (error) {
     if (isMissing(error)) return []
     throw new ModuleFilesError(`The installed modules cannot be listed (${errorCode(error)}).`)
   }
-  const ids = names
-    .filter((name) => !name.endsWith(STAGING_SUFFIX))
-    .map((name) => (name.endsWith(PREVIOUS_SUFFIX) ? name.slice(0, -PREVIOUS_SUFFIX.length) : name))
+  const ids = entries
+    .filter((entry) => entry.isDirectory())
+    .map(({ name }) =>
+      name.endsWith(PREVIOUS_SUFFIX) ? name.slice(0, -PREVIOUS_SUFFIX.length) : name
+    )
   return [...new Set(ids)]
 }
 
@@ -100,7 +102,7 @@ async function restoreInterruptedSwap(dir: string): Promise<void> {
 }
 
 function stagingDir(dir: string): string {
-  return `${dir}${STAGING_SUFFIX}`
+  return `${dir}.tmp`
 }
 
 function previousDir(dir: string): string {

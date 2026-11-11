@@ -321,6 +321,58 @@ describe('module host', () => {
       expect(state.modules).toEqual([])
       expect(host.file('hello', 'renderer.js')).toBeNull()
     })
+
+    it('should skip what is in the modules folder but is not a module', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer, EVERY_MODULE))
+      await host.install('hello')
+      await writeFile(join(root, 'modules', '.DS_Store'), '')
+      await writeFile(join(root, 'modules', 'notes'), 'a file, not a module folder')
+      const restarted = newHost()
+      await restarted.start()
+      expect(restarted.state().modules.map((module) => module.id)).toEqual(['hello'])
+    })
+  })
+
+  describe('given installed modules', () => {
+    /** Installs `id` as a signed copy of hello, as an earlier key would have left it. */
+    async function leaveInstalled(id: string): Promise<void> {
+      const { bytes, signature } = signBundle(signer, helloBundle({ id }))
+      await mkdir(join(root, 'modules', id), { recursive: true })
+      await writeFile(join(root, 'modules', id, 'bundle.json'), bytes)
+      await writeFile(join(root, 'modules', id, 'bundle.sig'), signature)
+    }
+
+    it('should not start a module the saved license does not unlock', async () => {
+      await leaveInstalled('hello')
+      savedKey = issueKey(signer, { ...LICENSE, modules: ['other'] })
+      await host.start()
+      expect(host.state().modules).toEqual([])
+      expect(helloRuns().started).toBe(0)
+    })
+
+    it('should list them in the order the key names them', async () => {
+      await leaveInstalled('alpha')
+      await leaveInstalled('zeta')
+      savedKey = issueKey(signer, { ...LICENSE, modules: ['zeta', 'alpha'] })
+      await host.start()
+      expect(host.state().modules.map((module) => module.id)).toEqual(['zeta', 'alpha'])
+    })
+
+    it('should list them by id for a license for every module', async () => {
+      await leaveInstalled('zeta')
+      await leaveInstalled('alpha')
+      savedKey = issueKey(signer, { ...LICENSE, modules: [ALL_MODULES] })
+      await host.start()
+      expect(host.state().modules.map((module) => module.id)).toEqual(['alpha', 'zeta'])
+    })
+
+    it('should start with no modules when the modules folder cannot be listed', async () => {
+      await writeFile(join(root, 'modules'), 'a file where the folder belongs')
+      savedKey = issueKey(signer)
+      const state = await host.start()
+      expect(state).toMatchObject({ license: { id: LICENSE.id }, modules: [] })
+    })
   })
 
   describe('given changes that overlap', () => {

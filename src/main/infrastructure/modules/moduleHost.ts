@@ -119,7 +119,7 @@ export function createModuleHost(deps: ModuleHostDeps) {
   function state(): ModulesState {
     const current = activeLicense()
     if (!current) return { license: null, modules: [] }
-    const modules = [...loaded].flatMap(([id, module]) => {
+    const modules = [...loaded].sort(byKeyOrder(current)).flatMap(([id, module]) => {
       if (!unlocksModule(current, id)) return []
       const { name, version, status, problem, bundle } = module
       return [{ id, name, version, status, problem, styled: !!bundle?.files['style.css'] }]
@@ -313,8 +313,18 @@ export function createModuleHost(deps: ModuleHostDeps) {
 
   /** Loads what is installed, not what the key names: a key for every module names none. */
   async function loadLicensed(): Promise<void> {
-    const installed = await installedIds(join(deps.root, MODULES_FOLDER))
-    for (const id of installed) if (ModuleIdSchema.safeParse(id).success) await load(id)
+    for (const id of await installedModuleIds()) await load(id)
+  }
+
+  /** A modules folder that cannot be listed loads nothing; the app and the license still start. */
+  async function installedModuleIds(): Promise<string[]> {
+    try {
+      const ids = await installedIds(join(deps.root, MODULES_FOLDER))
+      return ids.filter((id) => ModuleIdSchema.safeParse(id).success)
+    } catch (error) {
+      deps.log.error('[Modules] The installed modules could not be listed:', error)
+      return []
+    }
   }
 
   async function load(id: string): Promise<void> {
@@ -437,6 +447,16 @@ export function createModuleHost(deps: ModuleHostDeps) {
     recheckExpiry,
     stopAll
   }
+}
+
+/** The order the key names its modules; a module it does not name (a key for every module) by id. */
+function byKeyOrder(license: LicenseSummary) {
+  const place = (id: string): number => {
+    const named = license.modules.indexOf(id)
+    return named === -1 ? license.modules.length : named
+  }
+  return ([a]: [string, Loaded], [b]: [string, Loaded]): number =>
+    place(a) - place(b) || a.localeCompare(b)
 }
 
 function blankModule(id: string): Loaded {
