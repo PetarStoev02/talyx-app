@@ -23,8 +23,9 @@ export function settingsPages(licensed: boolean): typeof SETTINGS_SECTIONS {
 }
 
 /**
- * The page Settings shows: the chosen one while it is there, else General. Removing or outliving
- * the license while on Modules leaves the page in place but gone from the sidebar.
+ * The page Settings shows: the chosen one while it is listed, else General. Removing or outliving
+ * the license while on Modules keeps Modules as the chosen page (it returns with the license), but
+ * General shows.
  */
 export function shownPage(section: SettingsSection, licensed: boolean): SettingsSection {
   return settingsPages(licensed).some((item) => item.key === section) ? section : 'general'
