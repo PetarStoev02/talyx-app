@@ -57,7 +57,22 @@ export function parseBrief(text: string): WorkflowBrief | null {
     const step = STEP_LINE.exec(line)
     if (step) steps[step[1]] = step[2]
   }
-  return { ref: task[1], title: task[2], workflow: workflow?.[1] ?? null, steps }
+  return { ref: task[1], title: briefTitle(task[2]), workflow: workflow?.[1] ?? null, steps }
+}
+
+/**
+ * The title as written: Workflows sends an issue's title JSON-quoted, since other people wrote
+ * it, and a typed task's as it is.
+ */
+function briefTitle(written: string): string {
+  if (!written.startsWith('"')) return written
+  try {
+    const title: unknown = JSON.parse(written)
+    return typeof title === 'string' ? title : written
+  } catch {
+    // Not JSON after all: a typed task that starts with a quote.
+    return written
+  }
 }
 
 /** One status line's fields, or null when the line is not one (or is the brief's template). */

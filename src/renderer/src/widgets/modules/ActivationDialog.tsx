@@ -80,6 +80,11 @@ export function ActivationDialog(): React.JSX.Element | null {
         ) : (
           <>
             <DialogDescription>{t('modules.activateHint')}</DialogDescription>
+            {license && (
+              <p role="note" className="text-base text-muted-foreground">
+                {t('modules.activateReplaces').replace('{name}', license.name)}
+              </p>
+            )}
             <form
               className="space-y-4"
               onSubmit={(event) => {

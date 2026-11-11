@@ -2,8 +2,9 @@
 # Build the macOS release and create a draft GitHub release. Local path, macOS only (the DMGs and
 # the update zips with latest-mac.yml): the
 # Linux builds and the real-engine smoke test come from the Release workflow on GitHub Actions.
-# The DMGs are signed with Developer ID and notarized, like the workflow's. Without the five
-# signing variables and the update signing key (see CLAUDE.md → Builds → Signing secrets) it refuses: an unsigned release would
+# The DMGs are signed with Developer ID and notarized, like the workflow's. Without the signing
+# variables and the update signing key (see CLAUDE.md → Builds → Signing secrets) it refuses: an
+# unsigned release would
 # contradict the README. `npm run build:mac` still builds unsigned DMGs for local testing.
 
 set -e

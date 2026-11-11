@@ -106,6 +106,16 @@ describe('isTrustedBridgeRequest', () => {
     expect(isTrustedBridgeRequest({ method: 'POST', headers }, ports)).toBe(expected)
   })
 
+  it.each([
+    ['the page itself', 'same-origin', true],
+    ['the address bar', 'none', true],
+    ['another site', 'cross-site', false],
+    ['another port of this computer', 'same-site', false]
+  ])('should judge a module file request from %s as %s', (_label, site, expected) => {
+    const headers = { host: '127.0.0.1:5175', 'sec-fetch-site': site }
+    expect(isTrustedBridgeRequest({ method: 'GET', headers }, ports)).toBe(expected)
+  })
+
   it('should accept the event stream GET without a content type', () => {
     expect(
       isTrustedBridgeRequest({ method: 'GET', headers: { host: '127.0.0.1:5175' } }, ports)

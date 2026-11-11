@@ -576,6 +576,8 @@ const en = {
   'modules.add': 'Add to {name}',
   'modules.activateTitle': 'Enter license key',
   'modules.activateHint': 'Paste the key from your purchase email.',
+  'modules.activateReplaces':
+    'This replaces the license for {name}. Activate only a key you bought or were given by Talyx.',
   'modules.licenseKey': 'License key',
   'modules.activate': 'Activate',
   'modules.cancel': 'Cancel',

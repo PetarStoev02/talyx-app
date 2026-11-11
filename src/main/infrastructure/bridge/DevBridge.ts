@@ -25,8 +25,11 @@ export interface BridgePorts {
 /**
  * The bridge reaches every IPC handler, so only the dev renderer may call it:
  * a loopback Host (defeats DNS rebinding), the renderer's Origin whenever a
- * browser sends one (defeats a cross-site POST), and a JSON body (a
- * cross-origin JSON POST needs a CORS preflight the bridge never answers).
+ * browser sends one (defeats a cross-site POST), no request a browser marks
+ * as coming from another site (a script or image tag sends no Origin), and
+ * a JSON body (a cross-origin JSON POST needs a CORS preflight the bridge
+ * never answers). Another program on this computer is not kept out: it can
+ * call the bridge as the Vite proxy does.
  */
 export function isTrustedBridgeRequest(
   request: { method: string; headers: IncomingHttpHeaders },
@@ -35,6 +38,8 @@ export function isTrustedBridgeRequest(
   const { headers } = request
   if (!isLoopback(`http://${headers.host ?? ''}`, ports.bridgePort)) return false
   if (headers.origin !== undefined && !isLoopback(headers.origin, ports.rendererPort)) return false
+  const site = headers['sec-fetch-site']
+  if (site !== undefined && site !== 'same-origin' && site !== 'none') return false
   if (request.method === 'POST') {
     return (headers['content-type'] ?? '').startsWith('application/json')
   }
