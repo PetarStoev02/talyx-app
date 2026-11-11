@@ -144,8 +144,8 @@ as an Actions secret on `PetarStoev02/talyx-app`:
 
 The update signing key is not a secret on GitHub and must never become one: a key there could be
 taken by whoever gets into the repository, which is the case it guards against. It is the Ed25519
-private key `~/.config/talyx/keys/update.private.pem` on the owner's machine (back it up to
-1Password); its public half is `UPDATE_FEED_KEY` in `updater/feedSignature.ts`. Every installed
+private key `~/.config/talyx/keys/update.private.pem` on the owner's machine (keep a
+passphrase-protected copy somewhere outside it); its public half is `UPDATE_FEED_KEY` in `updater/feedSignature.ts`. Every installed
 Talyx refuses a feed signed with another key, so a lost key means users update once by hand from
 the release page, to a build that ships a new public key.
 
