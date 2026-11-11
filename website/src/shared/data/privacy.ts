@@ -1,7 +1,7 @@
 /** One line of the ledger: a count, what it counts and the detail behind it. */
 interface LedgerEntry {
   figure: string
-  /** Read straight after the figure, so the figure is a count: "0 Talyx servers or accounts". */
+  /** Read straight after the figure, so the figure is a count: "0 Talyx servers or accounts behind the free app". */
   counted: string
   detail: string
   /** Whether the header menu lists this entry, with its counted phrase alone. */
@@ -15,7 +15,7 @@ interface LedgerEntry {
 export const PRIVACY_LEDGER: LedgerEntry[] = [
   {
     figure: '0',
-    counted: 'Talyx servers or accounts',
+    counted: 'Talyx servers or accounts behind the free app',
     detail: 'There is nothing to sign up for, and the app collects no telemetry.',
     inMenu: true
   },

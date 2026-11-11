@@ -71,7 +71,7 @@ export const faqEntries = [
   },
   {
     q: 'Can Talyx see my chats?',
-    a: 'No. Talyx has no server, so your chats never reach us. They pass between the app and the engine on your computer, and each bot sends them on to the model provider you chose, under that provider\u2019s terms. A bot\u2019s tools, like web search or a command it runs, can reach other services too.'
+    a: 'No. Talyx has no server that your chats could reach, so they never reach us. They pass between the app and the engine on your computer, and each bot sends them on to the model provider you chose, under that provider\u2019s terms. A bot\u2019s tools, like web search or a command it runs, can reach other services too.'
   },
   {
     q: 'Which computers does it run on?',
@@ -126,7 +126,7 @@ const featureMeta: Record<FeatureSlug, Pick<PageMeta, 'title' | 'description'>> 
   privacy: {
     title: 'Privacy: Talyx | No Account, No Server, No Telemetry in the App',
     description:
-      'Chats pass from Talyx to the engine on your computer, then to the model provider each bot uses and any service its tools reach. Talyx has no server and no telemetry.'
+      'Chats pass from Talyx to the engine on your computer, then to the model provider each bot uses and any service its tools reach. The free app has no server and no telemetry.'
   }
 }
 
@@ -159,7 +159,7 @@ export const seoData: Record<string, PageMeta> = {
   '/contact': {
     title: 'Contact: Talyx | Issues, Questions and Security Reports',
     description:
-      'Report a bug or share an idea in a public GitHub issue, or send a private security report. Talyx has no accounts and no support desk.',
+      'Report a bug or share an idea in a public GitHub issue, or send a private security report. Questions about a module purchase go to support@talyx.app.',
     canonical: '/contact'
   },
   '/legal/terms': {
@@ -183,7 +183,7 @@ export const seoData: Record<string, PageMeta> = {
   '/legal/privacy': {
     title: 'Privacy Policy: Talyx | No Server, No Telemetry in the App',
     description:
-      'The app collects nothing and has no server. Bots send what they need to the model provider you chose and to the services their tools use, and this website counts page views without cookies.',
+      'The free app collects nothing and has no server. Bots send what they need to the model provider you chose and to the services their tools use, and this website counts page views without cookies.',
     canonical: '/legal/privacy'
   },
   '/press': {

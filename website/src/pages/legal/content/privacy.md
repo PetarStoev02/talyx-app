@@ -8,7 +8,7 @@ This policy is published by Petar Georgiev Stoev, who sells Talyx modules.
 
 ## 1. The Short Version
 
-- Talyx has no server, no account and no telemetry. The app sends nothing about you to us.
+- Talyx, the free app, has no server, no account and no telemetry. It sends nothing about you to us. If you buy a module, Section 8 applies.
 - Your bots run on the engine, on your computer. What a bot sends goes from the engine to the model provider you set up for it, under that provider's terms. A bot's tools, like web search or a command it runs, can reach other services too. Some ask for your approval first.
 - On the internet, Talyx itself reaches only GitHub: to check for a new release, to download an update (in the background on macOS and in the AppImage; a deb install updates from the release page instead), and to fetch the engine's install steps. Those steps then download the engine. Only after you enter a module license key does Talyx also reach our module server, to download the modules you bought.
 - If you buy a module, Paddle.com handles the payment and we receive your email address and what you bought, to send you a license key. See Section 8.
@@ -18,7 +18,7 @@ This policy is published by Petar Georgiev Stoev, who sells Talyx modules.
 
 ## 2. What the App Collects
 
-Nothing. Talyx has no server and no account. It collects no usage data and sends no crash reports. We cannot see your bots, your chats, your keys or your settings.
+Nothing. The free app has no server and no account. It collects no usage data and sends no crash reports. We cannot see your bots, your chats, your keys or your settings. If you enter a module license key, the App also reaches our module server (Section 8).
 
 ---
 
@@ -89,8 +89,8 @@ Vercel hosts the site and keeps standard server logs of requests, like any web h
 Talyx itself is free. If you buy a paid module:
 
 - **Paddle.** Paddle.com is our Merchant of Record. Paddle collects your payment details, name, email address, country and tax information, under [Paddle's privacy notice](https://www.paddle.com/legal/privacy). We never see your card details.
-- **What we receive.** Paddle tells us your email address, your country, what you bought and the order's ID. We use them to create your license key, send it to you, answer your questions and handle refunds.
-- **Your license key.** We email the key to you. It carries the modules you bought and is checked by our license server each time the App downloads a module. That check sees the key and your IP address, like any web request.
+- **What we receive.** Paddle tells us your name, your email address, your country, what you bought and the order's ID. We use them to create your license key, send it to you, answer your questions and handle refunds.
+- **Your license key.** We email the key to you. It carries the modules you bought and is checked by our module server each time the App downloads a module. That check sees the key and your IP address, like any web request.
 - **How long.** We keep order records as long as tax and accounting law requires.
 
 ---

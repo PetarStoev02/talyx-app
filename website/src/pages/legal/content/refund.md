@@ -12,7 +12,7 @@ Talyx itself is free. Talyx modules are sold by Petar Georgiev Stoev. Our order 
 
 ## 2. Refunds Within 30 Days
 
-If a module does not work for you, ask for a refund within 30 days of your purchase and you get the full price back. You do not have to give a reason.
+Ask for a refund within 30 days of your purchase and you get the full price back. You do not have to give a reason.
 
 After a refund, the module's license key stops being valid for downloads and updates.
 

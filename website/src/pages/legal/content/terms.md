@@ -72,7 +72,7 @@ Talyx is provided "as is", without warranty of any kind, express or implied, inc
 
 ## 9. Privacy
 
-See our [Privacy Policy](/legal/privacy) for how data moves between Talyx, the engine, your model providers and GitHub, and for what this website counts. The App has no server of its own; buying a module involves Paddle and our license server, as the Privacy Policy describes.
+See our [Privacy Policy](/legal/privacy) for how data moves between Talyx, the engine, your model providers and GitHub, and for what this website counts. The App has no server of its own; buying a module involves Paddle and our module server, as the Privacy Policy describes.
 
 ---
 

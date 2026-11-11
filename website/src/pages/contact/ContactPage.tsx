@@ -13,13 +13,22 @@ const CHANNELS = [
     description: 'Report it on GitHub, where the report stays private.',
     cta: 'Report a vulnerability',
     href: SECURITY_REPORT_URL
+  },
+  {
+    title: 'Module purchases',
+    description: 'Questions about a module you bought go to our support address.',
+    cta: 'support@talyx.app',
+    href: 'mailto:support@talyx.app'
   }
 ]
 
 export function ContactPage() {
   return (
     <>
-      <PageHero title="Contact" lead="Talyx is open source, and everything happens on GitHub." />
+      <PageHero
+        title="Contact"
+        lead="Talyx is open source, so bugs, ideas and security reports happen on GitHub."
+      />
 
       <section className={`${GUTTER} grid gap-24 pt-8 pb-32 md:grid-cols-12 md:gap-10 md:pb-48`}>
         {CHANNELS.map(({ title, description, cta, href }, i) => (
