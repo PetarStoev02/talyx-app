@@ -85,3 +85,15 @@ describe('module rows for a key that names several modules', () => {
     ])
   })
 })
+
+describe('module rows when the catalog was read for an earlier key', () => {
+  const module = (id: string): AvailableModule => ({ ...offered('1.0.0')[0]!, id, name: id })
+
+  it('should show no row for an offered module the current key does not unlock', () => {
+    const current = { ...license, modules: ['other'] }
+
+    expect(
+      moduleRows({ license: current, modules: [] }, [module('hello'), module('later')])
+    ).toEqual([])
+  })
+})

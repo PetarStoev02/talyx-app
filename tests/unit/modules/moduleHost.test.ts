@@ -59,6 +59,7 @@ describe('module host', () => {
 
   afterEach(async () => {
     vi.useRealTimers()
+    vi.unstubAllGlobals()
     await rm(root, { recursive: true, force: true })
   })
 
@@ -355,7 +356,7 @@ describe('module host', () => {
 
     it('should start them in the order the key names them', async () => {
       const started: string[] = []
-      Object.assign(globalThis, { moduleStarted: (id: string) => started.push(id) })
+      vi.stubGlobal('moduleStarted', (id: string) => started.push(id))
       await leaveInstalled('alpha', reportingStart('alpha'))
       await leaveInstalled('zeta', reportingStart('zeta'))
       savedKey = issueKey(signer, { ...LICENSE, modules: ['zeta', 'alpha'] })

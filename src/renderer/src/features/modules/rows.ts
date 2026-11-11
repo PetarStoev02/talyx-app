@@ -1,4 +1,9 @@
-import type { AvailableModule, ModuleStatus, ModulesState } from '../../../../shared/modules'
+import {
+  unlocksModule,
+  type AvailableModule,
+  type ModuleStatus,
+  type ModulesState
+} from '../../../../shared/modules'
 
 export interface ModuleRow {
   id: string
@@ -17,12 +22,17 @@ export interface ModuleRow {
  * One row per module the license unlocks: what is installed, merged with what the catalog offers
  * (null while the catalog is loading or could not be read, so installed modules still show).
  * The modules the key names come first, in its order. A key for every module names none of them,
- * so the installed and the offered ones follow; main keeps both lists to what the license unlocks.
+ * so the installed and the offered ones follow.
  */
 export function moduleRows(state: ModulesState, available: AvailableModule[] | null): ModuleRow[] {
-  if (!state.license) return []
-  const unlocked = [...state.modules, ...(available ?? [])].map((module) => module.id)
-  return [...new Set([...state.license.modules, ...unlocked])].flatMap((id) => {
+  const license = state.license
+  if (!license) return []
+  const listed = [...state.modules, ...(available ?? [])].map((module) => module.id)
+  // The catalog may have been read for an earlier key, so every id is checked against this one.
+  const ids = [...new Set([...license.modules, ...listed])].filter((id) =>
+    unlocksModule(license, id)
+  )
+  return ids.flatMap((id) => {
     const installed = state.modules.find((module) => module.id === id) ?? null
     const listed = available?.find((module) => module.id === id) ?? null
     if (!installed && !listed) return []
