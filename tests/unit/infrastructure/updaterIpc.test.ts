@@ -64,8 +64,7 @@ describe('updater IPC', () => {
     await settle()
 
     expect(electron.downloadSelfUpdate).toHaveBeenCalledWith(
-      expect.any(Function),
-      expect.any(AbortSignal),
+      { version: '1.0.0', onProgress: expect.any(Function), signal: expect.any(AbortSignal) },
       { fetch, key: UPDATE_FEED_KEY }
     )
     expect(invoke('updater:status')).toEqual({ kind: 'ready', release: RELEASE.summary })
@@ -93,7 +92,7 @@ describe('updater IPC', () => {
 
   it('should cancel a running download', async () => {
     electron.downloadSelfUpdate.mockImplementationOnce(
-      (_progress: unknown, signal: AbortSignal) =>
+      ({ signal }: { signal: AbortSignal }) =>
         new Promise((_resolve, reject) => signal.addEventListener('abort', reject))
     )
     ipc.updates.found(RELEASE)

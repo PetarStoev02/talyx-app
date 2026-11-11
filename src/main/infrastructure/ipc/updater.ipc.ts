@@ -9,8 +9,8 @@ import { createUpdateStore, type Install } from '../updater/updateState'
 
 /** The Talyx update for every window; the release checks feed it. */
 export const updates = createUpdateStore({
-  download: (onProgress, signal): Promise<Install> =>
-    downloadSelfUpdate(onProgress, signal, { fetch, key: UPDATE_FEED_KEY }),
+  download: (version, onProgress, signal): Promise<Install> =>
+    downloadSelfUpdate({ version, onProgress, signal }, { fetch, key: UPDATE_FEED_KEY }),
   publish: (state) => {
     for (const win of BrowserWindow.getAllWindows()) emit(win.webContents, state)
   }

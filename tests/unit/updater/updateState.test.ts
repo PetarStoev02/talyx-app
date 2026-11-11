@@ -162,7 +162,7 @@ describe('update store', () => {
     expect(download).not.toHaveBeenCalled()
     await updates.startDownload()
 
-    expect(download).toHaveBeenCalledWith(expect.any(Function), expect.any(AbortSignal))
+    expect(download).toHaveBeenCalledWith('1.0.0', expect.any(Function), expect.any(AbortSignal))
     expect(install).not.toHaveBeenCalled()
     expect(published.map((s) => s.kind)).toEqual(['available', 'downloading', 'ready'])
     await updates.install()
@@ -219,7 +219,7 @@ describe('update store', () => {
   it('should return to available when the download is cancelled', async () => {
     const { updates, download } = store()
     download.mockImplementationOnce(
-      (_progress, signal) =>
+      (_version, _progress, signal) =>
         new Promise<Install>((_resolve, reject) =>
           signal.addEventListener('abort', () => reject(new ReleaseDownloadError('other', 'x')))
         )

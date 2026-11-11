@@ -66,7 +66,9 @@ function sameRelease(a: ReleaseSummary, b: ReleaseSummary): boolean {
 export type Install = () => Promise<void>
 
 export interface UpdateStoreDeps {
+  /** Downloads the offered version; `signal` cancels it. */
   download: (
+    version: string,
     onProgress: (received: number, total: number) => void,
     signal: AbortSignal
   ) => Promise<Install>
@@ -105,6 +107,7 @@ export function createUpdateStore(deps: UpdateStoreDeps): UpdateStore {
     const name = `v${target.summary.version}`
     try {
       installer = await deps.download(
+        target.summary.version,
         (received, total) => apply({ kind: 'progress', received, total }),
         controller.signal
       )

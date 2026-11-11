@@ -69,7 +69,10 @@ const download = (
   signal = new AbortController().signal,
   progress = vi.fn()
 ): Promise<() => Promise<void>> =>
-  downloadSelfUpdate(progress, signal, { fetch: fetchFn, key: keys.publicKey })
+  downloadSelfUpdate(
+    { version: '1.0.6', onProgress: progress, signal },
+    { fetch: fetchFn, key: keys.publicKey }
+  )
 
 function failureOf(error: unknown): string | null {
   return error instanceof ReleaseDownloadError ? error.reason : null
@@ -105,6 +108,15 @@ describe('downloadSelfUpdate', () => {
 
     await restart()
     expect(updater.quitAndInstall).toHaveBeenCalledOnce()
+  })
+
+  it('should download nothing when the release is not the version that was offered', async () => {
+    updater.checkForUpdates.mockResolvedValueOnce({
+      isUpdateAvailable: true,
+      updateInfo: { ...OFFERED, version: '1.0.5' }
+    })
+    expect(failureOf(await download().catch((e) => e))).toBe('other')
+    expect(updater.downloadUpdate).not.toHaveBeenCalled()
   })
 
   it('should fail when the feed has no newer version for this computer', async () => {
@@ -175,7 +187,7 @@ describe('downloadSelfUpdate', () => {
           updateInfo: { ...OFFERED, version }
         })
         const fetchFn = signedRelease()
-        expect(failureOf(await download(fetchFn).catch((e) => e))).toBe('signature')
+        expect(failureOf(await download(fetchFn).catch((e) => e))).toBe('other')
         expect(fetchFn).not.toHaveBeenCalled()
       }
     )

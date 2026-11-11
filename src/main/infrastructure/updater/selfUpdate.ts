@@ -15,6 +15,13 @@ const FEED_TIMEOUT_MS = 10_000
 // A feed is a few hundred bytes; anything far larger is not one.
 const MAX_FEED_BYTES = 64 * 1024
 
+/** The download the user clicked: the version the update button showed them. */
+export interface OfferedDownload {
+  version: string
+  onProgress: (received: number, total: number) => void
+  signal: AbortSignal
+}
+
 /** Where the signed feed is read from, and the key its signature must verify with. */
 export interface FeedSource {
   fetch: typeof fetch
@@ -29,8 +36,7 @@ export interface FeedSource {
  * matches the running one. Resolves to the restart that installs it; quitting installs it too.
  */
 export async function downloadSelfUpdate(
-  onProgress: (received: number, total: number) => void,
-  signal: AbortSignal,
+  { version, onProgress, signal }: OfferedDownload,
   source: FeedSource
 ): Promise<() => Promise<void>> {
   configure()
@@ -44,6 +50,10 @@ export async function downloadSelfUpdate(
     const check = await autoUpdater.checkForUpdates()
     if (!check?.isUpdateAvailable)
       throw new ReleaseDownloadError('other', 'The release has no update for this computer')
+    // An older signed feed, replayed under a newer release, must not install another version
+    // than the one shown.
+    if (check.updateInfo.version !== version)
+      throw new ReleaseDownloadError('other', 'The release is not the version that was offered')
     await requireSignedFeed(source, check.updateInfo, signal)
     await autoUpdater.downloadUpdate(token)
     await staged?.done
