@@ -31,7 +31,7 @@ export function PrivacyPage() {
     <FeaturePageLayout
       slug="privacy"
       title="Where your chats go."
-      lead="Your chats pass from Talyx to the engine on your computer, and from there to the model provider each bot uses, under that provider’s terms. A bot’s tools can reach other services too. Talyx has no server and sends your chats nowhere else."
+      lead="Your chats pass from Talyx to the engine on your computer, and from there to the model provider each bot uses, under that provider’s terms. A bot’s tools can reach other services too. The free app has no server, and Talyx sends your chats nowhere else."
       figure={<Ledger />}
       stepsHeading="Where it goes"
       steps={[
@@ -74,7 +74,7 @@ export function PrivacyPage() {
         {
           title: 'Open source',
           description:
-            'Every line of Talyx is on GitHub under the AGPL-3.0 licence, so each claim on this page can be checked.'
+            'Every line of the Talyx app is on GitHub under the AGPL-3.0 licence, so each claim on this page can be checked. Paid modules are separate and closed source.'
         }
       ]}
     />

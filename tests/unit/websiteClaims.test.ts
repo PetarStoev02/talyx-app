@@ -17,10 +17,16 @@ function files(path: string): string[] {
 
 const SITE = ROOTS.flatMap(files).filter((f) => /\.(tsx?|md|html|mjs|json|svg|txt|xml)$/.test(f))
 
-/** Claims that are not true of Talyx: free, signed on macOS, macOS and Linux only. */
+/**
+ * Claims that are not true of Talyx: the app is free, signed on macOS, macOS and Linux only.
+ * Prices, refunds and license keys belong to the paid modules, so only the pages that sell
+ * them may say those words (ALLOWED_IN).
+ */
 const RETIRED = [
   /\$\d/,
   /\bpricing\b/i,
+  /refund/i,
+  /licen[cs]e key/i,
   /free trial|\b\d+[- ]day trial|trial (?:ends|expires|info)/i,
   /railway|talyxapp-production/i,
   /\bstripe\b/i,
@@ -29,7 +35,6 @@ const RETIRED = [
   // release notes word it.
   /\bwindows\b(?! comes later\.)(?!',\s+description: 'It comes once the engine runs there\.')/i,
   /built-in AI|local AI|on-device AI/i,
-  /refund/i,
   /not (?:signed|notari[sz]ed)|open anyway|com\.apple\.quarantine/i,
   /windows (?:is )?(?:planned|coming)|coming to windows/i,
   /auto-?updat|updates? (?:are )?delivered automatically/i,
@@ -37,7 +42,6 @@ const RETIRED = [
   /taxonom/i,
   /vision credits?/i,
   /plausible|@vercel\/analytics|datafast/i,
-  /licen[cs]e key/i,
   /100% offline|fully offline|works offline/i,
   // The file organizer's claims. Code like `.sort(` or `sortOrder` is not prose.
   /(?<![.\w])sort(?:s|ed|ing)?\b(?!\()/i,
@@ -49,14 +53,36 @@ const RETIRED = [
   /⌘\s*⇧\s*space/i
 ]
 
+const PRICING_PAGE = 'website/src/pages/pricing/PricingPage.tsx'
+const LEGAL_PAGE = 'website/src/pages/legal/LegalPage.tsx'
+const TERMS = 'website/src/pages/legal/content/terms.md'
+const PRIVACY_POLICY = 'website/src/pages/legal/content/privacy.md'
+const REFUND_POLICY = 'website/src/pages/legal/content/refund.md'
+const SEO = 'website/src/shared/data/seo.ts'
+const ROUTE_LIST = 'website/src/shared/data/routes.ts'
+const ROUTER = 'website/src/app/router.tsx'
+const FOOTER = 'website/src/widgets/footer/Footer.tsx'
+
 /**
- * vercel.json lists the retired URLs as redirect sources, so old links keep working;
- * the paths must contain the retired words. Nothing else may.
+ * The only files that may contain a retired word. The pricing and legal pages sell the modules,
+ * with the routes, footer links and page descriptions that lead to them. vercel.json lists the
+ * retired URLs as redirect sources, so old links keep working; those paths contain the words.
  */
-const REDIRECT_SOURCES: Record<string, string[]> = {
-  [/refund/i.source]: ['website/vercel.json'],
+const ALLOWED_IN: Record<string, string[]> = {
+  [/\$\d/.source]: [PRICING_PAGE, SEO],
+  [/\bpricing\b/i.source]: [PRICING_PAGE, TERMS, SEO, ROUTE_LIST, ROUTER, FOOTER],
+  [/refund/i.source]: [
+    PRICING_PAGE,
+    LEGAL_PAGE,
+    TERMS,
+    PRIVACY_POLICY,
+    REFUND_POLICY,
+    SEO,
+    ROUTE_LIST,
+    FOOTER
+  ],
+  [/licen[cs]e key/i.source]: [TERMS, PRIVACY_POLICY, REFUND_POLICY],
   [/taxonom/i.source]: ['website/vercel.json'],
-  [/\bpricing\b/i.source]: ['website/vercel.json'],
   [/(?<![.\w])sort(?:s|ed|ing)?\b(?!\()/i.source]: ['website/vercel.json'],
   [/watch[ -]folders?/i.source]: ['website/vercel.json']
 }
@@ -65,7 +91,7 @@ describe('website claims', () => {
   it.each(RETIRED.map((pattern) => [pattern.source, pattern] as const))(
     'should never claim %s',
     (_label, pattern) => {
-      const allowed = REDIRECT_SOURCES[pattern.source] ?? []
+      const allowed = ALLOWED_IN[pattern.source] ?? []
       const hits = SITE.filter(
         (file) => !allowed.includes(file) && pattern.test(readFileSync(file, 'utf8'))
       )

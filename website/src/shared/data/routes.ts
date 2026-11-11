@@ -6,7 +6,9 @@ export const ROUTES: string[] = [
   ...features.map(({ slug }) => `/features/${slug}`),
   '/roadmap',
   '/press',
+  '/pricing',
   '/contact',
   '/legal/terms',
-  '/legal/privacy'
+  '/legal/privacy',
+  '/legal/refund'
 ]

@@ -1,6 +1,5 @@
 {
   "redirects": [
-    { "source": "/pricing", "destination": "/", "permanent": true },
     { "source": "/checkout", "destination": "/", "permanent": true },
     { "source": "/checkout/:path*", "destination": "/", "permanent": true },
     { "source": "/account", "destination": "/", "permanent": true },
@@ -21,8 +20,7 @@
       "destination": "/features/privacy",
       "permanent": true
     },
-    { "source": "/features/cross-platform", "destination": "/#download", "permanent": true },
-    { "source": "/legal/refund", "destination": "/legal/terms", "permanent": true }
+    { "source": "/features/cross-platform", "destination": "/#download", "permanent": true }
   ],
   "headers": [
     {

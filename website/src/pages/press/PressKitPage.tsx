@@ -85,8 +85,8 @@ export function PressKitPage() {
           <Body>
             The bots run on the engine, a separate agent backend on your computer that Talyx
             installs during first-run setup. Each bot uses the models you choose, through your own
-            API keys, account sign-ins or custom endpoints. Talyx has no account, no server and no
-            telemetry.
+            API keys, account sign-ins or custom endpoints. The free app has no account, no server
+            and no telemetry.
           </Body>
         </div>
         <ul className="mt-16 grid gap-x-10 gap-y-10 sm:grid-cols-2">
