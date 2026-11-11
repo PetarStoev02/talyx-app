@@ -66,7 +66,7 @@ Releases are built by the **Release** workflow on GitHub Actions: Actions → Re
 
 ## Privacy
 
-Talyx has no server, no account and no telemetry. The only network calls Talyx makes itself are three to GitHub: the update check; the update itself from the release when you click Download (through the signed update feed, on macOS and in the AppImage); and, at first-run setup, the release's `engine-install.json`, the steps that install the engine. What your bots send to their model providers is between the engine and those providers; Talyx itself sends nothing anywhere else. Third-party components are listed in [CREDITS.md](CREDITS.md).
+The free app has no server, no account and no telemetry. Without a module license key, the only network calls Talyx makes itself are three to GitHub: the update check; the update itself from the release when you click Download (through the signed update feed, on macOS and in the AppImage); and, at first-run setup, the release's `engine-install.json`, the steps that install the engine. With a module license key entered, Talyx also reaches the module server (`modules.talyx.app`) to list and download the modules that key unlocks. What your bots send to their model providers is between the engine and those providers; Talyx itself sends nothing anywhere else. Third-party components are listed in [CREDITS.md](CREDITS.md).
 
 ## Contributing
 
@@ -82,7 +82,7 @@ cd website && npm ci && npm run build
 
 ## License
 
-Talyx is free software under the GNU Affero General Public License, version 3 only (AGPL-3.0-only): see [LICENSE](LICENSE). Copyright (C) 2026 Petar Stoev.
+Talyx is free software under the GNU Affero General Public License, version 3 only (AGPL-3.0-only): see [LICENSE](LICENSE). Copyright (C) 2026 Petar Georgiev Stoev.
 
 The licence does not cover:
 

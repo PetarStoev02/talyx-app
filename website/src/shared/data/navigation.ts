@@ -49,7 +49,7 @@ export const features = [
   {
     slug: 'privacy',
     title: 'Privacy',
-    shortDescription: 'No account, no server and no telemetry in the app.',
+    shortDescription: 'No account, no server and no telemetry in the free app.',
     preview: null
   }
 ] as const satisfies readonly FeatureNav[]

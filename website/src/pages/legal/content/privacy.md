@@ -8,7 +8,7 @@ This policy is published by Petar Georgiev Stoev, who sells Talyx modules.
 
 ## 1. The Short Version
 
-- Talyx, the free app, has no server, no account and no telemetry. It sends nothing about you to us. If you buy a module, Section 8 applies.
+- Talyx, the free app, has no server, no account and no telemetry. It sends nothing about you to us.
 - Your bots run on the engine, on your computer. What a bot sends goes from the engine to the model provider you set up for it, under that provider's terms. A bot's tools, like web search or a command it runs, can reach other services too. Some ask for your approval first.
 - On the internet, Talyx itself reaches only GitHub: to check for a new release, to download an update (in the background on macOS and in the AppImage; a deb install updates from the release page instead), and to fetch the engine's install steps. Those steps then download the engine. Only after you enter a module license key does Talyx also reach our module server, to download the modules you bought.
 - If you buy a module, Paddle.com handles the payment and we receive your email address and what you bought, to send you a license key. See Section 8.

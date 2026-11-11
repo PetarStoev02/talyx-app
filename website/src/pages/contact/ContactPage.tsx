@@ -49,8 +49,8 @@ export function ContactPage() {
             </p>
             <a
               href={href}
-              target="_blank"
-              rel="noopener noreferrer"
+              // A mail link opens the mail app; a new tab for it would stay empty.
+              {...(href.startsWith('http') && { target: '_blank', rel: 'noopener noreferrer' })}
               data-reveal
               className="mt-6 inline-flex min-h-11 items-center font-semibold text-[var(--color-text-primary)] underline underline-offset-4 transition-opacity hover:opacity-70"
               style={{ ...stagger(i + 2), ...STEP.lead }}
