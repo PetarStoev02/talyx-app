@@ -78,7 +78,7 @@ describe('DevBridge', () => {
 })
 
 describe('isTrustedBridgeRequest', () => {
-  const ports = { bridgePort: 5175, rendererPort: 5173 }
+  const ports = { bridgePort: 5175, rendererPort: 5173, token: null }
   const json = { 'content-type': 'application/json' }
 
   it.each([
@@ -104,6 +104,26 @@ describe('isTrustedBridgeRequest', () => {
     ['a text/plain body', { host: '127.0.0.1:5175', 'content-type': 'text/plain' }, false]
   ])('should judge a POST from %s as %s', (_label, headers, expected) => {
     expect(isTrustedBridgeRequest({ method: 'POST', headers }, ports)).toBe(expected)
+  })
+
+  it.each([
+    ['the page itself', 'same-origin', true],
+    ['the address bar', 'none', true],
+    ['another site', 'cross-site', false],
+    ['another port of this computer', 'same-site', false]
+  ])('should judge a module file request from %s as %s', (_label, site, expected) => {
+    const headers = { host: '127.0.0.1:5175', 'sec-fetch-site': site }
+    expect(isTrustedBridgeRequest({ method: 'GET', headers }, ports)).toBe(expected)
+  })
+
+  it.each([
+    ['the proxy, which sends the token', { 'x-talyx-bridge-token': 'run-secret' }, true],
+    ['another process, which has no token', {}, false],
+    ['a wrong token', { 'x-talyx-bridge-token': 'guess' }, false]
+  ])('should judge a request from %s as %s in a run with a token', (_label, extra, expected) => {
+    const headers = { host: '127.0.0.1:5175', ...json, ...extra }
+    const withToken = { ...ports, token: 'run-secret' }
+    expect(isTrustedBridgeRequest({ method: 'POST', headers }, withToken)).toBe(expected)
   })
 
   it('should accept the event stream GET without a content type', () => {

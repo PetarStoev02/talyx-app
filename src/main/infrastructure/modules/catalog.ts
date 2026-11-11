@@ -85,6 +85,8 @@ async function fetchOk(fetchFn: typeof fetch, url: string, licenseKey: string): 
   try {
     response = await fetchFn(url, {
       headers: { authorization: `Bearer ${licenseKey}` },
+      // The origin was checked for this URL only: a redirect would take the request elsewhere.
+      redirect: 'error',
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
     })
   } catch (error) {

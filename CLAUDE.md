@@ -149,6 +149,11 @@ private key `~/.config/talyx/keys/update.private.pem` on the owner's machine (ba
 Talyx refuses a feed signed with another key, so a lost key means users update once by hand from
 the release page, to a build that ships a new public key.
 
+For `npm run release` on your own Mac, keep the Apple password out of the process list: store it
+once with `xcrun notarytool store-credentials talyx --apple-id <email> --team-id <team>` (it asks
+for the app-specific password), then set `APPLE_KEYCHAIN_PROFILE=talyx` in place of `APPLE_ID`,
+`APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID`. The workflow keeps the three secrets.
+
 The certificate expires after five years and the membership yearly; renew both before a release.
 
 During `npm run dev` the renderer is also usable in a plain browser at

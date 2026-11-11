@@ -82,10 +82,22 @@ release_notes_file() {
 # keychain. Notarization signs in as APPLE_ID with an app-specific password
 # (APPLE_APP_SPECIFIC_PASSWORD) for the team APPLE_TEAM_ID. Never echoes a value.
 MAC_SIGNING_VARS=(CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID)
+# With APPLE_KEYCHAIN_PROFILE (xcrun notarytool store-credentials), notarization reads the Apple
+# password from the keychain. Otherwise it is an argument of notarytool, which any process on the
+# machine can read while it runs: fine on a one-off CI runner, not on a Mac in daily use.
+MAC_PROFILE_SIGNING_VARS=(CSC_LINK CSC_KEY_PASSWORD APPLE_KEYCHAIN_PROFILE)
 
 check_mac_signing_env() {
-  local name missing=()
-  for name in "${MAC_SIGNING_VARS[@]}"; do
+  local name missing=() required=("${MAC_SIGNING_VARS[@]}")
+  if [ -n "${APPLE_KEYCHAIN_PROFILE:-}" ]; then
+    required=("${MAC_PROFILE_SIGNING_VARS[@]}")
+    # electron-builder prefers the password over the profile when both are set.
+    if [ -n "${APPLE_ID:-}" ] || [ -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ]; then
+      echo "✗ APPLE_KEYCHAIN_PROFILE is set: unset APPLE_ID and APPLE_APP_SPECIFIC_PASSWORD, or the password is used instead." >&2
+      return 1
+    fi
+  fi
+  for name in "${required[@]}"; do
     [ -n "${!name:-}" ] || missing+=("$name")
   done
   [ ${#missing[@]} -eq 0 ] && return 0
@@ -112,8 +124,13 @@ notarize_dmgs() {
   local dmg
   for dmg in "$@"; do
     echo "→ Notarizing $dmg..."
-    xcrun notarytool submit "$dmg" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
-      --password "$APPLE_APP_SPECIFIC_PASSWORD" --wait --timeout 30m || return 1
+    if [ -n "${APPLE_KEYCHAIN_PROFILE:-}" ]; then
+      xcrun notarytool submit "$dmg" --keychain-profile "$APPLE_KEYCHAIN_PROFILE" \
+        --wait --timeout 30m || return 1
+    else
+      xcrun notarytool submit "$dmg" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+        --password "$APPLE_APP_SPECIFIC_PASSWORD" --wait --timeout 30m || return 1
+    fi
     xcrun stapler staple "$dmg" || return 1
   done
 }

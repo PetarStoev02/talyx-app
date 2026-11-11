@@ -17,16 +17,27 @@ const MODULE_FILES = '/bridge/module/'
 
 const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
 
+// The header the Vite proxy adds to what it forwards (electron.vite.config.ts).
+export const BRIDGE_TOKEN_HEADER = 'x-talyx-bridge-token'
+
 export interface BridgePorts {
   bridgePort: number
   rendererPort: number
+  /**
+   * This dev run's secret, known to the Vite proxy; null when the run has none. With it, a
+   * request that did not come through the proxy (another process or user on this computer) is
+   * refused.
+   */
+  token: string | null
 }
 
 /**
  * The bridge reaches every IPC handler, so only the dev renderer may call it:
  * a loopback Host (defeats DNS rebinding), the renderer's Origin whenever a
- * browser sends one (defeats a cross-site POST), and a JSON body (a
- * cross-origin JSON POST needs a CORS preflight the bridge never answers).
+ * browser sends one (defeats a cross-site POST), no request a browser marks
+ * as coming from another site (a script or image tag sends no Origin), the
+ * run's token when it has one, and a JSON body (a cross-origin JSON POST
+ * needs a CORS preflight the bridge never answers).
  */
 export function isTrustedBridgeRequest(
   request: { method: string; headers: IncomingHttpHeaders },
@@ -35,6 +46,9 @@ export function isTrustedBridgeRequest(
   const { headers } = request
   if (!isLoopback(`http://${headers.host ?? ''}`, ports.bridgePort)) return false
   if (headers.origin !== undefined && !isLoopback(headers.origin, ports.rendererPort)) return false
+  const site = headers['sec-fetch-site']
+  if (site !== undefined && site !== 'same-origin' && site !== 'none') return false
+  if (ports.token !== null && headers[BRIDGE_TOKEN_HEADER] !== ports.token) return false
   if (request.method === 'POST') {
     return (headers['content-type'] ?? '').startsWith('application/json')
   }
@@ -76,7 +90,10 @@ export class DevBridge {
     isDestroyed: (): boolean => false
   }
 
-  constructor(private readonly rendererPort: number) {}
+  constructor(
+    private readonly rendererPort: number,
+    private readonly token: string | null = null
+  ) {}
 
   /** Wrap ipcMain.handle so every registration is also recorded here. Install BEFORE the register*Ipc calls. */
   installTap(ipc: { handle: (channel: string, fn: IpcHandler) => void }): void {
@@ -139,7 +156,7 @@ export class DevBridge {
   private route(req: IncomingMessage, res: ServerResponse): void {
     const trusted = isTrustedBridgeRequest(
       { method: req.method ?? '', headers: req.headers },
-      { bridgePort: this.bridgePort, rendererPort: this.rendererPort }
+      { bridgePort: this.bridgePort, rendererPort: this.rendererPort, token: this.token }
     )
     if (!trusted) {
       res.writeHead(403)

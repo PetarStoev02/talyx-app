@@ -58,7 +58,10 @@ app.on('open-url', (event, url) => {
 })
 
 // Browser dev bridge: lets a plain browser tab at localhost:5173 drive the app in dev
-const devBridge = rendererUrl ? new DevBridge(Number(new URL(rendererUrl).port)) : null
+// The dev run's secret, made in electron.vite.config.ts and inherited from it; its proxy sends it.
+const devBridge = rendererUrl
+  ? new DevBridge(Number(new URL(rendererUrl).port), process.env['TALYX_BRIDGE_TOKEN'] ?? null)
+  : null
 
 function registerIpc(): void {
   // Bridge tap first: it must see every registration
