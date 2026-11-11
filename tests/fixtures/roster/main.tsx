@@ -140,7 +140,7 @@ export function Fixture(): React.JSX.Element {
         </button>
         <ExportedAvatar />
         {/* The app's footer row: its update button takes the refresh button's place. */}
-        <SidebarFooter withRoster end={<RosterRefresh backend={rosterBackend} />} />
+        <SidebarFooter end={<RosterRefresh backend={rosterBackend} />} />
       </aside>
       <main className="min-w-0 flex-1">
         {page === 'settings' ? (

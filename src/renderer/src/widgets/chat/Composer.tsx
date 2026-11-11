@@ -1,3 +1,4 @@
+import { openSettings } from '@features/settings/sections'
 import { useRef, useState } from 'react'
 import { DropdownMenu } from 'radix-ui'
 import { ArrowUp, ChevronDown, LoaderCircle, Mic, Plus, Square, X } from 'lucide-react'
@@ -80,7 +81,7 @@ export function Composer({
         duration: Infinity,
         action:
           problem.key === 'chat.dictationNoProvider'
-            ? { label: t('chat.openSettings'), onClick: () => navigate('settings') }
+            ? { label: t('chat.openSettings'), onClick: () => openSettings('providers', navigate) }
             : undefined
       })
     }

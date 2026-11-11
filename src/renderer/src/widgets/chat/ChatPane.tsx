@@ -1,3 +1,4 @@
+import { openSettings } from '@features/settings/sections'
 import { useEffect, useRef, useState } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
@@ -152,7 +153,7 @@ export function ChatPane({
           <Button
             variant="secondary"
             className="bg-secondary hover:bg-foreground/10"
-            onClick={() => navigate('settings')}
+            onClick={() => openSettings('providers', navigate)}
           >
             {t('chat.openSettings')}
           </Button>

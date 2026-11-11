@@ -3,8 +3,8 @@ import { type AppView, useNavigation } from '@app/providers/useNavigation'
 
 const isMac = navigator.platform.toLowerCase().includes('mac')
 
+// ⌘1 and up open the footer dock's pages in order; the dock binds them (SidebarFooter).
 const NAV_KEYS: Record<string, AppView> = {
-  '1': 'agents',
   ',': 'settings'
 }
 

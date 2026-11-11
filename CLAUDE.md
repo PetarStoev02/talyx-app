@@ -210,6 +210,7 @@ src/renderer/src/
 ├── widgets/          # AppShell, Roster (sidebar bots and rooms, create dialogs), Chat (transcript,
 │                     # cards, composer, RoomPane), BotDetails (the details panel and routines),
 │                     # Providers (the settings sections, add-provider dialog, sign-in),
+│                     # settings-nav (Settings' sidebar: one page per row),
 │                     # settings-engine (Settings: the engine's state and path, the debug console),
 │                     # settings-startup (Settings: launch at login),
 │                     # Setup (the first-run flow: welcome, engine, provider, bot steps)
@@ -217,7 +218,8 @@ src/renderer/src/
 │                     # chat (transcript, use cases, hosted rooms polled over `groups.*`),
 │                     # providers (keys, endpoints and sign-ins over REST; writes go to every bot),
 │                     # setup (which step comes first, the engine install and its screens),
-│                     # modules (license state, module pages; nothing shows without a key)
+│                     # modules (license state, module pages; nothing shows without a key),
+│                     # settings (which Settings page is open)
 └── shared/           # Reusable: ui/ (shadcn), hooks/, api/ (IPC wrappers), lib/,
                       # engine/ (vendored engine client; host.ts is the facade features use)
 ```

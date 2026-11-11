@@ -1,7 +1,7 @@
 import type { ModuleSummary } from '../../../../shared/modules'
 import { moduleIdOf, moduleView } from './store'
 
-/** One button in the sidebar's switch: the agents, or one running module. */
+/** One button in the footer's dock: the agents, or one running module. */
 export interface SidebarSection {
   key: string
   /** The module it opens; null for the agents. */
@@ -13,7 +13,7 @@ export interface SidebarSection {
 }
 
 /**
- * The sidebar's switch. Without a running module there is none: someone who never bought a
+ * The footer's dock. Without a running module there is none: someone who never bought a
  * module sees the sidebar as it always was. Settings belongs to the agents' side.
  */
 export function sidebarSections(
