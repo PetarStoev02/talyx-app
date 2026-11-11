@@ -3,7 +3,7 @@
 # the update zips with latest-mac.yml): the
 # Linux builds and the real-engine smoke test come from the Release workflow on GitHub Actions.
 # The DMGs are signed with Developer ID and notarized, like the workflow's. Without the five
-# signing variables and UPDATE_SIGNING_KEY (see CLAUDE.md → Builds → Signing secrets) it refuses: an unsigned release would
+# signing variables and the update signing key (see CLAUDE.md → Builds → Signing secrets) it refuses: an unsigned release would
 # contradict the README. `npm run build:mac` still builds unsigned DMGs for local testing.
 
 set -e
@@ -14,7 +14,7 @@ source "$(dirname "$0")/release-lib.sh"
 # since the file can change during the minutes the build takes.
 check_install_file
 check_mac_signing_env
-check_update_signing_env
+check_update_signing_key
 
 # The same body as the workflow: Highlights, the fixed notes, then GitHub's generated notes.
 VERSION=$(node -p "require('./package.json').version")

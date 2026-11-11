@@ -91,17 +91,16 @@ window" when this one loses focus, and the step shows it when the window gets fo
 Update button (`fixtureUpdates.ts`): the sidebar footer is the app's own, so its update button takes the
 refresh button's place while an update is pending. `?update=<mode>` scripts what main reports; no
 `?update` leaves the refresh button. The fake release is 1.0.1, published 3 hours ago, with two
-highlights and 9 changes. A download advances every 200 ms (about 2 s) to ready; Open the installer and
+highlights and 9 changes. A download advances every 200 ms (about 2 s) to ready; Restart to update and
 Open the release page only show a toast.
 
 | Mode          | The footer shows                                                                |
 | ------------- | ------------------------------------------------------------------------------- |
-| `talyx`       | Available: Download; the ring fills, then "ready" with Open the installer       |
+| `talyx`       | Available: Download; the ring fills, then "ready" with Restart to update        |
 | `downloading` | A download already running (progress ring, Cancel back to available)            |
-| `ready`       | Ready: Open the installer                                                       |
-| `restart`     | Ready on a self-updating install: Restart to update (macOS, AppImage)           |
+| `ready`       | Ready: Restart to update                                                        |
 | `failed`      | A checksum failure: Try again (fails again) and Open the release page           |
-| `nodownload`  | Available with no installer for this computer: only Open the release page       |
+| `nodownload`  | Available with nothing Talyx can download itself: only Open the release page    |
 | `engine`      | The engine item only (0.22.5 below the pin); its action runs the engine install |
 | `both`        | The engine item above the Talyx item, one button                                |
 

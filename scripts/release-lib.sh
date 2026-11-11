@@ -95,10 +95,13 @@ check_mac_signing_env() {
 }
 
 # Talyx downloads an update only when its feed is signed with this key (scripts/sign-feed.mjs).
-check_update_signing_env() {
-  [ -n "${UPDATE_SIGNING_KEY:-}" ] && return 0
-  echo "✗ The update feed must be signed. Missing: UPDATE_SIGNING_KEY." >&2
-  echo "  CLAUDE.md → Builds → Signing secrets says how to create it." >&2
+# It stays on the owner's machine: a key on GitHub could be taken by whoever gets into the repo.
+UPDATE_KEY_FILE="$HOME/.config/talyx/keys/update.private.pem"
+
+check_update_signing_key() {
+  [ -f "$UPDATE_KEY_FILE" ] && return 0
+  echo "✗ The update feed must be signed. Missing: $UPDATE_KEY_FILE." >&2
+  echo "  CLAUDE.md → Builds → Signing secrets says where it comes from." >&2
   return 1
 }
 

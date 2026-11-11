@@ -45,8 +45,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
-        run: source scripts/release-lib.sh && check_mac_signing_env && check_update_signing_env
+        run: source scripts/release-lib.sh && check_mac_signing_env
 
       - name: Install dependencies
         run: npm ci
@@ -155,12 +154,10 @@ jobs:
           ENGINE_INSTALL_JSON: ${{ secrets.ENGINE_INSTALL_JSON }}
         run: source scripts/release-lib.sh && write_install_file_from_secret release/engine-install.json
 
-      # Talyx downloads a release only when its feed carries this signature (feedSignature.ts).
-      - name: Sign the update feeds
-        env:
-          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
-        run: node scripts/sign-feed.mjs release/latest-mac.yml release/latest-linux.yml
-
+      # The update feeds (latest-*.yml) are not signed here: the key that signs them is never on
+      # GitHub, so nobody who gets into the repository can sign an update. The owner signs the
+      # draft's feeds with `npm run sign-release` before publishing; until then installed copies
+      # offer this release's page, not a download.
       # Bare file names, so users can run sha256sum -c SHA256SUMS --ignore-missing next to a download.
       - name: Write SHA256SUMS
         working-directory: release

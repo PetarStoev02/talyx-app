@@ -58,6 +58,7 @@ npm run build            # Typecheck + production build
 npm run build:mac        # Build macOS DMG (ARM64 + x64)
 npm run build:linux      # Build Linux AppImage + deb (x64)
 npm run release          # Signed, notarized DMGs, then a draft GitHub release
+npm run sign-release     # Sign the update feeds of the workflow's draft release (owner's machine)
 npm run reset            # Delete local app data (settings.json)
 ```
 
@@ -74,10 +75,11 @@ time; Settings → About has Check for updates. It reads the version from the la
 newer release. The update button then offers the release with Download and Later: nothing
 downloads until the click, then it offers Restart to update, and quitting installs it. It never
 downloads or restarts unasked. The download is checked three ways: the feed must carry Talyx's
-Ed25519 signature (`latest-*.yml.sig`, made by `scripts/sign-feed.mjs`, checked against
-`UPDATE_FEED_KEY` in `updater/feedSignature.ts`), each file must match its sha512 in that feed, and
-on macOS Squirrel.Mac requires the same code signature. So a release someone else publishes on
-the repository cannot update an installed Talyx. A deb, or a release without the signed feed,
+Ed25519 signature (`latest-*.yml.sig`, checked against `UPDATE_FEED_KEY` in
+`updater/feedSignature.ts`) and list each offered file by name, sha512 and size; each file must
+match that sha512; and on macOS Squirrel.Mac requires the same code signature. The signing key is
+never on GitHub, so a release someone else publishes on the repository cannot update an installed
+Talyx. A deb, or a release without the signed feed,
 gets the release page and no in-app download.
 
 Electron 44 needs macOS 13 or newer; every macOS version Talyx runs on requires a Developer ID
@@ -98,7 +100,13 @@ releasing; no engine name), then GitHub's generated notes. It needs the secret
 `ENGINE_INSTALL_JSON` (base64 of `engine-install.json`), set once per file change with
 `gh secret set ENGINE_INSTALL_JSON < <(base64 -i engine-install.json)`; each job checks it with
 `scripts/release-lib.sh`, which `release.sh` shares. The mac job also needs the five signing
-secrets and `UPDATE_SIGNING_KEY` below and fails before the build when one is missing.
+secrets below and fails before the build when one is missing.
+
+The workflow does not sign the update feeds. After it, run `npm run sign-release`
+(`scripts/sign-release.sh`) on the owner's machine, then publish the draft. It signs only a draft
+tagged at a commit of `main` whose files were all uploaded by the workflow, and adds
+`latest-*.yml.sig`. A release published without it still shows in the update button, with its
+release page instead of Download.
 
 `npm run release` (`scripts/release.sh`) is the local path, macOS DMGs only. Before it, write the
 gitignored `release-highlights.md` at the repo root: 1-3 lines `- **Lead.** Text.`. The script puts
@@ -111,7 +119,8 @@ release) at the repo root. It is gitignored, and its SHA-256 must equal `ENGINE_
 `src/main/infrastructure/setup/installPin.ts`; the script also requires the file's `engineVersion` to equal
 `EXPECTED_ENGINE_VERSION` and exactly one commit hash in it, and refuses to release otherwise. Changing
 the commands means updating that pin in the same commit. It also needs the five signing
-variables and `UPDATE_SIGNING_KEY` below in the environment and refuses without them.
+variables below in the environment and the update signing key, and refuses without them; it signs
+`latest-mac.yml` itself.
 
 #### Signing secrets
 
@@ -131,13 +140,12 @@ as an Actions secret on `PetarStoev02/talyx-app`:
 - `APPLE_TEAM_ID`: the team ID in the Developer ID certificate's name (`3Z52YUB6CN`).
   `gh secret set APPLE_TEAM_ID`.
 
-- `UPDATE_SIGNING_KEY`: base64 of the Ed25519 private key that signs the update feed. The key
-  lives outside git in `~/.config/talyx/keys/update.private.pem`; back it up to 1Password.
-  `gh secret set UPDATE_SIGNING_KEY < <(base64 -i ~/.config/talyx/keys/update.private.pem)`; for
-  `npm run release`, `export UPDATE_SIGNING_KEY=$(base64 -i ~/.config/talyx/keys/update.private.pem)`.
-  Its public half is `UPDATE_FEED_KEY`. Every installed Talyx refuses a feed signed with another
-  key, so a lost key means users update once by hand from the release page, to a build that
-  ships the new public key.
+The update signing key is not a secret on GitHub and must never become one: a key there could be
+taken by whoever gets into the repository, which is the case it guards against. It is the Ed25519
+private key `~/.config/talyx/keys/update.private.pem` on the owner's machine (back it up to
+1Password); its public half is `UPDATE_FEED_KEY` in `updater/feedSignature.ts`. Every installed
+Talyx refuses a feed signed with another key, so a lost key means users update once by hand from
+the release page, to a build that ships a new public key.
 
 The certificate expires after five years and the membership yearly; renew both before a release.
 

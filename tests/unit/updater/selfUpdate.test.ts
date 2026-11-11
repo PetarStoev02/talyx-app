@@ -43,8 +43,9 @@ const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve,
 const keys = generateKeyPairSync('ed25519')
 const RELEASE = 'https://github.com/PetarStoev02/talyx-app/releases/download/v1.0.6/'
 const HASH = 'c2hhNTEyLW9mLXRoZS1maWxl'
-const FEED_TEXT = `version: 1.0.6\nfiles:\n  - url: Talyx-x86_64.AppImage\n    sha512: ${HASH}\n    size: 10\npath: Talyx-x86_64.AppImage\nsha512: ${HASH}\n`
-const OFFERED = { version: '1.0.6', files: [{ sha512: HASH }] }
+const FEED_TEXT = `version: 1.0.6\nfiles:\n  - url: Talyx-x86_64.AppImage\n    sha512: ${HASH}\n    size: 10\n  - url: Talyx-amd64.deb\n    sha512: ZGViLWhhc2g=\n    size: 20\npath: Talyx-x86_64.AppImage\nsha512: ${HASH}\n`
+const FILE = { url: 'Talyx-x86_64.AppImage', sha512: HASH, size: 10 }
+const OFFERED = { version: '1.0.6', files: [FILE] }
 
 /** A release serving `files` by name; a name it lacks is a 404. */
 function releaseWith(files: Record<string, string>): typeof fetch {
@@ -179,12 +180,33 @@ describe('downloadSelfUpdate', () => {
       }
     )
 
-    it('should refuse an update that names no files', async () => {
+    it.each([
+      // The feed also lists the deb; under the AppImage's name it would replace the app.
+      ['another signed file under this name', { ...FILE, sha512: 'ZGViLWhhc2g=', size: 20 }],
+      ['this file under another name', { ...FILE, url: 'Other.AppImage' }],
+      ['this file with another size', { ...FILE, size: 11 }],
+      ['this file with no size', { url: FILE.url, sha512: HASH }]
+    ])('should refuse an update offering %s', async (_name, file) => {
       updater.checkForUpdates.mockResolvedValueOnce({
         isUpdateAvailable: true,
-        updateInfo: { version: '1.0.6', files: [] }
+        updateInfo: { version: '1.0.6', files: [file] }
       })
       expect(failureOf(await download().catch((e) => e))).toBe('signature')
+      expect(updater.downloadUpdate).not.toHaveBeenCalled()
+    })
+
+    it.each([[[]], [undefined]])('should refuse an update whose files are %j', async (files) => {
+      updater.checkForUpdates.mockResolvedValueOnce({
+        isUpdateAvailable: true,
+        updateInfo: { version: '1.0.6', files }
+      })
+      expect(failureOf(await download().catch((e) => e))).toBe('signature')
+    })
+
+    it('should refuse a signed file that is not a feed', async () => {
+      expect(
+        failureOf(await download(signedRelease('latest-linux.yml', 'hello')).catch((e) => e))
+      ).toBe('signature')
     })
   })
 
