@@ -1,6 +1,6 @@
 import { useLanguage } from '@app/providers/useLanguage'
 import { useModules } from '@features/modules/store'
-import { SETTINGS_SECTIONS, useSettingsSection } from '@features/settings/sections'
+import { settingsPages, shownPage, useSettingsSection } from '@features/settings/sections'
 import { cn } from '@shared/lib/utils'
 
 /**
@@ -9,11 +9,13 @@ import { cn } from '@shared/lib/utils'
  */
 export function SettingsNav(): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const section = useSettingsSection((s) => s.section)
   const open = useSettingsSection((s) => s.open)
-  // Modules is a page only for someone with a license, as Settings → Modules always was.
   const licensed = useModules((s) => s.state.license !== null)
-  const pages = SETTINGS_SECTIONS.filter((item) => item.key !== 'modules' || licensed)
+  const section = shownPage(
+    useSettingsSection((s) => s.section),
+    licensed
+  )
+  const pages = settingsPages(licensed)
   return (
     <div
       data-module-sidebar

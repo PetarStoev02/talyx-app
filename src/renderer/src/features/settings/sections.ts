@@ -17,6 +17,19 @@ export const SETTINGS_SECTIONS: {
   { key: 'about', title: 'settings.about', detail: 'settings.aboutDetail' }
 ]
 
+/** The pages someone sees: Modules only with a license, as Settings → Modules always was. */
+export function settingsPages(licensed: boolean): typeof SETTINGS_SECTIONS {
+  return SETTINGS_SECTIONS.filter((item) => item.key !== 'modules' || licensed)
+}
+
+/**
+ * The page Settings shows: the chosen one while it is there, else General. Removing or outliving
+ * the license while on Modules leaves the page in place but gone from the sidebar.
+ */
+export function shownPage(section: SettingsSection, licensed: boolean): SettingsSection {
+  return settingsPages(licensed).some((item) => item.key === section) ? section : 'general'
+}
+
 interface SettingsSectionState {
   section: SettingsSection
   open: (section: SettingsSection) => void

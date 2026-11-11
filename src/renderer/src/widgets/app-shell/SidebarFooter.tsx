@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Settings } from 'lucide-react'
-import { type AppView, useNavigation } from '@app/providers/useNavigation'
-import { IconButton } from '@shared/ui/IconButton'
-import { useRoster } from '@features/bots/store'
-import { anyUnread, sidebarSections, type SidebarSection } from '@features/modules/sections'
-import { moduleView, runningModules } from '@features/modules/store'
 import { useEngine } from '@app/providers/useEngine'
 import { useLanguage } from '@app/providers/useLanguage'
+import { type AppView, useNavigation } from '@app/providers/useNavigation'
+import { useRoster } from '@features/bots/store'
+import { anyUnread, dockSections, dockShortcut, type DockSection } from '@features/modules/sections'
+import { moduleView, runningModules, useModules } from '@features/modules/store'
 import { updateItems } from '@features/updates/items'
 import { useUpdates } from '@features/updates/store'
-import { useModules } from '@features/modules/store'
 import { reportError } from '@shared/lib/report'
+import { IconButton } from '@shared/ui/IconButton'
 import { NavButton } from './NavButton'
 import { UpdateButton } from './UpdateButton'
 
@@ -32,33 +31,16 @@ export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Elem
   const navigate = useNavigation((s) => s.navigate)
   const modules = runningModules(useModules((s) => s.state))
   const unread = useRoster((s) => anyUnread(s.unread, s.roomUnread))
-  const currentView = useNavigation((s) => s.currentView)
-  // Agents and the running modules; none at all without a running module, since Agents alone is
-  // no choice to make. A module nobody installed or unlocked never appears.
-  const sections = sidebarSections(modules, currentView, {
+  const sections = dockSections(modules, {
     // The unread dot is only drawn; the name carries the new replies for screen readers.
     label: unread ? t('nav.unread').replace('{section}', t('nav.agents')) : t('nav.agents'),
     unread
   })
   const showDock = sections.length > 0
-  const viewOf = (section: SidebarSection): AppView =>
-    section.moduleId ? moduleView(section.moduleId) : 'agents'
-  const dockViews: AppView[] = showDock ? sections.map(viewOf) : ['agents']
-
-  // ⌘1, ⌘2, … open the dock's pages in the order they sit.
-  const dockKey = dockViews.join(' ')
-  useEffect(() => {
-    const views = dockKey.split(' ') as AppView[]
-    function onKey(event: KeyboardEvent): void {
-      if (!(isMac ? event.metaKey : event.ctrlKey)) return
-      const view = views[Number(event.key) - 1]
-      if (!view) return
-      event.preventDefault()
-      void navigate(view)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [dockKey, navigate])
+  // Without a dock, ⌘1 still opens the agents.
+  useDockShortcuts(showDock ? sections.map(viewOf) : ['agents'])
+  // Without a dock there is no Agents button, so Settings closes itself back to the agents.
+  const closesSettings = settingsOpen && !showDock
 
   useEffect(() => {
     useModules
@@ -75,51 +57,74 @@ export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Elem
   }, [])
 
   return (
-    // Settings on the left and refresh on the right, as plain icon buttons; the dock of pages sits
-    // centred between them.
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 pt-2 pb-3">
       <span className="justify-self-start">
         <IconButton
-          // Without a dock there is no Agents button, so Settings closes itself back to the agents.
-          label={settingsOpen && !showDock ? t('nav.closeSettings') : t('nav.settings')}
+          label={closesSettings ? t('nav.closeSettings') : t('nav.settings')}
           shortcut={`${mod},`}
           aria-current={settingsOpen ? 'page' : undefined}
-          onClick={() => navigate(settingsOpen && !showDock ? 'agents' : 'settings')}
+          onClick={() => navigate(closesSettings ? 'agents' : 'settings')}
           className={settingsOpen ? 'bg-foreground/10 text-foreground' : undefined}
         >
           <Settings />
         </IconButton>
       </span>
-      {showDock ? (
-        <nav
-          aria-label={t('nav.sections')}
-          className="relative flex items-center gap-0.5 rounded-full bg-foreground/[0.05] p-1"
-        >
-          <DockIndicator views={dockViews} />
-          {sections.map((section, i) => (
-            <span key={section.key} className="relative">
-              <NavButton
-                view={viewOf(section)}
-                label={section.label}
-                glyph={section.moduleId ? 'module' : 'agents'}
-                shortcut={`${mod}${i + 1}`}
-              />
-              {section.unread && (
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute top-1 right-1 z-10 size-1.5 rounded-full bg-foreground"
-                />
-              )}
-            </span>
-          ))}
-        </nav>
-      ) : (
-        <span />
-      )}
+      {showDock ? <Dock sections={sections} label={t('nav.sections')} /> : <span />}
       <span className="justify-self-end">
         {items.length > 0 ? <UpdateButton items={items} /> : end}
       </span>
     </div>
+  )
+}
+
+function viewOf(section: DockSection): AppView {
+  return section.moduleId ? moduleView(section.moduleId) : 'agents'
+}
+
+/** ⌘1, ⌘2, … (Ctrl on Linux) open `views` in order. */
+function useDockShortcuts(views: AppView[]): void {
+  const navigate = useNavigation((s) => s.navigate)
+  // A string, so a new array with the same pages does not re-bind the listener.
+  const key = views.join(' ')
+  useEffect(() => {
+    const pages = key.split(' ') as AppView[]
+    function onKey(event: KeyboardEvent): void {
+      if (!(isMac ? event.metaKey : event.ctrlKey)) return
+      const view = dockShortcut(pages, event.key)
+      if (!view) return
+      event.preventDefault()
+      void navigate(view)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [key, navigate])
+}
+
+/** The dock: one glyph per page, the open one on a sliding disc. */
+function Dock({ sections, label }: { sections: DockSection[]; label: string }): React.JSX.Element {
+  return (
+    <nav
+      aria-label={label}
+      className="relative flex items-center gap-0.5 rounded-full bg-foreground/[0.05] p-1"
+    >
+      <DockIndicator views={sections.map(viewOf)} />
+      {sections.map((section, i) => (
+        <span key={section.key} className="relative">
+          <NavButton
+            view={viewOf(section)}
+            label={section.label}
+            glyph={section.moduleId ? 'module' : 'agents'}
+            shortcut={`${mod}${i + 1}`}
+          />
+          {section.unread && (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1 right-1 z-10 size-1.5 rounded-full bg-foreground"
+            />
+          )}
+        </span>
+      ))}
+    </nav>
   )
 }
 
@@ -132,16 +137,16 @@ const STEP_PX = BUTTON_PX + GAP_PX
 // stretches toward the new page and then gathers there, like a drop of liquid.
 const TRAIL_MS = 90
 
-/** The white disc under the open page in the dock. Hidden while a page outside the dock is open. */
+/** The raised disc under the open page in the dock. Hidden while a page outside the dock is open. */
 function DockIndicator({ views }: { views: AppView[] }): React.JSX.Element {
   const index = useNavigation((s) => views.indexOf(s.currentView))
-  // The last page in the dock and the one before it; leaving to Settings keeps both, so coming
-  // back slides from where the disc was.
+  // The last page in the dock and the one before it. Leaving to Settings keeps both, and the disc
+  // fades out where it was, so coming back slides it from there.
   const [move, setMove] = useState({ to: index, from: index })
   if (index >= 0 && index !== move.to) setMove({ to: index, from: move.to })
   const movingRight = move.to > move.from
   const movingLeft = move.to < move.from
-  const at = Math.max(index, 0)
+  const at = index >= 0 ? index : Math.max(move.to, 0)
   return (
     <span
       aria-hidden="true"

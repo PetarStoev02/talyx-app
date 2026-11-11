@@ -1,38 +1,40 @@
 import type { ModuleSummary } from '../../../../shared/modules'
-import { moduleIdOf, moduleView } from './store'
+import { moduleView } from './store'
 
 /** One button in the footer's dock: the agents, or one running module. */
-export interface SidebarSection {
+export interface DockSection {
   key: string
   /** The module it opens; null for the agents. */
   moduleId: string | null
   label: string
-  active: boolean
   /** Only the agents carry it: a bot has a reply you have not read. */
   unread: boolean
 }
 
 /**
- * The footer's dock. Without a running module there is none: someone who never bought a
- * module sees the sidebar as it always was. Settings belongs to the agents' side.
+ * The footer's dock: the agents, then each running module. Without a running module there is
+ * none, so someone who never bought a module never sees one.
  */
-export function sidebarSections(
+export function dockSections(
   modules: ModuleSummary[],
-  currentView: string,
   agents: { label: string; unread: boolean }
-): SidebarSection[] {
+): DockSection[] {
   if (modules.length === 0) return []
-  const open = moduleIdOf(currentView)
   return [
-    { key: 'agents', moduleId: null, label: agents.label, active: !open, unread: agents.unread },
+    { key: 'agents', moduleId: null, label: agents.label, unread: agents.unread },
     ...modules.map((module) => ({
       key: moduleView(module.id),
       moduleId: module.id,
       label: module.name,
-      active: open === module.id,
       unread: false
     }))
   ]
+}
+
+/** The page ⌘1, ⌘2, … opens: the dock's pages in order; null for any other key. */
+export function dockShortcut<View extends string>(views: View[], key: string): View | null {
+  if (!/^[1-9]$/.test(key)) return null
+  return views[Number(key) - 1] ?? null
 }
 
 /** Whether any bot or room has a reply you have not read. */

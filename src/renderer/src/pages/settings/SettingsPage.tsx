@@ -17,8 +17,10 @@ import { ModulesSection } from '@widgets/modules'
 import {
   SETTINGS_SECTIONS,
   type SettingsSection,
+  shownPage,
   useSettingsSection
 } from '@features/settings/sections'
+import { useModules } from '@features/modules/store'
 
 export function SettingsPage({
   providers,
@@ -29,7 +31,12 @@ export function SettingsPage({
 }): React.JSX.Element {
   const { theme, setTheme } = useTheme()
   const t = useLanguage((s) => s.t)
-  const section = useSettingsSection((s) => s.section)
+  const licensed = useModules((s) => s.state.license !== null)
+  // The chosen page, or General once it is gone (the license removed while on Modules).
+  const section = shownPage(
+    useSettingsSection((s) => s.section),
+    licensed
+  )
 
   const themes = [
     { value: 'light' as const, label: t('settings.light'), Icon: Sun },
@@ -92,8 +99,13 @@ export function SettingsPage({
         </section>
       </>
     ),
-    providers: providers && (
-      <ProvidersSection backend={providers} chat={chat} onOverview={reportProvider} />
+    // Providers live in the engine: without it attached, say why and how to fix it.
+    providers: (
+      <EngineGate>
+        {providers && (
+          <ProvidersSection backend={providers} chat={chat} onOverview={reportProvider} />
+        )}
+      </EngineGate>
     ),
     engine: (
       <EngineSection

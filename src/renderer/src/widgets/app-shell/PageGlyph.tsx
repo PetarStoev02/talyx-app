@@ -8,18 +8,14 @@ export type PageGlyphName = 'agents' | 'module'
 // x, y on the ground, z up; w, d, h the box's size along each. Listed back to front.
 type Box = [x: number, y: number, z: number, w: number, d: number, h: number]
 
-const GLYPHS: Record<Exclude<PageGlyphName, 'agents'>, { hue: number; boxes: Box[] }> = {
-  // Steps that climb, a run moving from one step to the next: every module's glyph until a
-  // module can hand Talyx a glyph of its own.
-  module: {
-    hue: 9,
-    boxes: [
-      [0, 0, 0, 1, 1, 1],
-      [1, 0, 0, 1, 1, 2],
-      [2, 0, 0, 1, 1, 3]
-    ]
-  }
-}
+// Steps that climb, a run moving from one step to the next: every module's glyph until a module can
+// hand Talyx a glyph of its own.
+const MODULE_HUE = 9
+const MODULE_BOXES: Box[] = [
+  [0, 0, 0, 1, 1, 1],
+  [1, 0, 0, 1, 1, 2],
+  [2, 0, 0, 1, 1, 3]
+]
 
 const COS = Math.cos(Math.PI / 6)
 const SIN = Math.sin(Math.PI / 6)
@@ -30,18 +26,15 @@ const project = (x: number, y: number, z: number): [number, number] => [
 
 export function PageGlyph({
   name,
-  size,
-  grey = false
+  size
 }: {
   name: PageGlyphName
   size: number
-  grey?: boolean
 }): React.JSX.Element {
   if (name === 'agents') return <BlockAvatar shape="talyx" hue={0} size={size} face={false} />
-  const { hue, boxes } = GLYPHS[name]
-  const tones = blockTones(hue, grey)
+  const tones = blockTones(MODULE_HUE, false)
   // Each glyph lists its boxes back to front, so later boxes paint over earlier ones.
-  const faces = boxes.flatMap(([x, y, z, w, d, h]) => [
+  const faces = MODULE_BOXES.flatMap(([x, y, z, w, d, h]) => [
     {
       fill: tones.top,
       points: [
