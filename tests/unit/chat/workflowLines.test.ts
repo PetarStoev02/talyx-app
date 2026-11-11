@@ -36,6 +36,15 @@ describe('workflow lines in a chat', () => {
       })
     })
 
+    it.each([
+      ['"Fix the \\"login\\" page"', 'Fix the "login" page'],
+      ['"Say hi" to the user', '"Say hi" to the user'],
+      ['Fix the login', 'Fix the login']
+    ])('should read the title %s as %s', (written, title) => {
+      const quoted = brief().replace('Fix the login', written)
+      expect(parseBrief(quoted)?.title).toBe(title)
+    })
+
     it('should not take a message without the marker line, even with the task line', () => {
       expect(parseBrief(brief().replace(`${BRIEF_MARK}\n`, ''))).toBeNull()
       expect(parseBrief('Start a Workflows task for acme/api#7: Fix it')).toBeNull()

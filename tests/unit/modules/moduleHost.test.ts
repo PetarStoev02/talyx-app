@@ -38,6 +38,8 @@ describe('module host', () => {
   let heldDownload: Promise<void> | null
   let engineHttp: ReturnType<typeof vi.fn>
   let pickFolder: ReturnType<typeof vi.fn>
+  /** What every request to the download server was sent with. */
+  let requests: RequestInit[]
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'talyx-modules-'))
@@ -47,6 +49,7 @@ describe('module host', () => {
     files = new Map()
     clock = NOON
     heldDownload = null
+    requests = []
     serverAcceptsKey = true
     engineHttp = vi.fn(async () => null)
     pickFolder = vi.fn(async () => '/Users/ada/Code/api')
@@ -75,6 +78,7 @@ describe('module host', () => {
 
   /** The download server: it answers only the saved license key. */
   const fakeFetch = (async (url: string, init?: RequestInit) => {
+    requests.push(init ?? {})
     const authorization = new Headers(init?.headers).get('authorization')
     if (!serverAcceptsKey || authorization !== `Bearer ${savedKey}`)
       return new Response(null, { status: 401, statusText: 'Unauthorized' })
@@ -168,6 +172,14 @@ describe('module host', () => {
       await host.activate(issueKey(signer))
       await expect(host.install('hello')).rejects.toThrow('The module is not signed by Talyx.')
       expect(existsSync(join(root, 'modules', 'hello'))).toBe(false)
+    })
+
+    it('should never let the license key follow a redirect to another server', async () => {
+      publish(helloBundle())
+      await host.activate(issueKey(signer))
+      await host.install('hello')
+      expect(requests.length).toBeGreaterThan(1)
+      expect(requests.every((init) => init.redirect === 'error')).toBe(true)
     })
 
     it('should refuse a catalog that points the download at another server', async () => {
