@@ -296,7 +296,8 @@ export function chatActions(backend: ChatBackend): ChatActions {
     if (!next || busy(profile)) return
     update(profile, { waiting: rest })
     // A failed send keeps its message first in line; the error says why, the next message retries.
-    if (!(await submit(profile, next.draft)))
+    // Sent queued: if a turn this window has not seen start is live, it waits instead of cutting in.
+    if (!(await submit(profile, { ...next.draft, whenBusy: 'queue' })))
       update(profile, { waiting: [next, ...(chatOf(profile)?.waiting ?? [])] })
   }
 

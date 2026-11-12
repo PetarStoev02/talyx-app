@@ -225,6 +225,7 @@ function OutcomeLine({
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const { kind, asked } = outcome
+  const attach = asked.images.length > 0
   const said =
     kind === 'stopped'
       ? t('chat.replyStopped')
@@ -236,7 +237,7 @@ function OutcomeLine({
       {said && <p>{said}</p>}
       <button
         type="button"
-        aria-label={t(asked.images.length ? 'chat.retryImagesLabel' : 'chat.retryLabel').replace(
+        aria-label={t(attach ? 'chat.retryImagesLabel' : 'chat.retryLabel').replace(
           '{text}',
           asked.text
         )}
@@ -244,7 +245,7 @@ function OutcomeLine({
         onClick={onRetry}
       >
         <RotateCcw size={14} />
-        {t(asked.images.length ? 'chat.retryImages' : 'chat.retry')}
+        {t(attach ? 'chat.retryImages' : 'chat.retry')}
       </button>
     </div>
   )

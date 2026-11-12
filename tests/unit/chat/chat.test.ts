@@ -507,6 +507,10 @@ describe('bot chat', () => {
       await settled()
       expect(submitted()).toEqual(['First', 'Second'])
       expect(chat(MANAGER).waiting.map((message) => message.draft.text)).toEqual(['Third'])
+      // Should a live turn still be unseen, the engine queues the message behind it.
+      expect(
+        engine.calls.filter((item) => item.method === 'prompt.submit').at(-1)?.params
+      ).toMatchObject({ queued: true })
     })
 
     it('should send the next waiting message when the answer is stopped', async () => {
@@ -681,6 +685,10 @@ describe('bot chat', () => {
       await Promise.all([actions.turnEnded(MANAGER), actions.turnEnded(MANAGER)])
       expect(submitted()).toEqual(['Summarise Q3', 'Next'])
       expect(chat(MANAGER).waiting.map((message) => message.draft.text)).toEqual(['Third'])
+      // Should a live turn still be unseen, the engine queues the message behind it.
+      expect(
+        engine.calls.filter((item) => item.method === 'prompt.submit').at(-1)?.params
+      ).toMatchObject({ queued: true })
     })
   })
 
