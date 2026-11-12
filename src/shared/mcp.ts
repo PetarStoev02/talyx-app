@@ -183,7 +183,7 @@ export const MCP_TOOLS = {
   },
   send_room_message: {
     description:
-      'Post a message in a group room as the user. The room\u2019s bots answer it there; read_room_history shows their replies.',
+      'Post a message in a group room as the user, only when the user asks for it. Every bot in the room answers it, so never post in a room you are answering in yourself: it starts the room again. read_room_history shows the replies.',
     args: z.object({
       roomId: z.string().min(1),
       text: z.string().trim().min(1).max(20_000)
