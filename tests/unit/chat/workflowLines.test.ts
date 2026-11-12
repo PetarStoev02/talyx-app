@@ -3,6 +3,7 @@ import {
   BRIEF_MARK,
   briefsByRef,
   isProgressReport,
+  isQuietReply,
   parseBrief,
   parseStatusLine,
   splitReply,
@@ -184,5 +185,33 @@ describe('which replies the chat leaves to the Workflows page', () => {
     ['the brief’s template quoted back', '[run acme/api#7@m1] step=<step> round=<n>', false]
   ])('given %s, should hide it: %s', (_why, text, hidden) => {
     expect(isProgressReport(text)).toBe(hidden)
+  })
+})
+
+describe('which chat items stay out of the chat', () => {
+  const PROGRESS = '[run acme/api#7@m1] step=build round=1'
+  const reply = (patch: { error?: string | null; stopped?: boolean; streaming?: boolean } = {}) =>
+    ({
+      kind: 'bot',
+      id: '1',
+      text: PROGRESS,
+      streaming: false,
+      error: null,
+      stopped: false,
+      sender: null,
+      ...patch
+    }) as const
+
+  it.each([
+    ['a finished progress reply', reply(), true],
+    ['one still streaming', reply({ streaming: true }), false],
+    ['one that failed', reply({ error: 'The provider refused' }), false],
+    ['one you stopped', reply({ stopped: true }), false]
+  ])('given %s, should leave it out: %s', (_why, item, quiet) => {
+    expect(isQuietReply(item)).toBe(quiet)
+  })
+
+  it('should keep what you wrote, even a status line', () => {
+    expect(isQuietReply({ kind: 'user', id: '2', text: PROGRESS, images: [] })).toBe(false)
   })
 })
