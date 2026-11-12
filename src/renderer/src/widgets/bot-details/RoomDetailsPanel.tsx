@@ -5,6 +5,7 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { runRosterMutation } from '@features/bots/actions'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import type { RosterBackend } from '@features/bots/data'
+import type { RosterProblem } from '@features/bots/roster'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
 import {
   MAX_ROOM_MEMBERS,
@@ -168,7 +169,8 @@ function RoomMembers({
   const t = useLanguage((s) => s.t)
   const bots = useRoster((state) => state.snapshot.bots)
   const saving = useRoster((state) => state.saving)
-  const error = useRoster((state) => state.actionError)
+  // Only this panel's own change shows its failure here, not another roster action's.
+  const [error, setError] = useState<RosterProblem | null>(null)
   const [adding, setAdding] = useState(false)
   const seated = room.members.map((member) => member.profile)
   const memberBots = room.members.map(
@@ -180,11 +182,15 @@ function RoomMembers({
       }
   )
   const candidates = bots.filter((bot) => !bot.meta.hidden && !seated.includes(bot.name))
-  const change = (members: Bot[]): void => {
+  // A member whose bot was deleted cannot be seated again, so any change leaves it out.
+  const change = async (members: Bot[]): Promise<void> => {
     if (!backend) return
-    void runRosterMutation(backend, () =>
-      changeRoomMembers(backend, { roomId: room.room_id, members })
+    setError(null)
+    const known = members.filter((member) => bots.some((bot) => bot.name === member.name))
+    await runRosterMutation(backend, () =>
+      changeRoomMembers(backend, { roomId: room.room_id, members: known })
     )
+    setError(useRoster.getState().actionError)
   }
   return (
     <>
@@ -206,7 +212,7 @@ function RoomMembers({
               destructive: true,
               separated: true,
               disabled: !backend || saving || memberBots.length <= MIN_ROOM_MEMBERS,
-              onSelect: () => change(memberBots.filter((item) => item.name !== bot.name))
+              onSelect: () => void change(memberBots.filter((item) => item.name !== bot.name))
             }
           ]
           return (
@@ -256,7 +262,7 @@ function RoomMembers({
                     disabled={saving}
                     onClick={() => {
                       setAdding(false)
-                      change([...memberBots, bot])
+                      void change([...memberBots, bot])
                     }}
                     className="flex w-full items-center gap-3 rounded-xl p-2 text-left text-base hover:bg-accent disabled:opacity-50"
                   >

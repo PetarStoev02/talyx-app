@@ -30,7 +30,7 @@ export interface MembersChange {
 }
 
 export interface RoomMembersDeps {
-  engine: Pick<Engine, 'cli'>
+  engine: Pick<Engine, 'cli' | 'home'>
   readFile: (path: string) => Promise<string>
   writeFile: (path: string, text: string) => Promise<void>
   mkdir: (path: string) => Promise<void>
@@ -44,14 +44,14 @@ export interface RoomMembersDeps {
 export function roomMembers(deps: RoomMembersDeps): {
   set: (roomId: string, members: RoomMemberRecord[]) => Promise<MembersChange>
 } {
-  let installed: Promise<string> | null = null
+  // The home the plugin was last checked in; another engine (Settings → choose file) checks again.
+  let installedIn: string | null = null
 
-  async function install(): Promise<string> {
-    // Any quick command: what is wanted is the home the attached engine reports.
-    const { home } = await deps.engine.cli(['config', 'path'])
+  async function install(home: string): Promise<void> {
     const folder = join(home, 'plugins', ROOMS_PLUGIN)
     const stale = await Promise.all(
       Object.entries(PLUGIN_FILES).map(async ([name, text]) => {
+        // A file that is not there yet counts as out of date.
         const current = await deps.readFile(join(folder, name)).catch(() => null)
         return current === text ? null : ([name, text] as const)
       })
@@ -64,16 +64,15 @@ export function roomMembers(deps: RoomMembersDeps): {
     const enabled = await deps.engine.cli(['plugins', 'enable', ROOMS_PLUGIN])
     if (enabled.code !== 0)
       throw new Error(`The rooms plugin was not enabled: ${lastLine(enabled)}`)
-    return home
   }
 
   return {
     async set(roomId, members) {
-      installed ??= install().catch((error: unknown) => {
-        installed = null
-        throw error
-      })
-      const home = await installed
+      const home = await deps.engine.home()
+      if (installedIn !== home) {
+        await install(home)
+        installedIn = home
+      }
       const result = await deps.engine.cli([
         ROOMS_PLUGIN,
         'members',

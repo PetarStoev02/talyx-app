@@ -19,15 +19,16 @@ const member = (profile: string): RoomMemberRecord => ({
 let files: Map<string, string>
 let calls: string[][]
 let answer: { code: number; stdout: string; stderr: string }
+let home: string
 
 function setup(): ReturnType<typeof roomMembers> {
   return roomMembers({
     engine: {
       cli: async (args) => {
         calls.push(args)
-        const isMembers = args[0] === ROOMS_PLUGIN
-        return { ...(isMembers ? answer : { code: 0, stdout: '', stderr: '' }), home: HOME }
-      }
+        return args[0] === ROOMS_PLUGIN ? answer : { code: 0, stdout: '', stderr: '' }
+      },
+      home: async () => home
     },
     readFile: async (path) => {
       const text = files.get(path)
@@ -44,6 +45,7 @@ function setup(): ReturnType<typeof roomMembers> {
 beforeEach(() => {
   files = new Map()
   calls = []
+  home = HOME
   answer = {
     code: 0,
     stdout: 'notice\n{"ok": true, "added": ["ledger"], "removed": ["scout"], "changed": true}',
@@ -58,7 +60,6 @@ describe('room members through the engine plugin', () => {
     for (const [name, text] of Object.entries(PLUGIN_FILES))
       expect(files.get(`${FOLDER}/${name}`)).toBe(text)
     expect(calls).toEqual([
-      ['config', 'path'],
       ['plugins', 'enable', ROOMS_PLUGIN],
       [
         ROOMS_PLUGIN,
@@ -81,6 +82,17 @@ describe('room members through the engine plugin', () => {
     await rooms.set('room-1', [member('quill'), member('ledger')])
     await rooms.set('room-1', [member('quill'), member('scout')])
     expect(calls.filter((args) => args[0] === 'plugins')).toHaveLength(1)
+  })
+
+  it('should install the plugin again for another engine home', async () => {
+    const rooms = setup()
+    await rooms.set('room-1', [member('quill'), member('ledger')])
+    home = '/other-home'
+    await rooms.set('room-1', [member('quill'), member('ledger')])
+    expect(files.get(`/other-home/plugins/${ROOMS_PLUGIN}/plugin.yaml`)).toBe(
+      PLUGIN_FILES['plugin.yaml']
+    )
+    expect(calls.at(-1)).toContain('/other-home/state.db')
   })
 
   it('should replace an older copy of the plugin', async () => {
