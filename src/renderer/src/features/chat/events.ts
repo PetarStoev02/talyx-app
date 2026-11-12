@@ -1,6 +1,7 @@
 import type { GatewayEvent, ServerRequest, SessionLiveInfo } from '@shared/engine/shared'
 import { infoOf } from './chat'
 import type { ChatActions } from './chat'
+import { replyFinished } from './completionSound'
 import { useChat } from './store'
 import { addPrompt, applyEvent, fromHistory, needsRebuild } from './transcript'
 import type { ApprovalChoice, ChatPrompt, ClarifyQuestion, Transcript } from './types'
@@ -34,6 +35,9 @@ export function handleEvent(actions: ChatActions, event: GatewayEvent): ChatUpda
   if (next !== transcript) useChat.getState().update(profile, { transcript: next })
   const completed = event.type === 'message.complete' && next !== transcript
   if (completed) void actions.turnEnded(profile)
+  // Only a turn the engine marks complete is an answer: a stopped or failed one is not.
+  if (completed && (event.payload as { status?: unknown } | null)?.status === 'complete')
+    replyFinished()
   return { profile, completed, activity: activityOf(next) }
 }
 

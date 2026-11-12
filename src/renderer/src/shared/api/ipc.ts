@@ -14,6 +14,7 @@ export interface AppSettings {
   lastSelection: { kind: 'bot' | 'room'; id: string } | null
   setupDone: boolean
   launchAtLogin: boolean
+  completionSound: boolean
 }
 
 export const settingsApi = {
