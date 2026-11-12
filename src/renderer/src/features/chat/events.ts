@@ -34,7 +34,8 @@ export function handleEvent(actions: ChatActions, event: GatewayEvent): ChatUpda
   const next = applyEvent(transcript, event)
   if (next !== transcript) useChat.getState().update(profile, { transcript: next })
   const completed = event.type === 'message.complete' && next !== transcript
-  if (completed) void actions.turnEnded(profile)
+  // A turn can also end with no reply frame at all (the engine only says it stopped running).
+  if (completed || (transcript.running && !next.running)) void actions.turnEnded(profile)
   // Only a turn the engine marks complete is an answer: a stopped or failed one is not.
   if (completed && (event.payload as { status?: unknown } | null)?.status === 'complete')
     replyFinished()

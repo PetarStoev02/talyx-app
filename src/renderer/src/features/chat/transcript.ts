@@ -22,11 +22,16 @@ const MESSAGE_AGENT = 'message_agent'
 const LIVE_ID = 'live-'
 // The row the engine stores for a turn that failed after it reached the model.
 const FAILED_TURN = 'failed_turn'
+// What the engine stores, and the failure it names, for a turn the model gave no answer to.
+const EMPTY_REPLY = '(empty)'
+const EMPTY_RESPONSE = 'empty_response'
 // The engine sends its spinner phrases and its provider waits as thinking text; a wait starts with
 // this mark. Its notice has an em dash (from its code point: this repo never spells one), shown as
 // a comma like the rest of the app's copy.
 const WAIT_MARK = '⏳'
 const WAIT_DASH = new RegExp(`\\s*${String.fromCharCode(0x2014)}\\s*`, 'g')
+// How the engine's wait names its next attempt, in whole seconds from when it said so.
+const RETRY_IN = /retrying in (\d+)s\b/
 // Frames that mean the engine is no longer waiting: the turn went on or ended.
 const WAIT_ENDS = new Set(['message.delta', 'message.complete', 'tool.start', 'tool.complete'])
 const IMAGE_LINE = /^@image:(.+)$/gm
@@ -223,7 +228,7 @@ function historyItem(
     return [failedReply(id, typeof reason === 'string' && reason ? reason : text)]
   }
   if (message.role === 'assistant')
-    return text.trim()
+    return text.trim() && text.trim() !== EMPTY_REPLY
       ? [
           {
             kind: 'bot',
@@ -435,8 +440,14 @@ function completeReply(transcript: Transcript, payload: Payload, id: string): Tr
   if (lastStreamingReply(transcript) < 0 && !text && !failed)
     return { ...transcript, running: false }
   // A failed turn's text is the engine's account of the failure unless it says the text is a
-  // partial answer; the account shows as the error, not as a reply.
-  const answer = failed && payload.partial !== true ? '' : text
+  // partial answer; the account shows as the error, not as a reply. A stopped turn, or one the
+  // model gave no answer to, has only the engine's account: the chat says what happened instead.
+  const answer =
+    (failed && payload.partial !== true) ||
+    payload.status === 'interrupted' ||
+    payload.failure_reason === EMPTY_RESPONSE
+      ? ''
+      : text
   const done = updateReply(withStreamingReply(transcript, id), (reply) => ({
     ...reply,
     // The final text covers the whole turn; it fills the reply only when nothing streamed into it.
@@ -479,6 +490,20 @@ function failureReason(payload: Payload, account: string): string {
     (value) => typeof value === 'string' && value.trim()
   )
   return typeof reason === 'string' ? reason : ''
+}
+
+/**
+ * The wait notice with its next attempt counted down: `retry` words the time left, from the
+ * seconds the engine named less the time already waited. A notice that names no time is as is.
+ */
+export function waitLeft(
+  wait: string,
+  waitedMs: number,
+  retry: (seconds: number) => string
+): string {
+  return wait.replace(RETRY_IN, (_match, seconds: string) =>
+    retry(Math.max(0, Number(seconds) - Math.floor(waitedMs / 1000)))
+  )
 }
 
 // A wait notice shows until the engine clears it with empty text or the turn moves on.

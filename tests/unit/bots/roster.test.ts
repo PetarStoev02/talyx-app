@@ -134,15 +134,35 @@ describe('roster previews', () => {
   })
   it('should prefer canonical chat preview, then recent session, then description', () => {
     expect(
-      botPreview({
-        ...bot('a'),
-        canonical_session: { preview: 'Canonical' },
-        last_session: { preview: 'Recent' }
-      })
+      botPreview(
+        {
+          ...bot('a'),
+          canonical_session: { preview: 'Canonical' },
+          last_session: { preview: 'Recent' }
+        },
+        english
+      )
     ).toBe('Canonical')
-    expect(botPreview({ ...bot('a'), last_session: { preview: 'Recent' } })).toBe('Recent')
-    expect(botPreview(bot('a', { description: 'Analyst' }))).toBe('Analyst')
-    expect(botPreview(bot('a'))).toBe('')
+    expect(botPreview({ ...bot('a'), last_session: { preview: 'Recent' } }, english)).toBe('Recent')
+    expect(botPreview(bot('a', { description: 'Analyst' }), english)).toBe('Analyst')
+    expect(botPreview(bot('a'), english)).toBe('')
+  })
+  it.each([
+    [
+      'Your request was not processed. Send it again if you still want me to carry it o...',
+      'Last reply did not finish'
+    ],
+    [
+      'This turn did not complete. Some actions may already have run; verify their e...',
+      'Last reply did not finish'
+    ],
+    [
+      'An automated delivery was interrupted and was not run again. Some actions ma...',
+      'Last reply did not finish'
+    ],
+    ['(empty)', 'Ended without a reply']
+  ])("should never show the engine's words for a turn without an answer: %s", (preview, shown) => {
+    expect(botPreview({ ...bot('a'), canonical_session: { preview } }, english)).toBe(shown)
   })
   it('should render engine timestamps in seconds as words without negative ages', () => {
     expect(timeInWords(100, english, 160000)).toBe('1 minute ago')

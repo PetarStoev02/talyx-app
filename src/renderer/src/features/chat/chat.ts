@@ -8,6 +8,7 @@ import { failureOf } from '@shared/lib/problem'
 import { useChat } from './store'
 import type { ChatInfo, ChatState } from './store'
 import { applyEvent, fromHistory, settlePrompt, withFailedTurns } from './transcript'
+import { SENDING_ID } from './turns'
 import type { ApprovalChoice, ChatItem, Transcript } from './types'
 
 /** The bot's chat is the profile's hidden session with this exact title. */
@@ -231,7 +232,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
   async function send(profile: string, draft: ChatDraft): Promise<boolean> {
     const text = draft.text.trim()
     if (!text && !draft.images.length) return false
-    const local = `local-${Date.now()}-${Math.random()}`
+    const local = `${SENDING_ID}${Date.now()}-${Math.random()}`
     try {
       const sessionId = sessionOf(profile) ?? (await startChat(profile))
       const transcript = chatOf(profile)?.transcript ?? fromHistory(sessionId, [], false)

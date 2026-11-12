@@ -4,7 +4,10 @@ import type { ChatActions } from '../../../src/renderer/src/features/chat/chat'
 import { useChat } from '../../../src/renderer/src/features/chat/store'
 import { handleEvent } from '../../../src/renderer/src/features/chat/events'
 import { addPrompt } from '../../../src/renderer/src/features/chat/transcript'
+import { turnOutcome, turnView } from '../../../src/renderer/src/features/chat/turns'
+import type { TurnOutcome } from '../../../src/renderer/src/features/chat/turns'
 import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/shared'
+import type { SessionMessage } from '../../../src/renderer/src/shared/engine/types'
 import { KEPT_ENDPOINT_PROFILE, chatDouble } from './chatDouble'
 import type { ChatCall, ChatDouble } from './chatDouble'
 import type { ChatState } from '../../../src/renderer/src/features/chat/store'
@@ -567,6 +570,97 @@ describe('bot chat', () => {
     })
   })
 
+  describe('a turn that ends without an answer', () => {
+    let seq = 10
+    const emit = (type: string, payload: Record<string, unknown> = {}): void => {
+      seq += 1
+      handleEvent(actions, { type, seq, payload, session_id: 'manager-chat' } as GatewayEvent)
+    }
+    const settled = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+    const submitted = (): unknown[] =>
+      engine.calls.filter((item) => item.method === 'prompt.submit').map((item) => item.params.text)
+    const outcome = (): TurnOutcome['kind'] | null => {
+      const transcript = chat(MANAGER).transcript!
+      return turnOutcome(transcript.items, transcript.running)?.kind ?? null
+    }
+    const shownText = (): string[] =>
+      turnView(chat(MANAGER).transcript!.items, false).items.map((item) =>
+        item.kind === 'tool' ? '' : item.text
+      )
+
+    beforeEach(async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      await actions.queue(MANAGER, { text: 'Summarise Q3', images: [] })
+    })
+
+    it('should show no outcome while your message waits for the engine to start on it', () => {
+      expect(outcome()).toBeNull()
+    })
+
+    it('should say it ended without a reply when the engine only stops running', async () => {
+      emit('message.start', { turn_id: 't1' })
+      stored(engine, [{ id: 3, role: 'user', content: 'Summarise Q3' }])
+      emit('session.info', { running: false })
+      await settled()
+      expect(outcome()).toBe('noReply')
+      // The turn is over: your next message goes at once.
+      await actions.queue(MANAGER, { text: 'Next', images: [] })
+      expect(submitted()).toEqual(['Summarise Q3', 'Next'])
+    })
+
+    it("should say it ended without a reply, not show the engine's stand-in for an empty answer", async () => {
+      emit('message.start', { turn_id: 't1' })
+      stored(engine, [
+        { id: 3, role: 'user', content: 'Summarise Q3' },
+        { id: 4, role: 'assistant', content: '(empty)' }
+      ])
+      emit('message.complete', {
+        text: 'No reply: the model did not answer. Send `continue` to try again.',
+        status: 'complete',
+        failure_reason: 'empty_response'
+      })
+      expect(shownText().at(-1)).toBe('Summarise Q3')
+      // And once the chat reloads what the engine stored.
+      await settled()
+      expect(shownText()).toEqual(['Hello', 'Hi there', 'Summarise Q3'])
+      expect(outcome()).toBe('noReply')
+    })
+
+    it("should say it was stopped when you stop it before any text, not the engine's account", async () => {
+      emit('message.start', { turn_id: 't1' })
+      emit('thinking.delta', { text: '⏳ rate limited, retrying in 600s (attempt 1/3)' })
+      await actions.interrupt(MANAGER)
+      emit('message.complete', {
+        text: 'Operation interrupted: retrying API call after error (retry 1/3).',
+        status: 'interrupted'
+      })
+      expect(chat(MANAGER).transcript?.wait).toBeNull()
+      expect(shownText().at(-1)).toBe('Summarise Q3')
+      expect(outcome()).toBe('stopped')
+    })
+
+    it('should offer the failed message to send again', async () => {
+      emit('message.start', { turn_id: 't1' })
+      emit('message.complete', { text: 'Provider said: 429', status: 'error' })
+      await settled()
+      const failed = turnOutcome(chat(MANAGER).transcript!.items, false)
+      expect(failed?.kind).toBe('failed')
+      await actions.queue(MANAGER, { text: failed!.asked.text, images: [] })
+      expect(submitted()).toEqual(['Summarise Q3', 'Summarise Q3'])
+      expect(outcome()).toBeNull()
+    })
+
+    it('should end a turn lost while the engine was away, and send what waits behind it', async () => {
+      emit('message.start', { turn_id: 't1' })
+      await actions.queue(MANAGER, { text: 'Next', images: [] })
+      // The socket dropped; the engine kept neither the reply nor its failure.
+      stored(engine, [{ id: 3, role: 'user', content: 'Summarise Q3' }])
+      await actions.turnEnded(MANAGER)
+      expect(chat(MANAGER).transcript?.running).toBe(false)
+      expect(submitted()).toEqual(['Summarise Q3', 'Next'])
+    })
+  })
+
   describe('during a turn', () => {
     it('should answer every clarify question in order', async () => {
       await actions.open(MANAGER, 'manager-chat')
@@ -742,3 +836,9 @@ describe('bot chat', () => {
     })
   })
 })
+
+// The engine stores these rows after the chat's opening history.
+function stored(engine: ChatDouble, rows: SessionMessage[]): void {
+  const chat = engine.chats[MANAGER]
+  chat.messages = [...chat.messages, ...rows]
+}

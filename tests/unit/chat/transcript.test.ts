@@ -5,7 +5,8 @@ import {
   fromHistory,
   needsRebuild,
   senderProfile,
-  settlePrompt
+  settlePrompt,
+  waitLeft
 } from '../../../src/renderer/src/features/chat/transcript'
 import type { ChatPrompt, Transcript } from '../../../src/renderer/src/features/chat/types'
 import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/shared'
@@ -522,6 +523,24 @@ describe('chat transcript', () => {
         ['the engine clears it', event('thinking.delta', { text: '' }, 3)]
       ])('should clear the wait notice when %s', (_when, next) => {
         expect(replay(waiting(), next).wait).toBeNull()
+      })
+
+      describe('the time left before the retry', () => {
+        const left = (waitedMs: number): string =>
+          waitLeft(waiting().wait!, waitedMs, (seconds) => `retrying in ${seconds} s`)
+
+        it.each([
+          [0, 'waiting on provider, retrying in 600 s (attempt 1/3)'],
+          [61_500, 'waiting on provider, retrying in 539 s (attempt 1/3)'],
+          [600_000, 'waiting on provider, retrying in 0 s (attempt 1/3)'],
+          [900_000, 'waiting on provider, retrying in 0 s (attempt 1/3)']
+        ])('should count down from the time the engine named, %i ms in', (waitedMs, shown) => {
+          expect(left(waitedMs)).toBe(shown)
+        })
+
+        it('should keep a wait that names no retry time as it is', () => {
+          expect(waitLeft('rate limited', 5_000, () => 'never')).toBe('rate limited')
+        })
       })
     })
   })

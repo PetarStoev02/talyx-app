@@ -34,14 +34,21 @@ export function botTitle(bot: Bot): string {
     : bot.meta.title || bot.title || bot.display_name || bot.name
 }
 
-export function botPreview(bot: Bot): string {
-  return (
-    bot.canonical_session?.preview?.trim() ||
-    bot.last_session?.preview?.trim() ||
-    bot.meta.description ||
-    bot.description ||
-    ''
-  )
+// The engine's own words that close a turn the model never answered (the failed-turn rows'
+// openings, and its stand-in for an empty answer). The roster names what happened instead.
+const FAILED_TURN_PREVIEWS = [
+  'Your request was not processed.',
+  'This turn did not complete.',
+  'An automated delivery was interrupted'
+]
+const EMPTY_REPLY_PREVIEW = '(empty)'
+
+export function botPreview(bot: Bot, t: (key: TranslationKey) => string): string {
+  const preview = bot.canonical_session?.preview?.trim() || bot.last_session?.preview?.trim()
+  if (preview === EMPTY_REPLY_PREVIEW) return t('roster.previewNoReply')
+  if (preview && FAILED_TURN_PREVIEWS.some((opening) => preview.startsWith(opening)))
+    return t('roster.previewFailed')
+  return preview || bot.meta.description || bot.description || ''
 }
 
 /** The bot's chat: the profile's canonical session, at the tip of its compression lineage. */

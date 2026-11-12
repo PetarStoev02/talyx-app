@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, Pencil, X } from 'lucide-react'
+import { ArrowUp, Pencil, RotateCcw, X } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
 import { botChatId, botTitle } from '@features/bots/roster'
@@ -10,7 +10,8 @@ import type { ChatActions } from '@features/chat/chat'
 import { useChat } from '@features/chat/store'
 import type { WaitingMessage } from '@features/chat/store'
 import { useSetup } from '@features/setup/store'
-import { turnView } from '@features/chat/turns'
+import { turnOutcome, turnView } from '@features/chat/turns'
+import type { TurnOutcome } from '@features/chat/turns'
 import type { MessageItem } from '@features/chat/types'
 import { openSettings } from '@features/settings/sections'
 import { useRefocus } from '@shared/hooks/useRefocus'
@@ -79,6 +80,8 @@ export function ChatPane({
 
   const running = chat.transcript?.running === true
   const { items, activity } = turnView(chat.transcript?.items ?? [], running)
+  // A retry waits for nothing else: not while a message is already lined up to go.
+  const outcome = chat.waiting.length ? null : turnOutcome(chat.transcript?.items ?? [], running)
   const prompts = chat.transcript?.prompts ?? []
   const loadImage = (path: string): Promise<string> => actions.mediaUrl(bot.name, path)
   const announced = announcement(items, prompts.length, running)
@@ -106,6 +109,17 @@ export function ChatPane({
             {activity && (
               <li>
                 <ActivityLine bot={bot} activity={activity} wait={chat.transcript?.wait ?? null} />
+              </li>
+            )}
+            {outcome && (
+              <li>
+                <OutcomeLine
+                  outcome={outcome}
+                  name={title}
+                  onRetry={() =>
+                    void actions.queue(bot.name, { text: outcome.asked.text, images: [] })
+                  }
+                />
               </li>
             )}
             {chat.waiting.map((message) => (
@@ -194,6 +208,43 @@ function announcement(
   const last = items.at(-1)
   if (last?.kind !== 'bot') return null
   return last.error ? 'chat.replyFailedAnnounce' : 'chat.replied'
+}
+
+// How a turn ended without an answer, and a way to send its message again. A message with
+// images is sent again from the composer: the chat keeps their paths, not the files.
+function OutcomeLine({
+  outcome,
+  name,
+  onRetry
+}: {
+  outcome: TurnOutcome
+  name: string
+  onRetry: () => void
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const { kind, asked } = outcome
+  const said =
+    kind === 'stopped'
+      ? t('chat.replyStopped')
+      : kind === 'noReply'
+        ? t('chat.noReply').replace('{name}', name)
+        : null
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 text-sm text-muted-foreground">
+      {said && <p>{said}</p>}
+      {asked.images.length === 0 && asked.text && (
+        <button
+          type="button"
+          aria-label={t('chat.retryLabel').replace('{text}', asked.text)}
+          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-foreground/10"
+          onClick={onRetry}
+        >
+          <RotateCcw size={14} />
+          {t('chat.retry')}
+        </button>
+      )}
+    </div>
+  )
 }
 
 // A message held until the running answer ends, as a dashed bubble: send it now (stops that
