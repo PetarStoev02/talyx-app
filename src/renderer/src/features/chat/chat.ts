@@ -86,6 +86,8 @@ interface ResumeSnapshot {
 
 // How many of the latest stored items a waiting message is looked for in after a reload.
 const RECENT_STORED = 12
+// The id of a message this window sent, until history stores it.
+const LOCAL_ID = 'local-'
 
 export function chatActions(backend: ChatBackend): ChatActions {
   const { update } = useChat.getState()
@@ -235,7 +237,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
     send: async (profile, draft) => {
       const text = draft.text.trim()
       if (!text && !draft.images.length) return false
-      const local = `local-${Date.now()}-${Math.random()}`
+      const local = `${LOCAL_ID}${Date.now()}-${Math.random()}`
       try {
         const sessionId = sessionOf(profile) ?? (await startChat(profile))
         const transcript = chatOf(profile)?.transcript ?? fromHistory(sessionId, [], false)
@@ -366,7 +368,24 @@ function rebuilt(
 ): Transcript {
   let transcript = fromHistory(sessionId, messages, resume.running === true)
   const same = previous?.sessionId === sessionId
-  const waiting = stillQueued(transcript, same ? previous.queued : [], resume)
+  const stored = recentlyAsked(transcript)
+  // What this window sent that history does not hold yet stays, above the reply that answers it:
+  // a reload can land just as the next turn starts on it. A failed turn's message comes back with
+  // that turn instead.
+  const failedIds = new Set(
+    (same ? previous.failed : []).flatMap((turn) => turn.items.map((item) => item.id))
+  )
+  const unstored = same
+    ? previous.items.filter(
+        (item) =>
+          item.kind === 'user' &&
+          item.id.startsWith(LOCAL_ID) &&
+          !failedIds.has(item.id) &&
+          !stored.has(item.text)
+      )
+    : []
+  transcript = { ...transcript, items: [...transcript.items, ...unstored] }
+  const waiting = stillQueued(stored, same ? previous.queued : [], resume)
   // The running turn answers a message history does not hold yet (one that waited here, or one
   // the engine took from the queue): it shows above the reply, not under it or nowhere.
   const asked = resume.running ? resume.inflight?.user?.trim() : null
@@ -401,24 +420,23 @@ function rebuilt(
   }
 }
 
+// ponytail: matched by text against the latest stored messages; two equal messages in a row can
+// count the second as stored early. Match on an id if the engine starts sending one.
+function recentlyAsked(transcript: Transcript): Set<string> {
+  return new Set(
+    transcript.items
+      .slice(-RECENT_STORED)
+      .flatMap((item) => (item.kind === 'user' ? [item.text] : []))
+  )
+}
+
 /**
  * The messages still waiting after a reload: the ones this window queued that history does not
  * show yet, and the one the engine holds that this window never saw (sent from another client, or
  * before a reconnect).
  */
-function stillQueued(
-  transcript: Transcript,
-  queued: ChatItem[],
-  resume: ResumeSnapshot
-): ChatItem[] {
-  // ponytail: matched by text against the latest stored messages; two equal messages in a row can
-  // drop the second from the wait list early. Match on an id if the engine starts sending one.
-  const recent = new Set(
-    transcript.items
-      .slice(-RECENT_STORED)
-      .flatMap((item) => (item.kind === 'user' ? [item.text] : []))
-  )
-  const waiting = queued.filter((item) => item.kind === 'user' && !recent.has(item.text))
+function stillQueued(stored: Set<string>, queued: ChatItem[], resume: ResumeSnapshot): ChatItem[] {
+  const waiting = queued.filter((item) => item.kind === 'user' && !stored.has(item.text))
   const held = resume.queued?.user?.trim()
   if (!held || waiting.some((item) => item.kind === 'user' && item.text === held)) return waiting
   return [...waiting, { kind: 'user', id: `queued-${held}`, text: held, images: [] }]

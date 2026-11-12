@@ -445,6 +445,36 @@ describe('bot chat', () => {
         })
       })
 
+      it('should keep the waiting message once its turn runs, when a reload lands then', async () => {
+        await answering()
+        await actions.send(MANAGER, { text: 'Next task', images: [], whenBusy: 'queue' })
+        live('message.complete', 10, { text: 'Working' })
+        live('message.start', 11)
+        // The reload the first answer started lands now; history does not hold the new message yet.
+        engine.chats[MANAGER] = { ...engine.chats[MANAGER], running: true }
+        await actions.rebuild(MANAGER)
+        expect(shown().map((item) => item.text)).toContain('Next task')
+        expect(chat(MANAGER).transcript?.queued).toEqual([])
+      })
+
+      it('should keep the waiting message when the next turn starts while a reload is on its way', async () => {
+        await answering()
+        await actions.send(MANAGER, { text: 'Next task', images: [], whenBusy: 'queue' })
+        // The reload the first answer starts reads the engine before the next turn begins…
+        const release = engine.holdNext('session.resume')
+        live('message.complete', 10, { text: 'Working' })
+        // …and the next turn starts while it waits.
+        live('message.start', 11)
+        live('message.delta', 12, { text: 'Next one' })
+        release()
+        // Let the held reload finish and replay what arrived meanwhile.
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        expect(shown().slice(-2)).toEqual([
+          { kind: 'user', text: 'Next task' },
+          { kind: 'bot', text: 'Next one' }
+        ])
+      })
+
       it('should show the message a running turn answers even before history stores it', async () => {
         engine.chats[MANAGER] = {
           ...engine.chats[MANAGER],
