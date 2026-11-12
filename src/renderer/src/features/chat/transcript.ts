@@ -10,11 +10,13 @@ const NOTICE_KINDS = new Set([
   'internal_notification',
   'model_switch',
   'async_delegation_complete',
-  'process_complete',
   'auto_continue',
   'personality_switch',
   'failed_turn'
 ])
+// A background command the bot ran has finished: the engine's bookkeeping, not news. The bot's
+// reply after it says what came of it.
+const QUIET_KINDS = new Set(['process_complete'])
 const MESSAGE_AGENT = 'message_agent'
 // The id prefix of a reply streamed live, before the history reload gives it its stored row id.
 const LIVE_ID = 'live-'
@@ -192,7 +194,7 @@ function historyItem(
   message: SessionMessage,
   calls: Map<string, { name: string; args: Payload }>
 ): ChatItem[] {
-  if (message.display_kind === 'hidden') return []
+  if (message.display_kind === 'hidden' || QUIET_KINDS.has(message.display_kind ?? '')) return []
   const id = String(message.row_id ?? message.id ?? '')
   const text = messageText(message.display_content ?? message.content)
   if (message.role === 'user') {

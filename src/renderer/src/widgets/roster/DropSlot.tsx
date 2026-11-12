@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cn } from '@shared/lib/utils'
-import { draggedItem, endRosterDrag } from './drag'
+import { draggedRows, endRosterDrag } from './drag'
 import type { RosterDragItem } from './drag'
 
 export type DropEdge = 'before' | 'after' | 'inside'
@@ -9,7 +9,7 @@ export type DropEdge = 'before' | 'after' | 'inside'
 const BEFORE_SHARE = 0.3
 
 /**
- * A row that takes roster drags: `edges` says where the dragged item may land (null: nowhere), and
+ * A row that takes roster drags: `edges` says where the dragged rows may land (null: nowhere), and
  * a line, or a tint for `inside`, shows where it will.
  */
 export function DropSlot({
@@ -20,8 +20,8 @@ export function DropSlot({
 }: {
   // The key a reorder animates it by (useFlip); none for a slot that never moves.
   flip?: string
-  edges: (item: RosterDragItem) => DropEdge[] | null
-  onDrop: (item: RosterDragItem, edge: DropEdge) => void
+  edges: (rows: RosterDragItem[]) => DropEdge[] | null
+  onDrop: (rows: RosterDragItem[], edge: DropEdge) => void
   children: React.ReactNode
 }): React.JSX.Element {
   const [edge, setEdge] = useState<DropEdge | null>(null)
@@ -39,8 +39,8 @@ export function DropSlot({
       data-flip={flip}
       className={cn('relative rounded-xl', edge === 'inside' && 'bg-foreground/10')}
       onDragOver={(event) => {
-        const item = draggedItem()
-        const allowed = item && edges(item)
+        const rows = draggedRows()
+        const allowed = rows.length ? edges(rows) : null
         if (!allowed?.length) return
         event.preventDefault()
         event.stopPropagation()
@@ -50,14 +50,14 @@ export function DropSlot({
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setEdge(null)
       }}
       onDrop={(event) => {
-        const item = draggedItem()
+        const rows = draggedRows()
         const at = edge
         setEdge(null)
-        if (!item || !at) return
+        if (!rows.length || !at) return
         event.preventDefault()
         event.stopPropagation()
         endRosterDrag()
-        onDrop(item, at)
+        onDrop(rows, at)
       }}
     >
       {edge === 'before' && <DropLine className="-top-0.5" />}

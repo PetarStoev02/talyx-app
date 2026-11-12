@@ -247,10 +247,12 @@ export function engineDouble(
     throw new Error(`Unexpected REST call ${request.path}`)
   }
 
+  // As the engine: one call writes every key it carries, or none when any revision is stale.
   function configureMeta(profile: string, params: Record<string, unknown>): unknown {
     const patch = params.ui_meta as Record<string, unknown>
-    const key = Object.keys(patch)[0]
-    configureCalls.push(`${profile}:${key}`)
+    const keys = Object.keys(patch)
+    const [key] = keys
+    configureCalls.push(`${profile}:${keys.join('+')}`)
     if (metaFailure) {
       metaFailure = false
       throw new Error('Socket closed')
@@ -258,14 +260,17 @@ export function engineDouble(
     if (conflict) {
       conflict = false
       metadata[profile][key] = { ...(metadata[profile][key] as object), title: 'Renamed elsewhere' }
-      revisions[profile][key]++
+      revisions[profile][key] = (revisions[profile][key] ?? 0) + 1
       return { applied: { ui_meta: false, ui_meta_conflicts: { [key]: revisions[profile][key] } } }
     }
-    expect((params.ui_meta_expected_revisions as Record<string, number>)[key]).toBe(
-      revisions[profile][key] ?? 0
-    )
-    metadata[profile][key] = structuredClone(patch[key])
-    revisions[profile][key] = (revisions[profile][key] ?? 0) + 1
+    for (const each of keys)
+      expect((params.ui_meta_expected_revisions as Record<string, number>)[each]).toBe(
+        revisions[profile][each] ?? 0
+      )
+    for (const each of keys) {
+      metadata[profile][each] = structuredClone(patch[each])
+      revisions[profile][each] = (revisions[profile][each] ?? 0) + 1
+    }
     return { applied: { ui_meta: true } }
   }
 

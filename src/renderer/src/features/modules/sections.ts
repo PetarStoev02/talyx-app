@@ -7,9 +7,12 @@ export interface DockSection {
   /** The module it opens; null for the agents. */
   moduleId: string | null
   label: string
-  /** Only the agents carry it: a bot has a reply you have not read. */
+  /** The dot: a bot has a reply you have not read, or a module has something waiting on you. */
   unread: boolean
 }
+
+/** A dock button's name and whether it carries the dot. */
+export type DockMark = Pick<DockSection, 'label' | 'unread'>
 
 /**
  * The footer's dock: the agents, then each running module. Without a running module there is
@@ -17,16 +20,16 @@ export interface DockSection {
  */
 export function dockSections(
   modules: ModuleSummary[],
-  agents: { label: string; unread: boolean }
+  agents: DockMark,
+  moduleMark: (module: ModuleSummary) => DockMark
 ): DockSection[] {
   if (modules.length === 0) return []
   return [
-    { key: 'agents', moduleId: null, label: agents.label, unread: agents.unread },
+    { key: 'agents', moduleId: null, ...agents },
     ...modules.map((module) => ({
       key: moduleView(module.id),
       moduleId: module.id,
-      label: module.name,
-      unread: false
+      ...moduleMark(module)
     }))
   ]
 }

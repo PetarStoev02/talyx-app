@@ -22,6 +22,18 @@ export const useModules = create<ModulesStore>((set) => ({
   }
 }))
 
+interface ModuleAttentionStore {
+  /** By module id: how many things wait on you, as the module's Background last said. */
+  needsYou: Record<string, number>
+  setNeedsYou: (id: string, count: number) => void
+}
+
+export const useModuleAttention = create<ModuleAttentionStore>((set) => ({
+  needsYou: {},
+  setNeedsYou: (id, count) =>
+    set((s) => (s.needsYou[id] === count ? s : { needsYou: { ...s.needsYou, [id]: count } }))
+}))
+
 /** The modules whose page can open: a failed or incompatible one has no tab. */
 export function runningModules(state: ModulesState): ModuleSummary[] {
   return state.modules.filter((module) => module.status === 'running')

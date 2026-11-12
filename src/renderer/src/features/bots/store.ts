@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { RosterProblem } from './roster'
-import type { BotActivity, RosterSnapshot, Selection } from './types'
+import type { BotActivity, RosterRowRef, RosterSnapshot, Selection } from './types'
 
 export interface RosterState {
   snapshot: RosterSnapshot
@@ -25,6 +25,10 @@ export interface RosterState {
   // the details, so a poll that succeeds does not wipe it from a dialog. Choosing another bot or
   // room clears it in the roster (not here: a selection made for the user must not hide it).
   actionError: RosterProblem | null
+  // The rows picked to act on together (`itemKey`s, as picked), apart from the open chat; and the
+  // row a Shift+click range starts from.
+  picked: string[]
+  pickAnchor: string | null
   select: (selection: Selection) => void
   editProfile: (profile: string | null) => void
   clearError: () => void
@@ -33,6 +37,8 @@ export interface RosterState {
   markUnread: (profile: string) => void
   markRoomUnread: (roomId: string) => void
   seeRoom: (roomId: string, seq: number) => void
+  pick: (picked: string[], anchor: string | null) => void
+  markRead: (rows: RosterRowRef[]) => void
 }
 
 export const useRoster = create<RosterState>((set) => ({
@@ -50,6 +56,8 @@ export const useRoster = create<RosterState>((set) => ({
   saving: false,
   loadError: null,
   actionError: null,
+  picked: [],
+  pickAnchor: null,
   select: (selection) =>
     set((state) => ({
       selection,
@@ -83,8 +91,18 @@ export const useRoster = create<RosterState>((set) => ({
   seeRoom: (roomId, seq) =>
     set((state) => ({
       roomSeen: { ...state.roomSeen, [roomId]: Math.max(state.roomSeen[roomId] ?? 0, seq) }
+    })),
+  pick: (picked, anchor) => set({ picked, pickAnchor: anchor }),
+  markRead: (rows) =>
+    set((state) => ({
+      unread: { ...state.unread, ...read(rows, 'bot') },
+      roomUnread: { ...state.roomUnread, ...read(rows, 'room') }
     }))
 }))
+
+function read(rows: RosterRowRef[], kind: RosterRowRef['kind']): Record<string, boolean> {
+  return Object.fromEntries(rows.filter((row) => row.kind === kind).map((row) => [row.id, false]))
+}
 
 // A bot you leave was read up to now: its next poll must not show what you just saw as unread.
 // Replies after this still mark it, live or on a later poll.

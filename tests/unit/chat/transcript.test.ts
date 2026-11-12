@@ -208,21 +208,32 @@ describe('chat transcript', () => {
         {
           id: 1,
           role: 'user',
-          content: '[IMPORTANT: Background process proc_1 completed]\nlong output',
-          display_kind: 'process_complete',
-          display_metadata: { display_text: 'Background build finished' }
+          content: '[IMPORTANT: Delegated task finished]\nlong output',
+          display_kind: 'async_delegation_complete',
+          display_metadata: { display_text: 'Delegated task finished' }
         } as SessionMessage,
         {
           id: 2,
           role: 'user',
-          content: '[IMPORTANT: Background process proc_2 completed]\nmore',
-          display_kind: 'process_complete'
+          content: 'Switched model\nmore',
+          display_kind: 'model_switch'
         }
       )
       expect(transcript.items).toEqual([
-        { kind: 'notice', id: '1', text: 'Background build finished' },
-        { kind: 'notice', id: '2', text: '[IMPORTANT: Background process proc_2 completed]' }
+        { kind: 'notice', id: '1', text: 'Delegated task finished' },
+        { kind: 'notice', id: '2', text: 'Switched model' }
       ])
+    })
+
+    it('should leave out the notice that a background command finished', () => {
+      const transcript = history({
+        id: 1,
+        role: 'user',
+        content: '[IMPORTANT: Background process proc_1 completed]\nlong output',
+        display_kind: 'process_complete',
+        display_metadata: { display_text: 'Background Process Finished: /usr/bin/python3' }
+      } as SessionMessage)
+      expect(transcript.items).toEqual([])
     })
 
     it('should skip hidden history rows', () => {
