@@ -221,8 +221,6 @@ const en = {
   'rooms.memberActions': 'Actions for {name}',
   'rooms.membersHint':
     'A bot that joins reads the room’s history and answers from the next message. The room keeps its history.',
-  'rooms.errorMembersBusy':
-    'A bot in this room is answering. Wait until the room is quiet, then try again.',
   'rooms.openDetails': 'Details for {name}',
   'rooms.membersPicked': '{count} of 6 picked',
   'rooms.membersLoading': 'Loading bots…',
