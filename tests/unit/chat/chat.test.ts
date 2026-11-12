@@ -521,6 +521,17 @@ describe('bot chat', () => {
       expect(submitted()).toEqual([])
     })
 
+    it('should stop the answer and send a message picked to go now, ahead of the others', async () => {
+      await actions.queue(MANAGER, draft('Later'))
+      await actions.queue(MANAGER, draft('Urgent'))
+      await actions.sendNow(MANAGER, chat(MANAGER).waiting[1].id)
+      expect(methods()).toContain('session.interrupt')
+      emit('message.complete', { text: '', status: 'interrupted' })
+      await settled()
+      expect(submitted()).toEqual(['Urgent'])
+      expect(chat(MANAGER).waiting.map((message) => message.draft.text)).toEqual(['Later'])
+    })
+
     it('should keep a waiting message first in line when its send fails, and say why', async () => {
       await actions.queue(MANAGER, draft('Next'))
       engine.failNext('prompt.submit', 'Gateway refused the prompt')

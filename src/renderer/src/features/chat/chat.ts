@@ -61,6 +61,8 @@ export interface ChatActions {
   queue: (profile: string, draft: ChatDraft) => Promise<boolean>
   /** Takes a waiting message back before it is sent. */
   unqueue: (profile: string, id: string) => void
+  /** Stops the running answer so this waiting message goes next, ahead of the others. */
+  sendNow: (profile: string, id: string) => Promise<void>
   /** The bot's answer ended: reloads the chat, then the oldest waiting message goes. */
   turnEnded: (profile: string) => Promise<void>
   interrupt: (profile: string) => Promise<void>
@@ -213,6 +215,11 @@ export function chatActions(backend: ChatBackend): ChatActions {
     if (sessionId) await load(profile, sessionId)
   })
 
+  const interrupt = guarded('chat.errorStop', async (profile) => {
+    const sessionId = sessionOf(profile)
+    if (sessionId) await backend.request(profile, 'session.interrupt', { session_id: sessionId })
+  })
+
   async function send(profile: string, draft: ChatDraft): Promise<boolean> {
     const text = draft.text.trim()
     if (!text && !draft.images.length) return false
@@ -317,6 +324,16 @@ export function chatActions(backend: ChatBackend): ChatActions {
       update(profile, { waiting: waiting.filter((message) => message.id !== id) })
     },
 
+    sendNow: async (profile, id) => {
+      const waiting = chatOf(profile)?.waiting ?? []
+      const message = waiting.find((item) => item.id === id)
+      if (!message) return
+      update(profile, { waiting: [message, ...waiting.filter((item) => item !== message)] })
+      // The stopped answer ends the turn, and turnEnded sends it; an idle chat sends it here.
+      if (chatOf(profile)?.transcript?.running) await interrupt(profile)
+      else await sendWaiting(profile)
+    },
+
     turnEnded: async (profile) => {
       // The stored history then carries what live events do not: rows from other clients and
       // bots. The next message goes after it, so the reload neither drops its bubble nor its error.
@@ -325,10 +342,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
       await sendWaiting(profile)
     },
 
-    interrupt: guarded('chat.errorStop', async (profile) => {
-      const sessionId = sessionOf(profile)
-      if (sessionId) await backend.request(profile, 'session.interrupt', { session_id: sessionId })
-    }),
+    interrupt,
 
     answerClarify: guarded('chat.errorAnswer', async (profile, promptId: string, answers) => {
       const prompt = chatOf(profile)?.transcript?.prompts.find((item) => item.id === promptId)

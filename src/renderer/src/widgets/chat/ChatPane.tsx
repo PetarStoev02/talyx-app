@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ArrowUp, Pencil, X } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
 import { botChatId, botTitle } from '@features/bots/roster'
@@ -17,7 +18,6 @@ import type { TranslationKey } from '@shared/lib/i18n'
 import { ActivityLine } from './ActivityLine'
 import { ApprovalCard } from './ApprovalCard'
 import { ClarifyCard } from './ClarifyCard'
-import { MessageBubble } from './MessageBubble'
 import { ChatChips, Composer } from './Composer'
 import type { ComposerTarget } from './Composer'
 import { ChatIntro } from './ChatIntro'
@@ -57,6 +57,10 @@ export function ChatPane({
       composer.current?.focus()
       composer.current?.setSelectionRange(starter.text.length, starter.text.length)
     })
+  }
+  const edit = (message: WaitingMessage): void => {
+    actions?.unqueue(bot.name, message.id)
+    start({ text: message.draft.text, send: false })
   }
   // An answered card unmounts with focus on it; the composer is where the conversation goes on.
   useRefocus(composer, chat?.transcript?.prompts.length)
@@ -107,7 +111,8 @@ export function ChatPane({
               <li key={message.id}>
                 <WaitingBubble
                   message={message}
-                  loadImage={loadImage}
+                  onSendNow={() => void actions.sendNow(bot.name, message.id)}
+                  onEdit={message.draft.images.length ? null : () => edit(message)}
                   onRemove={() => actions.unqueue(bot.name, message.id)}
                 />
               </li>
@@ -190,39 +195,51 @@ function announcement(
   return last.error ? 'chat.replyFailedAnnounce' : 'chat.replied'
 }
 
-// A message held until the running answer ends; it can still be taken back.
+// A message held until the running answer ends, as a dashed bubble: send it now (stops that
+// answer), take it back into the composer to edit, or drop it.
 function WaitingBubble({
   message,
-  loadImage,
+  onSendNow,
+  onEdit,
   onRemove
 }: {
   message: WaitingMessage
-  loadImage: (path: string) => Promise<string>
+  onSendNow: () => void
+  // Null for a message with images: the composer takes text back, not files.
+  onEdit: (() => void) | null
   onRemove: () => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const { text, images } = message.draft
-  const item: MessageItem = {
-    kind: 'user',
-    id: message.id,
-    text,
-    images: images.map((image) => image.path)
-  }
+  const action = 'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-foreground/10'
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex w-full flex-col opacity-60">
-        <MessageBubble message={item} loadImage={loadImage} briefs={{}} />
-      </div>
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        {t('chat.queued')}
-        <button
-          type="button"
-          className="underline underline-offset-4 hover:decoration-2"
-          onClick={onRemove}
-        >
-          {t('chat.unqueue')}
-        </button>
+    <div className="ml-auto flex max-w-[80%] flex-col items-end gap-1">
+      <p
+        dir="auto"
+        title={t('chat.queued')}
+        className="rounded-3xl border border-dashed border-border px-4 py-2 text-base whitespace-pre-wrap wrap-anywhere text-muted-foreground"
+      >
+        {text || t('chat.queuedImages').replace('{count}', String(images.length))}
       </p>
+      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+        <button type="button" className={action} onClick={onSendNow}>
+          <ArrowUp size={14} />
+          {t('chat.sendNow')}
+        </button>
+        {onEdit && (
+          <button
+            type="button"
+            aria-label={t('chat.editQueued')}
+            className={action}
+            onClick={onEdit}
+          >
+            <Pencil size={14} />
+          </button>
+        )}
+        <button type="button" aria-label={t('chat.unqueue')} className={action} onClick={onRemove}>
+          <X size={14} />
+        </button>
+      </div>
     </div>
   )
 }
