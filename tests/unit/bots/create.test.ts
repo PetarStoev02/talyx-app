@@ -7,6 +7,7 @@ import {
   profileIdFor
 } from '../../../src/renderer/src/features/bots/create'
 import type { NewBot } from '../../../src/renderer/src/features/bots/create'
+import { loadDetails } from '../../../src/renderer/src/features/bots/details'
 import { RosterError, folderBots } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { matchName } from '../../../src/renderer/src/features/bots/look'
@@ -122,9 +123,15 @@ describe('creating a bot', () => {
       expect(engine.created[0].soul).toBe(`${SOUL}\n\nWhat you do: Finds sources and sums them up`)
     })
 
-    it('should leave the SOUL alone when the purpose is blank', async () => {
-      await createBot(backend, newBot({ purpose: '  ' }), [])
+    it('should show what the bot does as its description', async () => {
+      const id = await createBot(backend, newBot({ purpose: ' Finds sources ' }), [])
+      expect((await loadDetails(backend, id)).description).toBe('Finds sources')
+    })
+
+    it('should leave the SOUL and description alone when the purpose is blank', async () => {
+      const id = await createBot(backend, newBot({ purpose: '  ' }), [])
       expect(engine.created[0].soul).toBe(SOUL)
+      expect((await loadDetails(backend, id)).description).toBe('')
     })
 
     it('should leave the model to the engine when none is picked', async () => {

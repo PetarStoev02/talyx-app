@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { RosterProblem } from './roster'
-import type { BotActivity, RosterRowRef, RosterSnapshot, Selection } from './types'
+import type { BotActivity, Room, RosterRowRef, RosterSnapshot, Selection } from './types'
 
 export interface RosterState {
   snapshot: RosterSnapshot
@@ -29,6 +29,8 @@ export interface RosterState {
   // row a Shift+click range starts from.
   picked: string[]
   pickAnchor: string | null
+  // The room the delete confirmation is open for: asked from the roster or the room's details.
+  deletingRoom: Room | null
   select: (selection: Selection) => void
   editProfile: (profile: string | null) => void
   clearError: () => void
@@ -39,6 +41,7 @@ export interface RosterState {
   seeRoom: (roomId: string, seq: number) => void
   pick: (picked: string[], anchor: string | null) => void
   markRead: (rows: RosterRowRef[]) => void
+  askDeleteRoom: (room: Room | null) => void
 }
 
 export const useRoster = create<RosterState>((set) => ({
@@ -58,6 +61,8 @@ export const useRoster = create<RosterState>((set) => ({
   actionError: null,
   picked: [],
   pickAnchor: null,
+  deletingRoom: null,
+  askDeleteRoom: (room) => set({ deletingRoom: room, actionError: null }),
   select: (selection) =>
     set((state) => ({
       selection,

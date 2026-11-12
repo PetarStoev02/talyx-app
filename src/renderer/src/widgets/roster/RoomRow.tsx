@@ -52,7 +52,7 @@ export function RoomRow({
           selected && 'bg-foreground/10',
           picked && 'bg-brand/15'
         )}
-        draggable={!saving}
+        draggable
         data-roster-row={itemKey(row)}
         onDragStart={(event) => startRosterDrag(event, row)}
         onDragEnd={endRosterDrag}

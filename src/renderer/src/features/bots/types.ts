@@ -40,7 +40,7 @@ export interface Folder {
 export interface Room {
   room_id: string
   name: string
-  members: { profile: string; member_id?: string; display_name?: string }[]
+  members: { profile: string; member_id?: string; handle?: string; display_name?: string }[]
   disbanded_at?: number | null
   // The seq of the room's newest log row; a higher one than last seen is an unread message.
   latest_seq?: number | null

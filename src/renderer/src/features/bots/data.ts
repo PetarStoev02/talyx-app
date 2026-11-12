@@ -94,6 +94,7 @@ const roomsSchema = z.object({
         z.object({
           profile: z.string(),
           member_id: z.string().optional(),
+          handle: z.string().optional(),
           display_name: z.string().optional()
         })
       ),

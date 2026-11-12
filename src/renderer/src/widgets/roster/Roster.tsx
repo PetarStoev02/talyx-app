@@ -65,7 +65,8 @@ export function Roster({
     }
   const closeCreate = closing(() => setCreating(null))
   const [deleting, setDeleting] = useState<Bot | null>(null)
-  const [deletingRoom, setDeletingRoom] = useState<Room | null>(null)
+  const deletingRoom = useRoster((s) => s.deletingRoom)
+  const { askDeleteRoom } = useRoster.getState()
   const [renamingFolder, setRenamingFolder] = useState<Folder | null>(null)
   const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null)
   const [deletingRows, setDeletingRows] = useState<RosterRowRef[] | null>(null)
@@ -97,10 +98,7 @@ export function Roster({
       clearError()
       setDeleting(bot)
     },
-    setDeletingRoom: (room) => {
-      clearError()
-      setDeletingRoom(room)
-    },
+    setDeletingRoom: askDeleteRoom,
     setRenamingFolder: (folder) => {
       clearError()
       setRenamingFolder(folder)
@@ -256,12 +254,12 @@ export function Roster({
       {creating === 'room' && <CreateRoomDialog backend={backend} onClose={closeCreate} />}
       <DeleteRoomDialog
         room={deletingRoom}
-        onClose={closing(() => setDeletingRoom(null))}
+        onClose={() => askDeleteRoom(null)}
         onDelete={(room) =>
           run(async () => {
             await actions.deleteRoom(room)
             // The room is gone; a failed layout cleanup shows on the roster, not in this dialog.
-            setDeletingRoom(null)
+            askDeleteRoom(null)
             await actions.forgetRoom(room)
           })
         }

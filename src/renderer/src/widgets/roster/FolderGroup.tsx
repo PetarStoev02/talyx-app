@@ -46,7 +46,7 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
   // A row takes bots and rooms, or several picked rows; `after` is in front of the next row, or
   // last. Picked rows never land inside a picked folder.
   const refused = (rows: RosterDragItem[]): boolean =>
-    saving || refusesFolder(snapshot, rows, id) || (rows.length === 1 && rows[0].kind === 'folder')
+    refusesFolder(snapshot, rows, id) || (rows.length === 1 && rows[0].kind === 'folder')
   const rowEdges = (rows: RosterDragItem[]): DropEdge[] | null =>
     refused(rows) ? null : ['before', 'after']
   const dropOnRow = (index: number) => (rows: RosterDragItem[], edge: DropEdge) =>
@@ -62,7 +62,7 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
       // The folder's empty space (its "No bots here" line, the gaps) takes a drop as "into, last".
       onDragOver={(event) => {
         const rows = draggedRows()
-        if (!saving && rows.length && !refusesFolder(snapshot, rows, id)) {
+        if (rows.length && !refusesFolder(snapshot, rows, id)) {
           event.preventDefault()
           event.stopPropagation()
         }
@@ -72,7 +72,7 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
         event.preventDefault()
         event.stopPropagation()
         endRosterDrag()
-        if (!rows.length || saving || refusesFolder(snapshot, rows, id)) return
+        if (!rows.length || refusesFolder(snapshot, rows, id)) return
         if (rows.length === 1 && rows[0].kind === 'folder')
           drops.folder(rows[0].id, { parentId: id, beforeId: null })
         else drops.items(rows, { folderId: id, before: null })
@@ -174,7 +174,6 @@ function FolderHeader({
   // Unassigned is not a folder: a folder dropped on it goes to the top level, last. Several
   // picked rows go inside, unless it is one of their folders.
   const edges = (rows: RosterDragItem[]): DropEdge[] | null => {
-    if (saving) return null
     if (rows.length > 1)
       return refusesFolder(snapshot, rows, folder?.id ?? null) ? null : ['inside']
     const [item] = rows
@@ -206,7 +205,7 @@ function FolderHeader({
             'group flex items-center rounded-xl pr-1 transition-colors',
             picked ? 'bg-brand/15' : 'hover:bg-accent'
           )}
-          draggable={!!folder && !saving}
+          draggable={!!folder}
           data-roster-row={row ? itemKey(row) : undefined}
           onDragStart={(event) => row && startRosterDrag(event, row)}
           onDragEnd={endRosterDrag}

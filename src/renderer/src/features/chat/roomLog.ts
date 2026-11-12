@@ -1,4 +1,6 @@
 import type { TranslationKey } from '@shared/lib/i18n'
+import { showMentions } from './mentions'
+import type { Mention } from './mentions'
 import type { MessageItem, RoomAttachment, RoomEvent } from './types'
 
 // Log rows that say a turn or the room did not go as planned; the rest of the bookkeeping
@@ -15,6 +17,8 @@ const NOTICES: Record<string, TranslationKey> = {
 export interface RoomLabels {
   // A member's name as the roster shows it (never its handle), and the profile it runs on.
   memberOf: (memberId: string) => { name: string; profile: string }
+  // Each member's handle and name: messages show `@name` where they say `@handle`.
+  mentions: Mention[]
   t: (key: TranslationKey) => string
 }
 
@@ -39,9 +43,10 @@ export function parseAttachmentKey(
 }
 
 function roomItem(event: RoomEvent, labels: RoomLabels): MessageItem[] {
-  const { memberOf, t } = labels
+  const { memberOf, mentions, t } = labels
   const id = event.event_id || String(event.seq)
-  const text = typeof event.payload.text === 'string' ? event.payload.text : ''
+  const text =
+    typeof event.payload.text === 'string' ? showMentions(event.payload.text, mentions) : ''
   if (event.kind === 'message.user') {
     const images = attachmentsOf(event.payload).map((item) => attachmentKey(event.event_id, item))
     return [{ kind: 'user', id, text, images }]

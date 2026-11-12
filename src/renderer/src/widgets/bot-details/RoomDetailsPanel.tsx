@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { DropdownMenu } from 'radix-ui'
-import { Ellipsis, MessageSquare, Pencil, Plus, UserMinus, X } from 'lucide-react'
+import { Ellipsis, MessageSquare, Pencil, Plus, Trash2, UserMinus, X } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { runRosterMutation } from '@features/bots/actions'
 import { BotAvatar } from '@features/bots/BotAvatar'
@@ -39,6 +39,7 @@ export function RoomDetailsPanel({
   const t = useLanguage((s) => s.t)
   const bots = useRoster((state) => state.snapshot.bots)
   const select = useRoster((state) => state.select)
+  const askDeleteRoom = useRoster((state) => state.askDeleteRoom)
   const count =
     room.members.length === 1
       ? t('roster.oneBot')
@@ -71,6 +72,20 @@ export function RoomDetailsPanel({
           onOpen={(profile) => select({ kind: 'bot', id: profile })}
         />
       </section>
+      {backend && (
+        <footer className="px-4 pb-4">
+          {/* The roster's own confirmation opens, as from the room's right-click menu. */}
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full justify-start text-destructive hover:text-destructive"
+            onClick={() => askDeleteRoom(room)}
+          >
+            <Trash2 size={16} />
+            {t('roster.deleteRoom')}
+          </Button>
+        </footer>
+      )}
     </aside>
   )
 }
