@@ -639,6 +639,13 @@ describe('bot chat', () => {
       expect(outcome()).toBe('stopped')
     })
 
+    it('should keep the partial text a stop leaves when the engine marks it partial', () => {
+      emit('message.start', { turn_id: 't1' })
+      emit('message.complete', { text: 'Margins are', status: 'interrupted', partial: true })
+      expect(shownText().at(-1)).toBe('Margins are')
+      expect(outcome()).toBeNull()
+    })
+
     it('should offer the failed message to send again', async () => {
       emit('message.start', { turn_id: 't1' })
       emit('message.complete', { text: 'Provider said: 429', status: 'error' })

@@ -151,7 +151,7 @@ const en = {
   'chat.replyFailed': 'This reply did not finish.',
   'chat.noReply': '{name} ended without a reply.',
   'chat.retry': 'Retry',
-  'chat.retryLabel': 'Send your last message again: {text}',
+  'chat.retryLabel': 'Retry: {text}',
   'chat.waitRetryIn': 'retrying in {time}',
   'chat.replyStopped': 'Stopped',
   'chat.copyCode': 'Copy code',

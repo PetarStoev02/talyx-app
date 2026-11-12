@@ -82,9 +82,13 @@ export function ChatPane({
   const { items, activity } = turnView(chat.transcript?.items ?? [], running)
   // A retry waits for nothing else: not while a message is already lined up to go.
   const outcome = chat.waiting.length ? null : turnOutcome(chat.transcript?.items ?? [], running)
+  // A failed turn's bubble already says so; the line adds only its retry, which a message with
+  // images does not get (the chat keeps their paths, not the files).
+  const retryable =
+    outcome !== null && outcome.asked.images.length === 0 && outcome.asked.text !== ''
   const prompts = chat.transcript?.prompts ?? []
   const loadImage = (path: string): Promise<string> => actions.mediaUrl(bot.name, path)
-  const announced = announcement(items, prompts.length, running)
+  const announced = announcement(items, prompts.length, running, outcome)
   const target: ComposerTarget = {
     placeholder: t('chat.placeholder').replace('{name}', title),
     running,
@@ -111,11 +115,12 @@ export function ChatPane({
                 <ActivityLine bot={bot} activity={activity} wait={chat.transcript?.wait ?? null} />
               </li>
             )}
-            {outcome && (
+            {outcome && (outcome.kind !== 'failed' || retryable) && (
               <li>
                 <OutcomeLine
                   outcome={outcome}
                   name={title}
+                  retryable={retryable}
                   onRetry={() =>
                     void actions.queue(bot.name, { text: outcome.asked.text, images: [] })
                   }
@@ -201,24 +206,28 @@ export function ChatPane({
 function announcement(
   items: MessageItem[],
   prompts: number,
-  running: boolean
+  running: boolean,
+  outcome: TurnOutcome | null
 ): TranslationKey | null {
   if (prompts) return 'chat.waiting'
   if (running) return 'chat.typing'
+  if (outcome?.kind === 'noReply') return 'chat.noReply'
+  if (outcome?.kind === 'stopped') return 'chat.replyStopped'
   const last = items.at(-1)
   if (last?.kind !== 'bot') return null
   return last.error ? 'chat.replyFailedAnnounce' : 'chat.replied'
 }
 
-// How a turn ended without an answer, and a way to send its message again. A message with
-// images is sent again from the composer: the chat keeps their paths, not the files.
+// How a turn ended without an answer, and a way to send its message again.
 function OutcomeLine({
   outcome,
   name,
+  retryable,
   onRetry
 }: {
   outcome: TurnOutcome
   name: string
+  retryable: boolean
   onRetry: () => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
@@ -232,7 +241,7 @@ function OutcomeLine({
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 text-sm text-muted-foreground">
       {said && <p>{said}</p>}
-      {asked.images.length === 0 && asked.text && (
+      {retryable && (
         <button
           type="button"
           aria-label={t('chat.retryLabel').replace('{text}', asked.text)}

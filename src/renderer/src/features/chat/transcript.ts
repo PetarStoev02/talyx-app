@@ -442,12 +442,9 @@ function completeReply(transcript: Transcript, payload: Payload, id: string): Tr
   // A failed turn's text is the engine's account of the failure unless it says the text is a
   // partial answer; the account shows as the error, not as a reply. A stopped turn, or one the
   // model gave no answer to, has only the engine's account: the chat says what happened instead.
-  const answer =
-    (failed && payload.partial !== true) ||
-    payload.status === 'interrupted' ||
-    payload.failure_reason === EMPTY_RESPONSE
-      ? ''
-      : text
+  const account =
+    failed || payload.status === 'interrupted' || payload.failure_reason === EMPTY_RESPONSE
+  const answer = account && payload.partial !== true ? '' : text
   const done = updateReply(withStreamingReply(transcript, id), (reply) => ({
     ...reply,
     // The final text covers the whole turn; it fills the reply only when nothing streamed into it.
