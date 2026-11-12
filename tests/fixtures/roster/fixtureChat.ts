@@ -134,7 +134,16 @@ export function fixtureChat(providers: ProvidersBackend): ChatActions {
         start,
         () =>
           askClarify(profile, [
-            { qid: 'q1', question: 'Which quarter?', choices: ['Q3 2026', 'Q4 so far', 'Both'] },
+            {
+              qid: 'q1',
+              question: 'Which quarter?',
+              // The long choice checks that a choice wraps inside the card.
+              choices: [
+                'Q3 2026',
+                'Q4 so far',
+                'Both, side by side with the same quarters last year, and a note on every region that moved by more than ten percent'
+              ]
+            },
             {
               qid: 'q2',
               question: 'Which regions?',

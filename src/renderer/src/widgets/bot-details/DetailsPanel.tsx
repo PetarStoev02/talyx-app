@@ -28,6 +28,7 @@ import type { RosterProblem } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
+import { useChat } from '@features/chat/store'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
@@ -161,7 +162,7 @@ export function DetailsPanel({
   // The engine's pin is for new sessions; the bot's open chat switches too, as from its composer,
   // so its model chip agrees with the bot. With no chat yet, the first one starts on the pin.
   function followInChat(model: ModelChoice): void {
-    void chat?.setModel(bot.name, model)
+    if (useChat.getState().chats[bot.name]?.sessionId) void chat?.setModel(bot.name, model)
   }
 
   // A save can finish after the user moved to another bot's panel; that panel stays open.

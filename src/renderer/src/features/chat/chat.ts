@@ -103,6 +103,8 @@ export function chatActions(backend: ChatBackend): ChatActions {
   // The first send's create per profile, so a second quick send joins it.
   const creating = new Map<string, Promise<string>>()
   const modelLists = new Map<string, Promise<ModelOptionProvider[]>>()
+  // The model and reasoning picks per profile, one after another; a send waits for them to settle.
+  const configuring = new Map<string, Promise<void>>()
   // Profiles whose composer message is out and its answer not yet ended.
   const out = new Set<string>()
 
@@ -202,12 +204,18 @@ export function chatActions(backend: ChatBackend): ChatActions {
     }
   }
 
-  // Before the first send there is no session to configure; the composer disables the chips.
-  async function configure(profile: string, key: string, value: string): Promise<boolean> {
-    const sessionId = sessionOf(profile)
-    if (!sessionId) return false
-    await backend.request(profile, 'config.set', { session_id: sessionId, key, value })
-    return true
+  // A pick before the first send starts the Bot Chat, so the choice holds for that send.
+  function configure(profile: string, key: string, value: string): Promise<void> {
+    const picked = (configuring.get(profile) ?? Promise.resolve()).then(async () => {
+      const sessionId = sessionOf(profile) ?? (await startChat(profile))
+      await backend.request(profile, 'config.set', { session_id: sessionId, key, value })
+    })
+    // A failed pick shows on the chat (guarded); the picks and sends after it still go.
+    configuring.set(
+      profile,
+      picked.catch(() => undefined)
+    )
+    return picked
   }
 
   const rebuild = guarded('chat.errorLoad', async (profile) => {
@@ -235,6 +243,8 @@ export function chatActions(backend: ChatBackend): ChatActions {
           items: [...transcript.items, { kind: 'user', id: local, text, images }]
         }
       })
+      // A pick made just before the send applies to it.
+      await configuring.get(profile)
       await backend.request(profile, 'prompt.submit', {
         session_id: sessionId,
         text,
@@ -375,14 +385,14 @@ export function chatActions(backend: ChatBackend): ChatActions {
     setModel: guarded(
       'chat.errorModel',
       async (profile, { model, provider }: { model: string; provider: string }) => {
-        if (await configure(profile, 'model', `${model} --provider ${provider}`))
-          update(profile, { info: { ...chatOf(profile)!.info, model, provider } })
+        await configure(profile, 'model', `${model} --provider ${provider}`)
+        update(profile, { info: { ...chatOf(profile)!.info, model, provider } })
       }
     ),
 
     setReasoning: guarded('chat.errorReasoning', async (profile, level: string) => {
-      if (await configure(profile, 'reasoning', level))
-        update(profile, { info: { ...chatOf(profile)!.info, reasoning: level } })
+      await configure(profile, 'reasoning', level)
+      update(profile, { info: { ...chatOf(profile)!.info, reasoning: level } })
     }),
 
     models: (profile) => {
