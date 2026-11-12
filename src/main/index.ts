@@ -10,6 +10,7 @@ import { cancelInstall, registerSetupIpc } from './infrastructure/ipc/setup.ipc'
 import { registerLogIpc } from './infrastructure/ipc/log.ipc'
 import { registerAppIpc } from './infrastructure/ipc/app.ipc'
 import { closeEngineSockets, registerEngineIpc } from './infrastructure/ipc/engine.ipc'
+import { registerMcpIpc, startMcpServer } from './infrastructure/ipc/mcp.ipc'
 import { registerUpdaterIpc, releaseChecks, updates } from './infrastructure/ipc/updater.ipc'
 import {
   modules,
@@ -70,6 +71,7 @@ function registerIpc(): void {
   registerUpdaterIpc()
   registerAppIpc()
   registerModulesIpc()
+  registerMcpIpc()
   ipcMain.handle('theme:set-native', (_event, theme: unknown) =>
     syncNativeTheme(validateInput(ThemeSchema, theme))
   )
@@ -311,6 +313,7 @@ app
     await new Promise((resolve) => setTimeout(resolve, SPLASH_MIN_VISIBLE_MS))
 
     registerIpc()
+    startMcpServer()
     const launchedBy = activationRequestIn(process.argv)
     if (launchedBy) requestActivation(launchedBy)
     // A theme switch (in Talyx or, on System, in the OS) repaints the window's ground too.

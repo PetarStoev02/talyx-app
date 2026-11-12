@@ -10,6 +10,7 @@ import { RestartHint } from '@features/setup/EngineScreens'
 import { useUpdates } from '@features/updates/store'
 import { timeInWords } from '@features/bots/roster'
 import { useNow } from '@shared/hooks/useNow'
+import { AgentAccess } from './AgentAccess'
 
 const STATE_KEYS = {
   checking: 'settings.engineChecking',
@@ -120,6 +121,7 @@ export function EngineSection({
       <p role="status" className="sr-only">
         {checkNote}
       </p>
+      <AgentAccess />
       <div className="space-y-3">
         <button
           className="flex items-center gap-2 text-base font-medium text-foreground"

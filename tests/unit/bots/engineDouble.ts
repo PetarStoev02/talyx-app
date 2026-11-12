@@ -48,6 +48,8 @@ export interface EngineDouble {
   prompts: Record<string, unknown>
   /** Every profile whose prompt setting was written, in order. */
   promptWrites: string[]
+  /** Each profile's default reasoning (`agent.reasoning_effort`), once written. */
+  reasoning: Record<string, string>
   /** Each profile's named endpoints (its config's providers), as the endpoint list shows them. */
   named: Record<string, CustomEndpoint[]>
   /** The engine's preview of Talyx's endpoint key: a `${VAR}` reference, or a redacted key. */
@@ -153,6 +155,7 @@ export function engineDouble(
   const named: EngineDouble['named'] = {}
   const prompts: EngineDouble['prompts'] = {}
   const promptWrites: string[] = []
+  const reasoning: EngineDouble['reasoning'] = {}
 
   // As the engine: a costly model waits for a yes, and a bare custom provider needs its URL.
   function setModel(profile: string, body: Record<string, unknown>): unknown {
@@ -185,15 +188,19 @@ export function engineDouble(
         return (profile in prompts ? { agent: { system_prompt: prompts[profile] } } : {}) as T
       const { providers, agent } = (
         request.body as {
-          config: { providers?: Record<string, NamedEntry>; agent?: { system_prompt: string } }
+          config: {
+            providers?: Record<string, NamedEntry>
+            agent?: { system_prompt?: string; reasoning_effort?: string }
+          }
         }
       ).config
       for (const [id, entry] of Object.entries(providers ?? {}))
         named[profile] = [...(named[profile] ?? []), namedEndpoint(id, entry)]
-      if (agent) {
+      if (agent?.system_prompt !== undefined) {
         prompts[profile] = agent.system_prompt
         promptWrites.push(profile)
       }
+      if (agent?.reasoning_effort !== undefined) reasoning[profile] = agent.reasoning_effort
       return { ok: true } as T
     }
     if (request.path.startsWith('/api/cron/jobs/')) return cronRest(profile, request) as T
@@ -420,6 +427,7 @@ export function engineDouble(
     named,
     prompts,
     promptWrites,
+    reasoning,
     homeProvider: 'custom',
     homeKeyPreview: HOME_KEY_REF,
     rooms,

@@ -17,7 +17,7 @@ import { ModulePage } from '@pages/module'
 import { SettingsNav } from '@widgets/settings-nav'
 import { ActivationDialog } from '@widgets/modules'
 import { TooltipProvider } from '@shared/ui/tooltip'
-import { Roster, RosterAdd, RosterRefresh } from '@widgets/roster'
+import { ApprovalDialog, Roster, RosterAdd, RosterRefresh } from '@widgets/roster'
 import { ConnectionBanner, EngineSplash } from '@widgets/engine-gate'
 import { SetupFlow } from '@widgets/setup'
 import { ProvidersSection } from '@widgets/providers'
@@ -30,6 +30,7 @@ import { moduleIdOf, runningModules, useModules } from '@features/modules/store'
 import { setLeaveGuard } from '@features/modules/leaveGuard'
 import { useModuleChat } from '@app/providers/moduleChat'
 import { useSelectionMemory } from '@app/providers/useSelectionMemory'
+import { useMcpBridge } from '@app/providers/useMcpBridge'
 
 function App(): React.JSX.Element {
   useKeyboardShortcuts()
@@ -38,6 +39,8 @@ function App(): React.JSX.Element {
   const currentView = useNavigation((s) => s.currentView)
   const navigate = useNavigation((s) => s.navigate)
   const rosterBackend = useRosterBackend()
+  // Agents operate Talyx through its MCP server whatever page is open.
+  useMcpBridge(rosterBackend)
   // Here, not in the page: replies keep marking bots unread while another page is open.
   const chat = useChatBackend()
   // A module's page sends to the bots through the same chat as the page you type in.
@@ -135,6 +138,7 @@ function App(): React.JSX.Element {
         toastOptions={{ className: 'border-0!' }}
       />
       <ActivationDialog />
+      <ApprovalDialog />
       {inSetup ? (
         <SetupFlow
           providersForm={

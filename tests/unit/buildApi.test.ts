@@ -53,9 +53,11 @@ describe('buildApi', () => {
     expect(transport.calls).toEqual([{ channel, args: wireArgs }])
   })
 
-  it('should expose only the settings, engine, setup, log, about, updater and modules surface', () => {
+  it('should expose only the settings, engine, setup, log, about, updater, modules and MCP surface', () => {
     expect(Object.keys(buildApi(recordingTransport())).sort()).toEqual([
       'activateLicense',
+      'answerMcp',
+      'attachMcp',
       'cancelInstall',
       'cancelUpdate',
       'checkForUpdate',
@@ -68,6 +70,7 @@ describe('buildApi', () => {
       'getDiagnostics',
       'getEngineStatus',
       'getInstallSteps',
+      'getMcpConnection',
       'getModulesState',
       'getSettings',
       'getUpdateState',
@@ -80,6 +83,7 @@ describe('buildApi', () => {
       'onEngineSocketFrame',
       'onInstallExit',
       'onInstallOutput',
+      'onMcpCall',
       'onModulesState',
       'onUpdateState',
       'openEngineSocket',
