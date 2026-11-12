@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ArrowUp, Pencil, X } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
 import { botChatId, botTitle } from '@features/bots/roster'
@@ -7,6 +8,7 @@ import { MANAGER } from '@features/bots/details'
 import type { Bot } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
 import { useChat } from '@features/chat/store'
+import type { WaitingMessage } from '@features/chat/store'
 import { useSetup } from '@features/setup/store'
 import { turnView } from '@features/chat/turns'
 import type { MessageItem } from '@features/chat/types'
@@ -53,8 +55,13 @@ export function ChatPane({
     // After the composer has the text: the cursor goes to its end, ready to finish the sentence.
     requestAnimationFrame(() => {
       composer.current?.focus()
-      composer.current?.setSelectionRange(starter.text.length, starter.text.length)
+      const end = composer.current?.value.length ?? 0
+      composer.current?.setSelectionRange(end, end)
     })
+  }
+  const edit = (message: WaitingMessage): void => {
+    actions?.unqueue(bot.name, message.id)
+    start({ text: message.draft.text, send: false })
   }
   // An answered card unmounts with focus on it; the composer is where the conversation goes on.
   useRefocus(composer, chat?.transcript?.prompts.length)
@@ -79,7 +86,7 @@ export function ChatPane({
     placeholder: t('chat.placeholder').replace('{name}', title),
     running,
     send: ({ text, files }) =>
-      actions.send(bot.name, {
+      actions.queue(bot.name, {
         text,
         images: files.map((file) => ({ path: file.id, mime: file.mime }))
       }),
@@ -94,13 +101,23 @@ export function ChatPane({
   return (
     <>
       <div className={cn('flex min-h-0 flex-1 flex-col', arrival)}>
-        {items.length || prompts.length ? (
+        {items.length || prompts.length || chat.waiting.length ? (
           <Transcript items={items} loadImage={loadImage}>
             {activity && (
               <li>
                 <ActivityLine bot={bot} activity={activity} wait={chat.transcript?.wait ?? null} />
               </li>
             )}
+            {chat.waiting.map((message) => (
+              <li key={message.id}>
+                <WaitingBubble
+                  message={message}
+                  onSendNow={() => void actions.sendNow(bot.name, message.id)}
+                  onEdit={message.draft.images.length ? null : () => edit(message)}
+                  onRemove={() => actions.unqueue(bot.name, message.id)}
+                />
+              </li>
+            ))}
             {prompts.map((prompt) => (
               <li key={prompt.id}>
                 {prompt.kind === 'clarify' ? (
@@ -177,4 +194,66 @@ function announcement(
   const last = items.at(-1)
   if (last?.kind !== 'bot') return null
   return last.error ? 'chat.replyFailedAnnounce' : 'chat.replied'
+}
+
+// A message held until the running answer ends, as a dashed bubble: send it now (stops that
+// answer), take it back into the composer to edit, or drop it.
+function WaitingBubble({
+  message,
+  onSendNow,
+  onEdit,
+  onRemove
+}: {
+  message: WaitingMessage
+  onSendNow: () => void
+  // Null for a message with images: the composer takes text back, not files.
+  onEdit: (() => void) | null
+  onRemove: () => void
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const { text, images } = message.draft
+  const action = 'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-foreground/10'
+  return (
+    <div className="ml-auto flex max-w-[80%] flex-col items-end gap-1">
+      <p
+        dir="auto"
+        className="rounded-3xl border border-dashed border-border px-4 py-2 text-base whitespace-pre-wrap wrap-anywhere text-muted-foreground"
+      >
+        {text ||
+          (images.length === 1
+            ? t('chat.queuedImage')
+            : t('chat.queuedImages').replace('{count}', String(images.length)))}
+        <span className="sr-only">{` (${t('chat.queued')})`}</span>
+      </p>
+      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+        <button
+          type="button"
+          aria-label={`${t('chat.sendNow')}: ${text}`}
+          className={action}
+          onClick={onSendNow}
+        >
+          <ArrowUp size={14} />
+          {t('chat.sendNow')}
+        </button>
+        {onEdit && (
+          <button
+            type="button"
+            aria-label={`${t('chat.editQueued')}: ${text}`}
+            className={action}
+            onClick={onEdit}
+          >
+            <Pencil size={14} />
+          </button>
+        )}
+        <button
+          type="button"
+          aria-label={`${t('chat.unqueue')}: ${text}`}
+          className={action}
+          onClick={onRemove}
+        >
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  )
 }

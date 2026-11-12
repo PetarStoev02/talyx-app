@@ -24,15 +24,16 @@ export function handleEvent(actions: ChatActions, event: GatewayEvent): ChatUpda
     useChat.getState().update(profile, {
       info: infoOf(event.payload as SessionLiveInfo, chat.info)
     })
+  // A gap or rewind may have swallowed the end of a turn: treated as one, so a waiting message
+  // never stays stuck behind an answer this window did not see end.
   if (needsRebuild(event)) {
-    void actions.rebuild(profile)
+    void actions.turnEnded(profile)
     return { profile, completed: false, activity: activityOf(transcript) }
   }
   const next = applyEvent(transcript, event)
   if (next !== transcript) useChat.getState().update(profile, { transcript: next })
   const completed = event.type === 'message.complete' && next !== transcript
-  // The stored history then carries what live events do not: rows from other clients and bots.
-  if (completed) void actions.rebuild(profile)
+  if (completed) void actions.turnEnded(profile)
   return { profile, completed, activity: activityOf(next) }
 }
 
