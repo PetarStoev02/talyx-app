@@ -690,6 +690,21 @@ describe('bot chat', () => {
         engine.calls.filter((item) => item.method === 'prompt.submit').at(-1)?.params
       ).toMatchObject({ queued: true })
     })
+
+    it('should still end the next turn when it finishes before its send is confirmed', async () => {
+      emit('message.start', { turn_id: 't1' })
+      await actions.queue(MANAGER, { text: 'Next', images: [] })
+      await actions.queue(MANAGER, { text: 'Third', images: [] })
+      const release = engine.holdNext('prompt.submit')
+      const firstEnded = actions.turnEnded(MANAGER)
+      await settled()
+      emit('message.start', { turn_id: 't2' })
+      emit('message.complete', { text: 'Done', status: 'complete' })
+      release()
+      await firstEnded
+      await settled()
+      expect(submitted()).toEqual(['Summarise Q3', 'Next', 'Third'])
+    })
   })
 
   describe('during a turn', () => {

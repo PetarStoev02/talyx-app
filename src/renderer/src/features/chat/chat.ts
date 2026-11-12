@@ -108,8 +108,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
   const configuring = new Map<string, Promise<void>>()
   // Profiles whose composer message is out and its answer not yet ended.
   const out = new Set<string>()
-  // The turn end under way per profile. A reconnect and a replayed reply can both end the same
-  // turn; they share one end, so the second cannot release the next message's turn.
+  // The reload of an ended turn under way per profile.
   const ending = new Map<string, Promise<void>>()
 
   // A failed call shows on its chat, named by what it was, instead of throwing into the view.
@@ -283,12 +282,17 @@ export function chatActions(backend: ChatBackend): ChatActions {
     return sent
   }
 
-  async function endTurn(profile: string): Promise<void> {
-    // The stored history then carries what live events do not: rows from other clients and
-    // bots. The next message goes after it, so the reload neither drops its bubble nor its error.
-    await rebuild(profile)
-    out.delete(profile)
-    await sendWaiting(profile)
+  // The stored history then carries what live events do not: rows from other clients and bots.
+  // A reconnect and a replayed reply can both end the same turn: they share this one reload, and
+  // it is over before the next message goes, so that message's own end is never folded into it.
+  function reloadEnded(profile: string): Promise<void> {
+    const reload =
+      ending.get(profile) ??
+      rebuild(profile)
+        .then(() => void out.delete(profile))
+        .finally(() => ending.delete(profile))
+    ending.set(profile, reload)
+    return reload
   }
 
   async function sendWaiting(profile: string): Promise<void> {
@@ -361,10 +365,11 @@ export function chatActions(backend: ChatBackend): ChatActions {
       }
     },
 
-    turnEnded: (profile) => {
-      const end = ending.get(profile) ?? endTurn(profile).finally(() => ending.delete(profile))
-      ending.set(profile, end)
-      return end
+    turnEnded: async (profile) => {
+      await reloadEnded(profile)
+      // The next message goes after the reload, so the reload neither drops its bubble nor its
+      // error. A second end of the same turn finds it out already (submit marks it at once).
+      await sendWaiting(profile)
     },
 
     interrupt,
