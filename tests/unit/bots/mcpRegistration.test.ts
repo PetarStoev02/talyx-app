@@ -3,45 +3,87 @@ import { registerMcpServer } from '../../../src/renderer/src/features/bots/mcpRe
 import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
 import { mcpAddCommand } from '../../../src/shared/mcp'
 
-const CONNECTION = { url: 'http://127.0.0.1:47816/mcp', token: 'secret' }
+const CONNECTION = { url: 'http://127.0.0.1:47816/mcp?tools=new', token: 'secret' }
+const BOT = { profile: 'scout', sessionId: 'chat-1' }
 
-/** A profile's MCP servers over the engine's REST, as `GET/POST /api/mcp/servers` keep them. */
-function engineWith(servers: { name: string; url: string }[]): {
-  backend: RosterBackend
-  writes: unknown[]
-} {
-  const writes: unknown[] = []
+/**
+ * A profile's MCP servers as the engine keeps them: REST for the config, `reload.mcp` on the
+ * socket. Every step is recorded in order, the way the engine would see it.
+ */
+function engineWith(
+  servers: { name: string; url: string }[],
+  options: { deleteFails?: string } = {}
+): { backend: RosterBackend; steps: string[]; added: unknown[] } {
+  const steps: string[] = []
+  const added: unknown[] = []
   const backend = {
-    http: async (request: { method?: string; body?: unknown }) => {
-      if (request.method === 'POST') {
-        writes.push(request.body)
-        return {}
-      }
-      return { servers }
+    http: async (request: { path: string; method?: string; body?: unknown }) => {
+      const method = request.method ?? 'GET'
+      if (method === 'GET') return { servers }
+      steps.push(`${method} ${request.path}`)
+      if (method === 'DELETE' && options.deleteFails) throw new Error(options.deleteFails)
+      if (method === 'POST') added.push(request.body)
+      return {}
+    },
+    request: async (profile: string, method: string, params: Record<string, unknown>) => {
+      steps.push(`${method} ${profile} ${JSON.stringify(params)}`)
+      return { status: 'reloaded' }
     }
   } as unknown as RosterBackend
-  return { backend, writes }
+  return { backend, steps, added }
 }
 
+const RELOAD = 'reload.mcp scout {"confirm":true,"session_id":"chat-1"}'
+
 describe('registerMcpServer', () => {
-  it('should add Talyx’s server to a bot that lacks it, with its key for the engine to keep', async () => {
-    const { backend, writes } = engineWith([{ name: 'github', url: 'https://example.com' }])
-    await registerMcpServer(backend, 'scout', CONNECTION)
-    expect(writes).toEqual([
+  it('should add Talyx’s server with its key for the engine to keep, then load it in the bot’s chat', async () => {
+    const { backend, steps, added } = engineWith([{ name: 'github', url: 'https://example.com' }])
+    expect(await registerMcpServer(backend, BOT, CONNECTION)).toBe(true)
+    expect(added).toEqual([
       { name: 'talyx', url: CONNECTION.url, auth: 'header', bearer_token: 'secret' }
+    ])
+    expect(steps).toEqual(['POST /api/mcp/servers?profile=scout', RELOAD])
+  })
+
+  it('should leave a bot that has the current address alone', async () => {
+    const { backend, steps } = engineWith([{ name: 'talyx', url: CONNECTION.url }])
+    expect(await registerMcpServer(backend, BOT, CONNECTION)).toBe(false)
+    expect(steps).toEqual([])
+  })
+
+  it('should drop an older address before adding the new one, so the chat gets the new tools', async () => {
+    const { backend, steps } = engineWith([
+      { name: 'talyx', url: 'http://127.0.0.1:47816/mcp?tools=old' }
+    ])
+    await registerMcpServer(backend, BOT, CONNECTION)
+    // The engine matches servers by name: only a removal it reloaded makes it connect anew.
+    expect(steps).toEqual([
+      'DELETE /api/mcp/servers/talyx?profile=scout',
+      RELOAD,
+      'POST /api/mcp/servers?profile=scout',
+      RELOAD
     ])
   })
 
-  it('should leave a bot that already has it alone', async () => {
-    const { backend, writes } = engineWith([{ name: 'talyx', url: CONNECTION.url }])
-    await registerMcpServer(backend, 'scout', CONNECTION)
-    expect(writes).toEqual([])
+  it('should go on when the old entry is already gone', async () => {
+    const { backend, added } = engineWith(
+      [{ name: 'talyx', url: 'http://127.0.0.1:47816/mcp?tools=old' }],
+      { deleteFails: "Engine HTTP 404: Server 'talyx' not found" }
+    )
+    await registerMcpServer(backend, BOT, CONNECTION)
+    expect(added).toHaveLength(1)
+  })
+
+  it('should reload the profile without a chat when the bot has none yet', async () => {
+    const { backend, steps } = engineWith([])
+    await registerMcpServer(backend, { profile: 'scout', sessionId: null }, CONNECTION)
+    expect(steps.at(-1)).toBe('reload.mcp scout {"confirm":true}')
   })
 })
 
 describe('mcpAddCommand', () => {
   it('should give an outside agent the address and the key in one line', () => {
-    expect(mcpAddCommand(CONNECTION)).toBe(
+    expect(mcpAddCommand({ url: 'http://127.0.0.1:47816/mcp', token: 'secret' })).toBe(
       'claude mcp add --transport http talyx http://127.0.0.1:47816/mcp --header "Authorization: Bearer secret"'
     )
   })

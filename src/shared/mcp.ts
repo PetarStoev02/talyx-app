@@ -264,3 +264,19 @@ export function mcpToolList(): {
     annotations: { destructiveHint: 'destructive' in tool && tool.destructive }
   }))
 }
+
+/**
+ * A short fingerprint of the tool list, put in the server's address. The engine reloads a server
+ * only when its config changes, so a Talyx with new tools gives every bot a new address; their
+ * chats then load the new tools instead of keeping the ones they started with.
+ */
+export function mcpToolsVersion(): string {
+  const text = JSON.stringify(mcpToolList())
+  // FNV-1a, 32 bits: enough to tell two tool lists apart, no crypto needed in either process.
+  let hash = 0x811c9dc5
+  for (let index = 0; index < text.length; index++) {
+    hash ^= text.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash.toString(16).padStart(8, '0')
+}

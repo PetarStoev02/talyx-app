@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { app, ipcMain } from 'electron'
 import log from 'electron-log'
 import { z } from 'zod/v4'
-import { MCP_DEFAULT_PORT, MCP_PATH } from '../../../shared/mcp'
+import { MCP_DEFAULT_PORT, MCP_PATH, mcpToolsVersion } from '../../../shared/mcp'
 import type { McpConnection } from '../../../shared/mcp'
 import { McpCalls, mcpHandler } from '../mcp/mcpServer'
 import type { McpPage } from '../mcp/mcpServer'
@@ -47,7 +47,10 @@ export function registerMcpIpc(): void {
   )
   ipcMain.handle(
     'mcp:connection',
-    (): McpConnection => ({ url: `http://127.0.0.1:${port}${MCP_PATH}`, token: mcpToken() })
+    (): McpConnection => ({
+      url: `http://127.0.0.1:${port}${MCP_PATH}?tools=${mcpToolsVersion()}`,
+      token: mcpToken()
+    })
   )
 }
 
