@@ -132,8 +132,10 @@ export function Roster({
       aria-label={t('roster.label')}
       aria-busy={loading || saving}
       className="flex min-h-0 flex-1 flex-col"
+      // Esc in a menu or dialog (portals, whose keys bubble up here) only closes it.
       onKeyDown={(event) => {
-        if (event.key === 'Escape' && useRoster.getState().picked.length) pick([], null)
+        const inRoster = event.currentTarget.contains(event.target as Node)
+        if (event.key === 'Escape' && inRoster && useRoster.getState().picked.length) pick([], null)
       }}
     >
       <p role="status" className="sr-only">
