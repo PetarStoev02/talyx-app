@@ -640,6 +640,21 @@ describe('bot chat', () => {
       })
     })
 
+    it('should send the first message only after a model picked just before it is set', async () => {
+      await actions.open(WORKER, null)
+      const release = engine.holdNext('config.set')
+      const picked = actions.setModel(WORKER, { model: 'claude-haiku-4-5', provider: 'anthropic' })
+      const sent = actions.send(WORKER, { text: 'Hi', images: [] })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(methods()).toContain('config.set')
+      expect(methods()).not.toContain('prompt.submit')
+      release()
+      await Promise.all([picked, sent])
+      expect(methods().filter((method) => method === 'session.create')).toHaveLength(1)
+      expect(methods().slice(-2)).toEqual(['config.set', 'prompt.submit'])
+      expect(call('prompt.submit')?.params.session_id).toBe('created-1')
+    })
+
     it('should set the model and reasoning on the open session', async () => {
       await actions.open(MANAGER, 'manager-chat')
       await actions.setModel(MANAGER, { model: 'cfo-model', provider: 'custom' })

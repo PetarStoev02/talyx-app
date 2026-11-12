@@ -103,6 +103,8 @@ export function chatActions(backend: ChatBackend): ChatActions {
   // The first send's create per profile, so a second quick send joins it.
   const creating = new Map<string, Promise<string>>()
   const modelLists = new Map<string, Promise<ModelOptionProvider[]>>()
+  // The model and reasoning picks per profile, one after another; a send waits for them to settle.
+  const configuring = new Map<string, Promise<void>>()
   // Profiles whose composer message is out and its answer not yet ended.
   const out = new Set<string>()
 
@@ -203,9 +205,17 @@ export function chatActions(backend: ChatBackend): ChatActions {
   }
 
   // A pick before the first send starts the Bot Chat, so the choice holds for that send.
-  async function configure(profile: string, key: string, value: string): Promise<void> {
-    const sessionId = sessionOf(profile) ?? (await startChat(profile))
-    await backend.request(profile, 'config.set', { session_id: sessionId, key, value })
+  function configure(profile: string, key: string, value: string): Promise<void> {
+    const picked = (configuring.get(profile) ?? Promise.resolve()).then(async () => {
+      const sessionId = sessionOf(profile) ?? (await startChat(profile))
+      await backend.request(profile, 'config.set', { session_id: sessionId, key, value })
+    })
+    // A failed pick shows on the chat (guarded); the picks and sends after it still go.
+    configuring.set(
+      profile,
+      picked.catch(() => undefined)
+    )
+    return picked
   }
 
   const rebuild = guarded('chat.errorLoad', async (profile) => {
@@ -233,6 +243,8 @@ export function chatActions(backend: ChatBackend): ChatActions {
           items: [...transcript.items, { kind: 'user', id: local, text, images }]
         }
       })
+      // A pick made just before the send applies to it.
+      await configuring.get(profile)
       await backend.request(profile, 'prompt.submit', {
         session_id: sessionId,
         text,
