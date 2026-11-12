@@ -5,11 +5,12 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { type AppView, useNavigation } from '@app/providers/useNavigation'
 import { useRoster } from '@features/bots/store'
 import { anyUnread, dockSections, dockShortcut, type DockSection } from '@features/modules/sections'
-import { moduleView, runningModules, useModules } from '@features/modules/store'
+import { moduleView, runningModules, useModuleAttention, useModules } from '@features/modules/store'
 import { updateItems } from '@features/updates/items'
 import { useUpdates } from '@features/updates/store'
 import { reportError } from '@shared/lib/report'
 import { IconButton } from '@shared/ui/IconButton'
+import { ModuleBackground } from './ModuleBackground'
 import { NavButton } from './NavButton'
 import { UpdateButton } from './UpdateButton'
 
@@ -20,7 +21,8 @@ const mod = isMac ? '⌘' : 'Ctrl+'
  * Settings on the left, `end` (the roster's refresh) on the right, and between them the dock: Agents
  * and each running module, with ⌘1, ⌘2, … in that order. Without a running module there is no
  * dock, and Settings closes itself back to the agents. While a Talyx or engine update is pending,
- * the update button takes `end`'s place.
+ * the update button takes `end`'s place. Each running module's Background lives here too, so it
+ * keeps watching whatever page is open.
  */
 export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
@@ -31,11 +33,25 @@ export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Elem
   const navigate = useNavigation((s) => s.navigate)
   const modules = runningModules(useModules((s) => s.state))
   const unread = useRoster((s) => anyUnread(s.unread, s.roomUnread))
-  const sections = dockSections(modules, {
-    // The unread dot is only drawn; the name carries the new replies for screen readers.
-    label: unread ? t('nav.unread').replace('{section}', t('nav.agents')) : t('nav.agents'),
-    unread
-  })
+  const needsYou = useModuleAttention((s) => s.needsYou)
+  // The dot is only drawn; the name carries it for screen readers.
+  const sections = dockSections(
+    modules,
+    {
+      label: unread ? t('nav.unread').replace('{section}', t('nav.agents')) : t('nav.agents'),
+      unread
+    },
+    (module) => {
+      const count = needsYou[module.id] ?? 0
+      return {
+        label:
+          count > 0
+            ? t('nav.needsYou').replace('{section}', module.name).replace('{count}', String(count))
+            : module.name,
+        unread: count > 0
+      }
+    }
+  )
   const showDock = sections.length > 0
   // Without a dock, ⌘1 still opens the agents.
   useDockShortcuts(showDock ? sections.map(viewOf) : ['agents'])
@@ -70,6 +86,12 @@ export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Elem
         </IconButton>
       </span>
       {showDock ? <Dock sections={sections} label={t('nav.sections')} /> : <span />}
+      {/* Hidden: a Background draws nothing, and a failed one's notice must not take a cell. */}
+      <div hidden>
+        {modules.map((module) => (
+          <ModuleBackground key={module.id} module={module} />
+        ))}
+      </div>
       <span className="justify-self-end">
         {items.length > 0 ? <UpdateButton items={items} /> : end}
       </span>

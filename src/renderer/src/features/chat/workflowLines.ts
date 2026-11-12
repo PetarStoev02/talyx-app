@@ -11,6 +11,8 @@
 //   [run acme/api#7@mhq2x1c0] step=build round=2 pr=66
 //   [run task#mwat3hrn@mwat3hrn] step=done result="Provider B, for its price."
 
+import type { MessageItem } from './types'
+
 export const BRIEF_MARK = '[Workflows brief]'
 
 const TASK_LINE = /^Start a Workflows task for (\S+): (.*)$/
@@ -111,6 +113,33 @@ export function splitReply(text: string): ReplyPart[] {
   }
   flush()
   return parts.length > 0 ? parts : [{ kind: 'text', text }]
+}
+
+/**
+ * Whether a reply only reports a Workflows task moving along (a step of its workflow): the
+ * Workflows page shows that, so the chat leaves it out. A reply that ends a task or waits on you
+ * (ready, needs-you, merged, done, stopped) still shows, as does any reply without a status line.
+ */
+export function isProgressReport(text: string): boolean {
+  const statuses = splitReply(text).flatMap((part) => (part.kind === 'status' ? [part.status] : []))
+  return (
+    statuses.length > 0 &&
+    statuses.every((status) => !FIXED_STEPS.some((step) => step === status.fields.step))
+  )
+}
+
+/**
+ * Whether the chat leaves this item out: a finished bot reply that only reports progress. A reply
+ * that failed or was stopped still shows, so its error or stop mark is never lost.
+ */
+export function isQuietReply(item: MessageItem): boolean {
+  return (
+    item.kind === 'bot' &&
+    !item.streaming &&
+    item.error === null &&
+    !item.stopped &&
+    isProgressReport(item.text)
+  )
 }
 
 /** Every brief in a chat by its task's ref, so a status line can name its task and step. */

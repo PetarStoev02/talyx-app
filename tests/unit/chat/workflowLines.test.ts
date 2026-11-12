@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   BRIEF_MARK,
   briefsByRef,
+  isProgressReport,
+  isQuietReply,
   parseBrief,
   parseStatusLine,
   splitReply,
@@ -153,5 +155,63 @@ describe('workflow lines in a chat', () => {
         expect(summary.step).toEqual({ fixed })
         expect(summary.detail).toBe(detail)
       })
+  })
+})
+
+describe('which replies the chat leaves to the Workflows page', () => {
+  it.each([
+    ['a step of the workflow', '[run acme/api#7@m1] step=build round=1', true],
+    [
+      'a step with the bot’s notes around it',
+      'Started the thread.\n[run acme/api#7@m1] step=build round=1\nRan gh pr view.',
+      true
+    ],
+    [
+      'two tasks moving along',
+      '[run acme/api#7@m1] step=build\n[run acme/api#8@m2] step=checking',
+      true
+    ],
+    ['ready to merge', '[run acme/api#7@m1] step=ready pr=66', false],
+    ['a question for you', '[run acme/api#7@m1] step=needs-you reason="which branch?"', false],
+    ['merged', 'Merged it.\n[run acme/api#7@m1] step=merged pr=66', false],
+    ['done', '[run task#m1@m1] step=done result="B"', false],
+    ['stopped', '[run acme/api#7@m1] step=stopped', false],
+    [
+      'one task moving and one waiting on you',
+      '[run acme/api#7@m1] step=build\n[run acme/api#8@m2] step=ready',
+      false
+    ],
+    ['a reply without a status line', 'Here is the plan.', false],
+    ['the brief’s template quoted back', '[run acme/api#7@m1] step=<step> round=<n>', false]
+  ])('given %s, should hide it: %s', (_why, text, hidden) => {
+    expect(isProgressReport(text)).toBe(hidden)
+  })
+})
+
+describe('which chat items stay out of the chat', () => {
+  const PROGRESS = '[run acme/api#7@m1] step=build round=1'
+  const reply = (patch: { error?: string | null; stopped?: boolean; streaming?: boolean } = {}) =>
+    ({
+      kind: 'bot',
+      id: '1',
+      text: PROGRESS,
+      streaming: false,
+      error: null,
+      stopped: false,
+      sender: null,
+      ...patch
+    }) as const
+
+  it.each([
+    ['a finished progress reply', reply(), true],
+    ['one still streaming', reply({ streaming: true }), false],
+    ['one that failed', reply({ error: 'The provider refused' }), false],
+    ['one you stopped', reply({ stopped: true }), false]
+  ])('given %s, should leave it out: %s', (_why, item, quiet) => {
+    expect(isQuietReply(item)).toBe(quiet)
+  })
+
+  it('should keep what you wrote, even a status line', () => {
+    expect(isQuietReply({ kind: 'user', id: '2', text: PROGRESS, images: [] })).toBe(false)
   })
 })

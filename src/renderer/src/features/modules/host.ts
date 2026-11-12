@@ -61,6 +61,15 @@ export interface ModulePageProps {
 }
 
 /**
+ * What a module's Background component gets: always mounted while the module runs, also while its
+ * page is closed, so it can watch for work and say how much waits on you (the dock's dot).
+ */
+export interface ModuleBackgroundProps extends ModulePageProps {
+  /** How many things wait on you now; 0 clears the dot. A non-count is read as 0. */
+  setNeedsYou: (count: number) => void
+}
+
+/**
  * The page's half of the contract. A module's renderer.js imports React from here instead of
  * bundling its own, so its components run on Talyx's React (two copies break hooks).
  */
@@ -83,6 +92,11 @@ export interface ModulePageHost {
    * false to keep the user there; its promise must settle. Older Talyx has none.
    */
   setLeaveGuard?: (guard: LeaveGuard | null) => void
+  /**
+   * True where Talyx keeps a module's Background export mounted while it runs; older Talyx has
+   * none, so a page keeps watching on its own while it is open.
+   */
+  background?: boolean
   React: typeof React
   jsxRuntime: typeof jsxRuntime
 }
@@ -123,14 +137,16 @@ export interface ModuleCreate {
 
 /**
  * What a module's renderer.js exports: its page (the default export), and optionally `Sidebar`,
- * drawn in Talyx's sidebar while its page is open, and `createItems` with `createLabel`, offered
- * in the sidebar's `+`. An `Icon` export from an older module is ignored. The version is in the
- * URL so an update imports the new file instead of the one this page already loaded; one URL
- * imports once, so the page and its sidebar share the module's state.
+ * drawn in Talyx's sidebar while its page is open, `Background`, mounted (drawing nothing) while
+ * the module runs, and `createItems` with `createLabel`, offered in the sidebar's `+`. An `Icon`
+ * export from an older module is ignored. The version is in the URL so an update imports the new
+ * file instead of the one this page already loaded; one URL imports once, so the page, its sidebar
+ * and its Background share the module's state.
  */
 export interface ModuleParts {
   page: React.ComponentType<ModulePageProps>
   sidebar: React.ComponentType<ModulePageProps> | null
+  background: React.ComponentType<ModuleBackgroundProps> | null
   create: ModuleCreate | null
 }
 
@@ -156,6 +172,7 @@ export async function importModule(id: string, version: string): Promise<ModuleP
     avatars: MODULE_AVATARS,
     createItems: true,
     setLeaveGuard,
+    background: true,
     React,
     jsxRuntime
   }
@@ -165,6 +182,9 @@ export async function importModule(id: string, version: string): Promise<ModuleP
   return {
     page: loaded.default as React.ComponentType<ModulePageProps>,
     sidebar: componentOrNull(loaded.Sidebar) as React.ComponentType<ModulePageProps> | null,
+    background: componentOrNull(
+      loaded.Background
+    ) as React.ComponentType<ModuleBackgroundProps> | null,
     create: createOf(loaded)
   }
 }
