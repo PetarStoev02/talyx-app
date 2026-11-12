@@ -115,7 +115,8 @@ describe('completion sound', () => {
       expect(playChime).toHaveBeenCalledTimes(1)
     })
 
-    it('should stay silent for the user own message', async () => {
+    it('should stay silent for the user own message in a room already read', async () => {
+      engine.memberSays('acme-cfo', 'Earlier answer.')
       await room.refresh(ROOM)
       await room.send(ROOM, { text: 'Monthly or yearly?', attachments: [] })
       await room.refresh(ROOM)
