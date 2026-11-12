@@ -390,113 +390,6 @@ describe('bot chat', () => {
       })
     })
 
-    describe('while the bot answers', () => {
-      const live = (type: string, seq: number, payload: Record<string, unknown> = {}): void => {
-        handleEvent(actions, { type, seq, payload, session_id: 'manager-chat' } as GatewayEvent)
-      }
-      const shown = (): { kind: string; text?: string }[] =>
-        (chat(MANAGER).transcript?.items ?? []).map((item) => ({
-          kind: item.kind,
-          ...('text' in item ? { text: item.text } : {})
-        }))
-      const answering = async (): Promise<void> => {
-        await actions.open(MANAGER, 'manager-chat')
-        await actions.send(MANAGER, { text: 'First task', images: [] })
-        live('message.start', 8)
-        live('message.delta', 9, { text: 'Working' })
-      }
-
-      it('should keep a message sent then under the answer, which stays in one piece', async () => {
-        await answering()
-        await actions.send(MANAGER, { text: 'Next task', images: [], whenBusy: 'queue' })
-        live('message.delta', 10, { text: ' on it' })
-        live('tool.start', 11, { tool_id: 't1', name: 'search', args: {} })
-        expect(shown().slice(-3)).toEqual([
-          { kind: 'user', text: 'First task' },
-          { kind: 'bot', text: 'Working on it' },
-          { kind: 'tool' }
-        ])
-        expect(chat(MANAGER).transcript?.queued).toMatchObject([
-          { kind: 'user', text: 'Next task' }
-        ])
-      })
-
-      it('should move the waiting message into the chat when the turn that answers it starts', async () => {
-        await answering()
-        await actions.send(MANAGER, { text: 'Next task', images: [], whenBusy: 'queue' })
-        live('message.complete', 10, { text: 'Working' })
-        await actions.rebuild(MANAGER)
-        live('message.start', 11)
-        live('message.delta', 12, { text: 'Next one' })
-        expect(shown().slice(-2)).toEqual([
-          { kind: 'user', text: 'Next task' },
-          { kind: 'bot', text: 'Next one' }
-        ])
-        expect(chat(MANAGER).transcript?.queued).toEqual([])
-      })
-
-      it('should blame a failed answer on the message it answered, not the one waiting', async () => {
-        await answering()
-        await actions.send(MANAGER, { text: 'Next task', images: [], whenBusy: 'queue' })
-        live('message.complete', 10, { status: 'error', error: 'Provider down' })
-        expect(chat(MANAGER).transcript?.failed.at(-1)?.items[0]).toMatchObject({
-          kind: 'user',
-          text: 'First task'
-        })
-      })
-
-      it('should keep the waiting message once its turn runs, when a reload lands then', async () => {
-        await answering()
-        await actions.send(MANAGER, { text: 'Next task', images: [], whenBusy: 'queue' })
-        live('message.complete', 10, { text: 'Working' })
-        live('message.start', 11)
-        // The reload the first answer started lands now; history does not hold the new message yet.
-        engine.chats[MANAGER] = { ...engine.chats[MANAGER], running: true }
-        await actions.rebuild(MANAGER)
-        expect(shown().map((item) => item.text)).toContain('Next task')
-        expect(chat(MANAGER).transcript?.queued).toEqual([])
-      })
-
-      it('should keep the waiting message when the next turn starts while a reload is on its way', async () => {
-        await answering()
-        await actions.send(MANAGER, { text: 'Next task', images: [], whenBusy: 'queue' })
-        // The reload the first answer starts reads the engine before the next turn begins…
-        const release = engine.holdNext('session.resume')
-        live('message.complete', 10, { text: 'Working' })
-        // …and the next turn starts while it waits.
-        live('message.start', 11)
-        live('message.delta', 12, { text: 'Next one' })
-        release()
-        // Let the held reload finish and replay what arrived meanwhile.
-        await new Promise((resolve) => setTimeout(resolve, 0))
-        expect(shown().slice(-2)).toEqual([
-          { kind: 'user', text: 'Next task' },
-          { kind: 'bot', text: 'Next one' }
-        ])
-      })
-
-      it('should show the message a running turn answers even before history stores it', async () => {
-        engine.chats[MANAGER] = {
-          ...engine.chats[MANAGER],
-          inflight: { user: 'How many folders?', assistant: 'Four' },
-          running: true
-        }
-        await actions.open(MANAGER, 'manager-chat')
-        expect(shown().slice(-2)).toEqual([
-          { kind: 'user', text: 'How many folders?' },
-          { kind: 'bot', text: 'Four' }
-        ])
-      })
-
-      it('should show the message the engine holds after a reload, also one this window never sent', async () => {
-        engine.chats[MANAGER] = { ...engine.chats[MANAGER], queued: { user: 'From my phone' } }
-        await actions.open(MANAGER, 'manager-chat')
-        expect(chat(MANAGER).transcript?.queued).toMatchObject([
-          { kind: 'user', text: 'From my phone' }
-        ])
-      })
-    })
-
     it('should ask the engine to queue a message sent to wait behind a busy turn', async () => {
       await actions.open(MANAGER, 'manager-chat')
       await actions.send(MANAGER, { text: 'Next task', images: [], whenBusy: 'queue' })
@@ -559,6 +452,85 @@ describe('bot chat', () => {
         key: 'chat.errorSend',
         detail: 'Gateway refused the prompt'
       })
+    })
+  })
+
+  describe('a message sent while the bot answers', () => {
+    let seq = 10
+    const emit = (type: string, payload: Record<string, unknown> = {}): void => {
+      seq += 1
+      handleEvent(actions, { type, seq, payload, session_id: 'manager-chat' } as GatewayEvent)
+    }
+    const settled = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+    const submitted = (): unknown[] =>
+      engine.calls.filter((item) => item.method === 'prompt.submit').map((item) => item.params.text)
+    const draft = (text: string): { text: string; images: [] } => ({ text, images: [] })
+
+    beforeEach(async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      emit('message.start', { turn_id: 't1' })
+    })
+
+    it('should go at once when the bot is idle', async () => {
+      emit('message.complete', { text: 'Done', status: 'complete' })
+      expect(await actions.queue(MANAGER, draft('Now'))).toBe(true)
+      expect(submitted()).toEqual(['Now'])
+      expect(chat(MANAGER).waiting).toEqual([])
+    })
+
+    it('should wait for the running answer to end, then go, leaving that answer whole', async () => {
+      await actions.queue(MANAGER, draft('Next'))
+      expect(submitted()).toEqual([])
+      expect(chat(MANAGER).waiting.map((message) => message.draft.text)).toEqual(['Next'])
+      emit('message.delta', { text: 'Part one, ' })
+      emit('message.delta', { text: 'part two' })
+      emit('message.complete', { text: 'Part one, part two', status: 'complete' })
+      await settled()
+      expect(submitted()).toEqual(['Next'])
+      expect(chat(MANAGER).waiting).toEqual([])
+    })
+
+    it('should send several waiting messages one per answer, oldest first', async () => {
+      await actions.queue(MANAGER, draft('First'))
+      await actions.queue(MANAGER, draft('Second'))
+      emit('message.complete', { text: 'A', status: 'complete' })
+      await settled()
+      expect(submitted()).toEqual(['First'])
+      // Before the engine starts the answer to First, Second still waits.
+      await actions.queue(MANAGER, draft('Third'))
+      expect(submitted()).toEqual(['First'])
+      emit('message.start', { turn_id: 't2' })
+      emit('message.complete', { text: 'B', status: 'complete' })
+      await settled()
+      expect(submitted()).toEqual(['First', 'Second'])
+      expect(chat(MANAGER).waiting.map((message) => message.draft.text)).toEqual(['Third'])
+    })
+
+    it('should send the next waiting message when the answer is stopped', async () => {
+      await actions.queue(MANAGER, draft('Instead'))
+      emit('message.complete', { text: '', status: 'interrupted' })
+      await settled()
+      expect(submitted()).toEqual(['Instead'])
+    })
+
+    it('should never send a message taken back', async () => {
+      await actions.queue(MANAGER, draft('Never mind'))
+      actions.unqueue(MANAGER, chat(MANAGER).waiting[0].id)
+      emit('message.complete', { text: 'A', status: 'complete' })
+      await settled()
+      expect(submitted()).toEqual([])
+    })
+
+    it('should keep a waiting message first in line when its send fails, and say why', async () => {
+      await actions.queue(MANAGER, draft('Next'))
+      engine.failNext('prompt.submit', 'Gateway refused the prompt')
+      emit('message.complete', { text: 'A', status: 'complete' })
+      await settled()
+      expect(chat(MANAGER).waiting.map((message) => message.draft.text)).toEqual(['Next'])
+      expect(chat(MANAGER).error).toMatchObject({ key: 'chat.errorSend' })
+      // The next message retries it, in order.
+      await actions.queue(MANAGER, draft('After'))
+      expect(submitted()).toEqual(['Next', 'Next'])
     })
   })
 

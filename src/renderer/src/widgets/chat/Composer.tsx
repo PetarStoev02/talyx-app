@@ -37,10 +37,10 @@ export interface ComposerTarget {
   placeholder: string
   running: boolean
   /**
-   * False when nothing was sent; the composer gets the draft back. `queued` is true for a message
-   * sent while the bot or room is answering: it waits its turn instead of cutting in.
+   * False when nothing was sent; the composer gets the draft back. A message sent while the bot or
+   * room answers waits its turn instead of cutting in.
    */
-  send: (draft: { text: string; files: ComposerFile[]; queued: boolean }) => Promise<boolean>
+  send: (draft: { text: string; files: ComposerFile[] }) => Promise<boolean>
   upload: (file: File, dataUrl: string) => Promise<ComposerFile>
   transcribe: (audio: { dataUrl: string; mime: string }) => Promise<string>
   stop: () => void
@@ -96,9 +96,7 @@ export function Composer({
     setText('')
     setFiles([])
     setSending(true)
-    const sent = await target
-      .send({ text, files: attached, queued: running })
-      .finally(() => setSending(false))
+    const sent = await target.send({ text, files: attached }).finally(() => setSending(false))
     if (sent) return
     // A failed send gives the draft back, unless something new was typed meanwhile.
     setText((current) => current || text)

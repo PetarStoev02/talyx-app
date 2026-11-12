@@ -31,8 +31,7 @@ export function handleEvent(actions: ChatActions, event: GatewayEvent): ChatUpda
   const next = applyEvent(transcript, event)
   if (next !== transcript) useChat.getState().update(profile, { transcript: next })
   const completed = event.type === 'message.complete' && next !== transcript
-  // The stored history then carries what live events do not: rows from other clients and bots.
-  if (completed) void actions.rebuild(profile)
+  if (completed) void actions.turnEnded(profile)
   return { profile, completed, activity: activityOf(next) }
 }
 

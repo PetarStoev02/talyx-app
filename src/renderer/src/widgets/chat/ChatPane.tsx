@@ -7,6 +7,7 @@ import { MANAGER } from '@features/bots/details'
 import type { Bot } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
 import { useChat } from '@features/chat/store'
+import type { WaitingMessage } from '@features/chat/store'
 import { useSetup } from '@features/setup/store'
 import { turnView } from '@features/chat/turns'
 import type { MessageItem } from '@features/chat/types'
@@ -16,6 +17,7 @@ import type { TranslationKey } from '@shared/lib/i18n'
 import { ActivityLine } from './ActivityLine'
 import { ApprovalCard } from './ApprovalCard'
 import { ClarifyCard } from './ClarifyCard'
+import { MessageBubble } from './MessageBubble'
 import { ChatChips, Composer } from './Composer'
 import type { ComposerTarget } from './Composer'
 import { ChatIntro } from './ChatIntro'
@@ -25,11 +27,7 @@ import { Button } from '@shared/ui/button'
 import { Reveal } from '@shared/ui/Reveal'
 import { useArrival } from '@shared/hooks/useStayMounted'
 import { cn } from '@shared/lib/utils'
-import { MessageBubble } from './MessageBubble'
 import { Transcript } from './Transcript'
-
-// A waiting message is typed text: it names no Workflows brief.
-const NO_BRIEFS = {}
 
 /** A bot's chat: its transcript with any open cards below, then the composer. */
 export function ChatPane({
@@ -77,20 +75,15 @@ export function ChatPane({
   const running = chat.transcript?.running === true
   const { items, activity } = turnView(chat.transcript?.items ?? [], running)
   const prompts = chat.transcript?.prompts ?? []
-  const queued = (chat.transcript?.queued ?? []).flatMap((item) =>
-    item.kind === 'user' ? [item] : []
-  )
   const loadImage = (path: string): Promise<string> => actions.mediaUrl(bot.name, path)
   const announced = announcement(items, prompts.length, running)
   const target: ComposerTarget = {
     placeholder: t('chat.placeholder').replace('{name}', title),
     running,
-    send: ({ text, files, queued }) =>
-      actions.send(bot.name, {
+    send: ({ text, files }) =>
+      actions.queue(bot.name, {
         text,
-        images: files.map((file) => ({ path: file.id, mime: file.mime })),
-        // Sent while the bot answers: it waits for that answer instead of redirecting it.
-        ...(queued ? { whenBusy: 'queue' as const } : {})
+        images: files.map((file) => ({ path: file.id, mime: file.mime }))
       }),
     upload: async (file, dataUrl) => {
       const image = await actions.uploadImage(bot.name, { dataUrl, name: file.name })
@@ -103,13 +96,22 @@ export function ChatPane({
   return (
     <>
       <div className={cn('flex min-h-0 flex-1 flex-col', arrival)}>
-        {items.length || prompts.length ? (
+        {items.length || prompts.length || chat.waiting.length ? (
           <Transcript items={items} loadImage={loadImage}>
             {activity && (
               <li>
                 <ActivityLine bot={bot} activity={activity} wait={chat.transcript?.wait ?? null} />
               </li>
             )}
+            {chat.waiting.map((message) => (
+              <li key={message.id}>
+                <WaitingBubble
+                  message={message}
+                  loadImage={loadImage}
+                  onRemove={() => actions.unqueue(bot.name, message.id)}
+                />
+              </li>
+            ))}
             {prompts.map((prompt) => (
               <li key={prompt.id}>
                 {prompt.kind === 'clarify' ? (
@@ -124,13 +126,6 @@ export function ChatPane({
                     onAnswer={(choice) => actions.answerApproval(bot.name, prompt.id, choice)}
                   />
                 )}
-              </li>
-            ))}
-            {queued.map((item) => (
-              // Waits under the running answer until its own turn starts.
-              <li key={item.id} className="flex flex-col items-end gap-1 opacity-60">
-                <MessageBubble message={item} loadImage={loadImage} briefs={NO_BRIEFS} />
-                <span className="text-xs text-muted-foreground">{t('chat.queued')}</span>
               </li>
             ))}
           </Transcript>
@@ -193,4 +188,41 @@ function announcement(
   const last = items.at(-1)
   if (last?.kind !== 'bot') return null
   return last.error ? 'chat.replyFailedAnnounce' : 'chat.replied'
+}
+
+// A message held until the running answer ends; it can still be taken back.
+function WaitingBubble({
+  message,
+  loadImage,
+  onRemove
+}: {
+  message: WaitingMessage
+  loadImage: (path: string) => Promise<string>
+  onRemove: () => void
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const { text, images } = message.draft
+  const item: MessageItem = {
+    kind: 'user',
+    id: message.id,
+    text,
+    images: images.map((image) => image.path)
+  }
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex w-full flex-col opacity-60">
+        <MessageBubble message={item} loadImage={loadImage} briefs={{}} />
+      </div>
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        {t('chat.queued')}
+        <button
+          type="button"
+          className="underline underline-offset-4 hover:decoration-2"
+          onClick={onRemove}
+        >
+          {t('chat.unqueue')}
+        </button>
+      </p>
+    </div>
+  )
 }

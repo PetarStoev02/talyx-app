@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { GatewayEvent } from '@shared/engine/shared'
 import type { Problem } from '@shared/lib/problem'
+import type { ChatDraft } from './chat'
 import type { Transcript } from './types'
 
 /** The session's model and reasoning level, as the composer shows them. */
@@ -8,6 +9,12 @@ export interface ChatInfo {
   model: string | null
   provider: string | null
   reasoning: string | null
+}
+
+/** A message sent while the bot answers: Talyx holds it and sends it when that answer ends. */
+export interface WaitingMessage {
+  id: string
+  draft: ChatDraft
 }
 
 export interface ChatState {
@@ -20,6 +27,8 @@ export interface ChatState {
   loading: boolean
   // The last action that failed on this chat: what failed and what to do, then the cause.
   error: Problem | null
+  // Oldest first; the first goes when the running answer ends.
+  waiting: WaitingMessage[]
 }
 
 interface ChatStore {
@@ -38,7 +47,8 @@ const blank = (profile: string): ChatState => ({
   info: { model: null, provider: null, reasoning: null },
   pending: null,
   loading: false,
-  error: null
+  error: null,
+  waiting: []
 })
 
 export const useChat = create<ChatStore>((set, get) => ({

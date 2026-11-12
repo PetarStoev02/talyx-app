@@ -53,6 +53,16 @@ export interface ChatActions {
   rebuild: (profile: string) => Promise<void>
   /** False when nothing was sent; the caller keeps the draft. */
   send: (profile: string, draft: ChatDraft) => Promise<boolean>
+  /**
+   * The composer's send. Sends now when the bot is idle; while it answers, the message waits and
+   * goes when the answer ends (a Stop ends it too), so it never cuts into that answer. False when
+   * nothing was sent; the caller keeps the draft.
+   */
+  queue: (profile: string, draft: ChatDraft) => Promise<boolean>
+  /** Takes a waiting message back before it is sent. */
+  unqueue: (profile: string, id: string) => void
+  /** The bot's answer ended: reloads the chat, then the oldest waiting message goes. */
+  turnEnded: (profile: string) => Promise<void>
   interrupt: (profile: string) => Promise<void>
   answerClarify: (
     profile: string,
@@ -80,14 +90,7 @@ interface ResumeSnapshot {
   running?: boolean
   last_sequence?: number
   inflight?: { assistant?: string; user?: string; error?: string } | null
-  // The message waiting for the running turn to end, as the engine holds it.
-  queued?: { user: string } | null
 }
-
-// How many of the latest stored items a waiting message is looked for in after a reload.
-const RECENT_STORED = 12
-// The id of a message this window sent, until history stores it.
-const LOCAL_ID = 'local-'
 
 export function chatActions(backend: ChatBackend): ChatActions {
   const { update } = useChat.getState()
@@ -98,6 +101,8 @@ export function chatActions(backend: ChatBackend): ChatActions {
   // The first send's create per profile, so a second quick send joins it.
   const creating = new Map<string, Promise<string>>()
   const modelLists = new Map<string, Promise<ModelOptionProvider[]>>()
+  // Profiles whose composer message is out and its answer not yet ended.
+  const out = new Set<string>()
 
   // A failed call shows on its chat, named by what it was, instead of throwing into the view.
   const guarded =
@@ -203,8 +208,73 @@ export function chatActions(backend: ChatBackend): ChatActions {
     return true
   }
 
+  const rebuild = guarded('chat.errorLoad', async (profile) => {
+    const sessionId = sessionOf(profile)
+    if (sessionId) await load(profile, sessionId)
+  })
+
+  async function send(profile: string, draft: ChatDraft): Promise<boolean> {
+    const text = draft.text.trim()
+    if (!text && !draft.images.length) return false
+    const local = `local-${Date.now()}-${Math.random()}`
+    try {
+      const sessionId = sessionOf(profile) ?? (await startChat(profile))
+      const transcript = chatOf(profile)?.transcript ?? fromHistory(sessionId, [], false)
+      const images = draft.images.map((image) => image.path)
+      update(profile, {
+        error: null,
+        transcript: {
+          ...transcript,
+          items: [...transcript.items, { kind: 'user', id: local, text, images }]
+        }
+      })
+      await backend.request(profile, 'prompt.submit', {
+        session_id: sessionId,
+        text,
+        ...(draft.images.length ? { attachments: draft.images } : {}),
+        ...(draft.whenBusy === 'queue' ? { queued: true } : {})
+      })
+      return true
+    } catch (error) {
+      // The composer gets the draft back, so the bubble for it goes.
+      const transcript = chatOf(profile)?.transcript ?? null
+      update(profile, {
+        error: failureOf('chat.errorSend', error),
+        transcript: transcript && {
+          ...transcript,
+          items: transcript.items.filter((item) => item.id !== local)
+        }
+      })
+      return false
+    }
+  }
+
+  // A message is out from its send until its answer ends. Until the engine starts that answer
+  // the chat does not show as running, so this, not `running`, keeps the next one from cutting in.
+  function busy(profile: string): boolean {
+    return out.has(profile) || chatOf(profile)?.transcript?.running === true
+  }
+
+  async function submit(profile: string, draft: ChatDraft): Promise<boolean> {
+    out.add(profile)
+    const sent = await send(profile, draft)
+    if (!sent) out.delete(profile)
+    return sent
+  }
+
+  async function sendWaiting(profile: string): Promise<void> {
+    const [next, ...rest] = chatOf(profile)?.waiting ?? []
+    if (!next || busy(profile)) return
+    update(profile, { waiting: rest })
+    // A failed send keeps its message first in line; the error says why, the next message retries.
+    if (!(await submit(profile, next.draft)))
+      update(profile, { waiting: [next, ...(chatOf(profile)?.waiting ?? [])] })
+  }
+
   return {
     open: guarded('chat.errorLoad', async (profile, chatId: string | null) => {
+      // Opened only while the chat has no session: nothing of a bot by this name is out.
+      out.delete(profile)
       update(profile, { loading: true, error: null })
       const sessionId = chatId ?? (await findChat(profile))
       // Known before the history loads, so cards the snapshot delivers find this chat.
@@ -229,48 +299,30 @@ export function chatActions(backend: ChatBackend): ChatActions {
       )
     },
 
-    rebuild: guarded('chat.errorLoad', async (profile) => {
-      const sessionId = sessionOf(profile)
-      if (sessionId) await load(profile, sessionId)
-    }),
+    rebuild,
 
-    send: async (profile, draft) => {
-      const text = draft.text.trim()
-      if (!text && !draft.images.length) return false
-      const local = `${LOCAL_ID}${Date.now()}-${Math.random()}`
-      try {
-        const sessionId = sessionOf(profile) ?? (await startChat(profile))
-        const transcript = chatOf(profile)?.transcript ?? fromHistory(sessionId, [], false)
-        const images = draft.images.map((image) => image.path)
-        const sent: ChatItem = { kind: 'user', id: local, text, images }
-        // Sent while the bot answers: it waits under the answer instead of splitting it.
-        const waits = draft.whenBusy === 'queue' && transcript.running
-        update(profile, {
-          error: null,
-          transcript: waits
-            ? { ...transcript, queued: [...transcript.queued, sent] }
-            : { ...transcript, items: [...transcript.items, sent] }
-        })
-        await backend.request(profile, 'prompt.submit', {
-          session_id: sessionId,
-          text,
-          ...(draft.images.length ? { attachments: draft.images } : {}),
-          ...(draft.whenBusy === 'queue' ? { queued: true } : {})
-        })
-        return true
-      } catch (error) {
-        // The composer gets the draft back, so the bubble for it goes.
-        const transcript = chatOf(profile)?.transcript ?? null
-        update(profile, {
-          error: failureOf('chat.errorSend', error),
-          transcript: transcript && {
-            ...transcript,
-            items: transcript.items.filter((item) => item.id !== local),
-            queued: transcript.queued.filter((item) => item.id !== local)
-          }
-        })
-        return false
-      }
+    send,
+
+    queue: async (profile, draft) => {
+      const waiting = chatOf(profile)?.waiting ?? []
+      if (!busy(profile) && !waiting.length) return submit(profile, draft)
+      const message = { id: `waiting-${Date.now()}-${Math.random()}`, draft }
+      update(profile, { waiting: [...waiting, message] })
+      void sendWaiting(profile)
+      return true
+    },
+
+    unqueue: (profile, id) => {
+      const waiting = chatOf(profile)?.waiting ?? []
+      update(profile, { waiting: waiting.filter((message) => message.id !== id) })
+    },
+
+    turnEnded: async (profile) => {
+      // The stored history then carries what live events do not: rows from other clients and
+      // bots. The next message goes after it, so the reload neither drops its bubble nor its error.
+      await rebuild(profile)
+      out.delete(profile)
+      await sendWaiting(profile)
     },
 
     interrupt: guarded('chat.errorStop', async (profile) => {
@@ -367,40 +419,6 @@ function rebuilt(
   resume: ResumeSnapshot
 ): Transcript {
   let transcript = fromHistory(sessionId, messages, resume.running === true)
-  const same = previous?.sessionId === sessionId
-  const stored = recentlyAsked(transcript)
-  // What this window sent that history does not hold yet stays, above the reply that answers it:
-  // a reload can land just as the next turn starts on it. A failed turn's message comes back with
-  // that turn instead.
-  const failedIds = new Set(
-    (same ? previous.failed : []).flatMap((turn) => turn.items.map((item) => item.id))
-  )
-  const unstored = same
-    ? previous.items.filter(
-        (item) =>
-          item.kind === 'user' &&
-          item.id.startsWith(LOCAL_ID) &&
-          !failedIds.has(item.id) &&
-          !stored.has(item.text)
-      )
-    : []
-  transcript = { ...transcript, items: [...transcript.items, ...unstored] }
-  const waiting = stillQueued(stored, same ? previous.queued : [], resume)
-  // The running turn answers a message history does not hold yet (one that waited here, or one
-  // the engine took from the queue): it shows above the reply, not under it or nowhere.
-  const asked = resume.running ? resume.inflight?.user?.trim() : null
-  const lastAsked = transcript.items.findLast((item) => item.kind === 'user')
-  const answered =
-    waiting.find((item) => item.kind === 'user' && item.text === asked) ??
-    (asked && lastAsked?.kind === 'user' && lastAsked.text !== asked
-      ? ({
-          kind: 'user',
-          id: `asked-${resume.last_sequence ?? 0}`,
-          text: asked,
-          images: []
-        } as const)
-      : undefined)
-  if (answered) transcript = { ...transcript, items: [...transcript.items, answered] }
   const inflight = resume.running ? resume.inflight?.assistant : null
   if (inflight) {
     transcript = [
@@ -408,38 +426,16 @@ function rebuilt(
       { type: 'message.delta', payload: { text: inflight } }
     ].reduce((current, event) => applyEvent(current, event as GatewayEvent), transcript)
   }
+  const same = previous?.sessionId === sessionId
   transcript = withFailedTurns(transcript, same ? previous.failed : [])
   if (!resume.running && resume.inflight?.error)
     transcript = withHeldFailure(transcript, resume.inflight, resume.last_sequence ?? 0)
   return {
     ...transcript,
-    queued: waiting.filter((item) => item !== answered),
     prompts: same ? previous.prompts : [],
     lastSeq: resume.last_sequence ?? (same ? previous.lastSeq : 0),
     epoch: resume.replay_epoch ?? (same ? previous.epoch : null)
   }
-}
-
-// ponytail: matched by text against the latest stored messages; two equal messages in a row can
-// count the second as stored early. Match on an id if the engine starts sending one.
-function recentlyAsked(transcript: Transcript): Set<string> {
-  return new Set(
-    transcript.items
-      .slice(-RECENT_STORED)
-      .flatMap((item) => (item.kind === 'user' ? [item.text] : []))
-  )
-}
-
-/**
- * The messages still waiting after a reload: the ones this window queued that history does not
- * show yet, and the one the engine holds that this window never saw (sent from another client, or
- * before a reconnect).
- */
-function stillQueued(stored: Set<string>, queued: ChatItem[], resume: ResumeSnapshot): ChatItem[] {
-  const waiting = queued.filter((item) => item.kind === 'user' && !stored.has(item.text))
-  const held = resume.queued?.user?.trim()
-  if (!held || waiting.some((item) => item.kind === 'user' && item.text === held)) return waiting
-  return [...waiting, { kind: 'user', id: `queued-${held}`, text: held, images: [] }]
 }
 
 /**

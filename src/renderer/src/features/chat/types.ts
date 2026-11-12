@@ -66,9 +66,6 @@ export interface Transcript {
   // The turns that failed here, oldest first. The engine never stores one, so a reload puts them
   // back where they were.
   failed: FailedTurn[]
-  // Messages sent while the bot answered, oldest first. They wait under the answer and join the
-  // chat when the turn that answers them starts, so the running answer stays in one piece.
-  queued: ChatItem[]
 }
 
 /** A failed turn's message and error bubble, and the id of the item they followed (null: first). */
