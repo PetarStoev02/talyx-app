@@ -74,6 +74,19 @@ append(rooms[2], 'message.member', 'planner', {
   text: 'Four milestones, the first on January 12. The dates are in the shared sheet.'
 })
 
+/** The engine plugin's in-place change: the same room, new bots, a log row saying who moved. */
+export async function setRoomMembers(roomId: string, members: Member[]): Promise<void> {
+  const room = rooms.find((item) => item.room_id === roomId)
+  if (!room) throw new Error('Room not found')
+  const before = room.members.map((member) => member.member_id)
+  const after = members.map((member) => member.member_id)
+  room.members = members
+  append(room, 'room.members_changed', 'room-control', {
+    added: after.filter((id) => !before.includes(id)),
+    removed: before.filter((id) => !after.includes(id))
+  })
+}
+
 export function roomRequest(method: string, params: Record<string, unknown>): unknown {
   const room = rooms.find((item) => item.room_id === params.room_id)
   switch (method) {

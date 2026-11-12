@@ -13,7 +13,7 @@ import { MANAGER, confirmModel, loadDetails, saveDetails } from './details'
 import type { DetailsDraft } from './details'
 import { lookOf, matchName } from './look'
 import type { Look } from './look'
-import { createRoom, renameRoom } from './rooms'
+import { changeRoomMembers, createRoom, renameRoom } from './rooms'
 import { RosterError, botTitle, itemFolder, itemKey, pinnedBots } from './roster'
 import {
   DEFAULT_SCHEDULE,
@@ -233,6 +233,15 @@ function toolsFor(
         roomOf(snapshot, roomId)
         await renameRoom(backend, { roomId, name })
         return { roomId, name }
+      }),
+    set_room_members: ({ roomId, members }) =>
+      change(async (snapshot) => {
+        roomOf(snapshot, roomId)
+        await changeRoomMembers(backend, {
+          roomId,
+          members: members.map((profile) => botOf(snapshot, profile))
+        })
+        return { roomId, members }
       }),
     send_room_message: async ({ roomId, text }) => {
       roomOf(await fresh(), roomId)

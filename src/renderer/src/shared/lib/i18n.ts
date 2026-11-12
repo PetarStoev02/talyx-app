@@ -213,8 +213,14 @@ const en = {
   'rooms.details': 'Room details',
   'rooms.rename': 'Rename room',
   'rooms.errorName': 'A room needs a name.',
-  'rooms.fixedMembers':
-    'The bots in a room are fixed when it is made: the engine cannot add or remove one yet.',
+  'rooms.joined': '{name} joined',
+  'rooms.left': '{name} left',
+  'rooms.addBot': 'Add a bot',
+  'rooms.viewBot': 'View bot',
+  'rooms.removeFromRoom': 'Remove from room',
+  'rooms.memberActions': 'Actions for {name}',
+  'rooms.membersHint':
+    'A bot that joins reads the room’s history and answers from the next message. The room keeps its history.',
   'rooms.openDetails': 'Details for {name}',
   'rooms.membersPicked': '{count} of 6 picked',
   'rooms.membersLoading': 'Loading bots…',

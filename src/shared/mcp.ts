@@ -181,6 +181,16 @@ export const MCP_TOOLS = {
     description: 'Rename a group room.',
     args: z.object({ roomId: z.string().min(1), name: z.string().trim().min(1) })
   },
+  set_room_members: {
+    description:
+      'Set which bots are in a group room: two to six profile ids. The room and its history stay; a bot that joins reads the history and answers from the next message.',
+    args: z.object({
+      roomId: z.string().min(1),
+      members: z
+        .array(z.string().min(1))
+        .describe('The bots\u2019 profile ids, in the order they answer')
+    })
+  },
   send_room_message: {
     description:
       'Post a message in a group room as the user, only when the user asks for it. Every bot in the room answers it, so never post in a room you are answering in yourself: it starts the room again. read_room_history shows the replies.',
@@ -253,4 +263,20 @@ export function mcpToolList(): {
     inputSchema: z.toJSONSchema(tool.args, { io: 'input' }) as Record<string, unknown>,
     annotations: { destructiveHint: 'destructive' in tool && tool.destructive }
   }))
+}
+
+/**
+ * A short fingerprint of the tool list, put in the server's address. The engine reloads a server
+ * only when its config changes, so a Talyx with new tools gives every bot a new address; their
+ * chats then load the new tools instead of keeping the ones they started with.
+ */
+export function mcpToolsVersion(): string {
+  const text = JSON.stringify(mcpToolList())
+  // FNV-1a, 32 bits: enough to tell two tool lists apart, no crypto needed in either process.
+  let hash = 0x811c9dc5
+  for (let index = 0; index < text.length; index++) {
+    hash ^= text.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash.toString(16).padStart(8, '0')
 }

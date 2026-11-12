@@ -51,6 +51,9 @@ export function rosterBackendFor(keys: {
     },
     botMetaKey,
     botGroupsMetaKey,
-    avatarPng: blockPng
+    avatarPng: blockPng,
+    setRoomMembers: async (roomId, members) => {
+      await window.api.setRoomMembers({ roomId, members })
+    }
   }
 }

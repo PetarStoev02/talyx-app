@@ -7,6 +7,7 @@ import {
 } from '../../../src/renderer/src/features/bots/actions'
 import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
 import {
+  changeRoomMembers,
   createRoom,
   renameRoom,
   seatableProfiles
@@ -139,6 +140,43 @@ describe('group rooms in the roster', () => {
     it('should drop a pin whose room is gone', () => {
       useRoster.setState({ snapshot: { ...snapshot(), roomPins: ['gone', 'review'] } })
       expect(pinnedRooms(snapshot()).map((item) => item.room_id)).toEqual(['review'])
+    })
+  })
+
+  describe('changing who is in a room', () => {
+    it('should add and remove bots in the same room, as the engine stores them', async () => {
+      await act(() =>
+        changeRoomMembers(backend, { roomId: 'standup', members: [bot('writer'), bot('planner')] })
+      )
+      expect(engine.rooms[0]).toMatchObject({ room_id: 'standup', name: 'Standup' })
+      expect(engine.rooms[0].members).toEqual([
+        {
+          member_id: 'writer',
+          profile: 'writer',
+          handle: 'writer',
+          display_name: 'Writer',
+          target: { kind: 'local', profile: 'writer' }
+        },
+        {
+          member_id: 'planner',
+          profile: 'planner',
+          handle: 'planner',
+          display_name: 'Planner',
+          target: { kind: 'local', profile: 'planner' }
+        }
+      ])
+      expect(room('standup').members.map((member) => member.profile)).toEqual(['writer', 'planner'])
+    })
+
+    it.each([
+      ['one bot', ['analyst']],
+      ['seven bots', ['analyst', 'writer', 'planner', 'analyst', 'writer', 'planner', 'analyst']]
+    ])('should refuse a room with %s, changing nothing', async (_label, names) => {
+      await act(() =>
+        changeRoomMembers(backend, { roomId: 'standup', members: names.map((name) => bot(name)) })
+      )
+      expect(useRoster.getState().actionError).toMatchObject({ key: 'rooms.errorMembers' })
+      expect(engine.rooms[0].members).toEqual([{ profile: 'analyst' }])
     })
   })
 

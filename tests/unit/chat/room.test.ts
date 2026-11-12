@@ -451,7 +451,12 @@ describe('room transcript', () => {
       { status: 'bounded', reason_code: 'max_rounds' },
       'The bots reached the round limit'
     ],
-    ['authority.lost', {}, 'This room is now run from another machine']
+    ['authority.lost', {}, 'This room is now run from another machine'],
+    [
+      'room.members_changed',
+      { added: ['acme-cfo'], removed: ['default'], members: [] },
+      'Acme CFO joined · Talyx left'
+    ]
   ])('should show %s as one notice line', (kind, payload, text) => {
     expect(roomItems([event(1, kind, payload)], labels)).toEqual([
       { kind: 'notice', id: 'e1', text }

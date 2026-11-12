@@ -128,3 +128,11 @@ describe('Talyx MCP server', () => {
     })
   })
 })
+
+describe('the tool list fingerprint', () => {
+  it('should stay the same for the same tools and fit in an address', async () => {
+    const { mcpToolsVersion } = await import('../../../src/shared/mcp')
+    expect(mcpToolsVersion()).toMatch(/^[0-9a-f]{8}$/)
+    expect(mcpToolsVersion()).toBe(mcpToolsVersion())
+  })
+})

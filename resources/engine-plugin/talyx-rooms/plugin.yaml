@@ -1,0 +1,4 @@
+name: talyx-rooms
+version: 1.0.0
+description: 'Talyx: change which bots are in an existing group room, keeping the room and its history.'
+author: Talyx

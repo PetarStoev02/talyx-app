@@ -65,6 +65,10 @@ export interface Engine {
   mint(profile: string, purpose: GatewayTicketPurpose): Promise<Attachment & { ticket: string }>
   /** One REST call to the gateway with its native ticket header. */
   http(request: EngineHttpRequest): Promise<unknown>
+  /** One CLI command of the attached engine, as its default profile. */
+  cli(args: string[]): Promise<CliResult>
+  /** The attached engine's home folder, as `gateway ensure` reports it. */
+  home(): Promise<string>
 }
 
 export interface EngineDeps {
@@ -228,6 +232,15 @@ export function createEngine(deps: EngineDeps): Engine {
     },
 
     mint,
+
+    async cli(args) {
+      const { command } = await attach()
+      return run(command, ['--profile', 'default', ...args])
+    },
+
+    async home() {
+      return (await attach()).ensure.endpoint.profile_id
+    },
 
     async http(request: EngineHttpRequest): Promise<unknown> {
       // The grant is chosen from the path alone; the origin comes from the endpoint the mint used,

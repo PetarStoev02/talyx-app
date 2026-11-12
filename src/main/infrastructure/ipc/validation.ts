@@ -38,6 +38,23 @@ export const RendererErrorSchema = z.object({
 /** A profile name as the engine accepts it. */
 export const ProfileNameSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/)
 
+/** A room's new bots, as the page sends them: two to six of this machine's profiles. */
+export const RoomMembersSchema = z.object({
+  roomId: z.string().min(1).max(200),
+  members: z
+    .array(
+      z.object({
+        member_id: ProfileNameSchema,
+        profile: ProfileNameSchema,
+        handle: ProfileNameSchema,
+        display_name: z.string().min(1).max(200),
+        target: z.object({ kind: z.literal('local'), profile: ProfileNameSchema })
+      })
+    )
+    .min(2)
+    .max(6)
+})
+
 /** Chosen by the renderer before it opens the socket, so early frames find it. */
 export const EngineSocketIdSchema = z.string().regex(/^[A-Za-z0-9-]{8,64}$/)
 

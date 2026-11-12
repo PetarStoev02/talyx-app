@@ -349,6 +349,26 @@ describe('MCP tools', () => {
       expect(answer).toEqual({ ok: false, text: 'A room needs 2 to 6 bots.' })
     })
 
+    it('should change who is in a room, keeping the room', async () => {
+      expect(
+        await ok('set_room_members', { roomId: 'room', members: ['default', 'analyst'] })
+      ).toEqual({ roomId: 'room', members: ['default', 'analyst'] })
+      expect(roster().rooms[0]).toMatchObject({ room_id: 'room', name: 'Team room' })
+      expect(roster().rooms[0].members.map((member) => member.profile)).toEqual([
+        'default',
+        'analyst'
+      ])
+    })
+
+    it('should refuse a bot that does not exist, changing nothing', async () => {
+      const answer = await call('set_room_members', {
+        roomId: 'room',
+        members: ['analyst', 'ghost']
+      })
+      expect(answer.ok).toBe(false)
+      expect(engine.rooms[0].members).toEqual([{ profile: 'analyst' }])
+    })
+
     it('should rename a room', async () => {
       expect(await ok('rename_room', { roomId: 'room', name: 'Desk' })).toEqual({
         roomId: 'room',

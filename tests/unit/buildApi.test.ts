@@ -91,6 +91,7 @@ describe('buildApi', () => {
       'runInstall',
       'sendEngineSocket',
       'setNativeTheme',
+      'setRoomMembers',
       'setSettings',
       'takeActivationRequest',
       'uninstallModule',
