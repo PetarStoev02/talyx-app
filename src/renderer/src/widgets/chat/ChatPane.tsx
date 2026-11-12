@@ -177,7 +177,7 @@ export function ChatPane({
         </p>
       )}
       <Composer target={target} inputRef={composer} seed={seed}>
-        <ChatChips chat={chat} actions={actions} />
+        <ChatChips chat={chat} actions={actions} returnFocusTo={composer} />
       </Composer>
     </>
   )

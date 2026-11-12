@@ -27,6 +27,7 @@ export function ModelPicker({
   onSelect,
   labels,
   contentClassName,
+  returnFocusTo,
   children
 }: {
   load: () => Promise<ModelOptionProvider[]>
@@ -34,6 +35,8 @@ export function ModelPicker({
   onSelect: (pick: ModelPick) => void
   labels: ModelPickerLabels
   contentClassName?: string
+  // Where focus goes when the menu closes; the trigger when absent.
+  returnFocusTo?: React.RefObject<HTMLElement | null>
   children: React.ReactNode
 }): React.JSX.Element {
   const [providers, setProviders] = useState<ModelOptionProvider[] | null>(null)
@@ -58,6 +61,11 @@ export function ModelPicker({
           sideOffset={4}
           align="start"
           className={cn(menuContentClass, contentClassName)}
+          onCloseAutoFocus={(event) => {
+            if (!returnFocusTo) return
+            event.preventDefault()
+            returnFocusTo.current?.focus()
+          }}
         >
           {failure ? (
             <div role="alert" className="max-w-72 px-2.5 py-1.5">

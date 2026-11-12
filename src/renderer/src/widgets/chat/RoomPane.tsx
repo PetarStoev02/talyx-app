@@ -198,7 +198,14 @@ export function RoomPane({
       </Reveal>
       {view.live ? (
         <Composer target={target} inputRef={composer} seed={seed}>
-          <RoomModelMenu room={room} view={view} actions={actions} chat={chat} nameOf={nameOf} />
+          <RoomModelMenu
+            room={room}
+            view={view}
+            actions={actions}
+            chat={chat}
+            nameOf={nameOf}
+            returnFocusTo={composer}
+          />
         </Composer>
       ) : (
         <p className="mx-auto w-full max-w-3xl px-6 pb-6 text-base">{t('rooms.readOnly')}</p>
@@ -213,13 +220,15 @@ function RoomModelMenu({
   view,
   actions,
   chat,
-  nameOf
+  nameOf,
+  returnFocusTo
 }: {
   room: Room
   view: RoomView
   actions: RoomActions
   chat: ChatActions
   nameOf: (member: string) => string
+  returnFocusTo: React.RefObject<HTMLTextAreaElement | null>
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   // One switch at a time: a second pick during one would race its own fences.
@@ -248,6 +257,7 @@ function RoomModelMenu({
       selected={null}
       onSelect={(choice) => void switchAll(choice)}
       labels={{ loading: t('chat.modelsLoading'), failed: t('chat.modelsFailed') }}
+      returnFocusTo={returnFocusTo}
     >
       {/* Before any member has answered there is no room session to switch. */}
       <Chip label={t('chat.model')} value={value} disabled={!shared || switching} />

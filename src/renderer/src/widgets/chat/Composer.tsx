@@ -10,6 +10,7 @@ import { dataUrlOf, dictationProblem, useDictation } from '@features/chat/useDic
 import { openSettings } from '@features/settings/sections'
 import { problemOf, problemText } from '@shared/lib/problem'
 import { cn } from '@shared/lib/utils'
+import { IconButton } from '@shared/ui/IconButton'
 import { ModelPicker } from '@shared/ui/ModelPicker'
 import { CheckItem, menuContentClass } from '@shared/ui/menu'
 import type { TranslationKey } from '@shared/lib/i18n'
@@ -179,14 +180,14 @@ export function Composer({
           style={{ maxHeight: `calc(${MAX_ROWS}lh + 0.5rem)` }}
         />
         <div className="flex flex-wrap items-center gap-1">
-          <button
+          <IconButton
             type="button"
-            aria-label={t('chat.addImage')}
+            label={t('chat.addImage')}
             onClick={() => picker.current?.click()}
-            className={cn(iconButton, 'hover:bg-foreground/10')}
+            className="text-foreground"
           >
             <Plus size={ICON_SIZE} />
-          </button>
+          </IconButton>
           <input
             ref={picker}
             type="file"
@@ -201,9 +202,9 @@ export function Composer({
           {children}
           {/* Mic and send wrap together, so a narrow window never pushes Send out of reach. */}
           <div className="ml-auto flex items-center gap-1">
-            <button
+            <IconButton
               type="button"
-              aria-label={
+              label={
                 dictation.state === 'recording'
                   ? t('chat.dictating')
                   : dictation.state === 'transcribing'
@@ -214,10 +215,9 @@ export function Composer({
               disabled={dictation.state === 'transcribing' || dictation.state === 'starting'}
               onClick={dictation.toggle}
               className={cn(
-                iconButton,
-                'hover:bg-foreground/10 disabled:opacity-50',
+                'text-foreground',
                 dictation.state === 'recording' &&
-                  'bg-primary text-primary-foreground hover:bg-primary'
+                  'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
               )}
             >
               {dictation.state === 'transcribing' ? (
@@ -225,7 +225,7 @@ export function Composer({
               ) : (
                 <Mic size={ICON_SIZE} />
               )}
-            </button>
+            </IconButton>
             {running && (
               <button
                 type="button"
@@ -257,29 +257,24 @@ export function Composer({
   )
 }
 
-/** The bot chat's model and reasoning chips. */
-export function ChatChips({
-  chat,
-  actions
-}: {
+interface ChipMenuProps {
   chat: ChatState
   actions: ChatActions
-}): React.JSX.Element {
+  // The composer's text field: closing a chip's menu puts focus back there, not on the chip.
+  returnFocusTo: React.RefObject<HTMLTextAreaElement | null>
+}
+
+/** The bot chat's model and reasoning chips. */
+export function ChatChips(props: ChipMenuProps): React.JSX.Element {
   return (
     <>
-      <ModelMenu chat={chat} actions={actions} />
-      <ReasoningMenu chat={chat} actions={actions} />
+      <ModelMenu {...props} />
+      <ReasoningMenu {...props} />
     </>
   )
 }
 
-function ModelMenu({
-  chat,
-  actions
-}: {
-  chat: ChatState
-  actions: ChatActions
-}): React.JSX.Element {
+function ModelMenu({ chat, actions, returnFocusTo }: ChipMenuProps): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const selected =
     chat.info.model && chat.info.provider
@@ -291,35 +286,29 @@ function ModelMenu({
       selected={selected}
       onSelect={(pick) => void actions.setModel(chat.profile, pick)}
       labels={{ loading: t('chat.modelsLoading'), failed: t('chat.modelsFailed') }}
+      returnFocusTo={returnFocusTo}
     >
-      {/* A chat with no session yet uses the bot's own model; it can change after the first send. */}
-      <Chip
-        label={t('chat.model')}
-        value={chat.info.model ?? t('chat.modelDefault')}
-        disabled={!chat.sessionId}
-      />
+      {/* A chat with no session yet shows the bot's own model; a pick starts the session. */}
+      <Chip label={t('chat.model')} value={chat.info.model ?? t('chat.modelDefault')} />
     </ModelPicker>
   )
 }
 
-function ReasoningMenu({
-  chat,
-  actions
-}: {
-  chat: ChatState
-  actions: ChatActions
-}): React.JSX.Element {
+function ReasoningMenu({ chat, actions, returnFocusTo }: ChipMenuProps): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const current = REASONING_LEVELS.find(([level]) => level === chat.info.reasoning)
   return (
     <DropdownMenu.Root>
-      <Chip
-        label={t('chat.reasoning')}
-        value={current ? t(current[1]) : t('chat.reasoning')}
-        disabled={!chat.sessionId}
-      />
+      <Chip label={t('chat.reasoning')} value={current ? t(current[1]) : t('chat.reasoning')} />
       <DropdownMenu.Portal>
-        <DropdownMenu.Content sideOffset={4} className={menuContentClass}>
+        <DropdownMenu.Content
+          sideOffset={4}
+          className={menuContentClass}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            returnFocusTo.current?.focus()
+          }}
+        >
           {REASONING_LEVELS.map(([level, label]) => (
             <CheckItem
               key={level}
@@ -338,11 +327,11 @@ function ReasoningMenu({
 export function Chip({
   label,
   value,
-  disabled
+  disabled = false
 }: {
   label: string
   value: string
-  disabled: boolean
+  disabled?: boolean
 }): React.JSX.Element {
   return (
     <DropdownMenu.Trigger

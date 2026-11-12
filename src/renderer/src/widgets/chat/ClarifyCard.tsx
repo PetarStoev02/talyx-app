@@ -79,7 +79,7 @@ export function ClarifyCard({
             variant={chosen(choice) ? 'default' : 'secondary'}
             aria-pressed={chosen(choice)}
             onClick={() => choose(choice)}
-            className="h-auto min-h-9 whitespace-normal"
+            className="h-auto min-h-9 max-w-full shrink text-left whitespace-normal wrap-anywhere"
           >
             {choice}
           </Button>

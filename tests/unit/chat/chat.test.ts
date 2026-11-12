@@ -615,12 +615,29 @@ describe('bot chat', () => {
       expect(call('session.interrupt')?.params).toEqual({ session_id: 'manager-chat' })
     })
 
-    it('should not show a model or reasoning level the chat cannot use before it exists', async () => {
+    it('should start the Bot Chat and keep the choices when picked before the first message', async () => {
       await actions.open(WORKER, null)
-      await actions.setModel(WORKER, { model: 'cfo-model', provider: 'custom' })
+      await actions.setModel(WORKER, { model: 'claude-haiku-4-5', provider: 'anthropic' })
       await actions.setReasoning(WORKER, 'high')
-      expect(chat(WORKER).info).toEqual({ model: null, provider: null, reasoning: null })
-      expect(methods()).not.toContain('config.set')
+      await actions.send(WORKER, { text: 'Hi', images: [] })
+      expect(methods().filter((method) => method === 'session.create')).toHaveLength(1)
+      expect(
+        engine.calls
+          .filter((item) => ['config.set', 'prompt.submit'].includes(item.method))
+          .map((item) => [item.method, item.params])
+      ).toEqual([
+        [
+          'config.set',
+          { session_id: 'created-1', key: 'model', value: 'claude-haiku-4-5 --provider anthropic' }
+        ],
+        ['config.set', { session_id: 'created-1', key: 'reasoning', value: 'high' }],
+        ['prompt.submit', { session_id: 'created-1', text: 'Hi' }]
+      ])
+      expect(chat(WORKER)).toMatchObject({
+        sessionId: 'created-1',
+        error: null,
+        info: { model: 'claude-haiku-4-5', provider: 'anthropic', reasoning: 'high' }
+      })
     })
 
     it('should set the model and reasoning on the open session', async () => {

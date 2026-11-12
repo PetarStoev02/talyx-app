@@ -202,12 +202,10 @@ export function chatActions(backend: ChatBackend): ChatActions {
     }
   }
 
-  // Before the first send there is no session to configure; the composer disables the chips.
-  async function configure(profile: string, key: string, value: string): Promise<boolean> {
-    const sessionId = sessionOf(profile)
-    if (!sessionId) return false
+  // A pick before the first send starts the Bot Chat, so the choice holds for that send.
+  async function configure(profile: string, key: string, value: string): Promise<void> {
+    const sessionId = sessionOf(profile) ?? (await startChat(profile))
     await backend.request(profile, 'config.set', { session_id: sessionId, key, value })
-    return true
   }
 
   const rebuild = guarded('chat.errorLoad', async (profile) => {
@@ -375,14 +373,14 @@ export function chatActions(backend: ChatBackend): ChatActions {
     setModel: guarded(
       'chat.errorModel',
       async (profile, { model, provider }: { model: string; provider: string }) => {
-        if (await configure(profile, 'model', `${model} --provider ${provider}`))
-          update(profile, { info: { ...chatOf(profile)!.info, model, provider } })
+        await configure(profile, 'model', `${model} --provider ${provider}`)
+        update(profile, { info: { ...chatOf(profile)!.info, model, provider } })
       }
     ),
 
     setReasoning: guarded('chat.errorReasoning', async (profile, level: string) => {
-      if (await configure(profile, 'reasoning', level))
-        update(profile, { info: { ...chatOf(profile)!.info, reasoning: level } })
+      await configure(profile, 'reasoning', level)
+      update(profile, { info: { ...chatOf(profile)!.info, reasoning: level } })
     }),
 
     models: (profile) => {
