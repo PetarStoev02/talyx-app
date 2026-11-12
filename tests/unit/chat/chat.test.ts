@@ -657,15 +657,21 @@ describe('bot chat', () => {
       expect(outcome()).toBeNull()
     })
 
-    it('should end a turn lost while the engine was away, and send what waits behind it', async () => {
-      emit('message.start', { turn_id: 't1' })
-      await actions.queue(MANAGER, { text: 'Next', images: [] })
-      // The socket dropped; the engine kept neither the reply nor its failure.
-      stored(engine, [{ id: 3, role: 'user', content: 'Summarise Q3' }])
-      await actions.turnEnded(MANAGER)
-      expect(chat(MANAGER).transcript?.running).toBe(false)
-      expect(submitted()).toEqual(['Summarise Q3', 'Next'])
-    })
+    it.each([
+      ['started', true],
+      ['sent but not yet started', false]
+    ])(
+      'should end a turn %s and lost while the engine was away, and send what waits behind it',
+      async (_when, started) => {
+        if (started) emit('message.start', { turn_id: 't1' })
+        await actions.queue(MANAGER, { text: 'Next', images: [] })
+        // The socket dropped; the engine kept neither the reply nor its failure.
+        stored(engine, [{ id: 3, role: 'user', content: 'Summarise Q3' }])
+        await actions.turnEnded(MANAGER)
+        expect(chat(MANAGER).transcript?.running).toBe(false)
+        expect(submitted()).toEqual(['Summarise Q3', 'Next'])
+      }
+    )
   })
 
   describe('during a turn', () => {

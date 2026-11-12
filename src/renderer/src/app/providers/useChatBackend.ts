@@ -52,13 +52,10 @@ export function useChatBackend(): ChatActions | null {
       // Providers may have changed while the engine was away.
       actions.forgetModels()
       // The redial replays the gap; a reload covers a session whose re-resume failed. A turn
-      // that was running ends here if it ended while the socket was down, so its waiting
-      // messages go and the roster stops showing it as working.
-      for (const chat of Object.values(useChat.getState().chats)) {
-        if (!chat.sessionId) continue
-        if (chat.transcript?.running) void reloadAfterDrop(actions, chat.profile)
-        else void actions.rebuild(chat.profile)
-      }
+      // that ended while the socket was down ends here, even one sent but not yet started, so
+      // its waiting messages go and the roster stops showing it as working.
+      for (const chat of Object.values(useChat.getState().chats))
+        if (chat.sessionId) void reloadAfterDrop(actions, chat.profile)
     })
     return () => {
       offEvent()

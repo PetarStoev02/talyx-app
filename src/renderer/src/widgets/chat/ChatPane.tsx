@@ -82,10 +82,12 @@ export function ChatPane({
   const { items, activity } = turnView(chat.transcript?.items ?? [], running)
   // A retry waits for nothing else: not while a message is already lined up to go.
   const outcome = chat.waiting.length ? null : turnOutcome(chat.transcript?.items ?? [], running)
-  // A failed turn's bubble already says so; the line adds only its retry, which a message with
-  // images does not get (the chat keeps their paths, not the files).
-  const retryable =
-    outcome !== null && outcome.asked.images.length === 0 && outcome.asked.text !== ''
+  // The engine keeps a sent image's upload only briefly, so a message with images goes back to
+  // the composer to attach them again; a text message is sent again as it was.
+  const retry = (asked: TurnOutcome['asked']): void => {
+    if (asked.images.length) start({ text: asked.text, send: false })
+    else void actions.queue(bot.name, { text: asked.text, images: [] })
+  }
   const prompts = chat.transcript?.prompts ?? []
   const loadImage = (path: string): Promise<string> => actions.mediaUrl(bot.name, path)
   const announced = announcement(items, prompts.length, running, outcome)
@@ -115,16 +117,9 @@ export function ChatPane({
                 <ActivityLine bot={bot} activity={activity} wait={chat.transcript?.wait ?? null} />
               </li>
             )}
-            {outcome && (outcome.kind !== 'failed' || retryable) && (
+            {outcome && (
               <li>
-                <OutcomeLine
-                  outcome={outcome}
-                  name={title}
-                  retryable={retryable}
-                  onRetry={() =>
-                    void actions.queue(bot.name, { text: outcome.asked.text, images: [] })
-                  }
-                />
+                <OutcomeLine outcome={outcome} name={title} onRetry={() => retry(outcome.asked)} />
               </li>
             )}
             {chat.waiting.map((message) => (
@@ -222,12 +217,10 @@ function announcement(
 function OutcomeLine({
   outcome,
   name,
-  retryable,
   onRetry
 }: {
   outcome: TurnOutcome
   name: string
-  retryable: boolean
   onRetry: () => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
@@ -241,17 +234,18 @@ function OutcomeLine({
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 text-sm text-muted-foreground">
       {said && <p>{said}</p>}
-      {retryable && (
-        <button
-          type="button"
-          aria-label={t('chat.retryLabel').replace('{text}', asked.text)}
-          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-foreground/10"
-          onClick={onRetry}
-        >
-          <RotateCcw size={14} />
-          {t('chat.retry')}
-        </button>
-      )}
+      <button
+        type="button"
+        aria-label={t(asked.images.length ? 'chat.retryImagesLabel' : 'chat.retryLabel').replace(
+          '{text}',
+          asked.text
+        )}
+        className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-foreground/10"
+        onClick={onRetry}
+      >
+        <RotateCcw size={14} />
+        {t(asked.images.length ? 'chat.retryImages' : 'chat.retry')}
+      </button>
     </div>
   )
 }
