@@ -73,11 +73,22 @@ export interface EngineDouble {
   cronWrites: { method: string; path: string; body?: unknown }[]
   failMetaOnce: () => void
   rooms: Room[]
+  /** Each room's log rows, as groups.log pages them; groups.send adds the user's message. */
+  roomLogs: Record<string, RoomLogRow[]>
   /** Every profiles.set_asset call, in order. */
   assets: { profile: string; params: Record<string, unknown> }[]
   failAssetOnce: () => void
   // What groups.capabilities says the engine will seat; null when it does not say.
   seatable: string[] | null
+}
+
+export interface RoomLogRow {
+  seq: number
+  event_id: string
+  kind: string
+  actor: { kind: string; id: string; display_name?: string }
+  payload: Record<string, unknown>
+  created_at: number
 }
 
 /** What the double's renderer returns for a look, so a test can tell which look was exported. */
@@ -398,6 +409,31 @@ export function engineDouble(
       rooms.push(structuredClone(room))
       return { room }
     }
+    if (method === 'groups.send') {
+      const log = (double.roomLogs[params.room_id as string] ??= [])
+      log.push({
+        seq: log.length + 1,
+        event_id: params.event_id as string,
+        kind: 'message.user',
+        actor: { kind: 'user', id: 'user' },
+        payload: structuredClone(params.payload as Record<string, unknown>),
+        created_at: 1_794_045_600 + log.length
+      })
+      return { event: { seq: log.length } }
+    }
+    if (method === 'groups.log') {
+      // Two rows a page, so a test also reads past the first page.
+      const since = params.since_seq as number
+      const rows = (double.roomLogs[params.room_id as string] ?? []).filter(
+        (row) => row.seq > since
+      )
+      const page = rows.slice(0, 2)
+      return {
+        events: structuredClone(page),
+        cursor: page.at(-1)?.seq ?? since,
+        has_more: rows.length > page.length
+      }
+    }
     if (method === 'groups.disband') {
       const index = rooms.findIndex((room) => room.room_id === params.room_id)
       if (index < 0) throw new Error('Room not found')
@@ -431,6 +467,7 @@ export function engineDouble(
     homeProvider: 'custom',
     homeKeyPreview: HOME_KEY_REF,
     rooms,
+    roomLogs: {},
     assets,
     seatable: null,
     metadata,

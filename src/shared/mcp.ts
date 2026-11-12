@@ -177,6 +177,27 @@ export const MCP_TOOLS = {
       members: z.array(z.string().min(1)).describe('The bots’ profile ids')
     })
   },
+  send_room_message: {
+    description:
+      'Post a message in a group room as the user. The room\u2019s bots answer it there; read_room_history shows their replies.',
+    args: z.object({
+      roomId: z.string().min(1),
+      text: z.string().trim().min(1).max(20_000)
+    })
+  },
+  read_room_history: {
+    description: 'Read a group room\u2019s latest messages, oldest first.',
+    args: z.object({
+      roomId: z.string().min(1),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(200)
+        .optional()
+        .describe('How many messages; 50 when absent')
+    })
+  },
   delete_room: {
     description: 'Delete a group room and its history. Asks the user in Talyx first.',
     args: z.object({ roomId: z.string().min(1) }),

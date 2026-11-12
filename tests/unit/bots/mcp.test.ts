@@ -349,6 +349,55 @@ describe('MCP tools', () => {
       expect(answer).toEqual({ ok: false, text: 'A room needs 2 to 6 bots.' })
     })
 
+    it('should post a message in a room as the user', async () => {
+      expect(await ok('send_room_message', { roomId: 'room', text: ' Plan the week ' })).toEqual({
+        roomId: 'room',
+        sent: true
+      })
+      expect(engine.roomLogs.room[0]).toMatchObject({
+        kind: 'message.user',
+        payload: { text: 'Plan the week', attachments: [] }
+      })
+    })
+
+    it('should refuse to post in a room that does not exist', async () => {
+      const answer = await call('send_room_message', { roomId: 'gone', text: 'Hi' })
+      expect(answer).toEqual({ ok: false, text: 'That room no longer exists. gone' })
+    })
+
+    it('should read the latest messages, oldest first, with who wrote each', async () => {
+      engine.rooms[0].members = [
+        { profile: 'analyst', member_id: 'analyst', display_name: 'Analyst' }
+      ]
+      await ok('send_room_message', { roomId: 'room', text: 'First' })
+      engine.roomLogs.room.push(
+        {
+          seq: 2,
+          event_id: 'e2',
+          kind: 'room.activity',
+          actor: { kind: 'system', id: 'driver' },
+          payload: { status: 'running' },
+          created_at: 2
+        },
+        {
+          seq: 3,
+          event_id: 'e3',
+          kind: 'message.member',
+          actor: { kind: 'member', id: 'analyst' },
+          payload: { text: 'On it' },
+          created_at: 3
+        }
+      )
+      await ok('send_room_message', { roomId: 'room', text: 'Thanks' })
+      expect(await ok('read_room_history', { roomId: 'room', limit: 2 })).toEqual({
+        messages: [
+          { seq: 3, from: 'Analyst', text: 'On it', at: 3 },
+          { seq: 4, from: 'user', text: 'Thanks', at: expect.any(Number) }
+        ],
+        more: true
+      })
+    })
+
     it('should delete a room once the user allows it', async () => {
       await ok('pin_item', { kind: 'room', id: 'room', pinned: true })
       await ok('delete_room', { roomId: 'room' })

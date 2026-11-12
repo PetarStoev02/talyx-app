@@ -1,13 +1,11 @@
 import type { ModelPick } from '@shared/ui/ModelPicker'
+import { readRoomLog, sendRoomMessage } from '@shared/engine/rooms'
 import { useRooms } from './roomStore'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { AppError, failureOf } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'
 import { sameJson } from '@shared/lib/utils'
 import type { MemberPhase, RoomAttachment, RoomEvent, RoomTask, RoomView } from './types'
-
-// The engine's own page cap for `groups.log`.
-const LOG_PAGE = 500
 
 export interface RoomBackend {
   request: (profile: string, method: string, params: Record<string, unknown>) => Promise<unknown>
@@ -53,12 +51,6 @@ interface DriverStatus {
   working?: boolean
   member_activity?: { member_id: string; status: string }[]
   pending_actions?: Record<string, unknown>[]
-}
-
-interface LogPage {
-  events: RoomEvent[]
-  cursor: number
-  has_more: boolean
 }
 
 // Main relays socket frames up to 16 MiB; the image goes as base64 inside one, with room to spare
@@ -136,20 +128,8 @@ export function roomActions(backend: RoomBackend): RoomActions {
     })
   }
 
-  async function readLog(roomId: string, since: number): Promise<RoomEvent[]> {
-    const events: RoomEvent[] = []
-    let cursor = since
-    for (;;) {
-      const page = await call<LogPage>('groups.log', {
-        room_id: roomId,
-        since_seq: cursor,
-        limit: LOG_PAGE
-      })
-      events.push(...page.events)
-      if (!page.has_more) return events
-      if (page.cursor <= cursor) throw new Error('The engine returned an invalid room log.')
-      cursor = page.cursor
-    }
+  function readLog(roomId: string, since: number): Promise<RoomEvent[]> {
+    return readRoomLog<RoomEvent>(backend.request, roomId, since)
   }
 
   function refresh(roomId: string): Promise<void> {
@@ -280,10 +260,11 @@ export function roomActions(backend: RoomBackend): RoomActions {
       const failed = viewOf(roomId)?.failedSend
       const eventId = failed?.draft === key ? failed.eventId : crypto.randomUUID()
       try {
-        await call('groups.send', {
-          room_id: roomId,
-          event_id: eventId,
-          payload: { text, thread_id: eventId, attachments: draft.attachments }
+        await sendRoomMessage(backend.request, {
+          roomId,
+          eventId,
+          text,
+          attachments: draft.attachments
         })
         update(roomId, { failedSend: null, actionError: null })
       } catch (error) {

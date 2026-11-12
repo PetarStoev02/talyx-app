@@ -30,7 +30,7 @@ Talyx runs its bots on the engine, a separate agent backend that Talyx's setup s
 
 ### Agents operate Talyx (MCP)
 
-While Talyx is open it runs an MCP server on `http://127.0.0.1:47816/mcp` (loopback only; `TALYX_MCP_PORT` changes the port). Its tools do what the app does: list the roster; create, rename and delete bots, folders and rooms; move, order and pin them; change a bot's title, description, SOUL, model, reasoning and look; list, add, pause and delete routines. Each tool runs through the same code as the roster and the details panel.
+While Talyx is open it runs an MCP server on `http://127.0.0.1:47816/mcp` (loopback only; `TALYX_MCP_PORT` changes the port). Its tools do what the app does: list the roster; create, rename and delete bots, folders and rooms; move, order and pin them; change a bot's title, description, SOUL, model, reasoning and look; list, add, pause and delete routines; post in a group room and read its latest messages. Each tool runs through the same code as the roster and the details panel.
 
 - **Your bots** get the server in their profile automatically (Talyx adds it to every profile, also to bots created later), with its key kept in the profile's `.env`.
 - **Outside agents** (Claude Code, Cursor and others): Settings → Engine → Agents → **Copy the add line**, then run it in a terminal. Every request needs that key, and a request from a browser page is refused.

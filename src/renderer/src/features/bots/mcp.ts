@@ -3,6 +3,7 @@ import type { McpAnswer, McpToolArgs, McpToolName } from '../../../../shared/mcp
 import { t } from '@shared/lib/i18n'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { problemOf, problemText } from '@shared/lib/problem'
+import { readRoomLog, sendRoomMessage } from '@shared/engine/rooms'
 import { BLOCK_HUES, BLOCK_SHAPES } from '@shared/ui/blockGeometry'
 import type { BlockShape } from '@shared/ui/blockGeometry'
 import { refreshRoster, rosterActions, runRosterMutation } from './actions'
@@ -44,6 +45,9 @@ export class ApprovalRefusedError extends RosterError {
     this.name = 'ApprovalRefusedError'
   }
 }
+
+// How many messages read_room_history returns when the agent does not say.
+const DEFAULT_HISTORY = 50
 
 type Run<T extends McpToolName> = (args: McpToolArgs<T>) => Promise<unknown>
 
@@ -224,6 +228,18 @@ function toolsFor(
           members: members.map((profile) => botOf(snapshot, profile))
         })
       })),
+    send_room_message: async ({ roomId, text }) => {
+      roomOf(await fresh(), roomId)
+      await sendRoomMessage(backend.request, {
+        roomId,
+        eventId: crypto.randomUUID(),
+        text,
+        attachments: []
+      })
+      return { roomId, sent: true }
+    },
+    read_room_history: async ({ roomId, limit }) =>
+      roomHistory(backend, roomOf(await fresh(), roomId), limit ?? DEFAULT_HISTORY),
     delete_room: async ({ roomId }) => {
       const room = roomOf(await fresh(), roomId)
       await ask('delete_room', say('mcp.deleteRoom', { name: room.name }))
@@ -268,6 +284,32 @@ function toolsFor(
       return { deleted: routineId }
     }
   }
+}
+
+/** A room log row, as much of it as the history reads. */
+interface LogEvent {
+  seq: number
+  kind: string
+  actor: { id: string; display_name?: string }
+  payload: { text?: unknown }
+  created_at: number
+}
+
+// ponytail: reads the whole log for the last messages; page from the end if rooms grow long.
+async function roomHistory(backend: RosterBackend, room: Room, limit: number): Promise<unknown> {
+  const events = await readRoomLog<LogEvent>(backend.request, room.room_id, 0)
+  const nameOf = (id: string, fallback?: string): string =>
+    room.members.find((member) => (member.member_id ?? member.profile) === id)?.display_name ??
+    fallback ??
+    id
+  const messages = events.flatMap((event) => {
+    const text = typeof event.payload.text === 'string' ? event.payload.text.trim() : ''
+    if (!text || (event.kind !== 'message.user' && event.kind !== 'message.member')) return []
+    const from =
+      event.kind === 'message.user' ? 'user' : nameOf(event.actor.id, event.actor.display_name)
+    return [{ seq: event.seq, from, text, at: event.created_at }]
+  })
+  return { messages: messages.slice(-limit), more: messages.length > limit }
 }
 
 /**
