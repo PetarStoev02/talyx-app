@@ -6,16 +6,20 @@ import {
   itemRef,
   pinnedBots
 } from '@features/bots/roster'
+import { bulkChoices, refusesFolder } from '@features/bots/bulk'
 import { useRoster } from '@features/bots/store'
 import type { RosterActions } from '@features/bots/actions'
-import type { Bot, Folder, Room, RosterItemRef } from '@features/bots/types'
+import type { Bot, Folder, Room, RosterItemRef, RosterRowRef } from '@features/bots/types'
 import type { TranslationKey } from '@shared/lib/i18n'
 import type { RosterDragItem } from './drag'
+import { pickedRows } from './picks'
 import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  CheckCheck,
+  EyeOff,
   Folder as FolderIcon,
   FolderInput,
   FolderPlus,
@@ -36,13 +40,17 @@ interface ControlsOptions {
   setRenamingFolder: (folder: Folder) => void
   setDeletingFolder: (folder: Folder) => void
   setSubfolderOf: (folder: Folder) => void
+  setDeletingRows: (rows: RosterRowRef[]) => void
   t: (key: TranslationKey) => string
 }
 
 /** Where dragged roster items land: rows into a folder's list, folders in the folder tree. */
 export interface RosterDrops {
-  /** A bot or room into `folderId`, in front of the row keyed `before` (null: last). */
-  item: (item: RosterDragItem, place: { folderId: string | null; before: string | null }) => void
+  /**
+   * A bot or room, or several picked rows, into `folderId`, in front of the row keyed `before`
+   * (null: last).
+   */
+  items: (rows: RosterDragItem[], place: { folderId: string | null; before: string | null }) => void
   /** A folder under `parentId` (null: top level), in front of `beforeId` (null: last). */
   folder: (id: string, place: { parentId: string | null; beforeId: string | null }) => void
 }
@@ -55,11 +63,16 @@ export function rosterControls(options: ControlsOptions): {
 } {
   const { actions, run } = options
   return {
-    botActions: (bot) => botActions(bot, options),
-    roomActions: (room) => roomActions(room, options),
-    folderActions: (folder) => folderActions(folder, options),
+    botActions: (bot) =>
+      pickedOr({ kind: 'bot', id: bot.name }, () => botActions(bot, options), options),
+    roomActions: (room) =>
+      pickedOr({ kind: 'room', id: room.room_id }, () => roomActions(room, options), options),
+    folderActions: (folder) =>
+      pickedOr({ kind: 'folder', id: folder.id }, () => folderActions(folder, options), options),
     drops: {
-      item: ({ kind, id }, place) => {
+      items: (rows, place) => {
+        if (rows.length > 1) return run(() => actions.placeRows(rows, place))
+        const [{ kind, id }] = rows
         if (kind !== 'folder') run(() => actions.placeItem({ kind, id }, place))
       },
       folder: (id, place) => {
@@ -83,7 +96,7 @@ function botActions(bot: Bot, options: ControlsOptions): MenuAction[] {
     },
     ...pinOrderActions(bot, options),
     ...(bot.meta.pinned ? [] : stepActions({ kind: 'bot', id: bot.name }, options)),
-    moveToMenu(current, (folderId) => run(() => actions.moveBot(bot, folderId)), options),
+    moveToMenu({ current, move: (folderId) => run(() => actions.moveBot(bot, folderId)) }, options),
     {
       label: t('roster.editProfile'),
       icon: Pencil,
@@ -116,7 +129,10 @@ function roomActions(room: Room, options: ControlsOptions): MenuAction[] {
       onSelect: () => run(() => actions.pinRoom(room))
     },
     ...(pinned ? [] : stepActions({ kind: 'room', id: room.room_id }, options)),
-    moveToMenu(current, (folderId) => run(() => actions.moveRoom(room.room_id, folderId)), options),
+    moveToMenu(
+      { current, move: (folderId) => run(() => actions.moveRoom(room.room_id, folderId)) },
+      options
+    ),
     {
       label: t('roster.deleteRoom'),
       icon: Trash2,
@@ -127,12 +143,70 @@ function roomActions(room: Room, options: ControlsOptions): MenuAction[] {
   ]
 }
 
-// "Move to ›": every folder, and Unassigned after a line; the current one checked.
+// Right-click on one of several picked rows acts on all of them.
+function pickedOr(
+  row: RosterRowRef,
+  single: () => MenuAction[],
+  options: ControlsOptions
+): MenuAction[] {
+  const { picked } = useRoster.getState()
+  return picked.length > 1 && picked.includes(itemKey(row))
+    ? pickedActions(pickedRows(), options)
+    : single()
+}
+
+// "N selected", then only the actions that suit every picked row.
+function pickedActions(rows: RosterRowRef[], options: ControlsOptions): MenuAction[] {
+  const { actions, run, setDeletingRows, t } = options
+  const snapshot = useRoster.getState().snapshot
+  const choices = bulkChoices(snapshot, rows)
+  const entries: (MenuAction | false)[] = [
+    { label: t('roster.picked').replace('{count}', String(rows.length)), heading: true },
+    moveToMenu(
+      {
+        current: undefined,
+        move: (folderId) => run(() => actions.moveRows(rows, folderId)),
+        refused: (folderId) => refusesFolder(snapshot, rows, folderId)
+      },
+      options
+    ),
+    !!choices.pin && {
+      label: t(choices.pin === 'pin' ? 'roster.pin' : 'roster.unpin'),
+      icon: choices.pin === 'pin' ? Pin : PinOff,
+      onSelect: () => run(() => actions.pinRows(rows))
+    },
+    choices.markRead && {
+      label: t('roster.markRead'),
+      icon: CheckCheck,
+      onSelect: () => useRoster.getState().markRead(rows)
+    },
+    choices.hide && {
+      label: t('roster.hide'),
+      icon: EyeOff,
+      onSelect: () => run(() => actions.hideRows(rows))
+    },
+    choices.delete && {
+      label: t('roster.deleteRows'),
+      icon: Trash2,
+      destructive: true,
+      separated: true,
+      onSelect: () => setDeletingRows(rows)
+    }
+  ]
+  return entries.filter((entry): entry is MenuAction => !!entry)
+}
+
+// "Move to ›": every folder, and Unassigned after a line; the current one checked, and a folder
+// the rows cannot go into (a picked folder or one inside it) greyed.
 function moveToMenu(
-  current: string | null,
-  move: (folderId: string | null) => void,
+  target: {
+    current: string | null | undefined
+    move: (folderId: string | null) => void
+    refused?: (folderId: string) => boolean
+  },
   { t }: ControlsOptions
 ): MenuAction {
+  const { current, move, refused } = target
   const { folders } = useRoster.getState().snapshot
   return {
     label: t('roster.moveTo'),
@@ -142,6 +216,7 @@ function moveToMenu(
         label: folder.name,
         icon: FolderIcon,
         current: folder.id === current,
+        disabled: refused?.(folder.id),
         onSelect: () => move(folder.id)
       })),
       {

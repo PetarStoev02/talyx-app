@@ -67,5 +67,11 @@ export interface RosterItemRef {
   id: string
 }
 
+/** Any row of the roster: a bot, a room or a folder, as picking several of them names it. */
+export interface RosterRowRef {
+  kind: 'bot' | 'room' | 'folder'
+  id: string
+}
+
 export type Selection = { kind: 'bot' | 'room'; id: string } | null
 export type BotActivity = 'idle' | 'working' | 'waiting'

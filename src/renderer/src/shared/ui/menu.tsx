@@ -14,6 +14,8 @@ export interface MenuAction {
   destructive?: boolean
   /** A line above it, starting a new group. */
   separated?: boolean
+  /** A title over the menu's entries, not an entry itself. */
+  heading?: boolean
   /** The current choice among its siblings: a check in place of the icon, and nothing to do. */
   current?: boolean
   submenu?: MenuAction[]
@@ -56,7 +58,9 @@ function Entries({
         return (
           <Fragment key={index}>
             {action.separated && index > 0 && <Menu.Separator className={separatorClass} />}
-            {action.submenu ? (
+            {action.heading ? (
+              <Menu.Label className={menuLabelClass}>{action.label}</Menu.Label>
+            ) : action.submenu ? (
               <Menu.Sub>
                 <Menu.SubTrigger disabled={action.disabled} className={className}>
                   {body}

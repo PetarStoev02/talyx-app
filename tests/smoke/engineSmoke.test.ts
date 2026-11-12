@@ -317,7 +317,7 @@ async function checkThrowawayProfile(rpc: Rpc, botMetaKey: string): Promise<void
       await rpc(
         SMOKE_PROFILE,
         'profiles.configure',
-        metaPatch(SMOKE_PROFILE, botMetaKey, { meta: SMOKE_META, revision })
+        metaPatch(SMOKE_PROFILE, { [botMetaKey]: { meta: SMOKE_META, revision } })
       )
     )
   if (saved.applied.ui_meta !== true) throw new SmokeFailure('ui_meta was not applied')

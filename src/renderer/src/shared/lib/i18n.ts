@@ -353,6 +353,19 @@ const en = {
   'roster.deleteTopFolderWarning':
     'Its bots and rooms move to Unassigned and its folders to the top level. No bot or room is deleted.',
   'roster.noMessages': 'No messages yet',
+  'roster.picked': '{count} selected',
+  'roster.pickedRow': 'Selected',
+  'roster.markRead': 'Mark as read',
+  'roster.hide': 'Hide',
+  'roster.deleteRows': 'Delete…',
+  'roster.deleteRowsTitle': 'Delete {count} items?',
+  'roster.deleteRowsConfirm': 'Delete {count} items',
+  'roster.deleteRowsWarning':
+    'Deleted bots lose their data and deleted rooms stop on every machine. What is in a deleted folder and not listed here moves up into the folder it sits in. This cannot be undone.',
+  'roster.kindBot': 'Bot',
+  'roster.kindRoom': 'Room',
+  'roster.kindFolder': 'Folder',
+  'roster.errorKeepTalyx': 'Talyx’s own bot cannot be hidden or deleted.',
   'error.unexpected':
     'Something went wrong in Talyx. Try again; if it keeps happening, the log has the details.',
   'error.engineUnreachable':
