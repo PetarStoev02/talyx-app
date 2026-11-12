@@ -18,9 +18,10 @@ import type { ChatActions } from '@features/chat/chat'
 import { SlidePanel } from '@shared/ui/Reveal'
 import type { RosterBackend } from '@features/bots/data'
 
-// Where the details and room panels sit: see their SlidePanel.
+// Where the details and room panels sit: see their SlidePanel. Beside the chat from a 52rem page,
+// which leaves the chat at least about 490px; narrower, a docked panel would squeeze it unusable.
 const PANEL_PLACE =
-  'absolute inset-y-0 right-0 z-10 max-w-full shadow-xl @3xl:static @3xl:max-w-[50%] @3xl:shadow-none'
+  'absolute inset-y-0 right-0 z-10 max-w-full shadow-xl @min-[52rem]:static @min-[52rem]:max-w-[50%] @min-[52rem]:shadow-none'
 
 const pillClass =
   'flex max-w-full items-center gap-2 rounded-full bg-secondary px-4 py-2 text-base font-medium'

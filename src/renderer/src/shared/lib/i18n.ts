@@ -6,6 +6,7 @@ const en = {
   'nav.unread': '{section}, new replies',
   'nav.needsYou': '{section}, {count} waiting on you',
   'nav.closeSettings': 'Close settings',
+  'settings.back': 'Back',
   'settings.pages': 'Settings pages',
   'settings.general': 'General',
   'settings.generalDetail': 'Theme, launch at login, setup',

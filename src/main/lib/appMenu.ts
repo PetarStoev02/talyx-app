@@ -13,8 +13,8 @@ export const DEV_VIEW_ITEMS: MenuItemConstructorOptions[] = [
  * pasted into on someone's say-so could read every saved API key through the engine, so the
  * packaged app gets no dev tools; a dev run passes DEV_VIEW_ITEMS as `viewExtras`.
  * Kept: the app and window menus, editing shortcuts (copy and paste need them on macOS) and zoom.
- * "Enter License Key..." is the quiet way into modules: nothing else in the app mentions them
- * until a key is active.
+ * "Enter License Key..." (⌘⇧L, Ctrl+Shift+L) is the quiet way into modules: nothing else in the
+ * app mentions them until a key is active.
  */
 export function setAppMenu(
   platform: NodeJS.Platform,
@@ -23,6 +23,8 @@ export function setAppMenu(
 ): void {
   const enterLicense: MenuItemConstructorOptions = {
     label: 'Enter License Key…',
+    // Linux hides its menu bar (see createWindow), so the shortcut is the way to this item there.
+    accelerator: 'CmdOrCtrl+Shift+L',
     click: onEnterLicense
   }
   const template: MenuItemConstructorOptions[] = [
