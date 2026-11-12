@@ -2,11 +2,16 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { MessageItem } from '@features/chat/types'
-import { briefsByRef } from '@features/chat/workflowLines'
+import { briefsByRef, isProgressReport } from '@features/chat/workflowLines'
 import { MessageBubble } from './MessageBubble'
 
 // How close to the end still counts as reading the newest message.
 const STICK_DISTANCE_PX = 48
+
+/** A bot's report that a Workflows task moved a step stays out of the chat: Workflows shows it. */
+function isShown(item: MessageItem): boolean {
+  return !(item.kind === 'bot' && !item.streaming && isProgressReport(item.text))
+}
 
 /** Newest at the bottom; it follows new text while you are at the end, and offers a way back. */
 export function Transcript({
@@ -43,7 +48,7 @@ export function Transcript({
           composer does not end in a hard cut. */}
       <div ref={scroller} onScroll={onScroll} className="scroll-y-stable scroll-fade h-full">
         <ol className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-6">
-          {items.map((item, index) => (
+          {items.filter(isShown).map((item, index) => (
             <li key={item.id || index} className="flex flex-col">
               <MessageBubble message={item} loadImage={loadImage} briefs={briefs} />
             </li>

@@ -113,6 +113,19 @@ export function splitReply(text: string): ReplyPart[] {
   return parts.length > 0 ? parts : [{ kind: 'text', text }]
 }
 
+/**
+ * Whether a reply only reports a Workflows task moving along (a step of its workflow): the
+ * Workflows page shows that, so the chat leaves it out. A reply that ends a task or waits on you
+ * (ready, needs-you, merged, done, stopped) still shows, as does any reply without a status line.
+ */
+export function isProgressReport(text: string): boolean {
+  const statuses = splitReply(text).flatMap((part) => (part.kind === 'status' ? [part.status] : []))
+  return (
+    statuses.length > 0 &&
+    statuses.every((status) => !FIXED_STEPS.some((step) => step === status.fields.step))
+  )
+}
+
 /** Every brief in a chat by its task's ref, so a status line can name its task and step. */
 export function briefsByRef(texts: string[]): Record<string, WorkflowBrief> {
   const briefs: Record<string, WorkflowBrief> = {}

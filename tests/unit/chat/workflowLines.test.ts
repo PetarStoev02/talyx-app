@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   BRIEF_MARK,
   briefsByRef,
+  isProgressReport,
   parseBrief,
   parseStatusLine,
   splitReply,
@@ -153,5 +154,35 @@ describe('workflow lines in a chat', () => {
         expect(summary.step).toEqual({ fixed })
         expect(summary.detail).toBe(detail)
       })
+  })
+})
+
+describe('which replies the chat leaves to the Workflows page', () => {
+  it.each([
+    ['a step of the workflow', '[run acme/api#7@m1] step=build round=1', true],
+    [
+      'a step with the bot’s notes around it',
+      'Started the thread.\n[run acme/api#7@m1] step=build round=1\nRan gh pr view.',
+      true
+    ],
+    [
+      'two tasks moving along',
+      '[run acme/api#7@m1] step=build\n[run acme/api#8@m2] step=checking',
+      true
+    ],
+    ['ready to merge', '[run acme/api#7@m1] step=ready pr=66', false],
+    ['a question for you', '[run acme/api#7@m1] step=needs-you reason="which branch?"', false],
+    ['merged', 'Merged it.\n[run acme/api#7@m1] step=merged pr=66', false],
+    ['done', '[run task#m1@m1] step=done result="B"', false],
+    ['stopped', '[run acme/api#7@m1] step=stopped', false],
+    [
+      'one task moving and one waiting on you',
+      '[run acme/api#7@m1] step=build\n[run acme/api#8@m2] step=ready',
+      false
+    ],
+    ['a reply without a status line', 'Here is the plan.', false],
+    ['the brief’s template quoted back', '[run acme/api#7@m1] step=<step> round=<n>', false]
+  ])('given %s, should hide it: %s', (_why, text, hidden) => {
+    expect(isProgressReport(text)).toBe(hidden)
   })
 })
