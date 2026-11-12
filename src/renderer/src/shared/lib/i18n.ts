@@ -112,7 +112,7 @@ const en = {
   'starter.askBot': 'Ask a bot to ',
   'starter.help': 'What can you help me with?',
   'starter.withDescription': 'Help me with: {description}',
-  'starter.roomAsk': '@{handle} what do you think about ',
+  'starter.roomAsk': '@{name} what do you think about ',
   'starter.roomIntro': 'Each of you, introduce yourself in a line.',
   'chat.loading': 'Loading the conversation…',
   'action.tryAgain': 'Try again',

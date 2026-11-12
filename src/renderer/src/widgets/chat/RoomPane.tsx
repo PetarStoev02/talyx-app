@@ -10,6 +10,8 @@ import type { Bot, Room } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
 import { answering } from '@features/chat/room'
 import type { RoomActions } from '@features/chat/room'
+import { sendMentions } from '@features/chat/mentions'
+import type { Mention } from '@features/chat/mentions'
 import { parseAttachmentKey, roomItems } from '@features/chat/roomLog'
 import { useRooms } from '@features/chat/roomStore'
 import type { RoomTask, RoomView } from '@features/chat/types'
@@ -77,8 +79,12 @@ export function RoomPane({
 
   const memberOf = useCallback((member: string) => roomMember(room, bots, member), [room, bots])
   const nameOf = (member: string): string => memberOf(member).name
+  const mentions = useMemo(() => roomMentions(room, memberOf), [room, memberOf])
   const events = view?.events
-  const items = useMemo(() => roomItems(events ?? [], { memberOf, t }), [events, memberOf, t])
+  const items = useMemo(
+    () => roomItems(events ?? [], { memberOf, mentions, t }),
+    [events, memberOf, mentions, t]
+  )
   const loadImage = useCallback(
     (key: string): Promise<string> => {
       const file = parseAttachmentKey(key)
@@ -98,7 +104,7 @@ export function RoomPane({
     running: view.working,
     send: ({ text, files }) =>
       actions.send(roomId, {
-        text,
+        text: sendMentions(text, mentions),
         attachments: files.map((file) => ({
           attachment_id: file.id,
           kind: 'image',
@@ -143,7 +149,7 @@ export function RoomPane({
               {listOf(room.members.map((member) => nameOf(member.member_id ?? member.profile)))}
             </p>
             <p className="max-w-md text-sm text-muted-foreground">{t('rooms.empty')}</p>
-            <Starters starters={roomStarters(room, t)} onStart={start} />
+            <Starters starters={roomStarters(room, nameOf, t)} onStart={start} />
           </div>
         )}
       </div>
@@ -258,6 +264,18 @@ function roomMember(room: Room, bots: Bot[], memberId: string): { name: string; 
   return { name: bot ? botTitle(bot) : member?.display_name || profile, profile }
 }
 
+// What each member answers to: its handle (rooms other clients made may set their own), shown
+// and written as its roster name.
+function roomMentions(
+  room: Room,
+  memberOf: (member: string) => { name: string; profile: string }
+): Mention[] {
+  return room.members.map((member) => ({
+    handle: member.handle ?? roomHandle(member.profile),
+    name: memberOf(member.member_id ?? member.profile).name
+  }))
+}
+
 function activityLine(
   view: RoomView,
   nameOf: (member: string) => string,
@@ -334,11 +352,20 @@ function TaskCard({
 }
 
 // Ways to start a room: ask one bot (the first that is not Talyx), or hear from every one.
-function roomStarters(room: Room, t: (key: TranslationKey) => string): Starter[] {
+function roomStarters(
+  room: Room,
+  nameOf: (member: string) => string,
+  t: (key: TranslationKey) => string
+): Starter[] {
   const first = room.members.find((member) => member.profile !== 'default') ?? room.members[0]
   return [
     ...(first
-      ? [{ text: t('starter.roomAsk').replace('{handle}', roomHandle(first.profile)), send: false }]
+      ? [
+          {
+            text: t('starter.roomAsk').replace('{name}', nameOf(first.member_id ?? first.profile)),
+            send: false
+          }
+        ]
       : []),
     { text: t('starter.roomIntro'), send: true }
   ]

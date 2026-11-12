@@ -298,7 +298,7 @@ export function engineDouble(
     revisions[name] = {}
     // Without a model the engine gives the new profile Talyx's own.
     profiles[name] = {
-      description: '',
+      description: (params.description as string) ?? '',
       soul: (params.soul as string) ?? '',
       model: { provider: 'custom', model: '9-route-provider' }
     }

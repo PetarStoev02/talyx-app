@@ -15,7 +15,7 @@ export interface NewBot {
   /** Null leaves the model the engine gives a new profile: Talyx's own. */
   model: ModelChoice | null
   look: Look
-  /** What the bot does, written into its SOUL. Blank counts as none. */
+  /** What the bot does: its description, also written into its SOUL. Blank counts as none. */
   purpose: string | null
 }
 
@@ -67,9 +67,11 @@ export async function createBot(
 ): Promise<string> {
   const id = profileIdFor(bot.name, taken)
   const title = bot.name.trim()
+  const purpose = bot.purpose?.trim() || null
   await backend.request('default', 'profiles.create', {
     name: id,
-    soul: soulFor(title, id, bot.purpose?.trim() || null)
+    soul: soulFor(title, id, purpose),
+    ...(purpose ? { description: purpose } : {})
   })
   try {
     if (bot.model) await confirmBotModel(backend, id, bot.model)

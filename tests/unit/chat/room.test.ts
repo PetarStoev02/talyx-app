@@ -6,6 +6,7 @@ import {
   parseAttachmentKey,
   roomItems
 } from '../../../src/renderer/src/features/chat/roomLog'
+import { sendMentions, showMentions } from '../../../src/renderer/src/features/chat/mentions'
 import { useRooms } from '../../../src/renderer/src/features/chat/roomStore'
 import type { RoomEvent, RoomView } from '../../../src/renderer/src/features/chat/types'
 import { t } from '../../../src/renderer/src/shared/lib/i18n'
@@ -24,6 +25,10 @@ const labels = {
     name: NAMES[member] ?? member,
     profile: member === 'cfo-seat' ? 'acme-cfo' : member
   }),
+  mentions: [
+    { handle: 'talyx', name: 'Talyx' },
+    { handle: 'bot-2', name: 'Acme CFO' }
+  ],
   t: (key: Parameters<typeof t>[0]): string => t(key, 'en')
 }
 
@@ -397,6 +402,30 @@ describe('room model', () => {
 })
 
 describe('room transcript', () => {
+  it("should show each @handle in a message as the member's name", () => {
+    const items = roomItems(
+      [
+        event(
+          1,
+          'message.user',
+          { text: '@bot-2 and @talyx, thoughts?' },
+          { kind: 'user', id: 'desktop' }
+        ),
+        event(
+          2,
+          'message.member',
+          { text: 'Ask @Talyx. @bot-22 and me@bot-2 stay.' },
+          { kind: 'member', id: 'cfo-seat' }
+        )
+      ],
+      labels
+    )
+    expect(items.map((item) => ('text' in item ? item.text : null))).toEqual([
+      '@Acme CFO and @Talyx, thoughts?',
+      'Ask @Talyx. @bot-22 and me@bot-2 stay.'
+    ])
+  })
+
   it('should show your messages, each bot reply with its sender, and hide bookkeeping', () => {
     const items = roomItems(
       [
@@ -486,5 +515,38 @@ describe('room transcript', () => {
       attachmentId: 'a1',
       kind: 'image'
     })
+  })
+})
+
+describe('room mentions', () => {
+  const mentions = [
+    { handle: 'bot-2', name: 'Acme' },
+    { handle: 'bot-3', name: 'Acme CFO' }
+  ]
+
+  it("should send each member's @name as its @handle, the longest name first", () => {
+    expect(sendMentions('@Acme CFO what do you think, @acme?', mentions)).toBe(
+      '@bot-3 what do you think, @bot-2?'
+    )
+  })
+
+  it('should leave text alone with no member named after the @', () => {
+    expect(sendMentions('@Acmeish and mail@Acme', mentions)).toBe('@Acmeish and mail@Acme')
+    expect(sendMentions('no mention', [])).toBe('no mention')
+    expect(sendMentions('see x.com/@Acme', mentions)).toBe('see x.com/@Acme')
+  })
+
+  it('should keep the handle of a member whose name another member also goes by', () => {
+    const twins = [
+      { handle: 'analyst', name: 'Alex' },
+      { handle: 'writer', name: 'alex' },
+      { handle: 'ops', name: 'Research' },
+      { handle: 'research', name: 'Scout' }
+    ]
+    expect(sendMentions('@Alex and @Research', twins)).toBe('@Alex and @Research')
+    expect(showMentions('@analyst @writer @ops @research', twins)).toBe(
+      '@analyst @writer @ops @Scout'
+    )
+    expect(sendMentions('@Scout', twins)).toBe('@research')
   })
 })

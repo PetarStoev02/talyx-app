@@ -51,7 +51,7 @@ export function BotRow({
     // Right-click (or Shift+F10) opens the row's or tile's actions.
     <ContextMenuArea actions={actions} disabled={saving}>
       <div
-        draggable={!saving}
+        draggable
         data-roster-row={itemKey(row)}
         onDragStart={(event) => startRosterDrag(event, row)}
         onDragEnd={endRosterDrag}
