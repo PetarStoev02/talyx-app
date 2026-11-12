@@ -445,6 +445,19 @@ describe('bot chat', () => {
         })
       })
 
+      it('should show the message a running turn answers even before history stores it', async () => {
+        engine.chats[MANAGER] = {
+          ...engine.chats[MANAGER],
+          inflight: { user: 'How many folders?', assistant: 'Four' },
+          running: true
+        }
+        await actions.open(MANAGER, 'manager-chat')
+        expect(shown().slice(-2)).toEqual([
+          { kind: 'user', text: 'How many folders?' },
+          { kind: 'bot', text: 'Four' }
+        ])
+      })
+
       it('should show the message the engine holds after a reload, also one this window never sent', async () => {
         engine.chats[MANAGER] = { ...engine.chats[MANAGER], queued: { user: 'From my phone' } }
         await actions.open(MANAGER, 'manager-chat')

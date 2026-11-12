@@ -367,10 +367,20 @@ function rebuilt(
   let transcript = fromHistory(sessionId, messages, resume.running === true)
   const same = previous?.sessionId === sessionId
   const waiting = stillQueued(transcript, same ? previous.queued : [], resume)
-  // The running turn answers a message that waited here and history does not hold yet: it shows
-  // above the reply, not under it.
+  // The running turn answers a message history does not hold yet (one that waited here, or one
+  // the engine took from the queue): it shows above the reply, not under it or nowhere.
   const asked = resume.running ? resume.inflight?.user?.trim() : null
-  const answered = waiting.find((item) => item.kind === 'user' && item.text === asked)
+  const lastAsked = transcript.items.findLast((item) => item.kind === 'user')
+  const answered =
+    waiting.find((item) => item.kind === 'user' && item.text === asked) ??
+    (asked && lastAsked?.kind === 'user' && lastAsked.text !== asked
+      ? ({
+          kind: 'user',
+          id: `asked-${resume.last_sequence ?? 0}`,
+          text: asked,
+          images: []
+        } as const)
+      : undefined)
   if (answered) transcript = { ...transcript, items: [...transcript.items, answered] }
   const inflight = resume.running ? resume.inflight?.assistant : null
   if (inflight) {

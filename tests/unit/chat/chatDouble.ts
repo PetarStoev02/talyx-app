@@ -20,6 +20,8 @@ export interface ChatDouble {
       messages: SessionMessage[]
       inflight?: Record<string, unknown>
       queued?: { user: string }
+      // A turn still answering when the chat is resumed.
+      running?: boolean
     }
   >
   failNext: (method: string, message: string) => void
@@ -70,7 +72,7 @@ export function chatDouble(
       case 'session.resume':
         return {
           session_id: params.session_id,
-          running: false,
+          running: chat?.running === true,
           last_sequence: 7,
           ...(chat?.inflight ? { inflight: chat.inflight } : {}),
           ...(chat?.queued ? { queued: chat.queued } : {}),
