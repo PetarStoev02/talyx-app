@@ -42,6 +42,12 @@ describe('UserSettingsPartialSchema', () => {
     expect(validateInput(UserSettingsPartialSchema, { launchAtLogin })).toEqual({ launchAtLogin })
   })
 
+  it.each([true, false])('should accept the completion sound %s', (completionSound) => {
+    expect(validateInput(UserSettingsPartialSchema, { completionSound })).toEqual({
+      completionSound
+    })
+  })
+
   it('should reject a launch-at-login flag that is not a boolean', () => {
     expect(() => validateInput(UserSettingsPartialSchema, { launchAtLogin: 'yes' })).toThrow()
   })

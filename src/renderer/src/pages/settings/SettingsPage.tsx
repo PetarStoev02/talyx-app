@@ -14,6 +14,7 @@ import { ProvidersSection } from '@widgets/providers'
 import { EngineGate } from '@widgets/engine-gate'
 import { DebugConsole, EngineSection } from '@widgets/settings-engine'
 import { StartupSection } from '@widgets/settings-startup'
+import { SoundSection } from '@widgets/settings-sound'
 import { AboutSection } from '@widgets/settings-about'
 import { ModulesSection } from '@widgets/modules'
 import {
@@ -102,6 +103,7 @@ export function SettingsPage({
             </div>
           </div>
         </section>
+        <SoundSection />
         <StartupSection />
         <section className="space-y-2">
           <h2 className="text-xl font-semibold text-foreground">{t('settings.setup')}</h2>

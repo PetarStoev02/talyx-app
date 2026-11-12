@@ -1,5 +1,6 @@
 import type { ModelPick } from '@shared/ui/ModelPicker'
 import { readRoomLog, sendRoomMessage } from '@shared/engine/rooms'
+import { replyFinished } from './completionSound'
 import { useRooms } from './roomStore'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { AppError, failureOf } from '@shared/lib/problem'
@@ -103,6 +104,8 @@ export function roomActions(backend: RoomBackend): RoomActions {
     const known = current?.lastSeq ?? 0
     // A send's own read may have landed first; keep only what is still new.
     const fresh = events.filter((event) => event.seq > known)
+    // Log rows are final, so each member message is a finished reply; the first read is history.
+    if (known > 0 && fresh.some((event) => event.kind === 'message.member')) replyFinished()
     const phases = phasesOf(driver)
     const tasks = tasksOf(driver)
     const next = {

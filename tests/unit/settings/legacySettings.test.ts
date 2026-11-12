@@ -14,6 +14,7 @@ describe('migrateSettings', () => {
       lastSelection: null,
       setupDone: false,
       launchAtLogin: false,
+      completionSound: false,
       licenseKey: null
     })
   })
@@ -34,6 +35,7 @@ describe('migrateSettings', () => {
       lastSelection: null,
       setupDone: false,
       launchAtLogin: false,
+      completionSound: false,
       licenseKey: null
     })
   })
@@ -62,6 +64,14 @@ describe('migrateSettings', () => {
     ['a hand-edited string', 'yes', false]
   ])('should read launchAtLogin %s', (_case, launchAtLogin, expected) => {
     expect(migrateSettings({ launchAtLogin }).launchAtLogin).toBe(expected)
+  })
+
+  it.each([
+    ['saved on', true, true],
+    ['missing', undefined, false],
+    ['a hand-edited string', 'yes', false]
+  ])('should read completionSound %s', (_case, completionSound, expected) => {
+    expect(migrateSettings({ completionSound }).completionSound).toBe(expected)
   })
 
   it.each([

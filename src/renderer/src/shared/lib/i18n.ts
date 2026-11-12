@@ -9,7 +9,7 @@ const en = {
   'settings.back': 'Back',
   'settings.pages': 'Settings pages',
   'settings.general': 'General',
-  'settings.generalDetail': 'Theme, launch at login, setup',
+  'settings.generalDetail': 'Theme, sound, launch at login, setup',
   'settings.providersDetail': 'Keys, sign-ins and Talyx’s model',
   'settings.engineDetail': 'Where it runs, debug console',
   'settings.modulesDetail': 'License and installed modules',
@@ -511,6 +511,11 @@ const en = {
   'settings.launchAtLoginDesc': 'Open Talyx when you sign in to your computer.',
   'settings.errorLaunchAtLogin':
     'Talyx could not change whether it starts at login. Check your system settings and try again.',
+  'settings.sound': 'Sound',
+  'settings.completionSound': 'Play a sound when a reply finishes',
+  'settings.completionSoundDesc':
+    'A short chime when a bot finishes answering in a chat or room you have open.',
+  'settings.errorCompletionSound': 'Talyx could not save the sound setting. Try again.',
   'settings.theme': 'Theme',
   'settings.themeDesc': 'Choose your preferred color scheme.',
   'settings.light': 'Light',

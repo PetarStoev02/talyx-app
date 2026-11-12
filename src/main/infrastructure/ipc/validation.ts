@@ -17,6 +17,7 @@ export const UserSettingsPartialSchema = z
     theme: ThemeSchema,
     setupDone: z.boolean(),
     launchAtLogin: z.boolean(),
+    completionSound: z.boolean(),
     sidebarWidth: z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)
   })
   .partial()
