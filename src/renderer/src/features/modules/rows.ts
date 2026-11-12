@@ -22,12 +22,15 @@ export interface ModuleRow {
  * One row per module the license unlocks: what is installed, merged with what the catalog offers
  * (null while the catalog is loading or could not be read, so installed modules still show).
  * The modules the key names come first, in its order. A key for every module names none of them,
- * so the installed and the offered ones follow.
+ * so the installed and the offered ones follow by name: installing one must not move the rows,
+ * or the pointer lands on another module's button.
  */
 export function moduleRows(state: ModulesState, available: AvailableModule[] | null): ModuleRow[] {
   const license = state.license
   if (!license) return []
-  const listed = [...state.modules, ...(available ?? [])].map((module) => module.id)
+  const listed = [...state.modules, ...(available ?? [])]
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
+    .map((module) => module.id)
   // The catalog may have been read for an earlier key, so every id is checked against this one.
   const ids = [...new Set([...license.modules, ...listed])].filter((id) =>
     unlocksModule(license, id)

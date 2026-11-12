@@ -6,6 +6,7 @@ import type { TranslationKey } from '@shared/lib/i18n'
 import { problemOf } from '@shared/lib/problem'
 import { reportError } from '@shared/lib/report'
 import { Button } from '@shared/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { useModules } from '@features/modules/store'
 import { moduleRows, type ModuleRow } from '@features/modules/rows'
 import type { AvailableModule } from '../../../../shared/modules'
@@ -20,6 +21,8 @@ export function ModuleList({ removable }: { removable: boolean }): React.JSX.Ele
   const [available, setAvailable] = useState<AvailableModule[] | null>(null)
   const [catalogFailed, setCatalogFailed] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
+  // Uninstall asks first: after an install it sits where Install was, under the pointer.
+  const [uninstalling, setUninstalling] = useState<ModuleRow | null>(null)
   const rows = moduleRows(state, available)
 
   useEffect(() => {
@@ -79,7 +82,7 @@ export function ModuleList({ removable }: { removable: boolean }): React.JSX.Ele
                 <Button
                   variant="ghost"
                   disabled={busy !== null}
-                  onClick={() => void run(row.id, modulesApi.uninstall)}
+                  onClick={() => setUninstalling(row)}
                 >
                   {t('modules.uninstall')}
                 </Button>
@@ -88,6 +91,29 @@ export function ModuleList({ removable }: { removable: boolean }): React.JSX.Ele
           </li>
         ))}
       </ul>
+
+      <Dialog open={!!uninstalling} onOpenChange={(open) => !open && setUninstalling(null)}>
+        <DialogContent>
+          <DialogTitle>
+            {t('modules.uninstallTitle').replace('{name}', uninstalling?.name ?? '')}
+          </DialogTitle>
+          <DialogDescription>{t('modules.uninstallWarning')}</DialogDescription>
+          <div className="flex gap-2">
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (uninstalling) void run(uninstalling.id, modulesApi.uninstall)
+                setUninstalling(null)
+              }}
+            >
+              {t('modules.uninstall')}
+            </Button>
+            <Button variant="ghost" onClick={() => setUninstalling(null)}>
+              {t('modules.cancel')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
