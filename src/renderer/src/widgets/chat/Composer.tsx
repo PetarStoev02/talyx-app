@@ -36,8 +36,11 @@ export interface ComposerFile {
 export interface ComposerTarget {
   placeholder: string
   running: boolean
-  /** False when nothing was sent; the composer gets the draft back. */
-  send: (draft: { text: string; files: ComposerFile[] }) => Promise<boolean>
+  /**
+   * False when nothing was sent; the composer gets the draft back. `queued` is true for a message
+   * sent while the bot or room is answering: it waits its turn instead of cutting in.
+   */
+  send: (draft: { text: string; files: ComposerFile[]; queued: boolean }) => Promise<boolean>
   upload: (file: File, dataUrl: string) => Promise<ComposerFile>
   transcribe: (audio: { dataUrl: string; mime: string }) => Promise<string>
   stop: () => void
@@ -69,8 +72,8 @@ export function Composer({
     if (seed) setText(seed.text)
   }
   const picker = useRef<HTMLInputElement>(null)
-  // Until the engine starts the turn, a send in flight counts as running: no second send.
-  const running = sending || target.running
+  // While an answer runs, a new message queues behind it; only a send still on its way waits.
+  const running = target.running
   const dictation = useDictation(
     target.transcribe,
     (words) => setText((current) => (current.trim() ? `${current}\n${words}` : words)),
@@ -88,12 +91,14 @@ export function Composer({
   )
 
   async function send(): Promise<void> {
-    if (running || (!text.trim() && !files.length)) return
+    if (sending || (!text.trim() && !files.length)) return
     const attached = files
     setText('')
     setFiles([])
     setSending(true)
-    const sent = await target.send({ text, files: attached }).finally(() => setSending(false))
+    const sent = await target
+      .send({ text, files: attached, queued: running })
+      .finally(() => setSending(false))
     if (sent) return
     // A failed send gives the draft back, unless something new was typed meanwhile.
     setText((current) => current || text)
@@ -114,6 +119,8 @@ export function Composer({
       }
     }
   }
+
+  const draft = !!text.trim() || files.length > 0
 
   function onKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>): void {
     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
@@ -220,20 +227,25 @@ export function Composer({
                 <Mic size={ICON_SIZE} />
               )}
             </button>
-            {running ? (
+            {running && (
               <button
                 type="button"
                 aria-label={t('chat.stop')}
                 onClick={target.stop}
-                className={cn(iconButton, 'bg-primary text-primary-foreground')}
+                className={cn(
+                  iconButton,
+                  // With a draft to send, Send is the main button and Stop steps back.
+                  draft ? 'hover:bg-foreground/10' : 'bg-primary text-primary-foreground'
+                )}
               >
                 <Square size={ICON_SIZE - 4} fill="currentColor" />
               </button>
-            ) : (
+            )}
+            {(!running || draft) && (
               <button
                 type="submit"
-                aria-label={t('chat.send')}
-                disabled={!text.trim() && !files.length}
+                aria-label={running ? t('chat.sendQueued') : t('chat.send')}
+                disabled={!draft || sending}
                 className={cn(iconButton, 'bg-primary text-primary-foreground disabled:opacity-50')}
               >
                 <ArrowUp size={ICON_SIZE} />

@@ -127,6 +127,7 @@ const en = {
   'chat.openSettings': 'Open Settings',
   'chat.placeholder': 'Message {name}',
   'chat.send': 'Send',
+  'chat.sendQueued': 'Send after this answer',
   'chat.stop': 'Stop',
   'chat.addImage': 'Add images',
   'chat.removeImage': 'Remove {name}',

@@ -78,10 +78,12 @@ export function ChatPane({
   const target: ComposerTarget = {
     placeholder: t('chat.placeholder').replace('{name}', title),
     running,
-    send: ({ text, files }) =>
+    send: ({ text, files, queued }) =>
       actions.send(bot.name, {
         text,
-        images: files.map((file) => ({ path: file.id, mime: file.mime }))
+        images: files.map((file) => ({ path: file.id, mime: file.mime })),
+        // Sent while the bot answers: it waits for that answer instead of redirecting it.
+        ...(queued ? { whenBusy: 'queue' as const } : {})
       }),
     upload: async (file, dataUrl) => {
       const image = await actions.uploadImage(bot.name, { dataUrl, name: file.name })
