@@ -6,7 +6,7 @@ import {
   parseAttachmentKey,
   roomItems
 } from '../../../src/renderer/src/features/chat/roomLog'
-import { sendMentions } from '../../../src/renderer/src/features/chat/mentions'
+import { sendMentions, showMentions } from '../../../src/renderer/src/features/chat/mentions'
 import { useRooms } from '../../../src/renderer/src/features/chat/roomStore'
 import type { RoomEvent, RoomView } from '../../../src/renderer/src/features/chat/types'
 import { t } from '../../../src/renderer/src/shared/lib/i18n'
@@ -533,5 +533,20 @@ describe('room mentions', () => {
   it('should leave text alone with no member named after the @', () => {
     expect(sendMentions('@Acmeish and mail@Acme', mentions)).toBe('@Acmeish and mail@Acme')
     expect(sendMentions('no mention', [])).toBe('no mention')
+    expect(sendMentions('see x.com/@Acme', mentions)).toBe('see x.com/@Acme')
+  })
+
+  it('should keep the handle of a member whose name another member also goes by', () => {
+    const twins = [
+      { handle: 'analyst', name: 'Alex' },
+      { handle: 'writer', name: 'alex' },
+      { handle: 'ops', name: 'Research' },
+      { handle: 'research', name: 'Scout' }
+    ]
+    expect(sendMentions('@Alex and @Research', twins)).toBe('@Alex and @Research')
+    expect(showMentions('@analyst @writer @ops @research', twins)).toBe(
+      '@analyst @writer @ops @Scout'
+    )
+    expect(sendMentions('@Scout', twins)).toBe('@research')
   })
 })
