@@ -41,6 +41,20 @@ export async function createRoom(
   return roomId
 }
 
+/** Renames a room on the engine, for every client; the room's log records the new name. */
+export async function renameRoom(
+  backend: RosterBackend,
+  rename: { roomId: string; name: string }
+): Promise<void> {
+  const name = rename.name.trim()
+  if (!name) throw new RosterError('rooms.errorName')
+  await backend.request('default', 'groups.rename', {
+    room_id: rename.roomId,
+    event_id: crypto.randomUUID(),
+    name
+  })
+}
+
 /** The handle a bot answers to when you @ it in a room Talyx made. */
 export function roomHandle(profile: string): string {
   return profile === 'default' ? MANAGER_HANDLE : profile

@@ -177,6 +177,10 @@ export const MCP_TOOLS = {
       members: z.array(z.string().min(1)).describe('The bots’ profile ids')
     })
   },
+  rename_room: {
+    description: 'Rename a group room.',
+    args: z.object({ roomId: z.string().min(1), name: z.string().trim().min(1) })
+  },
   send_room_message: {
     description:
       'Post a message in a group room as the user. The room\u2019s bots answer it there; read_room_history shows their replies.',

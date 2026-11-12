@@ -13,7 +13,7 @@ import { MANAGER, confirmModel, loadDetails, saveDetails } from './details'
 import type { DetailsDraft } from './details'
 import { lookOf, matchName } from './look'
 import type { Look } from './look'
-import { createRoom } from './rooms'
+import { createRoom, renameRoom } from './rooms'
 import { RosterError, botTitle, itemFolder, itemKey, pinnedBots } from './roster'
 import {
   DEFAULT_SCHEDULE,
@@ -228,6 +228,12 @@ function toolsFor(
           members: members.map((profile) => botOf(snapshot, profile))
         })
       })),
+    rename_room: ({ roomId, name }) =>
+      change(async (snapshot) => {
+        roomOf(snapshot, roomId)
+        await renameRoom(backend, { roomId, name })
+        return { roomId, name }
+      }),
     send_room_message: async ({ roomId, text }) => {
       roomOf(await fresh(), roomId)
       await sendRoomMessage(backend.request, {

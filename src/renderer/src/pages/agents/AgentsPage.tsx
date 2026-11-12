@@ -130,7 +130,7 @@ export function AgentsPage({
         <SlidePanel value={detailsOpen && room} className={PANEL_PLACE}>
           {(shown) => (
             <ErrorBoundary key={shown.room_id} scope="details">
-              <RoomDetailsPanel room={shown} onClose={() => setRoomPanel(false)} />
+              <RoomDetailsPanel room={shown} backend={roster} onClose={() => setRoomPanel(false)} />
             </ErrorBoundary>
           )}
         </SlidePanel>

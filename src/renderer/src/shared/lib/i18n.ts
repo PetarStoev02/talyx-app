@@ -211,6 +211,10 @@ const en = {
   'rooms.name': 'Name',
   'rooms.members': 'Bots',
   'rooms.details': 'Room details',
+  'rooms.rename': 'Rename room',
+  'rooms.errorName': 'A room needs a name.',
+  'rooms.fixedMembers':
+    'The bots in a room are fixed when it is made: the engine cannot add or remove one yet.',
   'rooms.openDetails': 'Details for {name}',
   'rooms.membersPicked': '{count} of 6 picked',
   'rooms.membersLoading': 'Loading bots…',

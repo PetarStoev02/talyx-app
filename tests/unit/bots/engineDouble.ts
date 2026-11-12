@@ -414,6 +414,12 @@ export function engineDouble(
       rooms.push(structuredClone(room))
       return { room }
     }
+    if (method === 'groups.rename') {
+      const room = rooms.find((item) => item.room_id === params.room_id)
+      if (!room) throw new Error('Room not found')
+      room.name = params.name as string
+      return { room: structuredClone(room) }
+    }
     if (method === 'groups.send') {
       const log = (double.roomLogs[params.room_id as string] ??= [])
       log.push({

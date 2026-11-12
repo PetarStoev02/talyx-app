@@ -6,7 +6,11 @@ import {
   runRosterMutation
 } from '../../../src/renderer/src/features/bots/actions'
 import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
-import { createRoom, seatableProfiles } from '../../../src/renderer/src/features/bots/rooms'
+import {
+  createRoom,
+  renameRoom,
+  seatableProfiles
+} from '../../../src/renderer/src/features/bots/rooms'
 import { folderRooms, pinnedRooms } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import type { Bot, Room, RosterSnapshot } from '../../../src/renderer/src/features/bots/types'
@@ -135,6 +139,20 @@ describe('group rooms in the roster', () => {
     it('should drop a pin whose room is gone', () => {
       useRoster.setState({ snapshot: { ...snapshot(), roomPins: ['gone', 'review'] } })
       expect(pinnedRooms(snapshot()).map((item) => item.room_id)).toEqual(['review'])
+    })
+  })
+
+  describe('renaming', () => {
+    it('should rename the room for every client and show the new name', async () => {
+      await act(() => renameRoom(backend, { roomId: 'standup', name: '  Daily standup ' }))
+      expect(engine.rooms[0].name).toBe('Daily standup')
+      expect(room('standup').name).toBe('Daily standup')
+    })
+
+    it('should refuse a blank name without asking the engine', async () => {
+      await act(() => renameRoom(backend, { roomId: 'standup', name: '   ' }))
+      expect(useRoster.getState().actionError).toMatchObject({ key: 'rooms.errorName' })
+      expect(engine.rooms[0].name).toBe('Standup')
     })
   })
 

@@ -349,6 +349,14 @@ describe('MCP tools', () => {
       expect(answer).toEqual({ ok: false, text: 'A room needs 2 to 6 bots.' })
     })
 
+    it('should rename a room', async () => {
+      expect(await ok('rename_room', { roomId: 'room', name: 'Desk' })).toEqual({
+        roomId: 'room',
+        name: 'Desk'
+      })
+      expect(roster().rooms[0].name).toBe('Desk')
+    })
+
     it('should post a message in a room as the user', async () => {
       expect(await ok('send_room_message', { roomId: 'room', text: ' Plan the week ' })).toEqual({
         roomId: 'room',
