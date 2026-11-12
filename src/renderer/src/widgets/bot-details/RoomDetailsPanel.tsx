@@ -1,15 +1,20 @@
 import { useState } from 'react'
-import { Pencil, X } from 'lucide-react'
+import { Pencil, Plus, X } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { runRosterMutation } from '@features/bots/actions'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import type { RosterBackend } from '@features/bots/data'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
-import { renameRoom } from '@features/bots/rooms'
+import {
+  MAX_ROOM_MEMBERS,
+  MIN_ROOM_MEMBERS,
+  changeRoomMembers,
+  renameRoom
+} from '@features/bots/rooms'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
-import type { Room } from '@features/bots/types'
+import type { Bot, Room } from '@features/bots/types'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 
@@ -56,26 +61,11 @@ export function RoomDetailsPanel({
         <h3 id="room-members" className="px-2 pb-2 text-sm font-medium text-muted-foreground">
           {t('rooms.members')}
         </h3>
-        <ul className="space-y-1">
-          {room.members.map((member) => {
-            const bot = bots.find((item) => item.name === member.profile)
-            const name = bot ? botTitle(bot) : member.display_name || member.profile
-            return (
-              <li key={member.profile}>
-                <button
-                  // A member that left the roster has no chat here to open.
-                  disabled={!bot}
-                  onClick={() => select({ kind: 'bot', id: member.profile })}
-                  className="flex w-full items-center gap-3 rounded-xl p-2 text-left text-base hover:bg-accent disabled:hover:bg-transparent"
-                >
-                  <BotAvatar bot={bot ?? { name: member.profile, meta: {} }} place="row" />
-                  <span className="min-w-0 truncate">{name}</span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-        <p className="px-2 pt-3 text-sm text-muted-foreground">{t('rooms.fixedMembers')}</p>
+        <RoomMembers
+          room={room}
+          backend={backend}
+          onOpen={(profile) => select({ kind: 'bot', id: profile })}
+        />
       </section>
     </aside>
   )
@@ -156,5 +146,113 @@ function RoomName({
         </Button>
       </div>
     </form>
+  )
+}
+
+/**
+ * The room's bots: each opens its own chat, and with the engine attached each can be removed (while
+ * the room keeps two) and others added (up to six). The room and its history stay.
+ */
+function RoomMembers({
+  room,
+  backend,
+  onOpen
+}: {
+  room: Room
+  backend: RosterBackend | null
+  onOpen: (profile: string) => void
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const bots = useRoster((state) => state.snapshot.bots)
+  const saving = useRoster((state) => state.saving)
+  const error = useRoster((state) => state.actionError)
+  const [adding, setAdding] = useState(false)
+  const seated = room.members.map((member) => member.profile)
+  const memberBots = room.members.map(
+    (member) =>
+      bots.find((bot) => bot.name === member.profile) ?? {
+        name: member.profile,
+        meta: {},
+        display_name: member.display_name
+      }
+  )
+  const candidates = bots.filter((bot) => !bot.meta.hidden && !seated.includes(bot.name))
+  const change = (members: Bot[]): void => {
+    if (!backend) return
+    void runRosterMutation(backend, () =>
+      changeRoomMembers(backend, { roomId: room.room_id, members })
+    )
+  }
+  return (
+    <>
+      <ul className="space-y-1">
+        {memberBots.map((bot) => {
+          const known = bots.some((item) => item.name === bot.name)
+          const name = known ? botTitle(bot) : bot.display_name || bot.name
+          return (
+            <li key={bot.name} className="group flex items-center gap-1">
+              <button
+                // A member that left the roster has no chat here to open.
+                disabled={!known}
+                onClick={() => onOpen(bot.name)}
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-left text-base hover:bg-accent disabled:hover:bg-transparent"
+              >
+                <BotAvatar bot={bot} place="row" />
+                <span className="min-w-0 truncate">{name}</span>
+              </button>
+              {backend && memberBots.length > MIN_ROOM_MEMBERS && (
+                <button
+                  aria-label={t('rooms.removeBot').replace('{name}', name)}
+                  disabled={saving}
+                  onClick={() => change(memberBots.filter((item) => item.name !== bot.name))}
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-foreground/10 disabled:opacity-50"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+      {backend && memberBots.length < MAX_ROOM_MEMBERS && candidates.length > 0 && (
+        <div className="pt-2">
+          <button
+            aria-expanded={adding}
+            onClick={() => setAdding((open) => !open)}
+            className="flex w-full items-center gap-3 rounded-xl p-2 text-left text-base text-muted-foreground hover:bg-accent"
+          >
+            <span className="inline-flex size-8 items-center justify-center">
+              <Plus size={16} />
+            </span>
+            {t('rooms.addBot')}
+          </button>
+          {adding && (
+            <ul className="space-y-1 pl-2">
+              {candidates.map((bot) => (
+                <li key={bot.name}>
+                  <button
+                    disabled={saving}
+                    onClick={() => {
+                      setAdding(false)
+                      change([...memberBots, bot])
+                    }}
+                    className="flex w-full items-center gap-3 rounded-xl p-2 text-left text-base hover:bg-accent disabled:opacity-50"
+                  >
+                    <BotAvatar bot={bot} place="row" />
+                    <span className="min-w-0 truncate">{botTitle(bot)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {error && (
+        <div className="px-2 pt-2">
+          <ProblemMessage problem={error} />
+        </div>
+      )}
+      <p className="px-2 pt-3 text-sm text-muted-foreground">{t('rooms.membersHint')}</p>
+    </>
   )
 }

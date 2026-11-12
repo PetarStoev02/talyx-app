@@ -40,6 +40,8 @@ export function buildApi(transport: ApiTransport) {
     pickEnginePath: () => invoke('engine:pick-path'),
     useInstalledEngine: () => invoke('engine:use-installed'),
     engineHttp: (request: EngineHttpRequest) => invoke('engine:http', request),
+    setRoomMembers: (change: { roomId: string; members: unknown[] }) =>
+      invoke('engine:room-members', change),
     openEngineSocket: (id: string, profile: string) => invoke('engine:socket-open', id, profile),
     sendEngineSocket: (id: string, text: string) => invoke('engine:socket-send', id, text),
     closeEngineSocket: (id: string) => invoke('engine:socket-close', id),

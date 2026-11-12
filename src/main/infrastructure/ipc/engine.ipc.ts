@@ -5,6 +5,7 @@ import log from 'electron-log'
 import type { EngineHttpRequest, EngineStatus } from '../../../shared/engine'
 import { EngineHttpError, createEngine, userBinEngine } from '../engine/engine'
 import { EngineSockets, type SocketEventSink } from '../engine/engineSockets'
+import { nodeFileDeps, roomMembers } from '../engine/roomMembers'
 import { settingsStore } from '../storage/SettingsStore'
 import {
   EngineHttpRequestSchema,
@@ -12,6 +13,7 @@ import {
   EngineSocketIdSchema,
   EngineSocketTextSchema,
   ProfileNameSchema,
+  RoomMembersSchema,
   validateInput
 } from './validation'
 
@@ -19,6 +21,7 @@ const MEDIA_PATH = '/api/media'
 
 const engine = createEngine({ enginePath: () => settingsStore.store.enginePath })
 const sockets = new EngineSockets(engine)
+const rooms = roomMembers({ engine, ...nodeFileDeps() })
 
 /** The IPC sender, or the dev bridge's stand-in (which broadcasts and has no lifecycle). */
 interface Sender {
@@ -60,6 +63,12 @@ export function registerEngineIpc(): void {
     if (!existsSync(installed)) throw new Error('No installed engine found')
     settingsStore.set({ enginePath: installed })
     return loggedStatus()
+  })
+
+  // The engine has no call for this; Talyx's engine plugin changes the room in place.
+  ipcMain.handle('engine:room-members', (_event, raw: unknown) => {
+    const { roomId, members } = validateInput(RoomMembersSchema, raw)
+    return rooms.set(roomId, members)
   })
 
   ipcMain.handle('engine:http', (_event, raw: unknown) =>

@@ -551,6 +551,11 @@ export function backendFor(
       delete engine.metadata[profile]
       engine.deleted.push(profile)
     },
-    avatarPng: async (look) => pngOf(look)
+    avatarPng: async (look) => pngOf(look),
+    setRoomMembers: async (roomId, members) => {
+      const room = engine.rooms?.find((item) => item.room_id === roomId)
+      if (!room) throw new Error('Room not found')
+      room.members = structuredClone(members)
+    }
   }
 }

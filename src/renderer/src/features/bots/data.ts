@@ -21,6 +21,17 @@ export interface RosterBackend {
   deleteProfile: (profile: string) => Promise<void>
   // The block as a PNG data URL, for the profile's avatar image.
   avatarPng: (look: Look) => Promise<string>
+  /** Changes an existing room's bots in place (Talyx's engine plugin; the engine has no call). */
+  setRoomMembers: (roomId: string, members: RoomMemberRecord[]) => Promise<void>
+}
+
+/** A room member as the engine stores it, the shape `groups.create` takes. */
+export interface RoomMemberRecord {
+  member_id: string
+  profile: string
+  handle: string
+  display_name: string
+  target: { kind: 'local'; profile: string }
 }
 
 export type RosterRequest = (

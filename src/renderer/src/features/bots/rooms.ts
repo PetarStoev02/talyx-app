@@ -1,4 +1,4 @@
-import type { RosterBackend } from './data'
+import type { RosterBackend, RoomMemberRecord } from './data'
 import { RosterError, botTitle } from './roster'
 import type { Bot } from './types'
 
@@ -23,22 +23,36 @@ export async function createRoom(
   backend: RosterBackend,
   room: { name: string; members: Bot[] }
 ): Promise<string> {
-  const { members } = room
-  if (members.length < MIN_ROOM_MEMBERS || members.length > MAX_ROOM_MEMBERS)
-    throw new RosterError('rooms.errorMembers')
   const roomId = crypto.randomUUID()
   await backend.request('default', 'groups.create', {
     room_id: roomId,
     name: room.name.trim(),
-    members: members.map((bot) => ({
-      member_id: bot.name,
-      profile: bot.name,
-      handle: roomHandle(bot.name),
-      display_name: botTitle(bot),
-      target: { kind: 'local', profile: bot.name }
-    }))
+    members: memberRecords(room.members)
   })
   return roomId
+}
+
+/**
+ * Sets an existing room's bots: the same room, its id and history kept. A bot that joins answers
+ * from the next turn and reads the room's history; one that leaves gets no more turns.
+ */
+export async function changeRoomMembers(
+  backend: RosterBackend,
+  change: { roomId: string; members: Bot[] }
+): Promise<void> {
+  await backend.setRoomMembers(change.roomId, memberRecords(change.members))
+}
+
+function memberRecords(members: Bot[]): RoomMemberRecord[] {
+  if (members.length < MIN_ROOM_MEMBERS || members.length > MAX_ROOM_MEMBERS)
+    throw new RosterError('rooms.errorMembers')
+  return members.map((bot) => ({
+    member_id: bot.name,
+    profile: bot.name,
+    handle: roomHandle(bot.name),
+    display_name: botTitle(bot),
+    target: { kind: 'local', profile: bot.name }
+  }))
 }
 
 /** Renames a room on the engine, for every client; the room's log records the new name. */

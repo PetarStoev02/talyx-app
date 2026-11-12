@@ -171,6 +171,8 @@ src/main/
 └── infrastructure/
     ├── bridge/DevBridge.ts     # Dev-only HTTP+SSE bridge for the browser renderer
     ├── engine/                 # engine.ts (Engine: CLI, attach, tickets, REST),
+    │                           # roomMembers.ts (installs and runs the talyx-rooms engine plugin:
+    │                           # a room's bots change in place; resources/engine-plugin/),
     │                           # gateway.ts (vendored attach + ticket mint), engineSockets.ts
     ├── ipc/                    # settings.ipc.ts, engine.ipc.ts, setup.ipc.ts (the engine install),
     │                           # updater.ipc.ts (update download and open), validation.ts (zod at the boundary),

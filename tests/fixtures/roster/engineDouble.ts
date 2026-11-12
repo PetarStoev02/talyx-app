@@ -6,7 +6,7 @@ import { blockPng } from '../../../src/renderer/src/shared/ui/blockPng'
 import { EXPECTED_ENGINE_VERSION, type EngineStatus } from '../../../src/shared/engine'
 import { fixtureChat } from './fixtureChat'
 import { COSTLY_MODEL, DEFAULT_MODEL, fixtureProviders, PROVIDER } from './fixtureProviders'
-import { roomRequest, roomSessionRequest } from './fixtureRooms'
+import { roomRequest, roomSessionRequest, setRoomMembers } from './fixtureRooms'
 
 // The in-memory engine the roster fixture and the website's live demo both run on. Deliberately
 // in-memory: it never connects to or modifies user profiles, and a reload resets it.
@@ -315,7 +315,8 @@ export const rosterBackend: RosterBackend = {
   deleteProfile,
   botMetaKey: BOT_META_KEY,
   botGroupsMetaKey: `${BOT_META_KEY}-groups`,
-  avatarPng: blockPng
+  avatarPng: blockPng,
+  setRoomMembers
 }
 export const providers = fixtureProviders(profiles.map((bot) => bot.name))
 export const chat = fixtureChat(providers)

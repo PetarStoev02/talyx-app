@@ -38,7 +38,8 @@ export function parseAttachmentKey(
   return eventId && attachmentId && kind ? { eventId, attachmentId, kind } : null
 }
 
-function roomItem(event: RoomEvent, { memberOf, t }: RoomLabels): MessageItem[] {
+function roomItem(event: RoomEvent, labels: RoomLabels): MessageItem[] {
+  const { memberOf, t } = labels
   const id = event.event_id || String(event.seq)
   const text = typeof event.payload.text === 'string' ? event.payload.text : ''
   if (event.kind === 'message.user') {
@@ -59,6 +60,7 @@ function roomItem(event: RoomEvent, { memberOf, t }: RoomLabels): MessageItem[] 
           }
         ]
       : []
+  if (event.kind === 'room.members_changed') return membersChanged(event, id, labels)
   const notice =
     event.kind === 'room.activity' && event.payload.status === 'bounded'
       ? 'rooms.bounded'
@@ -70,6 +72,23 @@ function roomItem(event: RoomEvent, { memberOf, t }: RoomLabels): MessageItem[] 
   )
   const line = t(notice).replace('{name}', member ? memberOf(member).name : '')
   return [{ kind: 'notice', id, text: detail ? `${line}: ${detail}` : line }]
+}
+
+// Who joined and who left, by their roster names: "Ledger joined · Scout left".
+function membersChanged(event: RoomEvent, id: string, { memberOf, t }: RoomLabels): MessageItem[] {
+  const names = (field: string): string[] => {
+    const value = event.payload[field]
+    return Array.isArray(value)
+      ? value
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => memberOf(item).name)
+      : []
+  }
+  const parts = [
+    ...names('added').map((name) => t('rooms.joined').replace('{name}', name)),
+    ...names('removed').map((name) => t('rooms.left').replace('{name}', name))
+  ]
+  return parts.length ? [{ kind: 'notice', id, text: parts.join(' · ') }] : []
 }
 
 function attachmentsOf(payload: Record<string, unknown>): RoomAttachment[] {
