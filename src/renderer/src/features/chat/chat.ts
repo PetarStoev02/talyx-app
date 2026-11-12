@@ -8,6 +8,7 @@ import { failureOf } from '@shared/lib/problem'
 import { useChat } from './store'
 import type { ChatInfo, ChatState } from './store'
 import { applyEvent, fromHistory, settlePrompt, withFailedTurns } from './transcript'
+import { SENDING_ID } from './turns'
 import type { ApprovalChoice, ChatItem, Transcript } from './types'
 
 /** The bot's chat is the profile's hidden session with this exact title. */
@@ -107,6 +108,8 @@ export function chatActions(backend: ChatBackend): ChatActions {
   const configuring = new Map<string, Promise<void>>()
   // Profiles whose composer message is out and its answer not yet ended.
   const out = new Set<string>()
+  // The reload of an ended turn under way per profile.
+  const ending = new Map<string, Promise<void>>()
 
   // A failed call shows on its chat, named by what it was, instead of throwing into the view.
   const guarded =
@@ -231,7 +234,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
   async function send(profile: string, draft: ChatDraft): Promise<boolean> {
     const text = draft.text.trim()
     if (!text && !draft.images.length) return false
-    const local = `local-${Date.now()}-${Math.random()}`
+    const local = `${SENDING_ID}${Date.now()}-${Math.random()}`
     try {
       const sessionId = sessionOf(profile) ?? (await startChat(profile))
       const transcript = chatOf(profile)?.transcript ?? fromHistory(sessionId, [], false)
@@ -279,12 +282,26 @@ export function chatActions(backend: ChatBackend): ChatActions {
     return sent
   }
 
+  // The stored history then carries what live events do not: rows from other clients and bots.
+  // A reconnect and a replayed reply can both end the same turn: they share this one reload, and
+  // it is over before the next message goes, so that message's own end is never folded into it.
+  function reloadEnded(profile: string): Promise<void> {
+    const reload =
+      ending.get(profile) ??
+      rebuild(profile)
+        .then(() => void out.delete(profile))
+        .finally(() => ending.delete(profile))
+    ending.set(profile, reload)
+    return reload
+  }
+
   async function sendWaiting(profile: string): Promise<void> {
     const [next, ...rest] = chatOf(profile)?.waiting ?? []
     if (!next || busy(profile)) return
     update(profile, { waiting: rest })
     // A failed send keeps its message first in line; the error says why, the next message retries.
-    if (!(await submit(profile, next.draft)))
+    // Sent queued: if a turn this window has not seen start is live, it waits instead of cutting in.
+    if (!(await submit(profile, { ...next.draft, whenBusy: 'queue' })))
       update(profile, { waiting: [next, ...(chatOf(profile)?.waiting ?? [])] })
   }
 
@@ -349,10 +366,9 @@ export function chatActions(backend: ChatBackend): ChatActions {
     },
 
     turnEnded: async (profile) => {
-      // The stored history then carries what live events do not: rows from other clients and
-      // bots. The next message goes after it, so the reload neither drops its bubble nor its error.
-      await rebuild(profile)
-      out.delete(profile)
+      await reloadEnded(profile)
+      // The next message goes after the reload, so the reload neither drops its bubble nor its
+      // error. A second end of the same turn finds it out already (submit marks it at once).
       await sendWaiting(profile)
     },
 

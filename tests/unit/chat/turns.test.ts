@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { turnView } from '../../../src/renderer/src/features/chat/turns'
+import { turnOutcome, turnView } from '../../../src/renderer/src/features/chat/turns'
 import type { ChatItem } from '../../../src/renderer/src/features/chat/types'
 
 const user = (id: string, text = 'Summarise Q3'): ChatItem => ({
@@ -116,6 +116,15 @@ describe('turn view', () => {
       expect(activity).toEqual({ tool: null, tools: 0 })
     })
 
+    it('should show no empty bubble before the first text, only the activity', () => {
+      const { items, activity } = turnView(
+        [user('u1'), { ...reply('b1', ''), streaming: true }],
+        true
+      )
+      expect(ids(items)).toEqual(['u1'])
+      expect(activity).toEqual({ tool: null, tools: 0 })
+    })
+
     it('should show the reply streaming after the last tool', () => {
       const { items, activity } = turnView(
         [user('u1'), tool('t1'), { ...reply('b1', 'Margins'), streaming: true }],
@@ -132,6 +141,47 @@ describe('turn view', () => {
       )
       expect(ids(items)).toEqual(['u1', 'b1', 'u2'])
       expect(activity?.tools).toBe(1)
+    })
+  })
+})
+
+describe('turn outcome', () => {
+  const kind = (items: ChatItem[], running = false): string | null =>
+    turnOutcome(items, running)?.kind ?? null
+  const stopped: ChatItem = { ...reply('b1', ''), stopped: true }
+  const delivery: ChatItem = {
+    ...reply('d1', 'Costs flat'),
+    sender: { name: 'CFO', profile: 'cfo' }
+  }
+
+  it('should have none for an empty chat, an answered turn or one still running', () => {
+    expect(kind([])).toBeNull()
+    expect(kind([user('u1'), tool('t1'), reply('b1', 'Done.')])).toBeNull()
+    expect(kind([user('u1')], true)).toBeNull()
+  })
+
+  it('should have none while your message is still on its way', () => {
+    expect(kind([user('local-1')])).toBeNull()
+  })
+
+  it('should have none once something else came in after your message', () => {
+    expect(kind([user('u1'), delivery])).toBeNull()
+  })
+
+  it('should say a turn ended without a reply when it gave none, tools or not', () => {
+    expect(kind([user('u1')])).toBe('noReply')
+    expect(kind([user('u1'), tool('t1'), tool('t2'), reply('b1', '')])).toBe('noReply')
+  })
+
+  it('should say a turn was stopped before any text, and show no empty bubble for it', () => {
+    expect(kind([user('u1'), stopped])).toBe('stopped')
+    expect(ids(turnView([user('u1'), stopped], false).items)).toEqual(['u1'])
+  })
+
+  it('should say a turn failed and name the message to send again', () => {
+    expect(turnOutcome([user('u1'), reply('b1', '', 'Rate limited')], false)).toEqual({
+      kind: 'failed',
+      asked: user('u1')
     })
   })
 })

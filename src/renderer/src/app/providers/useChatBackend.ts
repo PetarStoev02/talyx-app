@@ -3,7 +3,7 @@ import { useRoster } from '@features/bots/store'
 import { chatActions } from '@features/chat/chat'
 import { useCompletionSound } from '@features/chat/completionSound'
 import type { ChatActions } from '@features/chat/chat'
-import { handleEvent, promptHandler } from '@features/chat/events'
+import { activityOf, handleEvent, promptHandler } from '@features/chat/events'
 import type { ChatUpdate } from '@features/chat/events'
 import { useChat } from '@features/chat/store'
 import { host } from '@shared/engine/host'
@@ -51,10 +51,11 @@ export function useChatBackend(): ChatActions | null {
       dropped = false
       // Providers may have changed while the engine was away.
       actions.forgetModels()
-      // The redial replays the gap; a reload covers a session whose re-resume failed.
-      for (const chat of Object.values(useChat.getState().chats)) {
-        if (chat.sessionId) void actions.rebuild(chat.profile)
-      }
+      // The redial replays the gap; a reload covers a session whose re-resume failed. A turn
+      // that ended while the socket was down ends here, even one sent but not yet started, so
+      // its waiting messages go and the roster stops showing it as working.
+      for (const chat of Object.values(useChat.getState().chats))
+        if (chat.sessionId) void reloadAfterDrop(actions, chat.profile)
     })
     return () => {
       offEvent()
@@ -64,6 +65,12 @@ export function useChatBackend(): ChatActions | null {
   }, [actions])
 
   return actions
+}
+
+async function reloadAfterDrop(actions: ChatActions, profile: string): Promise<void> {
+  await actions.turnEnded(profile)
+  const transcript = useChat.getState().chats[profile]?.transcript
+  if (transcript) showOnRoster({ profile, completed: false, activity: activityOf(transcript) })
 }
 
 function showOnRoster(update: ChatUpdate | null): void {

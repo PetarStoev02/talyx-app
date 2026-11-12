@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, Pencil, X } from 'lucide-react'
+import { ArrowUp, Pencil, RotateCcw, X } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
 import { botChatId, botTitle } from '@features/bots/roster'
@@ -10,7 +10,8 @@ import type { ChatActions } from '@features/chat/chat'
 import { useChat } from '@features/chat/store'
 import type { WaitingMessage } from '@features/chat/store'
 import { useSetup } from '@features/setup/store'
-import { turnView } from '@features/chat/turns'
+import { turnOutcome, turnView } from '@features/chat/turns'
+import type { TurnOutcome } from '@features/chat/turns'
 import type { MessageItem } from '@features/chat/types'
 import { openSettings } from '@features/settings/sections'
 import { useRefocus } from '@shared/hooks/useRefocus'
@@ -79,9 +80,17 @@ export function ChatPane({
 
   const running = chat.transcript?.running === true
   const { items, activity } = turnView(chat.transcript?.items ?? [], running)
+  // A retry waits for nothing else: not while a message is already lined up to go.
+  const outcome = chat.waiting.length ? null : turnOutcome(chat.transcript?.items ?? [], running)
+  // The engine keeps a sent image's upload only briefly, so a message with images goes back to
+  // the composer to attach them again; a text message is sent again as it was.
+  const retry = (asked: TurnOutcome['asked']): void => {
+    if (asked.images.length) start({ text: asked.text, send: false })
+    else void actions.queue(bot.name, { text: asked.text, images: [] })
+  }
   const prompts = chat.transcript?.prompts ?? []
   const loadImage = (path: string): Promise<string> => actions.mediaUrl(bot.name, path)
-  const announced = announcement(items, prompts.length, running)
+  const announced = announcement(items, prompts.length, running, outcome)
   const target: ComposerTarget = {
     placeholder: t('chat.placeholder').replace('{name}', title),
     running,
@@ -106,6 +115,11 @@ export function ChatPane({
             {activity && (
               <li>
                 <ActivityLine bot={bot} activity={activity} wait={chat.transcript?.wait ?? null} />
+              </li>
+            )}
+            {outcome && (
+              <li>
+                <OutcomeLine outcome={outcome} name={title} onRetry={() => retry(outcome.asked)} />
               </li>
             )}
             {chat.waiting.map((message) => (
@@ -187,13 +201,54 @@ export function ChatPane({
 function announcement(
   items: MessageItem[],
   prompts: number,
-  running: boolean
+  running: boolean,
+  outcome: TurnOutcome | null
 ): TranslationKey | null {
   if (prompts) return 'chat.waiting'
   if (running) return 'chat.typing'
+  if (outcome?.kind === 'noReply') return 'chat.noReply'
+  if (outcome?.kind === 'stopped') return 'chat.replyStopped'
   const last = items.at(-1)
   if (last?.kind !== 'bot') return null
   return last.error ? 'chat.replyFailedAnnounce' : 'chat.replied'
+}
+
+// How a turn ended without an answer, and a way to send its message again.
+function OutcomeLine({
+  outcome,
+  name,
+  onRetry
+}: {
+  outcome: TurnOutcome
+  name: string
+  onRetry: () => void
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const { kind, asked } = outcome
+  const attach = asked.images.length > 0
+  const said =
+    kind === 'stopped'
+      ? t('chat.replyStopped')
+      : kind === 'noReply'
+        ? t('chat.noReply').replace('{name}', name)
+        : null
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 text-sm text-muted-foreground">
+      {said && <p>{said}</p>}
+      <button
+        type="button"
+        aria-label={t(attach ? 'chat.retryImagesLabel' : 'chat.retryLabel').replace(
+          '{text}',
+          asked.text
+        )}
+        className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-foreground/10"
+        onClick={onRetry}
+      >
+        <RotateCcw size={14} />
+        {t(attach ? 'chat.retryImages' : 'chat.retry')}
+      </button>
+    </div>
+  )
 }
 
 // A message held until the running answer ends, as a dashed bubble: send it now (stops that

@@ -37,7 +37,7 @@ export function BotRow({
   const unread = useRoster((state) => state.unread[bot.name])
   const activity = useRoster((state) => state.activity[bot.name] ?? 'idle')
   const saving = useRoster((state) => state.saving)
-  const preview = botPreview(bot) || t('roster.noMessages')
+  const preview = botPreview(bot, t) || t('roster.noMessages')
   const dot = Boolean(unread) || activity === 'waiting'
   const status =
     activity === 'waiting'
