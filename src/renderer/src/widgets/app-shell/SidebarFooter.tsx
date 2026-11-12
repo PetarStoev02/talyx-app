@@ -20,7 +20,7 @@ const mod = isMac ? '⌘' : 'Ctrl+'
 /**
  * Settings on the left, `end` (the roster's refresh) on the right, and between them the dock: Agents
  * and each running module, with ⌘1, ⌘2, … in that order. Without a running module there is no
- * dock, and Settings closes itself back to the agents. While a Talyx or engine update is pending,
+ * dock. Settings toggles: open, it closes back to the page it was opened from. While a Talyx or engine update is pending,
  * the update button takes `end`'s place. Each running module's Background lives here too, so it
  * keeps watching whatever page is open.
  */
@@ -30,7 +30,7 @@ export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Elem
   const update = useUpdates((s) => s.state)
   const items = updateItems(engine, update)
   const settingsOpen = useNavigation((s) => s.currentView === 'settings')
-  const navigate = useNavigation((s) => s.navigate)
+  const toggleSettings = useNavigation((s) => s.toggleSettings)
   const modules = runningModules(useModules((s) => s.state))
   const unread = useRoster((s) => anyUnread(s.unread, s.roomUnread))
   const needsYou = useModuleAttention((s) => s.needsYou)
@@ -55,8 +55,6 @@ export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Elem
   const showDock = sections.length > 0
   // Without a dock, ⌘1 still opens the agents.
   useDockShortcuts(showDock ? sections.map(viewOf) : ['agents'])
-  // Without a dock there is no Agents button, so Settings closes itself back to the agents.
-  const closesSettings = settingsOpen && !showDock
 
   useEffect(() => {
     useModules
@@ -76,10 +74,10 @@ export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Elem
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 pt-2 pb-3">
       <span className="justify-self-start">
         <IconButton
-          label={closesSettings ? t('nav.closeSettings') : t('nav.settings')}
+          label={settingsOpen ? t('nav.closeSettings') : t('nav.settings')}
           shortcut={`${mod},`}
           aria-current={settingsOpen ? 'page' : undefined}
-          onClick={() => navigate(closesSettings ? 'agents' : 'settings')}
+          onClick={() => void toggleSettings()}
           className={settingsOpen ? 'bg-foreground/10 text-foreground' : undefined}
         >
           <Settings />

@@ -23,6 +23,8 @@ export function setAppMenu(
 ): void {
   const enterLicense: MenuItemConstructorOptions = {
     label: 'Enter License Key…',
+    // Linux hides its menu bar (see createWindow), so the shortcut is the way to this item there.
+    accelerator: 'CmdOrCtrl+Shift+L',
     click: onEnterLicense
   }
   const template: MenuItemConstructorOptions[] = [

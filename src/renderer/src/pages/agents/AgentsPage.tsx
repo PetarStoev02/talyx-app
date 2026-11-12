@@ -20,7 +20,7 @@ import type { RosterBackend } from '@features/bots/data'
 
 // Where the details and room panels sit: see their SlidePanel.
 const PANEL_PLACE =
-  'absolute inset-y-0 right-0 z-10 max-w-full shadow-xl @3xl:static @3xl:max-w-[50%] @3xl:shadow-none'
+  'absolute inset-y-0 right-0 z-10 max-w-full shadow-xl @5xl:static @5xl:max-w-[50%] @5xl:shadow-none'
 
 const pillClass =
   'flex max-w-full items-center gap-2 rounded-full bg-secondary px-4 py-2 text-base font-medium'

@@ -140,7 +140,6 @@ function createWindow(): BrowserWindow {
     minHeight: 500,
     title: app.name,
     show: false,
-    autoHideMenuBar: true,
     // macOS hides the title bar behind the traffic lights; elsewhere the hidden styles leave a
     // window with no border to resize and no buttons, so Linux keeps its native frame.
     ...(isMac && {
@@ -157,6 +156,10 @@ function createWindow(): BrowserWindow {
       sandbox: true
     }
   })
+  // No menu bar on Linux: an auto-hidden one comes back on Alt and pushes the page down. Hidden,
+  // not removed, so its shortcuts (zoom, full screen) still work; after the constructor, which
+  // sets the app menu and would show the bar.
+  if (!isMac) win.setMenuBarVisibility(false)
   watchWindowFailures(win)
   // The page's <title> would otherwise rename the window back to Talyx.
   if (is.dev) win.on('page-title-updated', (event) => event.preventDefault())

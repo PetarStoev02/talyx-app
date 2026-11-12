@@ -1,28 +1,21 @@
 import { useEffect } from 'react'
-import { type AppView, useNavigation } from '@app/providers/useNavigation'
+import { useNavigation } from '@app/providers/useNavigation'
 
 const isMac = navigator.platform.toLowerCase().includes('mac')
 
-// ⌘1 and up open the footer dock's pages in order; the dock binds them (SidebarFooter).
-const NAV_KEYS: Record<string, AppView> = {
-  ',': 'settings'
-}
-
+// ⌘, opens Settings and closes it again. ⌘1 and up open the footer dock's pages in order; the dock
+// binds them (SidebarFooter).
 export function useKeyboardShortcuts(): void {
-  const navigate = useNavigation((s) => s.navigate)
+  const toggleSettings = useNavigation((s) => s.toggleSettings)
 
   useEffect(() => {
     function handler(e: KeyboardEvent): void {
-      if (!(isMac ? e.metaKey : e.ctrlKey)) return
-
-      const view = NAV_KEYS[e.key]
-      if (view) {
-        e.preventDefault()
-        navigate(view)
-      }
+      if (!(isMac ? e.metaKey : e.ctrlKey) || e.key !== ',') return
+      e.preventDefault()
+      void toggleSettings()
     }
 
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [navigate])
+  }, [toggleSettings])
 }
