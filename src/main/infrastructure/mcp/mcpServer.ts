@@ -1,12 +1,11 @@
 import { randomUUID, timingSafeEqual } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { MCP_PATH, isMcpTool, mcpToolList } from '../../../shared/mcp'
+import log from 'electron-log'
+import { MCP_CALL_TIMEOUT_MS, MCP_PATH, isMcpTool, mcpToolList } from '../../../shared/mcp'
 import type { McpAnswer, McpCall } from '../../../shared/mcp'
 
 // The MCP revision this server speaks; a client asking for another gets this one back.
 const PROTOCOL_VERSION = '2025-06-18'
-// A tool call waits for the user to answer an approval, so it gets minutes, not seconds.
-export const CALL_TIMEOUT_MS = 10 * 60_000
 const MAX_BODY_BYTES = 1024 * 1024
 
 /** The page that runs tool calls: the Talyx window, or the dev bridge's browser tab. */
@@ -27,7 +26,7 @@ export class McpCalls {
   private page: McpPage | null = null
   private readonly pending = new Map<string, (answer: McpAnswer) => void>()
 
-  constructor(private readonly timeoutMs = CALL_TIMEOUT_MS) {}
+  constructor(private readonly timeoutMs = MCP_CALL_TIMEOUT_MS) {}
 
   attach(page: McpPage): void {
     if (this.page !== page) this.failAll()
@@ -87,9 +86,10 @@ export function mcpHandler(deps: {
   calls: Pick<McpCalls, 'run'>
 }): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
-    void handle(deps, req, res).catch(() =>
+    void handle(deps, req, res).catch((error: unknown) => {
+      log.error('[MCP] Request failed', error)
       reply(res, 500, rpcError(null, -32603, 'Internal error'))
-    )
+    })
   }
 }
 

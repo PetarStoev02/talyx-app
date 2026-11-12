@@ -9,6 +9,11 @@ export const MCP_SERVER_NAME = 'talyx'
 /** Where the server listens on the loopback interface, unless TALYX_MCP_PORT says otherwise. */
 export const MCP_DEFAULT_PORT = 47816
 export const MCP_PATH = '/mcp'
+/** How long main waits for the page to answer a call: the user may be deciding on an approval. */
+export const MCP_CALL_TIMEOUT_MS = 10 * 60_000
+/** An unanswered approval counts as a no before main gives up on the call, so a late yes can
+ *  never change anything after the agent was told the call was dropped. */
+export const MCP_APPROVAL_TIMEOUT_MS = 9 * 60_000
 
 /** How an outside agent reaches the running Talyx. */
 export interface McpConnection {
@@ -153,8 +158,17 @@ export const MCP_TOOLS = {
     })
   },
   pin_item: {
-    description: 'Pin or unpin a bot or a room.',
-    args: z.object({ ...item, pinned: z.boolean() })
+    description:
+      'Pin or unpin a bot or a room. A pinned bot can also go in front of another pinned bot.',
+    args: z.object({
+      ...item,
+      pinned: z.boolean(),
+      beforeBot: z
+        .string()
+        .min(1)
+        .optional()
+        .describe('For a bot being pinned: the pinned bot\u2019s profile id to go in front of')
+    })
   },
   create_room: {
     description: 'Create a group room with two to six bots.',
@@ -174,7 +188,7 @@ export const MCP_TOOLS = {
   },
   add_routine: {
     description:
-      'Add a routine: an instruction the bot runs on a schedule, also with Talyx closed.',
+      'Add a routine: an instruction the bot runs on a schedule, also with Talyx closed. Asks the user in Talyx first.',
     args: z.object({
       profile,
       name: z.string().trim().min(1),
@@ -184,7 +198,7 @@ export const MCP_TOOLS = {
     })
   },
   set_routine_active: {
-    description: 'Pause or resume a routine.',
+    description: 'Pause or resume a routine. Resuming asks the user in Talyx first.',
     args: z.object({ profile, routineId: z.string().min(1), active: z.boolean() })
   },
   delete_routine: {

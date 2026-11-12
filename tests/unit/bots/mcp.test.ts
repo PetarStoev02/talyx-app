@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { mcpTools } from '../../../src/renderer/src/features/bots/mcp'
 import type { ApprovalRequest } from '../../../src/renderer/src/features/bots/mcp'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
-import { MCP_TOOLS } from '../../../src/shared/mcp'
+import { mcpToolList } from '../../../src/shared/mcp'
 import type { McpAnswer } from '../../../src/shared/mcp'
 import { BOT_META_KEY, backendFor, engineDouble, pngOf } from './engineDouble'
 import type { EngineDouble } from './engineDouble'
@@ -59,12 +59,13 @@ describe('MCP tools', () => {
       expect(engine.created).toEqual([])
     })
 
-    it.each(Object.keys(MCP_TOOLS).filter((tool) => 'destructive' in MCP_TOOLS[tool as never]))(
-      'should mark %s as one that asks the user first',
-      (tool) => {
-        expect(['delete_bot', 'delete_folder', 'delete_room', 'delete_routine']).toContain(tool)
-      }
-    )
+    it('should mark exactly the tools that delete as destructive to agents', () => {
+      expect(
+        mcpToolList()
+          .filter((tool) => tool.annotations.destructiveHint)
+          .map((tool) => tool.name)
+      ).toEqual(['delete_bot', 'delete_folder', 'delete_room', 'delete_routine'])
+    })
   })
 
   describe('list_roster', () => {
@@ -134,7 +135,7 @@ describe('MCP tools', () => {
     it('should replace the SOUL only once the user allows it', async () => {
       await ok('update_bot', { profile: 'analyst', soul: '# New' })
       expect(asked.map((request) => request.action)).toEqual([
-        'Replace the SOUL of Analyst. The text it has now is lost.'
+        'Replace the SOUL of “Analyst”. The text it has now is lost.'
       ])
       expect(engine.profiles.analyst.soul).toBe('# New')
     })
@@ -153,7 +154,7 @@ describe('MCP tools', () => {
         profile: 'analyst',
         model: { provider: 'custom', model: 'paid-model' }
       })
-      expect(asked[0].action).toBe('Switch Analyst to paid-model. The engine says: Costs more')
+      expect(asked[0].action).toBe('Switch “Analyst” to paid-model. The engine says: Costs more')
       expect(engine.profiles.analyst.model).toEqual({ provider: 'custom', model: 'paid-model' })
     })
 
@@ -165,6 +166,22 @@ describe('MCP tools', () => {
         model: { provider: 'custom', model: 'paid-model' }
       })
       expect(answer).toEqual({ ok: false, text: REFUSED })
+      expect(engine.profiles.analyst.model?.model).toBe('9-route-provider')
+    })
+
+    it('should say the other fields were saved when the user says no to a costly model', async () => {
+      engine.expensiveModels.add('paid-model')
+      allow = false
+      const answer = await call('update_bot', {
+        profile: 'analyst',
+        title: 'Numbers',
+        model: { provider: 'custom', model: 'paid-model' }
+      })
+      expect(answer).toEqual({
+        ok: false,
+        text: 'The user said no in Talyx to the model, so it did not change. The other changes in this call were saved.'
+      })
+      expect(metaOf('analyst').title).toBe('Numbers')
       expect(engine.profiles.analyst.model?.model).toBe('9-route-provider')
     })
 
@@ -185,7 +202,7 @@ describe('MCP tools', () => {
       expect(await ok('delete_bot', { profile: 'analyst' })).toEqual({ deleted: 'analyst' })
       expect(asked[0]).toEqual({
         tool: 'delete_bot',
-        action: 'Delete the bot Analyst and everything it keeps. This cannot be undone.'
+        action: 'Delete the bot “Analyst” and everything it keeps. This cannot be undone.'
       })
       expect(engine.deleted).toEqual(['analyst'])
       expect(roster().bots.map((bot) => bot.name)).toEqual(['default'])
@@ -258,6 +275,27 @@ describe('MCP tools', () => {
       expect(roster().itemOrder.team).toEqual(['bot:scout', 'bot:analyst'])
     })
 
+    it('should pin a bot in front of another pinned bot', async () => {
+      await ok('create_bot', { name: 'Scout' })
+      await ok('pin_item', { kind: 'bot', id: 'analyst', pinned: true })
+      await ok('pin_item', { kind: 'bot', id: 'scout', pinned: true, beforeBot: 'analyst' })
+      expect(metaOf('scout')).toMatchObject({ pinned: true, pinnedOrder: 0 })
+      expect(metaOf('analyst')).toMatchObject({ pinned: true, pinnedOrder: 1 })
+    })
+
+    it('should refuse to go in front of a bot that is not pinned', async () => {
+      const answer = await call('pin_item', {
+        kind: 'bot',
+        id: 'analyst',
+        pinned: true,
+        beforeBot: 'default'
+      })
+      expect(answer).toEqual({
+        ok: false,
+        text: 'That bot is not pinned, so nothing can go in front of it. default'
+      })
+    })
+
     it('should leave a pin as it is when it already matches', async () => {
       await ok('pin_item', { kind: 'bot', id: 'analyst', pinned: false })
       expect(engine.configureCalls).toEqual([])
@@ -291,7 +329,7 @@ describe('MCP tools', () => {
       await ok('pin_item', { kind: 'room', id: 'room', pinned: true })
       await ok('delete_room', { roomId: 'room' })
       expect(asked[0].action).toBe(
-        'Delete the room Team room and its history. Its bots and their own chats stay.'
+        'Delete the room “Team room” and its history. Its bots and their own chats stay.'
       )
       expect(engine.rooms).toEqual([])
       expect(roster().roomPins).toEqual([])
@@ -328,16 +366,38 @@ describe('MCP tools', () => {
       })
     })
 
-    it('should pause a routine', async () => {
+    it('should ask before adding a routine, and add none when the user says no', async () => {
+      allow = false
+      const answer = await call('add_routine', {
+        profile: 'analyst',
+        name: 'Cash',
+        instruction: 'Check cash',
+        schedule: { kind: 'daily', time: '08:30' }
+      })
+      expect(answer).toEqual({ ok: false, text: REFUSED })
+      expect(asked[0].action).toBe(
+        'Give “Analyst” the routine “Cash”. It runs on its own schedule, also while Talyx is closed. Its instruction: “Check cash”'
+      )
+      expect(engine.jobs.analyst ?? []).toEqual([])
+    })
+
+    it('should pause a routine without asking, and ask before resuming it', async () => {
       await addCash()
+      asked = []
       await ok('set_routine_active', { profile: 'analyst', routineId: 'job-1', active: false })
+      expect(engine.jobs.analyst[0].state).toBe('paused')
+      expect(asked).toEqual([])
+      allow = false
+      expect(
+        await call('set_routine_active', { profile: 'analyst', routineId: 'job-1', active: true })
+      ).toEqual({ ok: false, text: REFUSED })
       expect(engine.jobs.analyst[0].state).toBe('paused')
     })
 
     it('should delete a routine once the user allows it', async () => {
       await addCash()
       await ok('delete_routine', { profile: 'analyst', routineId: 'job-1' })
-      expect(asked[0].action).toBe('Delete the routine Cash. This cannot be undone.')
+      expect(asked.at(-1)?.action).toBe('Delete the routine “Cash”. This cannot be undone.')
       expect(engine.jobs.analyst).toEqual([])
     })
 

@@ -1,7 +1,9 @@
 import { create } from 'zustand'
+import { MCP_APPROVAL_TIMEOUT_MS } from '../../../../shared/mcp'
 import type { ApprovalRequest } from './mcp'
 
 interface Pending extends ApprovalRequest {
+  id: string
   answer: (allowed: boolean) => void
 }
 
@@ -13,15 +15,32 @@ interface ApprovalsState {
   answer: (allowed: boolean) => void
 }
 
-/** The approvals agents wait on: a tool that loses data runs only once the user allows it. */
-export const useApprovals = create<ApprovalsState>((set, get) => ({
-  queue: [],
-  ask: (request) =>
-    new Promise((answer) => set(({ queue }) => ({ queue: [...queue, { ...request, answer }] }))),
-  answer: (allowed) => {
-    const [first, ...rest] = get().queue
-    if (!first) return
-    set({ queue: rest })
-    first.answer(allowed)
+/**
+ * The approvals agents wait on: a tool that loses data runs only once the user allows it. One left
+ * unanswered past MCP_APPROVAL_TIMEOUT_MS is a no, before main drops the agent's call.
+ */
+export const useApprovals = create<ApprovalsState>((set, get) => {
+  const settle = (id: string, allowed: boolean): void => {
+    const pending = get().queue.find((item) => item.id === id)
+    if (!pending) return
+    set(({ queue }) => ({ queue: queue.filter((item) => item.id !== id) }))
+    pending.answer(allowed)
   }
-}))
+  return {
+    queue: [],
+    ask: (request) =>
+      new Promise((resolve) => {
+        const id = crypto.randomUUID()
+        const timer = setTimeout(() => settle(id, false), MCP_APPROVAL_TIMEOUT_MS)
+        const answer = (allowed: boolean): void => {
+          clearTimeout(timer)
+          resolve(allowed)
+        }
+        set(({ queue }) => ({ queue: [...queue, { ...request, id, answer }] }))
+      }),
+    answer: (allowed) => {
+      const first = get().queue[0]
+      if (first) settle(first.id, allowed)
+    }
+  }
+})

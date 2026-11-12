@@ -22,6 +22,8 @@ export async function registerMcpServer(
   const { servers } = listSchema.parse(await backend.http({ path, profile }))
   if (servers.some((server) => server.name === MCP_SERVER_NAME && server.url === connection.url))
     return
+  // ponytail: the key is not compared (the engine never shows it); a new key (userData wiped)
+  // leaves bots on the old one until their `talyx` server is removed, then the next start adds it.
   // ponytail: a server named `talyx` at another address (a changed port) stays; the add then fails
   // with the engine's "already exists" and the bot keeps the old address until it is removed.
   await backend.http({

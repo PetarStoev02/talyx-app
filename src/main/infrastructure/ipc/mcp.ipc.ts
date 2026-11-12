@@ -15,6 +15,8 @@ const McpAnswerSchema = z.object({ ok: z.boolean(), text: z.string().max(1024 * 
 const McpCallIdSchema = z.string().uuid()
 
 const calls = new McpCalls()
+// Pages already watched for a close or reload, so a reload does not add listeners again.
+const watched = new WeakSet<object>()
 const port = Number(process.env['TALYX_MCP_PORT'] ?? MCP_DEFAULT_PORT)
 
 /**
@@ -34,6 +36,8 @@ export function registerMcpIpc(): void {
       on?: (event: 'destroyed' | 'did-navigate', listener: () => void) => void
     }
     calls.attach(page)
+    if (watched.has(page)) return
+    watched.add(page)
     const leave = (): void => calls.detach(page)
     page.on?.('destroyed', leave)
     page.on?.('did-navigate', leave)

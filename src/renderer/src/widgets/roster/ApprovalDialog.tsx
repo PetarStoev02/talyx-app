@@ -19,6 +19,9 @@ export function ApprovalDialog(): React.JSX.Element {
       }}
     >
       <DialogContent
+        // A new request mounts a new content, so Deny takes the focus again: a second click meant
+        // for the request before can never allow one the user has not read.
+        key={request?.id}
         onOpenAutoFocus={(event) => {
           event.preventDefault()
           deny.current?.focus()

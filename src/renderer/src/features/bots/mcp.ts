@@ -121,14 +121,20 @@ function toolsFor(backend: RosterBackend, approve: Approve): { [T in McpToolName
         saveDetails(backend, botOf(snapshot, profile), { opening, draft })
       )
       if (costly) {
-        await ask(
-          'update_bot',
-          say('mcp.costlyModel', {
-            name: botTitle(bot),
-            model: costly.model.model,
-            message: costly.message
-          })
+        const action = say('mcp.costlyModel', {
+          name: botTitle(bot),
+          model: costly.model.model,
+          message: costly.message
+        })
+        // The other fields are saved by now: a no to the model must not say nothing changed.
+        const othersSaved = Object.keys(draft).some(
+          (key) =>
+            key !== 'model' &&
+            JSON.stringify(draft[key as keyof DetailsDraft]) !==
+              JSON.stringify(opening[key as keyof DetailsDraft])
         )
+        if (!(await approve({ tool: 'update_bot', action })))
+          throw othersSaved ? new RosterError('mcp.refusedModel') : new ApprovalRefusedError()
         await confirmModel(backend, profile, costly.model)
       }
       return { profile }
@@ -182,9 +188,15 @@ function toolsFor(backend: RosterBackend, approve: Approve): { [T in McpToolName
         await actions.placeItem({ kind, id }, { folderId, before: before ? itemKey(before) : null })
         return { kind, id, folderId }
       }),
-    pin_item: ({ kind, id, pinned }) =>
+    pin_item: ({ kind, id, pinned, beforeBot }) =>
       change(async (snapshot) => {
-        if (kind === 'bot') {
+        if (kind === 'bot' && pinned && beforeBot) {
+          botOf(snapshot, id)
+          if (!botOf(snapshot, beforeBot).meta.pinned)
+            throw new RosterError('mcp.errorNotPinned', beforeBot)
+          // Pins the bot too, when it was not pinned yet.
+          await actions.orderPin(id, beforeBot)
+        } else if (kind === 'bot') {
           const bot = botOf(snapshot, id)
           if (!!bot.meta.pinned !== pinned) await actions.pin(bot)
         } else {
@@ -214,8 +226,14 @@ function toolsFor(backend: RosterBackend, approve: Approve): { [T in McpToolName
       botOf(await fresh(), profile)
       return { routines: await listRoutines(backend, profile) }
     },
+    // A routine runs on its own, also with Talyx closed, so one bot giving another standing work
+    // is the user's call.
     add_routine: async ({ profile, name, instruction, schedule, postsToChat }) => {
-      botOf(await fresh(), profile)
+      const bot = botOf(await fresh(), profile)
+      await ask(
+        'add_routine',
+        say('mcp.addRoutine', { name: botTitle(bot), routine: name, instruction })
+      )
       await addRoutine(backend, profile, {
         name,
         instruction,
@@ -225,7 +243,9 @@ function toolsFor(backend: RosterBackend, approve: Approve): { [T in McpToolName
       return { routines: await listRoutines(backend, profile) }
     },
     set_routine_active: async ({ profile, routineId, active }) => {
-      await routineOf(backend, profile, routineId)
+      const routine = await routineOf(backend, profile, routineId)
+      if (active)
+        await ask('set_routine_active', say('mcp.resumeRoutine', { routine: routine.name }))
       await setRoutineActive(backend, profile, { id: routineId, active })
       return { routineId, active }
     },

@@ -378,13 +378,22 @@ const en = {
     'The request came through Talyx’s MCP server, from one of your bots or an outside agent. Nothing changes unless you allow it.',
   'mcp.allow': 'Allow',
   'mcp.deny': 'Deny',
-  'mcp.deleteBot': 'Delete the bot {name} and everything it keeps. This cannot be undone.',
-  'mcp.deleteRoom': 'Delete the room {name} and its history. Its bots and their own chats stay.',
+  'mcp.deleteBot': 'Delete the bot “{name}” and everything it keeps. This cannot be undone.',
+  'mcp.deleteRoom': 'Delete the room “{name}” and its history. Its bots and their own chats stay.',
   'mcp.deleteFolder':
-    'Delete the folder {name}. Its bots, rooms and folders move up a level; none is deleted.',
-  'mcp.deleteRoutine': 'Delete the routine {name}. This cannot be undone.',
-  'mcp.replaceSoul': 'Replace the SOUL of {name}. The text it has now is lost.',
-  'mcp.costlyModel': 'Switch {name} to {model}. The engine says: {message}',
+    'Delete the folder “{name}”. Its bots, rooms and folders move up a level; none is deleted.',
+  'mcp.deleteRoutine': 'Delete the routine “{name}”. This cannot be undone.',
+  'mcp.replaceSoul': 'Replace the SOUL of “{name}”. The text it has now is lost.',
+  'mcp.costlyModel': 'Switch “{name}” to {model}. The engine says: {message}',
+  'mcp.addRoutine':
+    'Give “{name}” the routine “{routine}”. It runs on its own schedule, also while Talyx is closed. Its instruction: “{instruction}”',
+  'mcp.resumeRoutine':
+    'Resume the routine “{routine}”. It runs on its own schedule, also while Talyx is closed.',
+  'mcp.refusedModel':
+    'The user said no in Talyx to the model, so it did not change. The other changes in this call were saved.',
+  'mcp.errorNoEngine':
+    'Talyx is not connected to the engine right now, so nothing was changed. Try again in a moment.',
+  'mcp.errorNotPinned': 'That bot is not pinned, so nothing can go in front of it.',
   'mcp.refused': 'The user said no in Talyx, so nothing was changed.',
   'mcp.errorManager': 'Talyx’s own bot cannot be deleted.',
   'mcp.errorRoomGone': 'That room no longer exists.',

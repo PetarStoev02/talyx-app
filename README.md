@@ -34,7 +34,7 @@ While Talyx is open it runs an MCP server on `http://127.0.0.1:47816/mcp` (loopb
 
 - **Your bots** get the server in their profile automatically (Talyx adds it to every profile, also to bots created later), with its key kept in the profile's `.env`.
 - **Outside agents** (Claude Code, Cursor and others): Settings → Engine → Agents → **Copy the add line**, then run it in a terminal. Every request needs that key, and a request from a browser page is refused.
-- **Approval:** deleting a bot, a folder, a room or a routine, replacing a SOUL, and a model the engine marks as costly ask you in the Talyx window first. **Deny**, or closing the dialog, changes nothing.
+- **Approval:** deleting a bot, a folder, a room or a routine, replacing a SOUL, a model the engine marks as costly, and adding or resuming a routine (it runs on its own, also with Talyx closed) ask you in the Talyx window first. **Deny**, closing the dialog, or leaving it for nine minutes changes nothing.
 - **Talyx closed:** the server is not running, so agents cannot connect and nothing changes. With Talyx running but its window closed, every tool answers that Talyx's window is not open.
 - The engine has no call to add or remove members of an existing room, so rooms are created with their members and deleted; there is no tool to change members.
 
