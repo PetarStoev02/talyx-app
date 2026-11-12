@@ -70,7 +70,8 @@ export function fromHistory(
     epoch: null,
     stream: null,
     wait: null,
-    failed: []
+    failed: [],
+    queued: []
   }
 }
 
@@ -377,10 +378,18 @@ function startReply(transcript: Transcript, payload: Payload, id: string): Trans
   // re-sent text as a second copy.
   if (turnId && transcript.stream?.turnId === turnId) return transcript
   return {
-    ...withStreamingReply(transcript, id),
+    ...withStreamingReply(withNextQueued(transcript), id),
     running: true,
     stream: turnId ? { turnId, segment: 0, end: 0 } : null
   }
+}
+
+// A turn that starts after the last one ended answers the oldest waiting message: it joins the
+// chat above the reply.
+function withNextQueued(transcript: Transcript): Transcript {
+  const [next, ...rest] = transcript.queued
+  if (!next || lastStreamingReply(transcript) >= 0) return transcript
+  return { ...transcript, items: [...transcript.items, next], queued: rest }
 }
 
 // A stamped delta adds only the text past what its segment already applied; an unstamped one

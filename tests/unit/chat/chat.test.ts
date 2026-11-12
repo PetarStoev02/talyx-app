@@ -390,6 +390,70 @@ describe('bot chat', () => {
       })
     })
 
+    describe('while the bot answers', () => {
+      const live = (type: string, seq: number, payload: Record<string, unknown> = {}): void => {
+        handleEvent(actions, { type, seq, payload, session_id: 'manager-chat' } as GatewayEvent)
+      }
+      const shown = (): { kind: string; text?: string }[] =>
+        (chat(MANAGER).transcript?.items ?? []).map((item) => ({
+          kind: item.kind,
+          ...('text' in item ? { text: item.text } : {})
+        }))
+      const answering = async (): Promise<void> => {
+        await actions.open(MANAGER, 'manager-chat')
+        await actions.send(MANAGER, { text: 'First task', images: [] })
+        live('message.start', 8)
+        live('message.delta', 9, { text: 'Working' })
+      }
+
+      it('should keep a message sent then under the answer, which stays in one piece', async () => {
+        await answering()
+        await actions.send(MANAGER, { text: 'Next task', images: [], whenBusy: 'queue' })
+        live('message.delta', 10, { text: ' on it' })
+        live('tool.start', 11, { tool_id: 't1', name: 'search', args: {} })
+        expect(shown().slice(-3)).toEqual([
+          { kind: 'user', text: 'First task' },
+          { kind: 'bot', text: 'Working on it' },
+          { kind: 'tool' }
+        ])
+        expect(chat(MANAGER).transcript?.queued).toMatchObject([
+          { kind: 'user', text: 'Next task' }
+        ])
+      })
+
+      it('should move the waiting message into the chat when the turn that answers it starts', async () => {
+        await answering()
+        await actions.send(MANAGER, { text: 'Next task', images: [], whenBusy: 'queue' })
+        live('message.complete', 10, { text: 'Working' })
+        await actions.rebuild(MANAGER)
+        live('message.start', 11)
+        live('message.delta', 12, { text: 'Next one' })
+        expect(shown().slice(-2)).toEqual([
+          { kind: 'user', text: 'Next task' },
+          { kind: 'bot', text: 'Next one' }
+        ])
+        expect(chat(MANAGER).transcript?.queued).toEqual([])
+      })
+
+      it('should blame a failed answer on the message it answered, not the one waiting', async () => {
+        await answering()
+        await actions.send(MANAGER, { text: 'Next task', images: [], whenBusy: 'queue' })
+        live('message.complete', 10, { status: 'error', error: 'Provider down' })
+        expect(chat(MANAGER).transcript?.failed.at(-1)?.items[0]).toMatchObject({
+          kind: 'user',
+          text: 'First task'
+        })
+      })
+
+      it('should show the message the engine holds after a reload, also one this window never sent', async () => {
+        engine.chats[MANAGER] = { ...engine.chats[MANAGER], queued: { user: 'From my phone' } }
+        await actions.open(MANAGER, 'manager-chat')
+        expect(chat(MANAGER).transcript?.queued).toMatchObject([
+          { kind: 'user', text: 'From my phone' }
+        ])
+      })
+    })
+
     it('should ask the engine to queue a message sent to wait behind a busy turn', async () => {
       await actions.open(MANAGER, 'manager-chat')
       await actions.send(MANAGER, { text: 'Next task', images: [], whenBusy: 'queue' })

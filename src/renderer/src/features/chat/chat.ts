@@ -80,7 +80,12 @@ interface ResumeSnapshot {
   running?: boolean
   last_sequence?: number
   inflight?: { assistant?: string; user?: string; error?: string } | null
+  // The message waiting for the running turn to end, as the engine holds it.
+  queued?: { user: string } | null
 }
+
+// How many of the latest stored items a waiting message is looked for in after a reload.
+const RECENT_STORED = 12
 
 export function chatActions(backend: ChatBackend): ChatActions {
   const { update } = useChat.getState()
@@ -235,12 +240,14 @@ export function chatActions(backend: ChatBackend): ChatActions {
         const sessionId = sessionOf(profile) ?? (await startChat(profile))
         const transcript = chatOf(profile)?.transcript ?? fromHistory(sessionId, [], false)
         const images = draft.images.map((image) => image.path)
+        const sent: ChatItem = { kind: 'user', id: local, text, images }
+        // Sent while the bot answers: it waits under the answer instead of splitting it.
+        const waits = draft.whenBusy === 'queue' && transcript.running
         update(profile, {
           error: null,
-          transcript: {
-            ...transcript,
-            items: [...transcript.items, { kind: 'user', id: local, text, images }]
-          }
+          transcript: waits
+            ? { ...transcript, queued: [...transcript.queued, sent] }
+            : { ...transcript, items: [...transcript.items, sent] }
         })
         await backend.request(profile, 'prompt.submit', {
           session_id: sessionId,
@@ -256,7 +263,8 @@ export function chatActions(backend: ChatBackend): ChatActions {
           error: failureOf('chat.errorSend', error),
           transcript: transcript && {
             ...transcript,
-            items: transcript.items.filter((item) => item.id !== local)
+            items: transcript.items.filter((item) => item.id !== local),
+            queued: transcript.queued.filter((item) => item.id !== local)
           }
         })
         return false
@@ -357,6 +365,13 @@ function rebuilt(
   resume: ResumeSnapshot
 ): Transcript {
   let transcript = fromHistory(sessionId, messages, resume.running === true)
+  const same = previous?.sessionId === sessionId
+  const waiting = stillQueued(transcript, same ? previous.queued : [], resume)
+  // The running turn answers a message that waited here and history does not hold yet: it shows
+  // above the reply, not under it.
+  const asked = resume.running ? resume.inflight?.user?.trim() : null
+  const answered = waiting.find((item) => item.kind === 'user' && item.text === asked)
+  if (answered) transcript = { ...transcript, items: [...transcript.items, answered] }
   const inflight = resume.running ? resume.inflight?.assistant : null
   if (inflight) {
     transcript = [
@@ -364,16 +379,39 @@ function rebuilt(
       { type: 'message.delta', payload: { text: inflight } }
     ].reduce((current, event) => applyEvent(current, event as GatewayEvent), transcript)
   }
-  const same = previous?.sessionId === sessionId
   transcript = withFailedTurns(transcript, same ? previous.failed : [])
   if (!resume.running && resume.inflight?.error)
     transcript = withHeldFailure(transcript, resume.inflight, resume.last_sequence ?? 0)
   return {
     ...transcript,
+    queued: waiting.filter((item) => item !== answered),
     prompts: same ? previous.prompts : [],
     lastSeq: resume.last_sequence ?? (same ? previous.lastSeq : 0),
     epoch: resume.replay_epoch ?? (same ? previous.epoch : null)
   }
+}
+
+/**
+ * The messages still waiting after a reload: the ones this window queued that history does not
+ * show yet, and the one the engine holds that this window never saw (sent from another client, or
+ * before a reconnect).
+ */
+function stillQueued(
+  transcript: Transcript,
+  queued: ChatItem[],
+  resume: ResumeSnapshot
+): ChatItem[] {
+  // ponytail: matched by text against the latest stored messages; two equal messages in a row can
+  // drop the second from the wait list early. Match on an id if the engine starts sending one.
+  const recent = new Set(
+    transcript.items
+      .slice(-RECENT_STORED)
+      .flatMap((item) => (item.kind === 'user' ? [item.text] : []))
+  )
+  const waiting = queued.filter((item) => item.kind === 'user' && !recent.has(item.text))
+  const held = resume.queued?.user?.trim()
+  if (!held || waiting.some((item) => item.kind === 'user' && item.text === held)) return waiting
+  return [...waiting, { kind: 'user', id: `queued-${held}`, text: held, images: [] }]
 }
 
 /**

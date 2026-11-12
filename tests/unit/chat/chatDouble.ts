@@ -15,7 +15,12 @@ export interface ChatDouble {
   // holds outside them (a failed turn is never stored; resume carries it until the next turn).
   chats: Record<
     string,
-    { sessionId: string; messages: SessionMessage[]; inflight?: Record<string, unknown> }
+    {
+      sessionId: string
+      messages: SessionMessage[]
+      inflight?: Record<string, unknown>
+      queued?: { user: string }
+    }
   >
   failNext: (method: string, message: string) => void
   // Holds the next call to `method` until the returned release runs.
@@ -68,6 +73,7 @@ export function chatDouble(
           running: false,
           last_sequence: 7,
           ...(chat?.inflight ? { inflight: chat.inflight } : {}),
+          ...(chat?.queued ? { queued: chat.queued } : {}),
           info: { model: '9-route-provider', provider: 'custom', reasoning_effort: 'medium' }
         }
       case 'GET /api/sessions':

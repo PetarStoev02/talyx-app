@@ -128,6 +128,7 @@ const en = {
   'chat.placeholder': 'Message {name}',
   'chat.send': 'Send',
   'chat.sendQueued': 'Send after this answer',
+  'chat.queued': 'Waiting for the answer above',
   'chat.stop': 'Stop',
   'chat.addImage': 'Add images',
   'chat.removeImage': 'Remove {name}',

@@ -25,7 +25,11 @@ import { Button } from '@shared/ui/button'
 import { Reveal } from '@shared/ui/Reveal'
 import { useArrival } from '@shared/hooks/useStayMounted'
 import { cn } from '@shared/lib/utils'
+import { MessageBubble } from './MessageBubble'
 import { Transcript } from './Transcript'
+
+// A waiting message is typed text: it names no Workflows brief.
+const NO_BRIEFS = {}
 
 /** A bot's chat: its transcript with any open cards below, then the composer. */
 export function ChatPane({
@@ -73,6 +77,9 @@ export function ChatPane({
   const running = chat.transcript?.running === true
   const { items, activity } = turnView(chat.transcript?.items ?? [], running)
   const prompts = chat.transcript?.prompts ?? []
+  const queued = (chat.transcript?.queued ?? []).flatMap((item) =>
+    item.kind === 'user' ? [item] : []
+  )
   const loadImage = (path: string): Promise<string> => actions.mediaUrl(bot.name, path)
   const announced = announcement(items, prompts.length, running)
   const target: ComposerTarget = {
@@ -117,6 +124,13 @@ export function ChatPane({
                     onAnswer={(choice) => actions.answerApproval(bot.name, prompt.id, choice)}
                   />
                 )}
+              </li>
+            ))}
+            {queued.map((item) => (
+              // Waits under the running answer until its own turn starts.
+              <li key={item.id} className="flex flex-col items-end gap-1 opacity-60">
+                <MessageBubble message={item} loadImage={loadImage} briefs={NO_BRIEFS} />
+                <span className="text-xs text-muted-foreground">{t('chat.queued')}</span>
               </li>
             ))}
           </Transcript>
