@@ -672,6 +672,16 @@ describe('bot chat', () => {
         expect(submitted()).toEqual(['Summarise Q3', 'Next'])
       }
     )
+
+    it('should send one waiting message when a reconnect and a replayed reply both end the turn', async () => {
+      emit('message.start', { turn_id: 't1' })
+      await actions.queue(MANAGER, { text: 'Next', images: [] })
+      await actions.queue(MANAGER, { text: 'Third', images: [] })
+      stored(engine, [{ id: 3, role: 'user', content: 'Summarise Q3' }])
+      await Promise.all([actions.turnEnded(MANAGER), actions.turnEnded(MANAGER)])
+      expect(submitted()).toEqual(['Summarise Q3', 'Next'])
+      expect(chat(MANAGER).waiting.map((message) => message.draft.text)).toEqual(['Third'])
+    })
   })
 
   describe('during a turn', () => {

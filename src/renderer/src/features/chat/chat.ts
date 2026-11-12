@@ -108,6 +108,9 @@ export function chatActions(backend: ChatBackend): ChatActions {
   const configuring = new Map<string, Promise<void>>()
   // Profiles whose composer message is out and its answer not yet ended.
   const out = new Set<string>()
+  // The turn end under way per profile. A reconnect and a replayed reply can both end the same
+  // turn; they share one end, so the second cannot release the next message's turn.
+  const ending = new Map<string, Promise<void>>()
 
   // A failed call shows on its chat, named by what it was, instead of throwing into the view.
   const guarded =
@@ -280,6 +283,14 @@ export function chatActions(backend: ChatBackend): ChatActions {
     return sent
   }
 
+  async function endTurn(profile: string): Promise<void> {
+    // The stored history then carries what live events do not: rows from other clients and
+    // bots. The next message goes after it, so the reload neither drops its bubble nor its error.
+    await rebuild(profile)
+    out.delete(profile)
+    await sendWaiting(profile)
+  }
+
   async function sendWaiting(profile: string): Promise<void> {
     const [next, ...rest] = chatOf(profile)?.waiting ?? []
     if (!next || busy(profile)) return
@@ -349,12 +360,10 @@ export function chatActions(backend: ChatBackend): ChatActions {
       }
     },
 
-    turnEnded: async (profile) => {
-      // The stored history then carries what live events do not: rows from other clients and
-      // bots. The next message goes after it, so the reload neither drops its bubble nor its error.
-      await rebuild(profile)
-      out.delete(profile)
-      await sendWaiting(profile)
+    turnEnded: (profile) => {
+      const end = ending.get(profile) ?? endTurn(profile).finally(() => ending.delete(profile))
+      ending.set(profile, end)
+      return end
     },
 
     interrupt,
