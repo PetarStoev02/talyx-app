@@ -393,7 +393,7 @@ const en = {
     'The user said no in Talyx to the model, so it did not change. The other changes in this call were saved.',
   'mcp.errorNoEngine':
     'Talyx is not connected to the engine right now, so nothing was changed. Try again in a moment.',
-  'mcp.errorNotPinned': 'That bot is not pinned, so nothing can go in front of it.',
+  'mcp.errorNotPinned': 'Nothing can go in front of a bot that is not pinned:',
   'mcp.refused': 'The user said no in Talyx, so nothing was changed.',
   'mcp.errorManager': 'Talyx’s own bot cannot be deleted.',
   'mcp.errorRoomGone': 'That room no longer exists.',

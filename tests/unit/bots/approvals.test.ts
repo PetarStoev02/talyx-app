@@ -2,7 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useApprovals } from '../../../src/renderer/src/features/bots/approvals'
 import { MCP_APPROVAL_TIMEOUT_MS, MCP_CALL_TIMEOUT_MS } from '../../../src/shared/mcp'
 
-const DELETE = { tool: 'delete_bot' as const, action: 'Delete the bot “Analyst”.' }
+const DELETE = {
+  tool: 'delete_bot' as const,
+  action: 'Delete the bot “Analyst”.',
+  until: Infinity
+}
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -26,6 +30,12 @@ describe('approvals', () => {
     vi.advanceTimersByTime(MCP_APPROVAL_TIMEOUT_MS)
     expect(await asked).toBe(false)
     expect(useApprovals.getState().queue).toEqual([])
+  })
+
+  it('should count a request as a no at its call’s deadline, when that comes first', async () => {
+    const asked = useApprovals.getState().ask({ ...DELETE, until: Date.now() + 1000 })
+    vi.advanceTimersByTime(1000)
+    expect(await asked).toBe(false)
   })
 
   it('should ignore a late Allow once the request timed out', async () => {

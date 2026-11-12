@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { mcpTools } from '../../../src/renderer/src/features/bots/mcp'
 import type { ApprovalRequest } from '../../../src/renderer/src/features/bots/mcp'
+import { pinnedBots } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { mcpToolList } from '../../../src/shared/mcp'
 import type { McpAnswer } from '../../../src/shared/mcp'
@@ -158,6 +159,17 @@ describe('MCP tools', () => {
       expect(engine.profiles.analyst.model).toEqual({ provider: 'custom', model: 'paid-model' })
     })
 
+    it('should give both questions of one call the same deadline', async () => {
+      engine.expensiveModels.add('paid-model')
+      await ok('update_bot', {
+        profile: 'analyst',
+        soul: '# New',
+        model: { provider: 'custom', model: 'paid-model' }
+      })
+      expect(asked).toHaveLength(2)
+      expect(asked[1].until).toBe(asked[0].until)
+    })
+
     it('should keep the model when the user says no to its cost', async () => {
       engine.expensiveModels.add('paid-model')
       allow = false
@@ -200,7 +212,7 @@ describe('MCP tools', () => {
   describe('delete_bot', () => {
     it('should delete the bot once the user allows it', async () => {
       expect(await ok('delete_bot', { profile: 'analyst' })).toEqual({ deleted: 'analyst' })
-      expect(asked[0]).toEqual({
+      expect(asked[0]).toMatchObject({
         tool: 'delete_bot',
         action: 'Delete the bot “Analyst” and everything it keeps. This cannot be undone.'
       })
@@ -283,6 +295,18 @@ describe('MCP tools', () => {
       expect(metaOf('analyst')).toMatchObject({ pinned: true, pinnedOrder: 1 })
     })
 
+    it('should move a pinned bot down in front of the bot named', async () => {
+      await ok('create_bot', { name: 'Scout' })
+      for (const id of ['analyst', 'scout', 'default'])
+        await ok('pin_item', { kind: 'bot', id, pinned: true })
+      await ok('pin_item', { kind: 'bot', id: 'analyst', pinned: true, beforeBot: 'default' })
+      expect(pinnedBots(roster().bots).map((bot) => bot.name)).toEqual([
+        'scout',
+        'analyst',
+        'default'
+      ])
+    })
+
     it('should refuse to go in front of a bot that is not pinned', async () => {
       const answer = await call('pin_item', {
         kind: 'bot',
@@ -292,7 +316,7 @@ describe('MCP tools', () => {
       })
       expect(answer).toEqual({
         ok: false,
-        text: 'That bot is not pinned, so nothing can go in front of it. default'
+        text: 'Nothing can go in front of a bot that is not pinned: default'
       })
     })
 

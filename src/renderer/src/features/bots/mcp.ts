@@ -1,4 +1,4 @@
-import { MCP_TOOLS, isMcpTool } from '../../../../shared/mcp'
+import { MCP_APPROVAL_TIMEOUT_MS, MCP_TOOLS, isMcpTool } from '../../../../shared/mcp'
 import type { McpAnswer, McpToolArgs, McpToolName } from '../../../../shared/mcp'
 import { t } from '@shared/lib/i18n'
 import type { TranslationKey } from '@shared/lib/i18n'
@@ -13,7 +13,7 @@ import type { DetailsDraft } from './details'
 import { lookOf, matchName } from './look'
 import type { Look } from './look'
 import { createRoom } from './rooms'
-import { RosterError, botTitle, itemFolder, itemKey } from './roster'
+import { RosterError, botTitle, itemFolder, itemKey, pinnedBots } from './roster'
 import {
   DEFAULT_SCHEDULE,
   addRoutine,
@@ -29,6 +29,9 @@ export interface ApprovalRequest {
   tool: McpToolName
   /** What will happen, in the user's words. */
   action: string
+  /** When an unanswered request counts as a no (ms since the epoch): one deadline per call, so a
+   *  call that asks twice still settles before main drops it. */
+  until: number
 }
 
 /** Shows the request in Talyx; true only when the user allowed it. */
@@ -53,8 +56,9 @@ export function mcpTools(
   backend: RosterBackend,
   approve: Approve
 ): (tool: string, rawArgs: unknown) => Promise<McpAnswer> {
-  const tools = toolsFor(backend, approve)
   return async (tool, rawArgs) => {
+    const until = Date.now() + MCP_APPROVAL_TIMEOUT_MS
+    const tools = toolsFor(backend, (request) => approve({ ...request, until }))
     if (!isMcpTool(tool)) return { ok: false, text: `Unknown tool: ${tool}` }
     const args = MCP_TOOLS[tool].args.safeParse(rawArgs ?? {})
     if (!args.success) return { ok: false, text: `Invalid arguments: ${args.error.message}` }
@@ -67,7 +71,10 @@ export function mcpTools(
   }
 }
 
-function toolsFor(backend: RosterBackend, approve: Approve): { [T in McpToolName]: Run<T> } {
+function toolsFor(
+  backend: RosterBackend,
+  approve: (request: Omit<ApprovalRequest, 'until'>) => Promise<boolean>
+): { [T in McpToolName]: Run<T> } {
   const actions = rosterActions(backend)
   const ask = async (tool: McpToolName, action: string): Promise<void> => {
     if (!(await approve({ tool, action }))) throw new ApprovalRefusedError()
@@ -194,8 +201,13 @@ function toolsFor(backend: RosterBackend, approve: Approve): { [T in McpToolName
           botOf(snapshot, id)
           if (!botOf(snapshot, beforeBot).meta.pinned)
             throw new RosterError('mcp.errorNotPinned', beforeBot)
+          // orderPin puts the bot where the target was before the bot left its place, so a pinned
+          // bot moving down goes in front of the target only by naming the pin just before it.
+          const pins = pinnedBots(snapshot.bots).map((bot) => bot.name)
+          const from = pins.indexOf(id)
+          const to = pins.indexOf(beforeBot)
           // Pins the bot too, when it was not pinned yet.
-          await actions.orderPin(id, beforeBot)
+          await actions.orderPin(id, from >= 0 && from < to ? pins[to - 1] : beforeBot)
         } else if (kind === 'bot') {
           const bot = botOf(snapshot, id)
           if (!!bot.meta.pinned !== pinned) await actions.pin(bot)

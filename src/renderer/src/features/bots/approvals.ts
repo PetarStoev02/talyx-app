@@ -17,7 +17,8 @@ interface ApprovalsState {
 
 /**
  * The approvals agents wait on: a tool that loses data runs only once the user allows it. One left
- * unanswered past MCP_APPROVAL_TIMEOUT_MS is a no, before main drops the agent's call.
+ * unanswered past its call's deadline (at most MCP_APPROVAL_TIMEOUT_MS) is a no, before main drops
+ * the agent's call.
  */
 export const useApprovals = create<ApprovalsState>((set, get) => {
   const settle = (id: string, allowed: boolean): void => {
@@ -31,7 +32,8 @@ export const useApprovals = create<ApprovalsState>((set, get) => {
     ask: (request) =>
       new Promise((resolve) => {
         const id = crypto.randomUUID()
-        const timer = setTimeout(() => settle(id, false), MCP_APPROVAL_TIMEOUT_MS)
+        const wait = Math.min(MCP_APPROVAL_TIMEOUT_MS, request.until - Date.now())
+        const timer = setTimeout(() => settle(id, false), Math.max(0, wait))
         const answer = (allowed: boolean): void => {
           clearTimeout(timer)
           resolve(allowed)
