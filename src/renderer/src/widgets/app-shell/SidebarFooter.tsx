@@ -20,8 +20,8 @@ const mod = isMac ? '⌘' : 'Ctrl+'
 /**
  * Settings on the left, `end` (the roster's refresh) on the right, and between them the dock: Agents
  * and each running module, with ⌘1, ⌘2, … in that order. Without a running module there is no
- * dock. Settings toggles: open, it closes back to the page it was opened from. While a Talyx or engine update is pending,
- * the update button takes `end`'s place. Each running module's Background lives here too, so it
+ * dock. Settings toggles: open, it closes back to the page it was opened from. While a Talyx or
+ * engine update is pending, the update button takes `end`'s place. Each running module's Background lives here too, so it
  * keeps watching whatever page is open.
  */
 export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Element {

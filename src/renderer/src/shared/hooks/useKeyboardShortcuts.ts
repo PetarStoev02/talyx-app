@@ -10,7 +10,7 @@ export function useKeyboardShortcuts(): void {
 
   useEffect(() => {
     function handler(e: KeyboardEvent): void {
-      if (!(isMac ? e.metaKey : e.ctrlKey) || e.key !== ',') return
+      if (!(isMac ? e.metaKey : e.ctrlKey) || e.key !== ',' || e.repeat) return
       e.preventDefault()
       void toggleSettings()
     }
