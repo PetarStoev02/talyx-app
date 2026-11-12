@@ -7,6 +7,7 @@ import type {
   Room,
   RosterItem,
   RosterItemRef,
+  RosterRowRef,
   RosterSnapshot,
   Selection
 } from './types'
@@ -194,9 +195,15 @@ export function itemRef(item: RosterItem): RosterItemRef {
     : { kind: 'room', id: item.room.room_id }
 }
 
-/** The key of a bot or room in `itemOrder`. */
-export function itemKey(ref: RosterItemRef): string {
+/** The key of a bot or room in `itemOrder`, and of any row among the picked ones. */
+export function itemKey(ref: RosterRowRef): string {
   return `${ref.kind}:${ref.id}`
+}
+
+/** The row an `itemKey` names. */
+export function rowOf(key: string): RosterRowRef {
+  const at = key.indexOf(':')
+  return { kind: key.slice(0, at) as RosterRowRef['kind'], id: key.slice(at + 1) }
 }
 
 /** The folder a bot or room shows in: null for Unassigned or a folder that no longer exists. */

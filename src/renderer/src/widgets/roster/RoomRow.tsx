@@ -3,9 +3,11 @@ import { ContextMenuArea } from '@shared/ui/menu'
 import { OverflowTooltip } from '@shared/ui/tooltip'
 import { useLanguage } from '@app/providers/useLanguage'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
+import { itemKey } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Room } from '@features/bots/types'
 import { endRosterDrag, startRosterDrag } from './drag'
+import { clickRow } from './picks'
 import type { MenuAction } from '@shared/ui/menu'
 
 // A row's avatar square: a bot's block, and a room's members clustered, in the same box.
@@ -30,6 +32,8 @@ export function RoomRow({
   const selected = useRoster(
     (state) => state.selection?.kind === 'room' && state.selection.id === room.room_id
   )
+  const row = { kind: 'room' as const, id: room.room_id }
+  const picked = useRoster((state) => state.picked.includes(itemKey(row)))
   const bots = useRoster((state) => state.snapshot.bots)
   const unread = useRoster((state) => state.roomUnread[room.room_id])
   const saving = useRoster((state) => state.saving)
@@ -45,20 +49,26 @@ export function RoomRow({
         className={cn(
           'flex min-w-0 rounded-xl',
           pinned && 'relative flex-col bg-secondary',
-          selected && 'bg-foreground/10'
+          selected && 'bg-foreground/10',
+          picked && 'bg-brand/15'
         )}
         draggable={!saving}
-        onDragStart={(event) => startRosterDrag(event, { kind: 'room', id: room.room_id })}
+        data-roster-row={itemKey(row)}
+        onDragStart={(event) => startRosterDrag(event, row)}
         onDragEnd={endRosterDrag}
       >
         <OverflowTooltip text={room.name}>
           <button
-            onClick={onSelect}
+            onClick={(event) => clickRow(event, row, onSelect)}
             aria-current={selected || undefined}
-            aria-description={unread ? t('roster.statusNewMessages') : undefined}
+            aria-description={
+              [picked && t('roster.pickedRow'), unread && t('roster.statusNewMessages')]
+                .filter(Boolean)
+                .join(', ') || undefined
+            }
             className={cn(
               'flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-left',
-              !selected && 'hover:bg-accent',
+              !selected && !picked && 'hover:bg-accent',
               pinned && 'flex-col px-1 pt-5 pb-3 text-center'
             )}
           >

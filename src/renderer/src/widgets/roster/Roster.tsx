@@ -6,7 +6,7 @@ import { rosterActions, runRosterMutation } from '@features/bots/actions'
 import { botTitle, pinnedBots, pinnedRooms } from '@features/bots/roster'
 import type { RosterProblem } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
-import type { Bot, Folder, Room } from '@features/bots/types'
+import type { Bot, Folder, Room, RosterRowRef } from '@features/bots/types'
 import { BotRow } from './BotRow'
 import { FolderGroup } from './FolderGroup'
 import { RoomRow } from './RoomRow'
@@ -18,6 +18,7 @@ import {
   DeleteFolderDialog,
   DeleteProfileDialog,
   DeleteRoomDialog,
+  DeleteRowsDialog,
   FolderNameDialog
 } from './RosterDialogs'
 import { rosterControls } from './rosterControls'
@@ -44,9 +45,10 @@ export function Roster({
   const editingProfile = useRoster((s) => s.editingProfile)
   const actionError = useRoster((s) => s.actionError)
   const loadError = useRoster((s) => s.loadError)
+  const pickedCount = useRoster((s) => s.picked.length)
   // Every new snapshot renders the roster, so useFlip also sees reorders from other clients.
   const { folders } = useRoster((s) => s.snapshot)
-  const { select, clearError } = useRoster.getState()
+  const { select, clearError, pick } = useRoster.getState()
   const { creating, setCreating } = useCreating()
   // Pins and rows glide to their new place after a reorder, a pin or a drop.
   const pinnedArea = useRef<HTMLDivElement>(null)
@@ -66,6 +68,7 @@ export function Roster({
   const [deletingRoom, setDeletingRoom] = useState<Room | null>(null)
   const [renamingFolder, setRenamingFolder] = useState<Folder | null>(null)
   const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null)
+  const [deletingRows, setDeletingRows] = useState<RosterRowRef[] | null>(null)
   // The folder a new folder goes into, from that folder's menu.
   const [subfolderOf, setSubfolderOf] = useState<Folder | null>(null)
   useRosterConnection(backend)
@@ -110,6 +113,10 @@ export function Roster({
       clearError()
       setSubfolderOf(folder)
     },
+    setDeletingRows: (rows) => {
+      clearError()
+      setDeletingRows(rows)
+    },
     t
   })
   const dialogOpen =
@@ -118,13 +125,20 @@ export function Roster({
     !!creating ||
     !!renamingFolder ||
     !!deletingFolder ||
+    !!deletingRows ||
     !!subfolderOf
   return (
     <nav
       aria-label={t('roster.label')}
       aria-busy={loading || saving}
       className="flex min-h-0 flex-1 flex-col"
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && useRoster.getState().picked.length) pick([], null)
+      }}
     >
+      <p role="status" className="sr-only">
+        {pickedCount ? t('roster.picked').replace('{count}', String(pickedCount)) : ''}
+      </p>
       {/* Problems and the pinned tiles stay put; only the folders scroll under them. The same
           gutter as the scrolling part keeps the tiles lined up with the rows. */}
       <div
@@ -247,6 +261,17 @@ export function Roster({
             // The room is gone; a failed layout cleanup shows on the roster, not in this dialog.
             setDeletingRoom(null)
             await actions.forgetRoom(room)
+          })
+        }
+      />
+      <DeleteRowsDialog
+        rows={deletingRows}
+        onClose={closing(() => setDeletingRows(null))}
+        onDelete={(rows) =>
+          run(async () => {
+            await actions.deleteRows(rows)
+            setDeletingRows(null)
+            pick([], null)
           })
         }
       />

@@ -7,6 +7,7 @@ import {
   saveRoomPins
 } from './data'
 import type { RosterBackend } from './data'
+import { deleteRows, hideRows, moveRows, pinRows } from './bulk'
 import {
   folderItems,
   itemFolder,
@@ -17,14 +18,14 @@ import {
   placeFolder,
   placeKey,
   problemOf,
-  removeFolder,
+  rowOf,
   RosterError
 } from './roster'
 import type { RosterProblem } from './roster'
 import { useRoster } from './store'
 import type { RosterState } from './store'
 import { sameJson } from '@shared/lib/utils'
-import type { Bot, Folder, Room, RosterItemRef, RosterSnapshot } from './types'
+import type { Bot, Folder, Room, RosterItemRef, RosterRowRef, RosterSnapshot } from './types'
 
 export interface RosterActions {
   pin: (bot: Bot) => Promise<void>
@@ -55,6 +56,16 @@ export interface RosterActions {
   addFolder: (name: string, parentId: string | null) => Promise<void>
   hide: (bot: Bot) => Promise<void>
   deleteProfile: (bot: Bot) => Promise<void>
+  // Several picked rows at once (bulk.ts), in the order they show.
+  moveRows: (rows: RosterRowRef[], folderId: string | null) => Promise<void>
+  /** Dragged rows into `folderId`, in front of the row keyed `before` or last. */
+  placeRows: (
+    rows: RosterRowRef[],
+    place: { folderId: string | null; before: string | null }
+  ) => Promise<void>
+  pinRows: (rows: RosterRowRef[]) => Promise<void>
+  hideRows: (rows: RosterRowRef[]) => Promise<void>
+  deleteRows: (rows: RosterRowRef[]) => Promise<void>
 }
 
 export async function refreshRoster(backend: RosterBackend): Promise<void> {
@@ -104,11 +115,20 @@ export function applySnapshot(next: RosterSnapshot): void {
     seen,
     roomSeen,
     activity: only(state.activity, bots),
+    picked: state.picked.filter((key) => onRoster(snapshot, rowOf(key))),
     loading: false,
     loadError: null,
     ...(selection && !exists ? { selection: null } : {})
   })
   if (Object.keys(change).length > 0) useRoster.setState(change)
+}
+
+// A picked row that was deleted or hidden, here or on another client, is no longer picked.
+function onRoster(snapshot: RosterSnapshot, row: RosterRowRef): boolean {
+  if (row.kind === 'bot')
+    return snapshot.bots.some((bot) => bot.name === row.id && !bot.meta.hidden)
+  if (row.kind === 'room') return snapshot.rooms.some((room) => room.room_id === row.id)
+  return snapshot.folders.some((folder) => folder.id === row.id)
 }
 
 function only<T>(marks: Record<string, T>, ids: Set<string>): Record<string, T> {
@@ -196,7 +216,7 @@ export function rosterActions(backend: RosterBackend): RosterActions {
           throw new RosterError('roster.errorFolderGone')
         return value.map((folder) => (folder.id === id ? { ...folder, name: name.trim() } : folder))
       }),
-    deleteFolder: (id) => deleteFolder(backend, snapshot(), id),
+    deleteFolder: (id) => deleteRows(backend, snapshot(), [{ kind: 'folder', id }]),
     placeItem: (item, place) => placeItem(backend, snapshot(), { item, ...place }),
     stepItem: (item, direction) => {
       const current = snapshot()
@@ -218,7 +238,12 @@ export function rosterActions(backend: RosterBackend): RosterActions {
         return [...value, parentId ? { ...folder, parentId } : folder]
       }),
     hide: (bot) => saveBotMeta(backend, bot.name, { hidden: !bot.meta.hidden }),
-    deleteProfile: (bot) => backend.deleteProfile(bot.name)
+    deleteProfile: (bot) => backend.deleteProfile(bot.name),
+    moveRows: (rows, folderId) => moveRows(backend, snapshot(), { rows, folderId, before: null }),
+    placeRows: (rows, place) => moveRows(backend, snapshot(), { rows, ...place }),
+    pinRows: (rows) => pinRows(backend, snapshot(), rows),
+    hideRows: (rows) => hideRows(backend, snapshot(), rows),
+    deleteRows: (rows) => deleteRows(backend, snapshot(), rows)
   }
 }
 
@@ -247,40 +272,6 @@ async function placeItem(
     await actions.moveRoom(item.id, folderId)
   const keys = folderItems(snapshot, folderId).map((row) => itemKey(itemRef(row)))
   await saveFolderOrder(backend, folderId, placeKey(keys, itemKey(item), before))
-}
-
-// The layout first: once the folder is gone, its bots and rooms already show in Unassigned, so a
-// failure part way never hides anything. Then each moves up to the parent, keeping its order.
-async function deleteFolder(
-  backend: RosterBackend,
-  snapshot: RosterSnapshot,
-  id: string
-): Promise<void> {
-  const parentId = snapshot.folders.find((folder) => folder.id === id)?.parentId ?? null
-  const parentName = snapshot.folders.find((folder) => folder.id === parentId)?.name ?? null
-  await saveFolders(backend, (value) => removeFolder(value, id), snapshot.folders)
-  for (const bot of snapshot.bots.filter((item) => item.meta.sectionId === id))
-    await saveBotMeta(backend, bot.name, { sectionId: parentId, sectionName: parentName })
-  if (Object.values(snapshot.roomFolders).includes(id))
-    await saveRoomFolders(
-      backend,
-      (roomFolders) =>
-        Object.fromEntries(
-          Object.entries(roomFolders).map(([room, folder]) => [
-            room,
-            folder === id ? parentId : folder
-          ])
-        ),
-      snapshot.roomFolders
-    )
-  // As they showed: the parent's rows, then the deleted folder's.
-  const keysIn = (folderId: string | null): string[] =>
-    folderItems(snapshot, folderId).map((row) => itemKey(itemRef(row)))
-  const merged = [...keysIn(parentId), ...keysIn(id)]
-  await saveItemOrder(backend, (order) => ({
-    ...Object.fromEntries(Object.entries(order).filter(([folder]) => folder !== id)),
-    [orderKey(parentId)]: merged
-  }))
 }
 
 let pending = 0

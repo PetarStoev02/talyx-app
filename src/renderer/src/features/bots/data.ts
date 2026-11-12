@@ -128,10 +128,12 @@ export function saveBotMeta(
   profile: string,
   patch: Partial<BotMeta>
 ): Promise<void> {
-  return updateMetadata(backend, { profile, key: backend.botMetaKey }, (value) => ({
-    // A value no client can read is replaced rather than blocking every later save.
-    ...jsonObject.catch({}).parse(value),
-    ...patch
+  return updateMetadata(backend, profile, (meta) => ({
+    [backend.botMetaKey]: {
+      // A value no client can read is replaced rather than blocking every later save.
+      ...jsonObject.catch({}).parse(meta[backend.botMetaKey]),
+      ...patch
+    }
   }))
 }
 
@@ -140,9 +142,9 @@ export function saveFolders(
   update: (folders: Folder[]) => Folder[],
   fallback: Folder[]
 ): Promise<void> {
-  return updateMetadata(backend, { profile: 'default', key: FOLDERS_KEY }, (value) =>
-    update(value === undefined ? fallback : normalizeFolders(value))
-  )
+  return saveLayout(backend, { folders: fallback, roomFolders: {} }, (layout) => ({
+    folders: update(layout.folders)
+  }))
 }
 
 export function saveRoomFolders(
@@ -150,47 +152,88 @@ export function saveRoomFolders(
   update: (roomFolders: RoomFolders) => RoomFolders,
   fallback: RoomFolders
 ): Promise<void> {
-  return updateMetadata(backend, { profile: 'default', key: ROOM_FOLDERS_KEY }, (value) => {
-    const stored = roomFoldersSchema.safeParse(value)
-    return update(stored.success ? stored.data : fallback)
-  })
+  return saveLayout(backend, { folders: [], roomFolders: fallback }, (layout) => ({
+    roomFolders: update(layout.roomFolders)
+  }))
 }
 
 export function saveItemOrder(
   backend: RosterBackend,
   update: (order: Record<string, string[]>) => Record<string, string[]>
 ): Promise<void> {
-  return updateMetadata(backend, { profile: 'default', key: ITEM_ORDER_KEY }, (value) =>
-    update(itemOrderSchema.parse(value ?? {}))
-  )
+  return saveLayout(backend, { folders: [], roomFolders: {} }, (layout) => ({
+    itemOrder: update(layout.itemOrder)
+  }))
 }
 
 export function saveRoomPins(
   backend: RosterBackend,
   update: (roomPins: string[]) => string[]
 ): Promise<void> {
-  return updateMetadata(backend, { profile: 'default', key: ROOM_PINS_KEY }, (value) =>
-    update(roomPinsSchema.parse(value ?? []))
-  )
+  return saveLayout(backend, { folders: [], roomFolders: {} }, (layout) => ({
+    roomPins: update(layout.roomPins)
+  }))
 }
 
-// Read-modify-CAS preserves fields owned by other screens and concurrent desktops.
+/** The shared layout on the manager profile: folders, room folders, room pins and the order. */
+export type Layout = Pick<RosterSnapshot, 'folders' | 'roomFolders' | 'roomPins' | 'itemOrder'>
+
+const LAYOUT_KEYS: Record<keyof Layout, string> = {
+  folders: FOLDERS_KEY,
+  roomFolders: ROOM_FOLDERS_KEY,
+  roomPins: ROOM_PINS_KEY,
+  itemOrder: ITEM_ORDER_KEY
+}
+
+/**
+ * Changes the shared layout in one revision-checked save: every part `update` returns is written,
+ * or none. `fallback` stands in for folders and room folders no client has written yet.
+ */
+export function saveLayout(
+  backend: RosterBackend,
+  fallback: Pick<Layout, 'folders' | 'roomFolders'>,
+  update: (layout: Layout) => Partial<Layout>
+): Promise<void> {
+  return updateMetadata(backend, 'default', (meta) => {
+    const storedRoomFolders = roomFoldersSchema.safeParse(meta[ROOM_FOLDERS_KEY])
+    const changes = update({
+      folders:
+        meta[FOLDERS_KEY] === undefined ? fallback.folders : normalizeFolders(meta[FOLDERS_KEY]),
+      roomFolders: storedRoomFolders.success ? storedRoomFolders.data : fallback.roomFolders,
+      roomPins: roomPinsSchema.parse(meta[ROOM_PINS_KEY] ?? []),
+      itemOrder: itemOrderSchema.parse(meta[ITEM_ORDER_KEY] ?? {})
+    })
+    return Object.fromEntries(
+      Object.entries(changes).map(([part, value]) => [LAYOUT_KEYS[part as keyof Layout], value])
+    )
+  })
+}
+
+// Read-modify-CAS preserves fields owned by other screens and concurrent desktops. The keys
+// `update` returns are written in one save: the engine takes all of them or none.
 async function updateMetadata(
   backend: RosterBackend,
-  target: { profile: string; key: string },
-  update: (value: unknown) => unknown
+  profile: string,
+  update: (meta: Record<string, unknown>) => Record<string, unknown>
 ): Promise<void> {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const bot = await readMetadata(backend, target.profile)
-    if (!bot.ui_meta_revisions) throw new RosterError('roster.errorUnsafeSave')
+    const bot = await readMetadata(backend, profile)
+    const revisions = bot.ui_meta_revisions
+    if (!revisions) throw new RosterError('roster.errorUnsafeSave')
+    const meta = update(bot.ui_meta ?? {})
     const result = saveSchema.parse(
       await backend.request(
-        target.profile,
+        profile,
         'profiles.configure',
-        metaPatch(target.profile, target.key, {
-          meta: update(bot.ui_meta?.[target.key]),
-          revision: bot.ui_meta_revisions[target.key] ?? 0
-        })
+        metaPatch(
+          profile,
+          Object.fromEntries(
+            Object.entries(meta).map(([key, value]) => [
+              key,
+              { meta: value, revision: revisions[key] ?? 0 }
+            ])
+          )
+        )
       )
     )
     if (result.applied.ui_meta === true) return

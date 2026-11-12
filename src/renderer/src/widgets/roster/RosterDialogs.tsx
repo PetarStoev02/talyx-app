@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useLanguage } from '@app/providers/useLanguage'
-import { botTitle } from '@features/bots/roster'
+import { botTitle, folderPath, itemKey } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
-import type { Bot, Folder, Room } from '@features/bots/types'
+import type { Bot, Folder, Room, RosterRowRef, RosterSnapshot } from '@features/bots/types'
+import type { TranslationKey } from '@shared/lib/i18n'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
 import { Button } from '@shared/ui/button'
 import {
@@ -146,13 +147,65 @@ export function DeleteRoomDialog({
   )
 }
 
+const KIND: Record<RosterRowRef['kind'], TranslationKey> = {
+  bot: 'roster.kindBot',
+  room: 'roster.kindRoom',
+  folder: 'roster.kindFolder'
+}
+
+/** One confirmation for several picked rows, listing each one it deletes. */
+export function DeleteRowsDialog({
+  rows,
+  onClose,
+  onDelete
+}: {
+  rows: RosterRowRef[] | null
+  onClose: () => void
+  onDelete: (rows: RosterRowRef[]) => void
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const snapshot = useRoster((state) => state.snapshot)
+  const count = String(rows?.length ?? 0)
+  return (
+    <ConfirmDeleteDialog
+      open={!!rows}
+      title={t('roster.deleteRowsTitle').replace('{count}', count)}
+      warning={t('roster.deleteRowsWarning')}
+      confirm={t('roster.deleteRowsConfirm').replace('{count}', count)}
+      onClose={onClose}
+      onConfirm={() => rows && onDelete(rows)}
+    >
+      <ul className="max-h-48 space-y-1 overflow-y-auto text-base">
+        {rows?.map((row) => (
+          <li key={itemKey(row)} className="flex gap-2">
+            <span className="w-14 shrink-0 text-muted-foreground">{t(KIND[row.kind])}</span>
+            <span className="min-w-0 truncate">{rowName(snapshot, row)}</span>
+          </li>
+        ))}
+      </ul>
+    </ConfirmDeleteDialog>
+  )
+}
+
+function rowName(snapshot: RosterSnapshot, row: RosterRowRef): string {
+  if (row.kind === 'bot') {
+    const bot = snapshot.bots.find((item) => item.name === row.id)
+    return bot ? botTitle(bot) : row.id
+  }
+  if (row.kind === 'room')
+    return snapshot.rooms.find((room) => room.room_id === row.id)?.name ?? row.id
+  const folder = snapshot.folders.find((item) => item.id === row.id)
+  return folder ? folderPath(snapshot.folders, folder) : row.id
+}
+
 function ConfirmDeleteDialog({
   open,
   title,
   warning,
   confirm,
   onClose,
-  onConfirm
+  onConfirm,
+  children
 }: {
   open: boolean
   title: string
@@ -160,6 +213,8 @@ function ConfirmDeleteDialog({
   confirm: string
   onClose: () => void
   onConfirm: () => void
+  // What it deletes, under the warning.
+  children?: React.ReactNode
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const saving = useRoster((state) => state.saving)
@@ -174,6 +229,7 @@ function ConfirmDeleteDialog({
       <DialogContent>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{warning}</DialogDescription>
+        {children}
         {error && <ProblemMessage problem={error} />}
         <div className="flex gap-2">
           <Button variant="destructive" disabled={saving} onClick={onConfirm}>
