@@ -4,6 +4,7 @@ const en = {
   'nav.settings': 'Settings',
   'nav.sections': 'Sections',
   'nav.unread': '{section}, new replies',
+  'nav.needsYou': '{section}, {count} waiting on you',
   'nav.closeSettings': 'Close settings',
   'settings.pages': 'Settings pages',
   'settings.general': 'General',
