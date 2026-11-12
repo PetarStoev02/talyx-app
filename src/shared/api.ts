@@ -4,6 +4,7 @@
 
 import type { EngineHttpRequest } from './engine'
 import type { ModulesState } from './modules'
+import type { McpAnswer, McpCall, McpConnection } from './mcp'
 import type { InstallExit } from './setup'
 import type { UpdateState } from './updater'
 
@@ -89,7 +90,14 @@ export function buildApi(transport: ApiTransport) {
     onModulesState: (callback: (state: ModulesState) => void) =>
       transport.on('modules:state', (state) => callback(state as ModulesState)),
     onActivationRequested: (callback: () => void) =>
-      transport.on('modules:activation-requested', () => callback())
+      transport.on('modules:activation-requested', () => callback()),
+
+    // Talyx's MCP server (main serves agents; this page runs their tool calls and answers)
+    attachMcp: () => invoke('mcp:attach'),
+    answerMcp: (id: string, answer: McpAnswer) => invoke('mcp:answer', id, answer),
+    getMcpConnection: () => invoke('mcp:connection') as Promise<McpConnection>,
+    onMcpCall: (callback: (call: McpCall) => void) =>
+      transport.on('mcp:call', (call) => callback(call as McpCall))
   }
 }
 

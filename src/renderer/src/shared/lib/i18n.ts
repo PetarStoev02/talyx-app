@@ -211,6 +211,10 @@ const en = {
   'rooms.name': 'Name',
   'rooms.members': 'Bots',
   'rooms.details': 'Room details',
+  'rooms.rename': 'Rename room',
+  'rooms.errorName': 'A room needs a name.',
+  'rooms.fixedMembers':
+    'The bots in a room are fixed when it is made: the engine cannot add or remove one yet.',
   'rooms.openDetails': 'Details for {name}',
   'rooms.membersPicked': '{count} of 6 picked',
   'rooms.membersLoading': 'Loading bots…',
@@ -387,6 +391,32 @@ const en = {
   'roster.errorNoDefault':
     'The engine did not return Talyx’s own bot. Restart it with talyx-engine gateway restart, then refresh.',
   'roster.errorFolderGone': 'That folder no longer exists. Refresh the roster.',
+  'mcp.approveTitle': 'An agent asks to change Talyx',
+  'mcp.approveSource':
+    'The request came through Talyx’s MCP server, from one of your bots or an outside agent. Nothing changes unless you allow it.',
+  'mcp.allow': 'Allow',
+  'mcp.deny': 'Deny',
+  'mcp.deleteBot': 'Delete the bot “{name}” and everything it keeps. This cannot be undone.',
+  'mcp.deleteRoom': 'Delete the room “{name}” and its history. Its bots and their own chats stay.',
+  'mcp.deleteFolder':
+    'Delete the folder “{name}”. Its bots, rooms and folders move up a level; none is deleted.',
+  'mcp.deleteRoutine': 'Delete the routine “{name}”. This cannot be undone.',
+  'mcp.replaceSoul': 'Replace the SOUL of “{name}”. The text it has now is lost.',
+  'mcp.costlyModel': 'Switch “{name}” to {model}. The engine says: {message}',
+  'mcp.addRoutine':
+    'Give “{name}” the routine “{routine}”. It runs on its own schedule, also while Talyx is closed. Its instruction: “{instruction}”',
+  'mcp.resumeRoutine':
+    'Resume the routine “{routine}”. It runs on its own schedule, also while Talyx is closed.',
+  'mcp.refusedModel':
+    'The user said no in Talyx to the model, so it did not change. The other changes in this call were saved.',
+  'mcp.errorNoEngine':
+    'Talyx is not connected to the engine right now, so nothing was changed. Try again in a moment.',
+  'mcp.errorNotPinned': 'Nothing can go in front of a bot that is not pinned:',
+  'mcp.refused': 'The user said no in Talyx, so nothing was changed.',
+  'mcp.errorManager': 'Talyx’s own bot cannot be deleted.',
+  'mcp.errorRoomGone': 'That room no longer exists.',
+  'mcp.errorRoutineGone': 'That routine no longer exists.',
+  'mcp.errorLook': 'That look is not one Talyx has; list_looks shows the shapes and hues.',
   'details.errorNotApplied': 'Some changes were not saved. Your edits are still here; save again.',
   'details.errorModel':
     'The engine did not switch to this model. Check that its provider is set up in Settings → Providers, then save again.',
@@ -440,6 +470,10 @@ const en = {
   'settings.engineUpdate': 'Update the engine',
   'settings.engineDebugConsole': 'Debug console',
   'settings.engineChecked': 'Checked {when}',
+  'settings.agentAccess': 'Agents',
+  'settings.agentAccessHint':
+    'Your bots and outside agents (Claude Code, Cursor and others) operate Talyx through its MCP server at {url}, while Talyx is open. Every bot has it already. For an outside agent, copy the line that adds it, with its key, and run it in a terminal. Keep the key to yourself.',
+  'settings.agentAccessCopy': 'Copy the add line',
   'settings.about': 'About',
   'settings.talyxVersion': 'Talyx {version}',
   'settings.checkUpdates': 'Check for updates',

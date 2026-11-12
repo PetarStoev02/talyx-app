@@ -6,6 +6,7 @@ import { reportError } from '@shared/lib/report'
 import type { InstallExit, InstallSteps } from '../../../../shared/setup'
 import type { UpdateCheck, UpdateState } from '../../../../shared/updater'
 import type { ActivationRequest, AvailableModule, ModulesState } from '../../../../shared/modules'
+import type { McpAnswer, McpCall, McpConnection } from '../../../../shared/mcp'
 
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system'
@@ -75,4 +76,12 @@ export const modulesApi = {
     window.api.invokeModule(id, action, input),
   onState: (cb: (state: ModulesState) => void): (() => void) => window.api.onModulesState(cb),
   onActivationRequested: (cb: () => void): (() => void) => window.api.onActivationRequested(cb)
+}
+
+export const mcpApi = {
+  attach: (): Promise<void> => window.api.attachMcp() as Promise<void>,
+  answer: (id: string, answer: McpAnswer): Promise<void> =>
+    window.api.answerMcp(id, answer) as Promise<void>,
+  connection: (): Promise<McpConnection> => window.api.getMcpConnection(),
+  onCall: (cb: (call: McpCall) => void): (() => void) => window.api.onMcpCall(cb)
 }

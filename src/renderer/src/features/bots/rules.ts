@@ -10,14 +10,23 @@ export const TALYX_RULES = [
   '',
   'Talyx is the desktop app you live in. The user sees you in a roster of bots, with folders and pins, and chats with you there.',
   'The other bots in the roster are your teammates, and Talyx is also the name of the manager bot.',
-  'When the user says "the app" or "Talyx", they mean this app.'
+  'When the user says "the app" or "Talyx", they mean this app.',
+  'To change Talyx itself (create, rename or delete bots, folders and rooms, pin them, change a bot\u2019s settings or routines), use the tools of the `talyx` MCP server; never edit its files. Deleting asks the user in Talyx first.'
 ].join('\n')
 
 /**
  * Every earlier version of TALYX_RULES. When the text changes in a release, the old text moves
  * here, so a bot that still holds it is rewritten; any other prompt is the user's own.
  */
-export const PREVIOUS_RULES: string[] = []
+export const PREVIOUS_RULES: string[] = [
+  [
+    '# Talyx',
+    '',
+    'Talyx is the desktop app you live in. The user sees you in a roster of bots, with folders and pins, and chats with you there.',
+    'The other bots in the roster are your teammates, and Talyx is also the name of the manager bot.',
+    'When the user says "the app" or "Talyx", they mean this app.'
+  ].join('\n')
+]
 
 interface ProfileConfig {
   agent?: { system_prompt?: unknown }

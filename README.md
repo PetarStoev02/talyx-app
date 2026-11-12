@@ -28,6 +28,16 @@ Talyx runs its bots on the engine, a separate agent backend that Talyx's setup s
 - Talyx reads every path and port from the engine's own output; it never assumes where the engine keeps its data.
 - Windows cannot attach yet: minting a gateway ticket there goes through the engine's own runtime, so a Windows build comes once the engine runs there.
 
+### Agents operate Talyx (MCP)
+
+While Talyx is open it runs an MCP server on `http://127.0.0.1:47816/mcp` (loopback only; `TALYX_MCP_PORT` changes the port). Its tools do what the app does: list the roster; create, rename and delete bots, folders and rooms; move, order and pin them; change a bot's title, description, SOUL, model, reasoning and look; list, add, pause and delete routines; rename a group room, post in it and read its latest messages. Each tool runs through the same code as the roster and the details panel.
+
+- **Your bots** get the server in their profile automatically (Talyx adds it to every profile, also to bots created later), with its key kept in the profile's `.env`.
+- **Outside agents** (Claude Code, Cursor and others): Settings → Engine → Agents → **Copy the add line**, then run it in a terminal. Every request needs that key, and a request from a browser page is refused.
+- **Approval:** deleting a bot, a folder, a room or a routine, replacing a SOUL, a model the engine marks as costly, and adding or resuming a routine (it runs on its own, also with Talyx closed) ask you in the Talyx window first. **Deny**, closing the dialog, or leaving it for nine minutes changes nothing.
+- **Talyx closed:** the server is not running, so agents cannot connect and nothing changes. With Talyx running but its window closed, every tool answers that Talyx's window is not open.
+- The engine has no call to add or remove members of an existing room, so rooms are created with their members and deleted; there is no tool to change members.
+
 ### Re-syncing the vendored client
 
 Two things change when the engine moves on, and only one of them is updated from the app. The engine itself is: each Talyx release pins one engine version (`EXPECTED_ENGINE_VERSION` in `src/shared/engine.ts`, and `engine-install.json` on the release), and when the attached engine is older, the footer update button offers that version and installs it when you click **Install the engine**. The vendored client is not: when the engine's protocol changes, a developer redoes the steps below by hand and ships a new Talyx release.

@@ -48,6 +48,8 @@ export interface EngineDouble {
   prompts: Record<string, unknown>
   /** Every profile whose prompt setting was written, in order. */
   promptWrites: string[]
+  /** Each profile's default reasoning (`agent.reasoning_effort`), once written. */
+  reasoning: Record<string, string>
   /** Each profile's named endpoints (its config's providers), as the endpoint list shows them. */
   named: Record<string, CustomEndpoint[]>
   /** The engine's preview of Talyx's endpoint key: a `${VAR}` reference, or a redacted key. */
@@ -71,11 +73,22 @@ export interface EngineDouble {
   cronWrites: { method: string; path: string; body?: unknown }[]
   failMetaOnce: () => void
   rooms: Room[]
+  /** Each room's log rows, as groups.log pages them; groups.send adds the user's message. */
+  roomLogs: Record<string, RoomLogRow[]>
   /** Every profiles.set_asset call, in order. */
   assets: { profile: string; params: Record<string, unknown> }[]
   failAssetOnce: () => void
   // What groups.capabilities says the engine will seat; null when it does not say.
   seatable: string[] | null
+}
+
+export interface RoomLogRow {
+  seq: number
+  event_id: string
+  kind: string
+  actor: { kind: string; id: string; display_name?: string }
+  payload: Record<string, unknown>
+  created_at: number
 }
 
 /** What the double's renderer returns for a look, so a test can tell which look was exported. */
@@ -153,6 +166,7 @@ export function engineDouble(
   const named: EngineDouble['named'] = {}
   const prompts: EngineDouble['prompts'] = {}
   const promptWrites: string[] = []
+  const reasoning: EngineDouble['reasoning'] = {}
 
   // As the engine: a costly model waits for a yes, and a bare custom provider needs its URL.
   function setModel(profile: string, body: Record<string, unknown>): unknown {
@@ -185,15 +199,19 @@ export function engineDouble(
         return (profile in prompts ? { agent: { system_prompt: prompts[profile] } } : {}) as T
       const { providers, agent } = (
         request.body as {
-          config: { providers?: Record<string, NamedEntry>; agent?: { system_prompt: string } }
+          config: {
+            providers?: Record<string, NamedEntry>
+            agent?: { system_prompt?: string; reasoning_effort?: string }
+          }
         }
       ).config
       for (const [id, entry] of Object.entries(providers ?? {}))
         named[profile] = [...(named[profile] ?? []), namedEndpoint(id, entry)]
-      if (agent) {
+      if (agent?.system_prompt !== undefined) {
         prompts[profile] = agent.system_prompt
         promptWrites.push(profile)
       }
+      if (agent?.reasoning_effort !== undefined) reasoning[profile] = agent.reasoning_effort
       return { ok: true } as T
     }
     if (request.path.startsWith('/api/cron/jobs/')) return cronRest(profile, request) as T
@@ -396,6 +414,37 @@ export function engineDouble(
       rooms.push(structuredClone(room))
       return { room }
     }
+    if (method === 'groups.rename') {
+      const room = rooms.find((item) => item.room_id === params.room_id)
+      if (!room) throw new Error('Room not found')
+      room.name = params.name as string
+      return { room: structuredClone(room) }
+    }
+    if (method === 'groups.send') {
+      const log = (double.roomLogs[params.room_id as string] ??= [])
+      log.push({
+        seq: log.length + 1,
+        event_id: params.event_id as string,
+        kind: 'message.user',
+        actor: { kind: 'user', id: 'user' },
+        payload: structuredClone(params.payload as Record<string, unknown>),
+        created_at: 1_794_045_600 + log.length
+      })
+      return { event: { seq: log.length } }
+    }
+    if (method === 'groups.log') {
+      // Two rows a page, so a test also reads past the first page.
+      const since = params.since_seq as number
+      const rows = (double.roomLogs[params.room_id as string] ?? []).filter(
+        (row) => row.seq > since
+      )
+      const page = rows.slice(0, 2)
+      return {
+        events: structuredClone(page),
+        cursor: page.at(-1)?.seq ?? since,
+        has_more: rows.length > page.length
+      }
+    }
     if (method === 'groups.disband') {
       const index = rooms.findIndex((room) => room.room_id === params.room_id)
       if (index < 0) throw new Error('Room not found')
@@ -425,9 +474,11 @@ export function engineDouble(
     named,
     prompts,
     promptWrites,
+    reasoning,
     homeProvider: 'custom',
     homeKeyPreview: HOME_KEY_REF,
     rooms,
+    roomLogs: {},
     assets,
     seatable: null,
     metadata,

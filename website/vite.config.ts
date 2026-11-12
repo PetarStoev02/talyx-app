@@ -7,9 +7,12 @@ import tailwindcss from '@tailwindcss/vite'
 const renderer = path.resolve(__dirname, '../src/renderer/src')
 const site = path.resolve(__dirname, 'src')
 const websitePkg = path.resolve(__dirname, 'package.json')
-// The renderer, and the roster fixture's engine double the demo runs on (and the unit double it uses).
+// The renderer, the app's shared modules it imports (src/shared, which also matches the site's own
+// src/shared: both take their packages from the website), and the roster fixture's engine double
+// the demo runs on (and the unit double it uses).
 const borrowedSegments = [
   ['src', 'renderer'],
+  ['src', 'shared'],
   ['tests', 'fixtures'],
   ['tests', 'unit', 'providers']
 ].map((parts) => path.sep + parts.join(path.sep) + path.sep)

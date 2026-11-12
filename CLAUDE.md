@@ -175,6 +175,9 @@ src/main/
     ├── ipc/                    # settings.ipc.ts, engine.ipc.ts, setup.ipc.ts (the engine install),
     │                           # updater.ipc.ts (update download and open), validation.ts (zod at the boundary),
     │                           # modules.ipc.ts (modules: license, install, talyx-module:// files)
+    ├── mcp/                    # mcpServer.ts (Talyx's MCP server: loopback HTTP, bearer key, no
+    │                           # browser Origin; tool calls go to the page, which runs them),
+    │                           # see ipc/mcp.ipc.ts (start, key in userData/mcp-token, mcp:* IPC)
     ├── modules/                # signing.ts (license keys and signed module bundles, Ed25519),
     │                           # a key that names the module id `all` unlocks every module (shared/modules.ts),
     │                           # catalog.ts (the published module list), moduleHost.ts (install, load, run),
@@ -215,6 +218,7 @@ src/renderer/src/
 │                     # settings-startup (Settings: launch at login),
 │                     # Setup (the first-run flow: welcome, engine, provider, bot steps)
 ├── features/         # bots (roster data, folders, pins, unread, details, routines, create, rooms),
+│                     # bots/mcp.ts (the MCP tools over those use cases; deletes ask first),
 │                     # chat (transcript, use cases, hosted rooms polled over `groups.*`),
 │                     # providers (keys, endpoints and sign-ins over REST; writes go to every bot),
 │                     # setup (which step comes first, the engine install and its screens),

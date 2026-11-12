@@ -1,20 +1,30 @@
-import { X } from 'lucide-react'
+import { useState } from 'react'
+import { Pencil, X } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
+import { runRosterMutation } from '@features/bots/actions'
 import { BotAvatar } from '@features/bots/BotAvatar'
+import type { RosterBackend } from '@features/bots/data'
+import { ProblemMessage } from '@features/bots/ProblemMessage'
+import { renameRoom } from '@features/bots/rooms'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Room } from '@features/bots/types'
+import { Button } from '@shared/ui/button'
+import { Input } from '@shared/ui/input'
 
 // The room's members clustered in the hero square, as big as a bot's hero avatar.
 const HERO_SIZE = 64
 
-/** The third column for a room: who is in it. A member opens that bot's own chat. */
+/** The third column for a room: its name and who is in it. A member opens that bot's own chat. */
 export function RoomDetailsPanel({
   room,
+  backend,
   onClose
 }: {
   room: Room
+  /** Null while the engine is not attached: the name shows but cannot change. */
+  backend: RosterBackend | null
   onClose: () => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
@@ -39,7 +49,7 @@ export function RoomDetailsPanel({
           <X size={16} />
         </button>
         <RoomAvatars room={room} bots={bots} cluster={HERO_SIZE} />
-        <h2 className="max-w-full text-xl font-semibold wrap-break-word">{room.name}</h2>
+        <RoomName room={room} backend={backend} />
         <p className="text-sm text-muted-foreground">{count}</p>
       </header>
       <section aria-labelledby="room-members" className="scroll-y-stable min-h-0 flex-1 px-4 pb-4">
@@ -65,7 +75,86 @@ export function RoomDetailsPanel({
             )
           })}
         </ul>
+        <p className="px-2 pt-3 text-sm text-muted-foreground">{t('rooms.fixedMembers')}</p>
       </section>
     </aside>
+  )
+}
+
+/** The room's name; the pencil turns it into a field. Enter saves, Escape leaves it as it was. */
+function RoomName({
+  room,
+  backend
+}: {
+  room: Room
+  backend: RosterBackend | null
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const saving = useRoster((state) => state.saving)
+  const error = useRoster((state) => state.actionError)
+  const { clearError } = useRoster.getState()
+  const [name, setName] = useState<string | null>(null)
+  const stop = (): void => {
+    clearError()
+    setName(null)
+  }
+  async function save(): Promise<void> {
+    if (!backend || name === null) return
+    if (name.trim() === room.name) return stop()
+    await runRosterMutation(backend, () => renameRoom(backend, { roomId: room.room_id, name }))
+    // A failed rename keeps the field open with the engine's words under it.
+    if (!useRoster.getState().actionError) setName(null)
+  }
+  if (name === null)
+    return (
+      <div className="flex max-w-full items-center gap-1">
+        <h2 className="min-w-0 text-xl font-semibold wrap-break-word">{room.name}</h2>
+        {backend && (
+          <button
+            aria-label={t('rooms.rename')}
+            onClick={() => {
+              clearError()
+              setName(room.name)
+            }}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-foreground/10"
+          >
+            <Pencil size={14} />
+          </button>
+        )}
+      </div>
+    )
+  return (
+    <form
+      className="w-full space-y-2 text-left"
+      onSubmit={(event) => {
+        event.preventDefault()
+        void save()
+      }}
+    >
+      <label className="block text-sm text-muted-foreground">
+        {t('rooms.name')}
+        <Input
+          autoFocus
+          value={name}
+          disabled={saving}
+          onChange={(event) => setName(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.stopPropagation()
+              stop()
+            }
+          }}
+        />
+      </label>
+      {error && <ProblemMessage problem={error} />}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={stop}>
+          {t('roster.cancel')}
+        </Button>
+        <Button type="submit" disabled={saving || !name.trim()}>
+          {t('details.save')}
+        </Button>
+      </div>
+    </form>
   )
 }
