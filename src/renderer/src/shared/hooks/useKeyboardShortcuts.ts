@@ -3,8 +3,8 @@ import { useNavigation } from '@app/providers/useNavigation'
 
 const isMac = navigator.platform.toLowerCase().includes('mac')
 
-// ⌘, opens Settings and closes it again. ⌘1 and up open the footer dock's pages in order; the dock
-// binds them (SidebarFooter).
+// ⌘, opens Settings and closes it again. ⌘1 and up open the footer dock's pages in order; the
+// dock binds them (SidebarFooter).
 export function useKeyboardShortcuts(): void {
   const toggleSettings = useNavigation((s) => s.toggleSettings)
 
