@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Pencil, Plus, X } from 'lucide-react'
+import { DropdownMenu } from 'radix-ui'
+import { Ellipsis, MessageSquare, Pencil, Plus, UserMinus, X } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { runRosterMutation } from '@features/bots/actions'
 import { BotAvatar } from '@features/bots/BotAvatar'
@@ -17,6 +18,8 @@ import { useRoster } from '@features/bots/store'
 import type { Bot, Room } from '@features/bots/types'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
+import { BuiltEntries, ContextMenuArea, menuContentClass } from '@shared/ui/menu'
+import type { MenuAction } from '@shared/ui/menu'
 
 // The room's members clustered in the hero square, as big as a bot's hero avatar.
 const HERO_SIZE = 64
@@ -150,8 +153,8 @@ function RoomName({
 }
 
 /**
- * The room's bots: each opens its own chat, and with the engine attached each can be removed (while
- * the room keeps two) and others added (up to six). The room and its history stay.
+ * The room's bots. Each row's menu (right-click, or its dots) opens the bot's chat or removes it
+ * from the room while two stay; Add a bot seats others, up to six. The room and its history stay.
  */
 function RoomMembers({
   room,
@@ -189,28 +192,47 @@ function RoomMembers({
         {memberBots.map((bot) => {
           const known = bots.some((item) => item.name === bot.name)
           const name = known ? botTitle(bot) : bot.display_name || bot.name
+          const actions = (): MenuAction[] => [
+            {
+              label: t('rooms.viewBot'),
+              icon: MessageSquare,
+              // A member that left the roster has no chat here to open.
+              disabled: !known,
+              onSelect: () => onOpen(bot.name)
+            },
+            {
+              label: t('rooms.removeFromRoom'),
+              icon: UserMinus,
+              destructive: true,
+              separated: true,
+              disabled: !backend || saving || memberBots.length <= MIN_ROOM_MEMBERS,
+              onSelect: () => change(memberBots.filter((item) => item.name !== bot.name))
+            }
+          ]
           return (
-            <li key={bot.name} className="group flex items-center gap-1">
-              <button
-                // A member that left the roster has no chat here to open.
-                disabled={!known}
-                onClick={() => onOpen(bot.name)}
-                className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-left text-base hover:bg-accent disabled:hover:bg-transparent"
+            <ContextMenuArea key={bot.name} actions={actions}>
+              {/* Focusable, so the menu key and Shift+F10 open the same menu as a right-click. */}
+              <li
+                tabIndex={0}
+                className="group flex items-center gap-3 rounded-xl p-2 text-base outline-none hover:bg-accent focus-visible:bg-accent"
               >
                 <BotAvatar bot={bot} place="row" />
-                <span className="min-w-0 truncate">{name}</span>
-              </button>
-              {backend && memberBots.length > MIN_ROOM_MEMBERS && (
-                <button
-                  aria-label={t('rooms.removeBot').replace('{name}', name)}
-                  disabled={saving}
-                  onClick={() => change(memberBots.filter((item) => item.name !== bot.name))}
-                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-foreground/10 disabled:opacity-50"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </li>
+                <span className="min-w-0 flex-1 truncate">{name}</span>
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger
+                    aria-label={t('rooms.memberActions').replace('{name}', name)}
+                    className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-foreground/10 focus-visible:opacity-100 data-[state=open]:opacity-100"
+                  >
+                    <Ellipsis size={16} />
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content sideOffset={4} align="end" className={menuContentClass}>
+                      <BuiltEntries build={actions} />
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
+              </li>
+            </ContextMenuArea>
           )
         })}
       </ul>

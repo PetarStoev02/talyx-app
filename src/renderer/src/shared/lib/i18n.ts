@@ -216,7 +216,9 @@ const en = {
   'rooms.joined': '{name} joined',
   'rooms.left': '{name} left',
   'rooms.addBot': 'Add a bot',
-  'rooms.removeBot': 'Remove {name} from the room',
+  'rooms.viewBot': 'View bot',
+  'rooms.removeFromRoom': 'Remove from room',
+  'rooms.memberActions': 'Actions for {name}',
   'rooms.membersHint':
     'A bot that joins reads the room’s history and answers from the next message. The room keeps its history.',
   'rooms.errorMembersBusy':
