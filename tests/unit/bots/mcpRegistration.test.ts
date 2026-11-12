@@ -12,7 +12,7 @@ const BOT = { profile: 'scout', sessionId: 'chat-1' }
  */
 function engineWith(
   servers: { name: string; url: string }[],
-  options: { deleteFails?: string } = {}
+  options: { deleteFails?: string; reloadFailsOnce?: string } = {}
 ): { backend: RosterBackend; steps: string[]; added: unknown[] } {
   const steps: string[] = []
   const added: unknown[] = []
@@ -27,6 +27,9 @@ function engineWith(
     },
     request: async (profile: string, method: string, params: Record<string, unknown>) => {
       steps.push(`${method} ${profile} ${JSON.stringify(params)}`)
+      const failure = options.reloadFailsOnce
+      options.reloadFailsOnce = undefined
+      if (failure) throw new Error(failure)
       return { status: 'reloaded' }
     }
   } as unknown as RosterBackend
@@ -72,6 +75,20 @@ describe('registerMcpServer', () => {
     )
     await registerMcpServer(backend, BOT, CONNECTION)
     expect(added).toHaveLength(1)
+  })
+
+  it('should still add the new address when the reload after the removal fails, and say so', async () => {
+    const { backend, steps, added } = engineWith(
+      [{ name: 'talyx', url: 'http://127.0.0.1:47816/mcp?tools=old' }],
+      { reloadFailsOnce: 'Gateway busy' }
+    )
+    await expect(registerMcpServer(backend, BOT, CONNECTION)).rejects.toThrow('Gateway busy')
+    expect(added).toHaveLength(1)
+    expect(steps).toEqual([
+      'DELETE /api/mcp/servers/talyx?profile=scout',
+      RELOAD,
+      'POST /api/mcp/servers?profile=scout'
+    ])
   })
 
   it('should reload the profile without a chat when the bot has none yet', async () => {
