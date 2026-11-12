@@ -63,6 +63,48 @@ describe('module rows for a license for every module', () => {
   })
 })
 
+describe('module rows when a module is installed', () => {
+  const everyModule = { ...license, modules: [ALL_MODULES] }
+  const catalog: AvailableModule[] = [
+    { id: 'workflows', name: 'Workflows', version: '1.0.0', compatible: true },
+    { id: 'hello', name: 'Hello', version: '1.0.0', compatible: true },
+    { id: 'atlas', name: 'Atlas', version: '1.0.0', compatible: true }
+  ]
+  const installing = (...ids: string[]): ModulesState => ({
+    license: everyModule,
+    modules: catalog
+      .filter((module) => ids.includes(module.id))
+      .map(({ id, name, version }) => ({
+        id,
+        name,
+        version,
+        status: 'running',
+        problem: null,
+        styled: false
+      }))
+  })
+
+  it.each([
+    ['none is installed', installing()],
+    ['the last one is installed', installing('workflows')],
+    ['two are installed', installing('workflows', 'hello')],
+    ['all are installed', installing('workflows', 'hello', 'atlas')]
+  ])('should keep the rows in name order when %s', (_case, state) => {
+    expect(moduleRows(state, catalog).map((row) => row.name)).toEqual([
+      'Atlas',
+      'Hello',
+      'Workflows'
+    ])
+  })
+
+  it('should keep the catalog order when the installed module names itself otherwise', () => {
+    const state = installing('workflows')
+    state.modules[0] = { ...state.modules[0]!, name: 'Aardvark' }
+
+    expect(moduleRows(state, catalog).map((row) => row.id)).toEqual(['atlas', 'hello', 'workflows'])
+  })
+})
+
 describe('module rows for a key that names several modules', () => {
   const twoModules = { ...license, modules: ['zeta', 'alpha'] }
   const module = (id: string): AvailableModule => ({ ...offered('1.0.0')[0]!, id, name: id })

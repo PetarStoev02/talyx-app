@@ -660,6 +660,9 @@ const en = {
   'modules.install': 'Install',
   'modules.update': 'Update',
   'modules.uninstall': 'Uninstall',
+  'modules.uninstallTitle': 'Uninstall {name}?',
+  'modules.uninstallWarning':
+    'Talyx removes it and keeps its data. You can install it again from this list.',
   'modules.notInstalled': 'Not installed. Version {version} is available.',
   'modules.installedVersion': 'Version {version}',
   'modules.updateAvailable': 'Version {installed}. Version {offered} is available.',
