@@ -331,7 +331,11 @@ export function chatActions(backend: ChatBackend): ChatActions {
       update(profile, { waiting: [message, ...waiting.filter((item) => item !== message)] })
       // The stopped answer ends the turn, and turnEnded sends it; an idle chat sends it here.
       if (chatOf(profile)?.transcript?.running) await interrupt(profile)
-      else await sendWaiting(profile)
+      else {
+        // Idle: whatever was out has ended or never started, so nothing holds this one back.
+        out.delete(profile)
+        await sendWaiting(profile)
+      }
     },
 
     turnEnded: async (profile) => {

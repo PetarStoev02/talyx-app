@@ -55,7 +55,8 @@ export function ChatPane({
     // After the composer has the text: the cursor goes to its end, ready to finish the sentence.
     requestAnimationFrame(() => {
       composer.current?.focus()
-      composer.current?.setSelectionRange(starter.text.length, starter.text.length)
+      const end = composer.current?.value.length ?? 0
+      composer.current?.setSelectionRange(end, end)
     })
   }
   const edit = (message: WaitingMessage): void => {
@@ -216,27 +217,40 @@ function WaitingBubble({
     <div className="ml-auto flex max-w-[80%] flex-col items-end gap-1">
       <p
         dir="auto"
-        title={t('chat.queued')}
         className="rounded-3xl border border-dashed border-border px-4 py-2 text-base whitespace-pre-wrap wrap-anywhere text-muted-foreground"
       >
-        {text || t('chat.queuedImages').replace('{count}', String(images.length))}
+        {text ||
+          (images.length === 1
+            ? t('chat.queuedImage')
+            : t('chat.queuedImages').replace('{count}', String(images.length)))}
+        <span className="sr-only">{` (${t('chat.queued')})`}</span>
       </p>
       <div className="flex items-center gap-1 text-sm text-muted-foreground">
-        <button type="button" className={action} onClick={onSendNow}>
+        <button
+          type="button"
+          aria-label={`${t('chat.sendNow')}: ${text}`}
+          className={action}
+          onClick={onSendNow}
+        >
           <ArrowUp size={14} />
           {t('chat.sendNow')}
         </button>
         {onEdit && (
           <button
             type="button"
-            aria-label={t('chat.editQueued')}
+            aria-label={`${t('chat.editQueued')}: ${text}`}
             className={action}
             onClick={onEdit}
           >
             <Pencil size={14} />
           </button>
         )}
-        <button type="button" aria-label={t('chat.unqueue')} className={action} onClick={onRemove}>
+        <button
+          type="button"
+          aria-label={`${t('chat.unqueue')}: ${text}`}
+          className={action}
+          onClick={onRemove}
+        >
           <X size={14} />
         </button>
       </div>

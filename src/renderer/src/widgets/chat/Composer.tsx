@@ -65,11 +65,12 @@ export function Composer({
   const [text, setText] = useState('')
   const [files, setFiles] = useState<ComposerFile[]>([])
   const [sending, setSending] = useState(false)
-  // A new seed replaces the draft once, while rendering (no effect round trip).
+  // A new seed fills the draft once, while rendering (no effect round trip).
   const [seenSeed, setSeenSeed] = useState(seed)
   if (seed !== seenSeed) {
     setSeenSeed(seed)
-    if (seed) setText(seed.text)
+    // Added under a draft already typed (an edited waiting message), never over it.
+    if (seed) setText(text.trim() ? `${text}\n${seed.text}` : seed.text)
   }
   const picker = useRef<HTMLInputElement>(null)
   // While an answer runs, a new message queues behind it; only a send still on its way waits.

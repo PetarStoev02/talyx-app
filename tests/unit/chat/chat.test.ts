@@ -532,6 +532,28 @@ describe('bot chat', () => {
       expect(chat(MANAGER).waiting.map((message) => message.draft.text)).toEqual(['Later'])
     })
 
+    it('should send the next waiting message when a gap hides the end of the answer', async () => {
+      emit('message.complete', { text: 'A', status: 'complete' })
+      await settled()
+      await actions.queue(MANAGER, draft('Mine'))
+      await actions.queue(MANAGER, draft('Next'))
+      expect(submitted()).toEqual(['Mine'])
+      // The answer to Mine started and ended while the socket was away; the redial reports a gap.
+      emit('session.replay_gap')
+      await settled()
+      expect(submitted()).toEqual(['Mine', 'Next'])
+    })
+
+    it('should send a picked message at once when the chat is idle', async () => {
+      emit('message.complete', { text: 'A', status: 'complete' })
+      await settled()
+      await actions.queue(MANAGER, draft('Mine'))
+      await actions.queue(MANAGER, draft('Stuck'))
+      await actions.sendNow(MANAGER, chat(MANAGER).waiting[0].id)
+      expect(submitted()).toEqual(['Mine', 'Stuck'])
+      expect(methods()).not.toContain('session.interrupt')
+    })
+
     it('should keep a waiting message first in line when its send fails, and say why', async () => {
       await actions.queue(MANAGER, draft('Next'))
       engine.failNext('prompt.submit', 'Gateway refused the prompt')

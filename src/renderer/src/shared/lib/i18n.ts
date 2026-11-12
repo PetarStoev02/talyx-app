@@ -132,6 +132,7 @@ const en = {
   'chat.unqueue': "Don't send",
   'chat.sendNow': 'Send now',
   'chat.editQueued': 'Edit',
+  'chat.queuedImage': '1 image',
   'chat.queuedImages': '{count} images',
   'chat.stop': 'Stop',
   'chat.addImage': 'Add images',
