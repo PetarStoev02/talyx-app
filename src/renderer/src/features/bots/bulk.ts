@@ -141,8 +141,9 @@ export async function deleteRows(
   rows: RosterRowRef[]
 ): Promise<void> {
   if (hasTalyx(rows)) throw new RosterError('roster.errorKeepTalyx')
+  // A retry after a failure part way skips the bots and rooms already gone.
   const ids = (kind: RosterRowRef['kind']): string[] =>
-    rows.filter((row) => row.kind === kind).map((row) => row.id)
+    rows.filter((row) => row.kind === kind && stillThere(snapshot, row)).map((row) => row.id)
   const [bots, rooms, folders] = [ids('bot'), ids('room'), ids('folder')]
   for (const room of rooms)
     await backend.request('default', 'groups.disband', {
@@ -219,6 +220,12 @@ function insidePicked(
         ? null
         : itemFolder(snapshot, row as { kind: 'bot' | 'room'; id: string })
   return home !== null && refusesFolder(snapshot, picked, home)
+}
+
+function stillThere(snapshot: RosterSnapshot, row: RosterRowRef): boolean {
+  if (row.kind === 'bot') return snapshot.bots.some((bot) => bot.name === row.id)
+  if (row.kind === 'room') return snapshot.rooms.some((room) => room.room_id === row.id)
+  return true
 }
 
 // Talyx's own bot is never hidden or deleted.

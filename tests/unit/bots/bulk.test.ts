@@ -229,6 +229,18 @@ describe('deleting several picked rows', () => {
       'room:clients-room'
     ])
   })
+  it('should finish a delete retried after it failed part way, skipping what is already gone', async () => {
+    const rows = [bot('writer'), room('team-room'), folder('clients')]
+    engine.failMetaOnce()
+    await act(() => actions().deleteRows(rows))
+    expect(useRoster.getState().actionError).not.toBeNull()
+    expect(engine.deleted).toEqual(['writer'])
+    await act(() => actions().deleteRows(rows))
+    expect(useRoster.getState().actionError).toBeNull()
+    expect(engine.deleted).toEqual(['writer'])
+    expect(roster().folders.map((item) => item.id)).not.toContain('clients')
+    expect(rowKeys(null)).toEqual(['bot:default', 'bot:support', 'room:clients-room'])
+  })
   it('should refuse to delete Talyx’s own bot along with others', async () => {
     await act(() => actions().deleteRows([bot('default'), bot('writer')]))
     expect(useRoster.getState().actionError?.key).toBe('roster.errorKeepTalyx')
