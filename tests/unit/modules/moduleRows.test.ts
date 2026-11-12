@@ -96,6 +96,13 @@ describe('module rows when a module is installed', () => {
       'Workflows'
     ])
   })
+
+  it('should keep the catalog order when the installed module names itself otherwise', () => {
+    const state = installing('workflows')
+    state.modules[0] = { ...state.modules[0]!, name: 'Aardvark' }
+
+    expect(moduleRows(state, catalog).map((row) => row.id)).toEqual(['atlas', 'hello', 'workflows'])
+  })
 })
 
 describe('module rows for a key that names several modules', () => {
