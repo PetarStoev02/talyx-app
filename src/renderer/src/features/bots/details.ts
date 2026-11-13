@@ -1,19 +1,8 @@
-import { z } from 'zod'
 import { create } from 'zustand'
-import {
-  BARE_CUSTOM,
-  CONFIG_YAML_SOURCE,
-  keepBareEndpoint,
-  keyRef,
-  listEndpoints,
-  saveNamedEndpoint
-} from '@shared/engine/endpoints'
-import { assignMainModel } from '@shared/engine/mainModel'
-import type { ModelAssignmentResponse } from '@shared/engine/types'
-import { readProfiles, saveBotMeta } from './data'
-import type { RosterBackend } from './data'
+import { saveBotMeta } from './data'
+import type { RosterStore } from './data'
 import { exportAvatar, lookMeta, sameLook } from './look'
-import type { Look } from './look'
+import type { AvatarBackend, Look } from './look'
 import { problemOf } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'
 import { RosterError } from './roster'
@@ -58,17 +47,28 @@ export class SectionsNotSavedError extends RosterError {
   }
 }
 
+/** A profile's details and its model on the engine. */
+export interface DetailsBackend {
+  loadDetails: (profile: string) => Promise<ProfileDetails>
+  /** Saves description and SOUL in one call; a `SectionsNotSavedError` names the refused ones. */
+  saveSections: (
+    profile: string,
+    sections: Partial<Pick<ProfileDetails, 'description' | 'soul'>>
+  ) => Promise<void>
+  /**
+   * Pins the bot's model. For a costly model the engine saves nothing and asks first: the question
+   * comes back. A refusal is a `SectionsNotSavedError` for `model`.
+   */
+  pinModel: (profile: string, pick: ModelChoice) => Promise<ModelConfirm | null>
+  /** Pins the bot's model, its cost already agreed to. */
+  pinAgreedModel: (profile: string, pick: ModelChoice) => Promise<void>
+}
+
+/** What saving a bot's details needs: its profile, its metadata and its avatar. */
+type SaveBackend = DetailsBackend & Pick<RosterStore, 'saveBotMeta'> & AvatarBackend
+
 /** Talyx's own profile, the manager. Its avatar is the logo, so it never gets an exported image. */
 export const MANAGER = 'default'
-
-const describeSchema = z.object({
-  description: z.string().catch(''),
-  soul: z.string().catch(''),
-  model: z
-    .object({ provider: z.string().catch(''), default: z.string().catch('') })
-    .catch({ provider: '', default: '' })
-})
-const configureSchema = z.object({ applied: z.record(z.string(), z.unknown()).catch({}) })
 
 /**
  * Counts saves of bot details, so a view that shows them (the chat's intro) reads them again;
@@ -76,19 +76,8 @@ const configureSchema = z.object({ applied: z.record(z.string(), z.unknown()).ca
  */
 export const useDetailsRevision = create<{ revision: number }>(() => ({ revision: 0 }))
 
-export async function loadDetails(
-  backend: RosterBackend,
-  profile: string
-): Promise<ProfileDetails> {
-  const { description, soul, model } = describeSchema.parse(
-    await backend.request(profile, 'profiles.describe', { name: profile })
-  )
-  return {
-    description,
-    soul,
-    model:
-      model.provider && model.default ? { provider: model.provider, model: model.default } : null
-  }
+export function loadDetails(backend: DetailsBackend, profile: string): Promise<ProfileDetails> {
+  return backend.loadDetails(profile)
 }
 
 function detailsChanged(): void {
@@ -101,7 +90,7 @@ function detailsChanged(): void {
  * nothing and Save stays there to retry. Talyx is always the logo: only its face is its own.
  */
 export async function saveDetails(
-  backend: RosterBackend,
+  backend: SaveBackend,
   bot: Bot,
   change: { opening: DetailsDraft; draft: DetailsDraft }
 ): Promise<ModelConfirm | null> {
@@ -114,7 +103,7 @@ export async function saveDetails(
 }
 
 async function saveAll(
-  backend: RosterBackend,
+  backend: SaveBackend,
   bot: Bot,
   change: { opening: DetailsDraft; draft: DetailsDraft }
 ): Promise<ModelConfirm | null> {
@@ -164,7 +153,7 @@ function leavesDefault({
 
 // The engine's pin is the fact: the bot leaves Uses default once its own model is on it.
 async function leaveDefaultIfPinned(
-  backend: RosterBackend,
+  backend: SaveBackend,
   profile: string,
   model: ModelChoice
 ): Promise<void> {
@@ -174,7 +163,7 @@ async function leaveDefaultIfPinned(
 }
 
 export async function confirmModel(
-  backend: RosterBackend,
+  backend: DetailsBackend & Pick<RosterStore, 'saveBotMeta'>,
   profile: string,
   model: ModelChoice
 ): Promise<void> {
@@ -191,108 +180,31 @@ export async function confirmModel(
  * Pins the bot's model. For a costly model the engine saves nothing and asks first: the question
  * comes back, `confirmBotModel` answers it. A refusal is a `SectionsNotSavedError` for `model`.
  */
-export async function setBotModel(
-  backend: RosterBackend,
+export function setBotModel(
+  backend: DetailsBackend,
   profile: string,
   pick: ModelChoice
 ): Promise<ModelConfirm | null> {
-  const result = await assignModel(backend, profile, pick)
-  return result.confirm_required ? { message: result.confirm_message ?? '', model: pick } : null
+  return backend.pinModel(profile, pick)
 }
 
 /** Pins the bot's model after the user said yes to its cost. */
-export async function confirmBotModel(
-  backend: RosterBackend,
+export function confirmBotModel(
+  backend: Pick<DetailsBackend, 'pinAgreedModel'>,
   profile: string,
   pick: ModelChoice
 ): Promise<void> {
-  await assignModel(backend, profile, { ...pick, confirm_expensive_model: true })
-}
-
-async function assignModel(
-  backend: RosterBackend,
-  profile: string,
-  pick: ModelChoice & { confirm_expensive_model?: boolean }
-): Promise<ModelAssignmentResponse> {
-  // A bare custom provider is only its URL, and a bot that was on another provider no longer has
-  // it: it comes from Talyx's own profile, which every bot's custom endpoint copies.
-  const endpoint = pick.provider === BARE_CUSTOM ? await homeEndpoint(backend) : null
-  if (pick.provider !== BARE_CUSTOM) await copyHomeEndpoint(backend, profile, pick.provider)
-  // Talyx's own model also changes here, from its details panel, as in Settings.
-  if (profile === MANAGER) await keepBareEndpoint(backend.http, MANAGER, pick)
-  const result = await assignMainModel(backend.http, profile, {
-    ...pick,
-    ...(endpoint && { base_url: endpoint.url }),
-    // Talyx already holds its key; a `${VAR}` written into its own model section would read back
-    // expanded, and the reference every bot copies would be lost.
-    ...(endpoint?.keyRef && profile !== MANAGER && { api_key: endpoint.keyRef })
-  }).catch((error: unknown) => {
-    // The engine answers a model it refuses with an HTTP error; its words go under the field, so
-    // a timeout or a restart is not mistaken for a provider that is not set up.
-    throw new SectionsNotSavedError(['model'], problemOf(error).detail)
-  })
-  if (!result.ok && !result.confirm_required) throw new SectionsNotSavedError(['model'])
-  return result
-}
-
-/**
- * Talyx's bare custom endpoint, or null when its model is on another provider. `keyRef` is where
- * the endpoint's key lives, as the engine's `${VAR}` reference to a variable every bot's .env has;
- * a key written into the config shows only redacted and is never sent.
- */
-async function homeEndpoint(
-  backend: RosterBackend
-): Promise<{ url: string; keyRef: string | null } | null> {
-  const { current, endpoints } = await listEndpoints(backend.http, MANAGER)
-  if (current.provider !== BARE_CUSTOM || !current.base_url) return null
-  const endpoint = endpoints.find((item) => item.base_url === current.base_url)
-  return { url: current.base_url, keyRef: endpoint ? keyRef(endpoint) : null }
-}
-
-/**
- * A named endpoint of Talyx's that the bot lacks, such as one created after it or the one Talyx
- * kept when its own model left it, is copied onto the bot first: the engine pins only a provider
- * the bot's config names.
- */
-async function copyHomeEndpoint(
-  backend: RosterBackend,
-  profile: string,
-  provider: string
-): Promise<void> {
-  if (profile === MANAGER) return
-  const [home, own] = await Promise.all([
-    listEndpoints(backend.http, MANAGER),
-    listEndpoints(backend.http, profile)
-  ])
-  const endpoint = home.endpoints.find(
-    (item) => item.id === provider && item.source !== CONFIG_YAML_SOURCE
-  )
-  if (!endpoint || own.endpoints.some((item) => item.id === provider)) return
-  await saveNamedEndpoint(backend.http, { profile, id: provider }, endpoint)
-}
-
-async function configure(
-  backend: RosterBackend,
-  profile: string,
-  sections: Record<string, unknown>
-): Promise<void> {
-  const result = configureSchema.parse(
-    await backend.request(profile, 'profiles.configure', { name: profile, ...sections })
-  )
-  const failed = Object.entries(result.applied).flatMap(([name, ok]) =>
-    ok === false ? [name] : []
-  )
-  if (failed.length > 0) throw new SectionsNotSavedError(failed)
+  return backend.pinAgreedModel(profile, pick)
 }
 
 // Description and SOUL go in one configure call, the model through its own pin; a refusal of
 // either does not stop the other, and every refused section is reported together.
 async function saveSections(
-  backend: RosterBackend,
+  backend: DetailsBackend,
   profile: string,
   { opening, draft }: { opening: DetailsDraft; draft: DetailsDraft }
 ): Promise<ModelConfirm | null> {
-  const sections: Record<string, unknown> = {}
+  const sections: Partial<Pick<ProfileDetails, 'description' | 'soul'>> = {}
   if (draft.description.trim() !== opening.description.trim())
     sections.description = draft.description.trim()
   if (draft.soul !== opening.soul) sections.soul = draft.soul
@@ -305,7 +217,8 @@ async function saveSections(
     reason ??= error.reason
     return null
   }
-  if (Object.keys(sections).length > 0) await configure(backend, profile, sections).catch(refusing)
+  if (Object.keys(sections).length > 0)
+    await backend.saveSections(profile, sections).catch(refusing)
   const confirm = model ? await pinModel(backend, profile, { model, draft }).catch(refusing) : null
   if (refused.length > 0) throw new SectionsNotSavedError(refused, reason)
   return confirm
@@ -314,7 +227,7 @@ async function saveSections(
 // Talyx's model was agreed to when it was picked, a costly one included: a bot that follows it
 // is not asked again.
 async function pinModel(
-  backend: RosterBackend,
+  backend: DetailsBackend,
   profile: string,
   { model, draft }: { model: ModelChoice; draft: DetailsDraft }
 ): Promise<ModelConfirm | null> {
@@ -327,8 +240,11 @@ async function pinModel(
  * Moves every bot on "Uses default" to Talyx's new model, without asking about its cost again;
  * returns the bots that did not take it. A bot with its own model keeps it.
  */
-export async function followDefault(backend: RosterBackend, pick: ModelChoice): Promise<string[]> {
-  const bots = await readProfiles(backend).catch((error: unknown) => {
+export async function followDefault(
+  backend: DetailsBackend & Pick<RosterStore, 'listBots'>,
+  pick: ModelChoice
+): Promise<string[]> {
+  const bots = await backend.listBots().catch((error: unknown) => {
     // Talyx's model has changed by now: say the followers were not reached, not that it failed.
     throw new RosterError('details.errorFollowersUnreached', problemOf(error).detail)
   })
@@ -350,7 +266,7 @@ export async function followDefault(backend: RosterBackend, pick: ModelChoice): 
  * Talyx has now and moves the followers when it differs from `before`.
  */
 export async function followIfDefaultChanged(
-  backend: RosterBackend,
+  backend: DetailsBackend & Pick<RosterStore, 'listBots'>,
   before: ModelChoice | null
 ): Promise<string[]> {
   const { model } = await loadDetails(backend, MANAGER)

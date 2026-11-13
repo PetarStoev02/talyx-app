@@ -1,6 +1,21 @@
-import type { RosterBackend, RoomMemberRecord } from './data'
 import { RosterError, botTitle } from './roster'
 import type { Bot } from './types'
+
+/** A bot as a room seats it: the handle you @ it by and the name the room shows. */
+export interface RoomSeat {
+  profile: string
+  handle: string
+  name: string
+}
+
+export interface RoomsBackend {
+  /** The profiles the engine will seat in a new room; null when it does not say. */
+  seatableProfiles: () => Promise<string[] | null>
+  createRoom: (room: { roomId: string; name: string; seats: RoomSeat[] }) => Promise<void>
+  /** Changes an existing room's bots in place (Talyx's engine plugin; the engine has no call). */
+  setRoomMembers: (roomId: string, seats: RoomSeat[]) => Promise<void>
+  renameRoom: (rename: { roomId: string; name: string }) => Promise<void>
+}
 
 // The engine seats two to six bots in a room.
 export const MIN_ROOM_MEMBERS = 2
@@ -9,26 +24,17 @@ export const MAX_ROOM_MEMBERS = 6
 const MANAGER_HANDLE = 'talyx'
 
 /** The profiles the engine will seat in a new room; null when it does not say. */
-export async function seatableProfiles(backend: RosterBackend): Promise<string[] | null> {
-  const { seatable_profiles: seatable } = (await backend.request(
-    'default',
-    'groups.capabilities',
-    {}
-  )) as { seatable_profiles?: string[] | null }
-  return Array.isArray(seatable) ? seatable : null
+export function seatableProfiles(backend: RoomsBackend): Promise<string[] | null> {
+  return backend.seatableProfiles()
 }
 
 /** Create a hosted room with these bots; returns its id. */
 export async function createRoom(
-  backend: RosterBackend,
+  backend: RoomsBackend,
   room: { name: string; members: Bot[] }
 ): Promise<string> {
   const roomId = crypto.randomUUID()
-  await backend.request('default', 'groups.create', {
-    room_id: roomId,
-    name: room.name.trim(),
-    members: memberRecords(room.members)
-  })
+  await backend.createRoom({ roomId, name: room.name.trim(), seats: seats(room.members) })
   return roomId
 }
 
@@ -37,36 +43,30 @@ export async function createRoom(
  * from the next turn and reads the room's history; one that leaves gets no more turns.
  */
 export async function changeRoomMembers(
-  backend: RosterBackend,
+  backend: RoomsBackend,
   change: { roomId: string; members: Bot[] }
 ): Promise<void> {
-  await backend.setRoomMembers(change.roomId, memberRecords(change.members))
+  await backend.setRoomMembers(change.roomId, seats(change.members))
 }
 
-function memberRecords(members: Bot[]): RoomMemberRecord[] {
+function seats(members: Bot[]): RoomSeat[] {
   if (members.length < MIN_ROOM_MEMBERS || members.length > MAX_ROOM_MEMBERS)
     throw new RosterError('rooms.errorMembers')
   return members.map((bot) => ({
-    member_id: bot.name,
     profile: bot.name,
     handle: roomHandle(bot.name),
-    display_name: botTitle(bot),
-    target: { kind: 'local', profile: bot.name }
+    name: botTitle(bot)
   }))
 }
 
 /** Renames a room on the engine, for every client; the room's log records the new name. */
 export async function renameRoom(
-  backend: RosterBackend,
+  backend: RoomsBackend,
   rename: { roomId: string; name: string }
 ): Promise<void> {
   const name = rename.name.trim()
   if (!name) throw new RosterError('rooms.errorName')
-  await backend.request('default', 'groups.rename', {
-    room_id: rename.roomId,
-    event_id: crypto.randomUUID(),
-    name
-  })
+  await backend.renameRoom({ roomId: rename.roomId, name })
 }
 
 /** The handle a bot answers to when you @ it in a room Talyx made. */

@@ -1,5 +1,3 @@
-import type { RosterBackend } from './data'
-
 /**
  * What every bot is told about the app it lives in. It goes into each profile's own prompt
  * setting (`agent.system_prompt`), which the engine adds to the bot's instructions; the SOUL stays
@@ -28,21 +26,18 @@ export const PREVIOUS_RULES: string[] = [
   ].join('\n')
 ]
 
-interface ProfileConfig {
-  agent?: { system_prompt?: unknown }
+export interface RulesBackend {
+  /** The profile's own prompt setting, as written: absent, a string or (the engine allows) a list. */
+  readPrompt: (profile: string) => Promise<unknown>
+  writePrompt: (profile: string, prompt: string) => Promise<void>
 }
 
 /**
  * Writes the rules into the profile's prompt setting when it is empty (or blank) or holds an earlier Talyx
  * text. A prompt the user wrote is left alone.
  */
-export async function writeRules(backend: RosterBackend, profile: string): Promise<void> {
-  const path = `/api/config?${new URLSearchParams({ profile })}`
-  const config = await backend.http<ProfileConfig>({
-    path: `${path}&include_defaults=false`,
-    profile
-  })
-  const prompt = config.agent?.system_prompt
+export async function writeRules(backend: RulesBackend, profile: string): Promise<void> {
+  const prompt = await backend.readPrompt(profile)
   if (prompt === TALYX_RULES) return
   // The engine also takes a list here; like any prompt that is not a Talyx text, it is the user's.
   // A blank string or an empty list holds nothing of theirs.
@@ -51,16 +46,11 @@ export async function writeRules(backend: RosterBackend, profile: string): Promi
     (typeof prompt === 'string' && !prompt.trim()) ||
     (Array.isArray(prompt) && !prompt.length)
   if (!empty && !(typeof prompt === 'string' && PREVIOUS_RULES.includes(prompt))) return
-  await backend.http({
-    path,
-    method: 'PUT',
-    body: { config: { agent: { system_prompt: TALYX_RULES } } },
-    profile
-  })
+  await backend.writePrompt(profile, TALYX_RULES)
 }
 
 /** Fills the rules in on every bot; returns the bots that did not take them. */
-export async function fillInRules(backend: RosterBackend, profiles: string[]): Promise<string[]> {
+export async function fillInRules(backend: RulesBackend, profiles: string[]): Promise<string[]> {
   const results = await Promise.allSettled(profiles.map((profile) => writeRules(backend, profile)))
   return profiles.filter((_, index) => results[index].status === 'rejected')
 }

@@ -1,9 +1,3 @@
-import { z } from 'zod'
-import type { RosterBackend } from './data'
-import { RosterError } from './roster'
-import type { TranslationKey } from '@shared/lib/i18n'
-import { messageText } from '@shared/lib/messageText'
-
 /** A scheduled job in the bot's own cron store; the engine runs it with the app closed. */
 export interface Routine {
   id: string
@@ -66,6 +60,38 @@ export interface RunOutput {
 
 export type RunState = 'running' | 'finished' | 'stopped'
 
+/** A routine as the engine keeps it; `schedule` is a line the engine reads back as the same one. */
+export interface StoredRoutine extends Omit<RoutineDetails, 'draft'> {
+  name: string
+  instruction: string
+  schedule: string
+  postsToChat: boolean
+}
+
+/** What changed in a routine; a field left out stays as it is. */
+export type RoutineUpdates = Partial<
+  Pick<StoredRoutine, 'name' | 'instruction' | 'schedule' | 'postsToChat'>
+>
+
+/** A bot's routines in its own cron store; the engine runs them with the app closed. */
+export interface RoutinesBackend {
+  listRoutines: (profile: string) => Promise<Routine[]>
+  addRoutine: (
+    profile: string,
+    routine: Pick<StoredRoutine, 'name' | 'instruction' | 'schedule' | 'postsToChat'>
+  ) => Promise<void>
+  removeRoutine: (profile: string, id: string) => Promise<void>
+  setRoutineActive: (profile: string, routine: { id: string; active: boolean }) => Promise<void>
+  loadRoutine: (profile: string, id: string) => Promise<StoredRoutine>
+  updateRoutine: (profile: string, id: string, updates: RoutineUpdates) => Promise<void>
+  /** The most recent runs, newest first. */
+  listRoutineRuns: (profile: string, id: string) => Promise<RoutineRun[]>
+  /** The bot's last reply in a run's session; null when it wrote none. */
+  lastRunReply: (profile: string, sessionId: string) => Promise<string | null>
+  /** Fires the routine now; resolves once the engine has run it. */
+  runRoutine: (profile: string, id: string) => Promise<void>
+}
+
 export interface RoutineEdit {
   id: string
   before: RoutineDraft
@@ -80,12 +106,6 @@ export const DEFAULT_SCHEDULE: ScheduleDraft = {
   custom: ''
 }
 
-// The engine's delivery token for "inject the run into this profile's Bot Chat".
-const BOT_CHAT = 'bot-chat'
-// The engine's token for "keep the run's output in the engine only".
-const LOCAL = 'local'
-// How the engine ends a run session that finished.
-const RUN_COMPLETE = 'cron_complete'
 const AT_TIME = /^(\d{1,2}) (\d{1,2}) \* \* (\*|1-5|[0-6])$/
 const EVERY_HOURS = /^every (\d+)h$/
 // How the engine stores an interval ("every 2h" comes back as "every 120m"), and a cron step.
@@ -93,70 +113,6 @@ const EVERY_MINUTES = /^every (\d+)m$/
 const CRON_MINUTES = /^\*\/(\d{1,2}) \* \* \* \*$/
 const MINUTES_PER_HOUR = 60
 export const MAX_HOURS = 24
-const RECENT_RUNS = 5
-// Run now waits for the run itself, which can take a few minutes.
-const RUN_TIMEOUT_MS = 600_000
-// How the engine marks a script-only run, which writes an output file and no session.
-const SCRIPT_RUN = 'cron_output'
-// How the engine titles a script-only run that did not complete.
-const SCRIPT_STOPPED = /^(FAILED|CANCELLED|MISSED) · /
-// The most the engine pages at once: a run's last reply can sit behind many tool calls.
-const RUN_TAIL = 500
-
-const listSchema = z.object({
-  jobs: z
-    .array(
-      z.object({
-        job_id: z.string(),
-        name: z.string().nullish(),
-        schedule: z.string().nullish(),
-        deliver: z.string().nullish(),
-        enabled: z.boolean().nullish(),
-        state: z.string().nullish()
-      })
-    )
-    .nullish()
-})
-const detailsSchema = z.object({
-  id: z.string(),
-  name: z.string().nullish(),
-  prompt: z.string().nullish(),
-  schedule: z
-    .object({
-      kind: z.string().nullish(),
-      expr: z.string().nullish(),
-      minutes: z.number().nullish(),
-      run_at: z.string().nullish()
-    })
-    .nullish(),
-  schedule_display: z.string().nullish(),
-  deliver: z.string().nullish(),
-  enabled: z.boolean().nullish(),
-  state: z.string().nullish(),
-  next_run_at: z.string().nullish(),
-  last_run_at: z.string().nullish(),
-  last_status: z.string().nullish(),
-  last_error: z.string().nullish()
-})
-const runsSchema = z.object({
-  runs: z
-    .array(
-      z.object({
-        id: z.string(),
-        source: z.string().nullish(),
-        preview: z.string().nullish(),
-        started_at: z.number().nullish(),
-        is_active: z.boolean().nullish(),
-        end_reason: z.string().nullish(),
-        title: z.string().nullish()
-      })
-    )
-    .nullish()
-})
-const messagesSchema = z.object({
-  messages: z.array(z.object({ role: z.string().nullish(), content: z.unknown() })).nullish()
-})
-const outcomeSchema = z.object({ success: z.boolean().nullish(), error: z.string().nullish() })
 
 export function composeSchedule(draft: ScheduleDraft): string {
   const [hour, minute] = draft.time.split(':').map(Number)
@@ -219,199 +175,87 @@ export function weekdayName(day: number): string {
   )
 }
 
-export async function listRoutines(backend: RosterBackend, profile: string): Promise<Routine[]> {
-  const { jobs } = listSchema.parse(
-    await manage(backend, profile, { action: 'list', include_disabled: true })
-  )
-  return (jobs ?? []).map((job) => ({
-    id: job.job_id,
-    name: job.name || job.job_id,
-    schedule: job.schedule ?? '',
-    active: job.enabled !== false && job.state !== 'paused',
-    postsToChat: job.deliver?.startsWith(BOT_CHAT) ?? false
-  }))
+export function listRoutines(backend: RoutinesBackend, profile: string): Promise<Routine[]> {
+  return backend.listRoutines(profile)
 }
 
-export async function setRoutineActive(
-  backend: RosterBackend,
+export function setRoutineActive(
+  backend: RoutinesBackend,
   profile: string,
   routine: { id: string; active: boolean }
 ): Promise<void> {
-  await manage(backend, profile, {
-    action: routine.active ? 'resume' : 'pause',
-    name: routine.id
-  })
+  return backend.setRoutineActive(profile, routine)
 }
 
-export async function addRoutine(
-  backend: RosterBackend,
+export function addRoutine(
+  backend: RoutinesBackend,
   profile: string,
   draft: RoutineDraft
 ): Promise<void> {
-  await manage(backend, profile, {
-    action: 'add',
+  return backend.addRoutine(profile, {
     name: draft.name.trim(),
     schedule: composeSchedule(draft.schedule),
-    prompt: draft.instruction.trim(),
-    ...(draft.postsToChat ? { deliver: BOT_CHAT } : {})
+    instruction: draft.instruction.trim(),
+    postsToChat: draft.postsToChat
   })
 }
 
-export async function removeRoutine(
-  backend: RosterBackend,
+export function removeRoutine(
+  backend: RoutinesBackend,
   profile: string,
   id: string
 ): Promise<void> {
-  await manage(backend, profile, { action: 'remove', name: id })
+  return backend.removeRoutine(profile, id)
 }
 
 export async function loadRoutine(
-  backend: RosterBackend,
+  backend: RoutinesBackend,
   profile: string,
   id: string
 ): Promise<RoutineDetails> {
-  const job = detailsSchema.parse(await backend.http({ path: jobPath(profile, id), profile }))
-  return {
-    id: job.id,
-    draft: {
-      name: job.name || job.id,
-      instruction: job.prompt ?? '',
-      schedule: scheduleDraft(scheduleLine(job)),
-      postsToChat: job.deliver?.startsWith(BOT_CHAT) ?? false
-    },
-    active: job.enabled !== false && job.state !== 'paused',
-    nextRunAt: job.next_run_at ?? null,
-    lastRunAt: job.last_run_at ?? null,
-    lastStatus: job.last_status ?? null,
-    lastError: job.last_error ?? null
-  }
+  const { name, instruction, schedule, postsToChat, ...runs } = await backend.loadRoutine(
+    profile,
+    id
+  )
+  return { ...runs, draft: { name, instruction, schedule: scheduleDraft(schedule), postsToChat } }
 }
 
-export async function listRoutineRuns(
-  backend: RosterBackend,
+export function listRoutineRuns(
+  backend: RoutinesBackend,
   profile: string,
   id: string
 ): Promise<RoutineRun[]> {
-  const { runs } = runsSchema.parse(
-    await backend.http({
-      path: jobPath(profile, id, '/runs', { limit: String(RECENT_RUNS) }),
-      profile
-    })
-  )
-  return (runs ?? []).slice(0, RECENT_RUNS).map((run) => {
-    const script = run.source === SCRIPT_RUN
-    // A script-only run has no session: its title carries the outcome.
-    const finished = script
-      ? !SCRIPT_STOPPED.test(run.title ?? '')
-      : run.end_reason === RUN_COMPLETE
-    const state: RunState = run.is_active ? 'running' : finished ? 'finished' : 'stopped'
-    // A script-only run's title carries its outcome; a session's title is only its name.
-    const said = script ? run.title : run.end_reason
-    const reason = state === 'stopped' ? (said ?? '') : ''
-    return {
-      id: run.id,
-      sessionId: script ? null : run.id,
-      startedAt: run.started_at ?? 0,
-      state,
-      reason,
-      preview: script ? (run.preview ?? null) : null
-    }
-  })
+  return backend.listRoutineRuns(profile, id)
 }
 
 export async function openRoutineRun(
-  backend: RosterBackend,
+  backend: RoutinesBackend,
   profile: string,
   run: RoutineRun
 ): Promise<RunOutput> {
   const error = run.reason || null
   if (!run.sessionId) return { output: run.preview, error }
-  const query = new URLSearchParams({ profile, order: 'latest', limit: String(RUN_TAIL) })
-  const path = `/api/sessions/${encodeURIComponent(run.sessionId)}/messages?${query}`
-  const { messages } = await refused('routines.errorRunOutput', async () =>
-    messagesSchema.parse(await backend.http({ path, profile }))
-  )
-  const replies = (messages ?? [])
-    .filter((message) => message.role === 'assistant')
-    .map((message) => messageText(message.content).trim())
-    .filter(Boolean)
-  return { output: replies.at(-1) ?? null, error }
+  return { output: await backend.lastRunReply(profile, run.sessionId), error }
 }
 
 /** Sends only what changed, so a schedule the form cannot show is never rewritten. */
 export async function saveRoutine(
-  backend: RosterBackend,
+  backend: Pick<RoutinesBackend, 'updateRoutine'>,
   profile: string,
   { id, before, after }: RoutineEdit
 ): Promise<void> {
   const schedule = composeSchedule(after.schedule)
   const name = after.name.trim()
-  const prompt = after.instruction.trim()
-  const updates = {
+  const instruction = after.instruction.trim()
+  await backend.updateRoutine(profile, id, {
     ...(name !== before.name ? { name } : {}),
-    ...(prompt !== before.instruction ? { prompt } : {}),
+    ...(instruction !== before.instruction ? { instruction } : {}),
     ...(schedule !== composeSchedule(before.schedule) ? { schedule } : {}),
-    ...(after.postsToChat !== before.postsToChat
-      ? { deliver: after.postsToChat ? BOT_CHAT : LOCAL }
-      : {})
-  }
-  await refused('routines.errorSave', () =>
-    backend.http({ path: jobPath(profile, id), method: 'PUT', body: { updates }, profile })
-  )
+    ...(after.postsToChat !== before.postsToChat ? { postsToChat: after.postsToChat } : {})
+  })
 }
 
 /** Fires the routine now; resolves once the engine has run it. */
-export async function runRoutine(
-  backend: RosterBackend,
-  profile: string,
-  id: string
-): Promise<void> {
-  await refused('routines.errorRun', () =>
-    backend.http({
-      path: jobPath(profile, id, '/trigger'),
-      method: 'POST',
-      profile,
-      timeoutMs: RUN_TIMEOUT_MS
-    })
-  )
-}
-
-// The line the engine parses back to the same schedule; its display text is not always one.
-function scheduleLine(job: z.infer<typeof detailsSchema>): string {
-  const { kind, expr, minutes, run_at } = job.schedule ?? {}
-  if (kind === 'cron' && expr) return expr
-  if (kind === 'interval' && minutes) return `every ${minutes}m`
-  if (kind === 'once' && run_at) return run_at
-  return job.schedule_display ?? ''
-}
-
-function jobPath(
-  profile: string,
-  id: string,
-  suffix = '',
-  query: Record<string, string> = {}
-): string {
-  const search = new URLSearchParams({ profile, ...query })
-  return `/api/cron/jobs/${encodeURIComponent(id)}${suffix}?${search}`
-}
-
-async function refused<T>(key: TranslationKey, call: () => Promise<T>): Promise<T> {
-  try {
-    return await call()
-  } catch (error) {
-    throw new RosterError(key, error instanceof Error ? error.message : String(error))
-  }
-}
-
-// The cron tool reports its own failures inside a successful RPC result.
-async function manage(
-  backend: RosterBackend,
-  profile: string,
-  params: Record<string, unknown>
-): Promise<unknown> {
-  const result = await backend.request(profile, 'cron.manage', params)
-  const outcome = outcomeSchema.safeParse(result)
-  if (outcome.success && (outcome.data.success === false || outcome.data.error))
-    throw new RosterError('routines.errorEngine', outcome.data.error ?? null)
-  return result
+export function runRoutine(backend: RoutinesBackend, profile: string, id: string): Promise<void> {
+  return backend.runRoutine(profile, id)
 }

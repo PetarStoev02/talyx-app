@@ -1,5 +1,5 @@
 import { saveBotMeta, saveLayout } from './data'
-import type { Layout, RosterBackend } from './data'
+import type { Layout, RosterStore } from './data'
 import {
   folderItems,
   isWithin,
@@ -54,7 +54,7 @@ export function refusesFolder(
  * inside a picked folder stays in it.
  */
 export async function moveRows(
-  backend: RosterBackend,
+  backend: RosterStore,
   snapshot: RosterSnapshot,
   move: { rows: RosterRowRef[]; folderId: string | null; before: string | null }
 ): Promise<void> {
@@ -98,7 +98,7 @@ export async function moveRows(
 
 /** Pins every row, after the pins there are; or, when every row is pinned, unpins them all. */
 export async function pinRows(
-  backend: RosterBackend,
+  backend: RosterStore,
   snapshot: RosterSnapshot,
   rows: RosterRowRef[]
 ): Promise<void> {
@@ -121,7 +121,7 @@ export async function pinRows(
 }
 
 export async function hideRows(
-  backend: RosterBackend,
+  backend: RosterStore,
   snapshot: RosterSnapshot,
   rows: RosterRowRef[]
 ): Promise<void> {
@@ -136,7 +136,7 @@ export async function hideRows(
  * hides one.
  */
 export async function deleteRows(
-  backend: RosterBackend,
+  backend: RosterStore,
   snapshot: RosterSnapshot,
   rows: RosterRowRef[]
 ): Promise<void> {
@@ -145,11 +145,7 @@ export async function deleteRows(
   const ids = (kind: RosterRowRef['kind']): string[] =>
     rows.filter((row) => row.kind === kind && stillThere(snapshot, row)).map((row) => row.id)
   const [bots, rooms, folders] = [ids('bot'), ids('room'), ids('folder')]
-  for (const room of rooms)
-    await backend.request('default', 'groups.disband', {
-      room_id: room,
-      cancel_id: crypto.randomUUID()
-    })
+  for (const room of rooms) await backend.deleteRoom(room)
   for (const bot of bots) await backend.deleteProfile(bot)
   if (!rooms.length && !folders.length) return
   const deleted = new Set(rows.filter((row) => row.kind !== 'folder').map(itemKey))

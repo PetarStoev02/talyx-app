@@ -1,13 +1,23 @@
 import type { TranslationKey } from '@shared/lib/i18n'
 import { saveBotMeta } from './data'
-import type { RosterBackend } from './data'
+import type { RosterStore } from './data'
 import { confirmBotModel } from './details'
-import type { ModelChoice } from './details'
+import type { DetailsBackend, ModelChoice } from './details'
 import { exportAvatar, lookMeta } from './look'
-import type { Look } from './look'
+import type { AvatarBackend, Look } from './look'
 import { RosterError, problemOf } from './roster'
 import { writeRules } from './rules'
+import type { RulesBackend } from './rules'
 import type { Folder } from './types'
+
+export interface CreateBackend {
+  /** A new profile with its SOUL, and its description when it has one. */
+  createProfile: (profile: {
+    id: string
+    soul: string
+    description: string | null
+  }) => Promise<void>
+}
 
 export interface NewBot {
   name: string
@@ -61,18 +71,18 @@ export function profileIdFor(name: string, taken: string[]): string {
  * in the form, so a costly one is not asked about again.
  */
 export async function createBot(
-  backend: RosterBackend,
+  backend: CreateBackend &
+    Pick<RosterStore, 'saveBotMeta'> &
+    Pick<DetailsBackend, 'pinAgreedModel'> &
+    AvatarBackend &
+    RulesBackend,
   bot: NewBot,
   taken: string[]
 ): Promise<string> {
   const id = profileIdFor(bot.name, taken)
   const title = bot.name.trim()
   const purpose = bot.purpose?.trim() || null
-  await backend.request('default', 'profiles.create', {
-    name: id,
-    soul: soulFor(title, id, purpose),
-    ...(purpose ? { description: purpose } : {})
-  })
+  await backend.createProfile({ id, soul: soulFor(title, id, purpose), description: purpose })
   try {
     if (bot.model) await confirmBotModel(backend, id, bot.model)
   } catch (error) {

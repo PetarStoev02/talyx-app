@@ -6,7 +6,7 @@ import {
   saveRoomFolders,
   saveRoomPins
 } from './data'
-import type { RosterBackend } from './data'
+import type { RosterStore } from './data'
 import { deleteRows, hideRows, moveRows, pinRows } from './bulk'
 import {
   folderItems,
@@ -68,7 +68,7 @@ export interface RosterActions {
   deleteRows: (rows: RosterRowRef[]) => Promise<void>
 }
 
-export async function refreshRoster(backend: RosterBackend): Promise<void> {
+export async function refreshRoster(backend: RosterStore): Promise<void> {
   applySnapshot(await readRoster(backend))
 }
 
@@ -152,7 +152,7 @@ function alike(a: unknown, b: unknown): boolean {
   )
 }
 
-export function rosterActions(backend: RosterBackend): RosterActions {
+export function rosterActions(backend: RosterStore): RosterActions {
   const snapshot = (): RosterSnapshot => useRoster.getState().snapshot
   const saveLayout = (update: (value: Folder[]) => Folder[]): Promise<void> =>
     saveFolders(backend, update, snapshot().folders)
@@ -191,12 +191,7 @@ export function rosterActions(backend: RosterBackend): RosterActions {
           ? pins.filter((id) => id !== room.room_id)
           : [...pins, room.room_id]
       ),
-    deleteRoom: async (room) => {
-      await backend.request('default', 'groups.disband', {
-        room_id: room.room_id,
-        cancel_id: crypto.randomUUID()
-      })
-    },
+    deleteRoom: (room) => backend.deleteRoom(room.room_id),
     forgetRoom: async (room) => {
       const { roomFolders, roomPins } = snapshot()
       if (room.room_id in roomFolders)
@@ -248,7 +243,7 @@ export function rosterActions(backend: RosterBackend): RosterActions {
 }
 
 function saveFolderOrder(
-  backend: RosterBackend,
+  backend: RosterStore,
   folderId: string | null,
   keys: string[]
 ): Promise<void> {
@@ -257,7 +252,7 @@ function saveFolderOrder(
 
 // A pinned item dropped in a folder leaves the pins, as "Move to" does.
 async function placeItem(
-  backend: RosterBackend,
+  backend: RosterStore,
   snapshot: RosterSnapshot,
   place: { item: RosterItemRef; folderId: string | null; before: string | null }
 ): Promise<void> {
@@ -279,7 +274,7 @@ let queue: Promise<void> = Promise.resolve()
 
 // Mutations run one at a time so a quick second action waits instead of being lost.
 export function runRosterMutation(
-  backend: RosterBackend,
+  backend: RosterStore,
   operation: () => Promise<void>
 ): Promise<void> {
   pending++
@@ -292,7 +287,7 @@ export function runRosterMutation(
   return queue
 }
 
-async function mutate(backend: RosterBackend, operation: () => Promise<void>): Promise<void> {
+async function mutate(backend: RosterStore, operation: () => Promise<void>): Promise<void> {
   let failure: RosterProblem | null = null
   try {
     await operation()
@@ -309,7 +304,7 @@ async function mutate(backend: RosterBackend, operation: () => Promise<void>): P
 
 // Writes only the pins whose position changed; a bot dropped onto the pins joins them.
 async function orderPin(
-  backend: RosterBackend,
+  backend: RosterStore,
   bots: Bot[],
   move: { from: string; to: string }
 ): Promise<void> {

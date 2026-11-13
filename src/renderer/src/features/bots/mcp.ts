@@ -3,7 +3,6 @@ import type { McpAnswer, McpToolArgs, McpToolName } from '../../../../shared/mcp
 import { t } from '@shared/lib/i18n'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { problemOf, problemText } from '@shared/lib/problem'
-import { readRoomLog, sendRoomMessage } from '@shared/engine/rooms'
 import { BLOCK_HUES, BLOCK_SHAPES } from '@shared/ui/blockGeometry'
 import type { BlockShape } from '@shared/ui/blockGeometry'
 import { refreshRoster, rosterActions, runRosterMutation } from './actions'
@@ -24,6 +23,27 @@ import {
 } from './routines'
 import { useRoster } from './store'
 import type { Bot, Room, RosterSnapshot } from './types'
+
+/** What only the MCP tools ask of the engine; the rest goes through the roster's use cases. */
+export interface McpToolsBackend {
+  /** The profile's default reasoning level for new turns. */
+  setReasoning: (profile: string, level: string) => Promise<void>
+  /** Posts a message in the room as the user. */
+  sendRoomMessage: (roomId: string, text: string) => Promise<void>
+  /** The room's messages, oldest first. */
+  roomMessages: (roomId: string) => Promise<RoomMessage[]>
+}
+
+/** A message in a room: the user's (`memberId` null) or a member's. */
+export interface RoomMessage {
+  seq: number
+  memberId: string | null
+  /** The name the member had when it wrote, when the room recorded one. */
+  memberName: string | null
+  text: string
+  /** Seconds since the epoch. */
+  at: number
+}
 
 /** What the user is asked in Talyx before a tool that loses data runs. */
 export interface ApprovalRequest {
@@ -173,12 +193,7 @@ function toolsFor(
     },
     set_reasoning: async ({ profile, level }) => {
       botOf(await fresh(), profile)
-      await backend.http({
-        path: `/api/config?${new URLSearchParams({ profile })}`,
-        method: 'PUT',
-        body: { config: { agent: { reasoning_effort: level } } },
-        profile
-      })
+      await backend.setReasoning(profile, level)
       return { profile, reasoning: level }
     },
     delete_bot: async ({ profile }) => {
@@ -266,12 +281,7 @@ function toolsFor(
       }),
     send_room_message: async ({ roomId, text }) => {
       roomOf(await fresh(), roomId)
-      await sendRoomMessage(backend.request, {
-        roomId,
-        eventId: crypto.randomUUID(),
-        text,
-        attachments: []
-      })
+      await backend.sendRoomMessage(roomId, text)
       return { roomId, sent: true }
     },
     read_room_history: async ({ roomId, limit }) =>
@@ -322,29 +332,18 @@ function toolsFor(
   }
 }
 
-/** A room log row, as much of it as the history reads. */
-interface LogEvent {
-  seq: number
-  kind: string
-  actor: { id: string; display_name?: string }
-  payload: { text?: unknown }
-  created_at: number
-}
-
 // ponytail: reads the whole log for the last messages; page from the end if rooms grow long.
 async function roomHistory(backend: RosterBackend, room: Room, limit: number): Promise<unknown> {
-  const events = await readRoomLog<LogEvent>(backend.request, room.room_id, 0)
-  const nameOf = (id: string, fallback?: string): string =>
+  const nameOf = (id: string, fallback: string | null): string =>
     room.members.find((member) => (member.member_id ?? member.profile) === id)?.display_name ??
     fallback ??
     id
-  const messages = events.flatMap((event) => {
-    const text = typeof event.payload.text === 'string' ? event.payload.text.trim() : ''
-    if (!text || (event.kind !== 'message.user' && event.kind !== 'message.member')) return []
-    const from =
-      event.kind === 'message.user' ? 'user' : nameOf(event.actor.id, event.actor.display_name)
-    return [{ seq: event.seq, from, text, at: event.created_at }]
-  })
+  const messages = (await backend.roomMessages(room.room_id)).map((message) => ({
+    seq: message.seq,
+    from: message.memberId === null ? 'user' : nameOf(message.memberId, message.memberName),
+    text: message.text,
+    at: message.at
+  }))
   return { messages: messages.slice(-limit), more: messages.length > limit }
 }
 

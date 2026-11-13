@@ -255,7 +255,7 @@ describe('roster mutations', () => {
     expect(roster().bots).toHaveLength(5)
   })
   it('should report a failed reload as a load problem, not as a failed action', async () => {
-    backend.request = async () => {
+    backend.listBots = async () => {
       throw new Error('Engine gateway is not connected')
     }
     await act(() => Promise.resolve())

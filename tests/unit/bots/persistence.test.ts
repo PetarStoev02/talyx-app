@@ -6,9 +6,9 @@ import {
   saveBotMeta,
   saveFolders
 } from '../../../src/renderer/src/features/bots/data'
-import type { RosterRequest } from '../../../src/renderer/src/features/bots/data'
 import { moveFolder } from '../../../src/renderer/src/features/bots/roster'
 import { BOT_META_KEY, backendFor, engineDouble } from './engineDouble'
+import type { EngineRequest } from './engineDouble'
 
 describe('shared roster persistence', () => {
   it('should publish the folders recovered from sectionId as the shared layout', async () => {
@@ -66,7 +66,7 @@ describe('shared roster persistence', () => {
   })
   it('should not treat a rejected write as successful', async () => {
     const engine = engineDouble()
-    const request: RosterRequest = (profile, method, params) =>
+    const request: EngineRequest = (profile, method, params) =>
       method === 'profiles.configure'
         ? Promise.resolve({ applied: { ui_meta: false } })
         : engine.request(profile, method, params)
@@ -80,7 +80,7 @@ describe('shared roster persistence', () => {
       readRoster(backendFor({ request: async () => ({ profiles: [{ name: 10 }] }) }))
     ).rejects.toThrow()
     const engine = engineDouble()
-    const request: RosterRequest = (profile, method, params) =>
+    const request: EngineRequest = (profile, method, params) =>
       method === 'groups.list'
         ? Promise.resolve({ rooms: [], next_offset: 0 })
         : engine.request(profile, method, params)

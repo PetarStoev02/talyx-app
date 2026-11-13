@@ -1,10 +1,19 @@
 import { expect } from 'vitest'
-import type { RosterBackend, RosterRequest } from '../../../src/renderer/src/features/bots/data'
+import type { EngineAccess } from '../../../src/renderer/src/app/engine/access'
+import { engineRosterBackend } from '../../../src/renderer/src/app/engine/roster'
+import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
 import type { EngineHttp } from '../../../src/renderer/src/shared/engine/http'
 import type { CustomEndpoint } from '../../../src/renderer/src/shared/engine/types'
 import type { ModelChoice } from '../../../src/renderer/src/features/bots/details'
 import type { Look } from '../../../src/renderer/src/features/bots/look'
 import type { Room } from '../../../src/renderer/src/features/bots/types'
+
+/** A socket request to the engine, as the double answers it. */
+export type EngineRequest = (
+  profile: string,
+  method: string,
+  params: Record<string, unknown>
+) => Promise<unknown>
 
 export const BOT_META_KEY = 'acme-bots'
 export const GROUPS_META_KEY = 'acme-bots-groups'
@@ -55,7 +64,7 @@ export const HOME_ENDPOINT = 'http://127.0.0.1:20128/v1'
 export const HOME_KEY_REF = '${ROUTER_API_KEY}'
 
 export interface EngineDouble {
-  request: RosterRequest
+  request: EngineRequest
   http: EngineHttp
   /** Every model pin (POST /api/model/set), with its profile, in order. */
   modelSets: Record<string, unknown>[]
@@ -440,7 +449,7 @@ export function engineDouble(
     return { ok: true, asset: params.asset, size: String(params.data).length }
   }
 
-  const request: RosterRequest = async (profile, method, params) => {
+  const request: EngineRequest = async (profile, method, params) => {
     if (method === 'profiles.list' && listFailure) {
       listFailure = false
       throw new Error('Gateway socket closed')
@@ -586,16 +595,20 @@ function storedJob(job: CronJob): Record<string, unknown> {
   }
 }
 
+/** The real roster wiring over the in-memory engine. */
 export function backendFor(
   engine: Pick<EngineDouble, 'request'> & Partial<EngineDouble>
 ): RosterBackend {
-  return {
-    request: engine.request,
+  const access: EngineAccess = {
+    request: ((profile, method, params = {}) =>
+      engine.request(profile, method, params)) as EngineAccess['request'],
     http:
       engine.http ??
       (() => {
         throw new Error('Not used')
-      }),
+      })
+  }
+  return engineRosterBackend(access, {
     botMetaKey: BOT_META_KEY,
     botGroupsMetaKey: GROUPS_META_KEY,
     deleteProfile: async (profile) => {
@@ -609,5 +622,5 @@ export function backendFor(
       if (!room) throw new Error('Room not found')
       room.members = structuredClone(members)
     }
-  }
+  })
 }
