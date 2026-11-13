@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { RosterBackend } from './data'
 import { RosterError } from './roster'
 import type { TranslationKey } from '@shared/lib/i18n'
+import { messageText } from '@shared/lib/messageText'
 
 /** A scheduled job in the bot's own cron store; the engine runs it with the app closed. */
 export interface Routine {
@@ -44,11 +45,23 @@ export interface RoutineDetails {
 }
 
 export interface RoutineRun {
+  id: string
+  /** The run's session, where its output is; null for a script-only run, which has none. */
+  sessionId: string | null
   /** Seconds since the epoch. */
   startedAt: number
   state: RunState
   /** Why a run that did not finish stopped, as the engine says it; empty otherwise. */
   reason: string
+  /** A script-only run's output, as the engine keeps it on the row: only its start. */
+  preview: string | null
+}
+
+/** What one run produced, opened from its row. */
+export interface RunOutput {
+  /** The bot's last reply in the run; null when it wrote none. */
+  output: string | null
+  error: string | null
 }
 
 export type RunState = 'running' | 'finished' | 'stopped'
@@ -83,6 +96,12 @@ export const MAX_HOURS = 24
 const RECENT_RUNS = 5
 // Run now waits for the run itself, which can take a few minutes.
 const RUN_TIMEOUT_MS = 600_000
+// How the engine marks a script-only run, which writes an output file and no session.
+const SCRIPT_RUN = 'cron_output'
+// How the engine titles a script-only run that did not complete.
+const SCRIPT_STOPPED = /^(FAILED|CANCELLED|MISSED) · /
+// The most the engine pages at once: a run's last reply can sit behind many tool calls.
+const RUN_TAIL = 500
 
 const listSchema = z.object({
   jobs: z
@@ -123,6 +142,9 @@ const runsSchema = z.object({
   runs: z
     .array(
       z.object({
+        id: z.string(),
+        source: z.string().nullish(),
+        preview: z.string().nullish(),
         started_at: z.number().nullish(),
         is_active: z.boolean().nullish(),
         end_reason: z.string().nullish(),
@@ -130,6 +152,9 @@ const runsSchema = z.object({
       })
     )
     .nullish()
+})
+const messagesSchema = z.object({
+  messages: z.array(z.object({ role: z.string().nullish(), content: z.unknown() })).nullish()
 })
 const outcomeSchema = z.object({ success: z.boolean().nullish(), error: z.string().nullish() })
 
@@ -274,15 +299,43 @@ export async function listRoutineRuns(
     })
   )
   return (runs ?? []).slice(0, RECENT_RUNS).map((run) => {
-    const state: RunState = run.is_active
-      ? 'running'
-      : run.end_reason === RUN_COMPLETE
-        ? 'finished'
-        : 'stopped'
+    const script = run.source === SCRIPT_RUN
     // A script-only run has no session: its title carries the outcome.
-    const reason = state === 'stopped' ? (run.end_reason ?? run.title ?? '') : ''
-    return { startedAt: run.started_at ?? 0, state, reason }
+    const finished = script
+      ? !SCRIPT_STOPPED.test(run.title ?? '')
+      : run.end_reason === RUN_COMPLETE
+    const state: RunState = run.is_active ? 'running' : finished ? 'finished' : 'stopped'
+    // A script-only run's title carries its outcome; a session's title is only its name.
+    const said = script ? run.title : run.end_reason
+    const reason = state === 'stopped' ? (said ?? '') : ''
+    return {
+      id: run.id,
+      sessionId: script ? null : run.id,
+      startedAt: run.started_at ?? 0,
+      state,
+      reason,
+      preview: script ? (run.preview ?? null) : null
+    }
   })
+}
+
+export async function openRoutineRun(
+  backend: RosterBackend,
+  profile: string,
+  run: RoutineRun
+): Promise<RunOutput> {
+  const error = run.reason || null
+  if (!run.sessionId) return { output: run.preview, error }
+  const query = new URLSearchParams({ profile, order: 'latest', limit: String(RUN_TAIL) })
+  const path = `/api/sessions/${encodeURIComponent(run.sessionId)}/messages?${query}`
+  const { messages } = await refused('routines.errorRunOutput', async () =>
+    messagesSchema.parse(await backend.http({ path, profile }))
+  )
+  const replies = (messages ?? [])
+    .filter((message) => message.role === 'assistant')
+    .map((message) => messageText(message.content).trim())
+    .filter(Boolean)
+  return { output: replies.at(-1) ?? null, error }
 }
 
 /** Sends only what changed, so a schedule the form cannot show is never rewritten. */
@@ -342,9 +395,9 @@ function jobPath(
   return `/api/cron/jobs/${encodeURIComponent(id)}${suffix}?${search}`
 }
 
-async function refused(key: TranslationKey, call: () => Promise<unknown>): Promise<void> {
+async function refused<T>(key: TranslationKey, call: () => Promise<T>): Promise<T> {
   try {
-    await call()
+    return await call()
   } catch (error) {
     throw new RosterError(key, error instanceof Error ? error.message : String(error))
   }

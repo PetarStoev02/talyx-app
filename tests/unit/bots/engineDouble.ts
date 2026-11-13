@@ -27,7 +27,24 @@ export interface CronJob {
   last_run_at?: string | null
   last_status?: string | null
   last_error?: string | null
-  runs?: { started_at: number; is_active: boolean; end_reason: string | null; title: string }[]
+  runs?: CronRun[]
+}
+
+/** A run row as the engine lists it: an agent run is a session, a script-only run is not. */
+export interface CronRun {
+  id: string
+  started_at: number
+  is_active: boolean
+  end_reason: string | null
+  title: string
+  preview?: string | null
+  /** `cron_output` for a script-only run, which has no session. */
+  source?: string
+}
+
+export interface RunMessage {
+  role: string
+  content: unknown
 }
 
 type Section = 'soul' | 'description' | 'model'
@@ -71,6 +88,8 @@ export interface EngineDouble {
   refuseCronOnce: (detail: string) => void
   /** Every cron REST call that changed something, in order. */
   cronWrites: { method: string; path: string; body?: unknown }[]
+  /** Each run session's stored messages, oldest first, by session id. */
+  runMessages: Record<string, RunMessage[]>
   failMetaOnce: () => void
   rooms: Room[]
   /** Each room's log rows, as groups.log pages them; groups.send adds the user's message. */
@@ -159,6 +178,7 @@ export function engineDouble(
   let cronFailure: string | null = null
   let cronRefusal: string | null = null
   const cronWrites: EngineDouble['cronWrites'] = []
+  const runMessages: EngineDouble['runMessages'] = {}
   let metaFailure = false
   let assetFailure = false
   const assets: EngineDouble['assets'] = []
@@ -215,6 +235,7 @@ export function engineDouble(
       return { ok: true } as T
     }
     if (request.path.startsWith('/api/cron/jobs/')) return cronRest(profile, request) as T
+    if (request.path.startsWith('/api/sessions/')) return sessionMessages(request.path) as T
     if (request.path.startsWith('/api/providers/custom-endpoints')) {
       const custom = double.homeProvider === 'custom' && profile === 'default'
       return {
@@ -368,8 +389,13 @@ export function engineDouble(
       job.last_run_at = '2026-11-07T10:00:00+00:00'
       job.last_status = 'ok'
       job.last_error = null
+      runMessages['cash-run'] = [
+        { role: 'user', content: job.prompt },
+        { role: 'assistant', content: 'Cash is above the floor.' }
+      ]
       job.runs = [
         {
+          id: 'cash-run',
           started_at: 1_794_045_600,
           is_active: false,
           end_reason: 'cron_complete',
@@ -386,6 +412,16 @@ export function engineDouble(
       if (updates.deliver !== undefined) job.deliver = updates.deliver
     }
     return storedJob(job)
+  }
+
+  // As the engine's session messages read: the latest page, oldest first.
+  function sessionMessages(path: string): unknown {
+    const url = new URL(path, 'http://engine')
+    const id = decodeURIComponent(url.pathname.split('/')[3])
+    const messages = runMessages[id]
+    if (!messages) throw new Error('Engine HTTP 404: Session not found')
+    const limit = Number(url.searchParams.get('limit') ?? messages.length)
+    return { session_id: id, messages: structuredClone(messages.slice(-limit)) }
   }
 
   function setAsset(profile: string, params: Record<string, unknown>): unknown {
@@ -488,6 +524,7 @@ export function engineDouble(
     configured,
     created,
     cronCalls,
+    runMessages,
     expensiveModels,
     deleted,
     conflictOnce: () => {
