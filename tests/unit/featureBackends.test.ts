@@ -50,7 +50,7 @@ function sourceFiles(dir: string): string[] {
  * method or start with a REST path. Comments are not code, and an event type compared with
  * `===` / `!==` or under `case` is the engine's event, not a call.
  */
-export function engineTermsInSource(source: string, fileName = 'source.ts'): string[] {
+function engineTermsInSource(source: string, fileName = 'source.ts'): string[] {
   // The name's extension picks the parser: a .tsx file read as .ts hides what follows its JSX.
   const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true)
   const terms: string[] = []
