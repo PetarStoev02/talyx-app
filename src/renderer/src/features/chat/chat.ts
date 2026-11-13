@@ -1,8 +1,6 @@
-import type { EngineApiRequest } from '@shared/engine/http'
-import type { CustomEndpoint, SessionMessage } from '@shared/engine/types'
+import type { SessionMessage } from '@shared/engine/types'
 import type { ModelOptionProvider, SessionLiveInfo } from '@shared/engine/gateway-events'
 import type { GatewayEvent } from '@shared/engine/shared'
-import { BARE_CUSTOM, namedTwinOfBare, sameBaseUrl } from '@shared/engine/endpoints'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { failureOf } from '@shared/lib/problem'
 import { useChat } from './store'
@@ -11,14 +9,7 @@ import { applyEvent, fromHistory, settlePrompt, withFailedTurns, withoutTurn } f
 import { SENDING_ID } from './turns'
 import type { ApprovalChoice, ChatItem, Transcript } from './types'
 
-/** The bot's chat is the profile's hidden session with this exact title. */
-export const BOT_CHAT_TITLE = 'Bot Chat'
 const HISTORY_LIMIT = 120
-// The most messages the engine sends in one page of a transcript.
-const ENGINE_PAGE_MAX = 500
-const TITLE_TAKEN = 'already in use'
-// A stored message's id is its durable row id; a message not stored yet has a local one.
-const ROW_ID = /^\d+$/
 
 /** A transcript image the engine no longer has on disk. */
 export class MediaGoneError extends Error {
@@ -29,14 +20,38 @@ export class MediaGoneError extends Error {
 }
 
 export interface ChatBackend {
-  request: <T = unknown>(
+  /** The bot's chat, or null when it has none yet. */
+  findChat: (profile: string) => Promise<string | null>
+  /** A new chat for the bot; when another client made one first, that one. */
+  createChat: (profile: string) => Promise<string>
+  /** The chat's stored messages, compacted ones too: the newest `limit`, or all of them for null. */
+  history: (profile: string, chatId: string, limit: number | null) => Promise<SessionMessage[]>
+  /** The chat's newest `limit` stored messages, without those compacted away. */
+  newestMessages: (profile: string, chatId: string, limit: number) => Promise<SessionMessage[]>
+  /** The chat's live state: its info, and the turn still in flight. */
+  resume: (profile: string, chatId: string) => Promise<ResumeSnapshot>
+  /** Sends the draft (its text already trimmed) on the chat. */
+  submit: (profile: string, chatId: string, draft: ChatDraft) => Promise<void>
+  interrupt: (profile: string, chatId: string) => Promise<void>
+  setModel: (
     profile: string,
-    method: string,
-    params?: Record<string, unknown>
-  ) => Promise<T>
-  http: <T = unknown>(request: EngineApiRequest) => Promise<T>
+    chatId: string,
+    model: { model: string; provider: string }
+  ) => Promise<void>
+  setReasoning: (profile: string, chatId: string, level: string) => Promise<void>
+  /** Answers one question of a clarify card. */
+  answerQuestion: (
+    profile: string,
+    promptId: string,
+    question: { id: string; answer: string | string[] }
+  ) => Promise<void>
+  /** The models a profile can pick. */
+  models: (profile: string) => Promise<ModelOptionProvider[]>
+  uploadImage: (profile: string, image: { dataUrl: string; name: string }) => Promise<ChatImage>
   /** The words in a voice recording. */
   transcribe: (profile: string, audio: { dataUrl: string; mime: string }) => Promise<string>
+  /** An image of the transcript as a data URL; MediaGoneError when the engine no longer has it. */
+  mediaUrl: (profile: string, path: string) => Promise<string>
 }
 
 export interface ChatImage {
@@ -111,7 +126,7 @@ export interface ChatActions {
 /** What Settings needs of the chat: the model lists, and a way to drop them. */
 export type ModelLists = Pick<ChatActions, 'models' | 'forgetModels'>
 
-interface ResumeSnapshot {
+export interface ResumeSnapshot {
   info?: SessionLiveInfo | null
   replay_epoch?: string
   running?: boolean
@@ -152,26 +167,14 @@ export function chatActions(backend: ChatBackend): ChatActions {
       }
     }
 
-  async function findChat(profile: string): Promise<string | null> {
-    const { sessions } = await backend.request<{
-      sessions: Array<{ id: string; resolved_id?: string | null }>
-    }>(profile, 'session.list', { title: BOT_CHAT_TITLE, limit: 200, include_hidden: true })
-    const row = sessions[0]
-    return row ? row.resolved_id || row.id : null
-  }
-
   async function load(profile: string, sessionId: string): Promise<void> {
     const token = (loads.get(profile) ?? 0) + 1
     loads.set(profile, token)
     // Events that land while the history is on its way are kept and replayed over it.
     update(profile, { pending: [] })
     const [messages, resume] = await Promise.all([
-      chatOf(profile)?.whole ? wholeHistory(profile, sessionId) : newestHistory(profile, sessionId),
-      backend.request<ResumeSnapshot>(profile, 'session.resume', {
-        session_id: sessionId,
-        defer_history: true,
-        omit_messages: true
-      })
+      backend.history(profile, sessionId, chatOf(profile)?.whole ? null : HISTORY_LIMIT),
+      backend.resume(profile, sessionId)
     ]).catch((error: unknown) => {
       // A failed reload stops buffering; the next reload starts a fresh buffer.
       if (loads.get(profile) === token) update(profile, { pending: null })
@@ -190,48 +193,11 @@ export function chatActions(backend: ChatBackend): ChatActions {
     })
   }
 
-  async function newestHistory(profile: string, sessionId: string): Promise<SessionMessage[]> {
-    return historyPage(profile, sessionId, { limit: HISTORY_LIMIT, order: 'latest' })
-  }
-
-  // ponytail: while the search is open, each reload reads every page; a very long chat would want
-  // only the new pages.
-  async function wholeHistory(profile: string, sessionId: string): Promise<SessionMessage[]> {
-    const messages: SessionMessage[] = []
-    for (;;) {
-      const page = await historyPage(profile, sessionId, {
-        limit: ENGINE_PAGE_MAX,
-        order: 'oldest',
-        offset: messages.length
-      })
-      messages.push(...page)
-      if (page.length < ENGINE_PAGE_MAX) return messages
-    }
-  }
-
-  async function historyPage(
-    profile: string,
-    sessionId: string,
-    page: { limit: number; order: 'latest' | 'oldest'; offset?: number }
-  ): Promise<SessionMessage[]> {
-    const query = new URLSearchParams({
-      profile,
-      limit: String(page.limit),
-      order: page.order,
-      offset: String(page.offset ?? 0),
-      include_compacted: 'true'
-    })
-    const { messages } = await backend.http<{ messages: SessionMessage[] }>({
-      path: `/api/sessions/${encodeURIComponent(sessionId)}/messages?${query}`,
-      profile
-    })
-    return messages
-  }
-
   function startChat(profile: string): Promise<string> {
     const started =
       creating.get(profile) ??
-      createChat(profile)
+      backend
+        .createChat(profile)
         .then(async (sessionId) => {
           update(profile, { sessionId })
           await load(profile, sessionId)
@@ -242,32 +208,10 @@ export function chatActions(backend: ChatBackend): ChatActions {
     return started
   }
 
-  async function createChat(profile: string): Promise<string> {
-    const { session_id: created } = await backend.request<{ session_id: string }>(
-      profile,
-      'session.create',
-      { title: BOT_CHAT_TITLE, hidden: true, follow_profile_config: true }
-    )
-    try {
-      await backend.request(profile, 'session.title', {
-        session_id: created,
-        title: BOT_CHAT_TITLE
-      })
-      return created
-    } catch (error) {
-      // Another client created the Bot Chat first: use that one.
-      const winner = error instanceof Error && error.message.includes(TITLE_TAKEN)
-      const existing = winner ? await findChat(profile) : null
-      if (!existing) throw error
-      return existing
-    }
-  }
-
   // A pick before the first send starts the Bot Chat, so the choice holds for that send.
-  function configure(profile: string, key: string, value: string): Promise<void> {
+  function configure(profile: string, apply: (sessionId: string) => Promise<void>): Promise<void> {
     const picked = (configuring.get(profile) ?? Promise.resolve()).then(async () => {
-      const sessionId = sessionOf(profile) ?? (await startChat(profile))
-      await backend.request(profile, 'config.set', { session_id: sessionId, key, value })
+      await apply(sessionOf(profile) ?? (await startChat(profile)))
     })
     // A failed pick shows on the chat (guarded); the picks and sends after it still go.
     configuring.set(
@@ -284,7 +228,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
 
   const interrupt = guarded('chat.errorStop', async (profile) => {
     const sessionId = sessionOf(profile)
-    if (sessionId) await backend.request(profile, 'session.interrupt', { session_id: sessionId })
+    if (sessionId) await backend.interrupt(profile, sessionId)
   })
 
   async function send(profile: string, draft: ChatDraft): Promise<boolean> {
@@ -308,7 +252,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
       })
       // A pick made just before the send applies to it.
       await configuring.get(profile)
-      await backend.request(profile, 'prompt.submit', submitParams(sessionId, text, draft))
+      await backend.submit(profile, sessionId, { ...draft, text })
       return true
     } catch (error) {
       const failure = failureOf('chat.errorSend', error)
@@ -383,7 +327,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
       // Opened only while the chat has no session: nothing of a bot by this name is out.
       out.delete(profile)
       update(profile, { loading: true, error: null })
-      const sessionId = chatId ?? (await findChat(profile))
+      const sessionId = chatId ?? (await backend.findChat(profile))
       // Known before the history loads, so cards the snapshot delivers find this chat.
       if (sessionId) {
         update(profile, { sessionId })
@@ -394,13 +338,9 @@ export function chatActions(backend: ChatBackend): ChatActions {
     }),
 
     recent: async (profile, limit) => {
-      const sessionId = sessionOf(profile) ?? (await findChat(profile))
+      const sessionId = sessionOf(profile) ?? (await backend.findChat(profile))
       if (!sessionId) return []
-      const query = new URLSearchParams({ profile, limit: String(limit), order: 'latest' })
-      const { messages } = await backend.http<{ messages: SessionMessage[] }>({
-        path: `/api/sessions/${encodeURIComponent(sessionId)}/messages?${query}`,
-        profile
-      })
+      const messages = await backend.newestMessages(profile, sessionId, limit)
       return fromHistory(sessionId, messages, false).items.flatMap((item) =>
         item.kind === 'bot' ? [item.text] : []
       )
@@ -478,11 +418,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
       // In order: the last lock completes the batch, so every earlier one must already be in.
       for (const question of prompt.questions) {
         const answer = answers[question.qid] ?? ''
-        await backend.request(profile, 'clarify.lock', {
-          request_id: promptId,
-          question_id: question.qid,
-          answer: Array.isArray(answer) ? JSON.stringify(answer) : answer
-        })
+        await backend.answerQuestion(profile, promptId, { id: question.qid, answer })
       }
       const transcript = chatOf(profile)?.transcript
       if (transcript) update(profile, { transcript: settlePrompt(transcript, promptId) })
@@ -499,18 +435,20 @@ export function chatActions(backend: ChatBackend): ChatActions {
     setModel: guarded(
       'chat.errorModel',
       async (profile, { model, provider }: { model: string; provider: string }) => {
-        await configure(profile, 'model', `${model} --provider ${provider}`)
+        await configure(profile, (sessionId) =>
+          backend.setModel(profile, sessionId, { model, provider })
+        )
         update(profile, { info: { ...chatOf(profile)!.info, model, provider } })
       }
     ),
 
     setReasoning: guarded('chat.errorReasoning', async (profile, level: string) => {
-      await configure(profile, 'reasoning', level)
+      await configure(profile, (sessionId) => backend.setReasoning(profile, sessionId, level))
       update(profile, { info: { ...chatOf(profile)!.info, reasoning: level } })
     }),
 
     models: (profile) => {
-      const loaded = modelLists.get(profile) ?? loadModels(backend, profile)
+      const loaded = modelLists.get(profile) ?? backend.models(profile)
       modelLists.set(profile, loaded)
       // A failed load is not kept: the next open tries again.
       loaded.catch(() => modelLists.get(profile) === loaded && modelLists.delete(profile))
@@ -519,41 +457,11 @@ export function chatActions(backend: ChatBackend): ChatActions {
 
     forgetModels: () => modelLists.clear(),
 
-    uploadImage: async (profile, { dataUrl, name }) => {
-      const { path, mime_type: mime } = await backend.http<{ path: string; mime_type: string }>({
-        path: `/api/chat/image-upload?profile=${encodeURIComponent(profile)}`,
-        method: 'POST',
-        body: { data_url: dataUrl, filename: name },
-        profile
-      })
-      return { path, mime }
-    },
+    uploadImage: backend.uploadImage,
 
     transcribe: backend.transcribe,
 
-    mediaUrl: async (profile, path) => {
-      const query = new URLSearchParams({ path, profile })
-      // Null when the engine no longer has the file; the chat then shows its name.
-      const media = await backend.http<{ data_url: string } | null>({
-        path: `/api/media?${query}`,
-        profile
-      })
-      if (!media) throw new MediaGoneError(path)
-      return media.data_url
-    }
-  }
-}
-
-function submitParams(sessionId: string, text: string, draft: ChatDraft): Record<string, unknown> {
-  return {
-    session_id: sessionId,
-    text,
-    ...(draft.images.length ? { attachments: draft.images } : {}),
-    ...(draft.whenBusy === 'queue' ? { queued: true } : {}),
-    // Only a stored message can be cut: one the engine never stored is sent again as new.
-    ...(draft.replaces && ROW_ID.test(draft.replaces)
-      ? { truncate_before_row_id: Number(draft.replaces), confirm_truncate: true }
-      : {})
+    mediaUrl: backend.mediaUrl
   }
 }
 
@@ -625,57 +533,4 @@ export function infoOf(
     provider: pick(live?.provider, previous?.provider),
     reasoning: pick(live?.reasoning_effort, previous?.reasoning)
   }
-}
-
-async function loadModels(backend: ChatBackend, profile: string): Promise<ModelOptionProvider[]> {
-  const query = new URLSearchParams({ explicit_only: '1', profile })
-  const [{ providers }, { endpoints }] = await Promise.all([
-    backend.http<{ providers: ModelOptionProvider[] }>({
-      path: `/api/model/options?${query}`,
-      profile
-    }),
-    backend
-      .http<{ endpoints?: CustomEndpoint[] }>({
-        path: `/api/providers/custom-endpoints?${new URLSearchParams({ profile })}`,
-        profile
-      })
-      // The saved lists only narrow the picker: without them it shows every model offered.
-      .catch(() => ({ endpoints: [] }))
-  ])
-  return withoutBareTwin(providers, endpoints ?? []).map((provider) =>
-    withSavedModels(provider, endpoints ?? [])
-  )
-}
-
-/**
- * Talyx keeps its bare custom endpoint as a named one too (see keepBareEndpoint), which would list
- * the same URL twice. The bare row goes and the named row stands for it, so a bot still on the
- * bare provider shows its model as selected there.
- */
-function withoutBareTwin(
-  providers: ModelOptionProvider[],
-  endpoints: CustomEndpoint[]
-): ModelOptionProvider[] {
-  const twin = namedTwinOfBare(endpoints)
-  if (!twin || !providers.some((provider) => provider.slug === twin.id)) return providers
-  return providers.flatMap((provider) => {
-    if (provider.slug === BARE_CUSTOM) return []
-    if (provider.slug !== twin.id) return [provider]
-    return [{ ...provider, aliases: [...(provider.aliases ?? []), BARE_CUSTOM] }]
-  })
-}
-
-/**
- * A custom endpoint offers the models saved on it. A router that also lists every model behind it
- * would otherwise fill the picker with routes that skip its fallback.
- */
-function withSavedModels(
-  provider: ModelOptionProvider,
-  endpoints: CustomEndpoint[]
-): ModelOptionProvider {
-  const url = provider.is_user_defined ? (provider.api_url ?? '') : ''
-  const endpoint = url && endpoints.find((item) => sameBaseUrl(item.base_url, url))
-  return endpoint && endpoint.models.length > 0
-    ? { ...provider, models: endpoint.models }
-    : provider
 }
