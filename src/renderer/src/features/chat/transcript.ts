@@ -1,5 +1,6 @@
 import type { GatewayEvent } from '@shared/engine/shared'
 import type { SessionMessage } from '@shared/engine/types'
+import { messageText } from '@shared/lib/messageText'
 import type { ChatItem, ChatPrompt, FailedTurn, StreamCursor, Transcript } from './types'
 
 // A message another bot delivered: `Message from 🤖 <name> (@<handle>): <text>`.
@@ -347,16 +348,6 @@ function parseArgs(value: unknown): Payload {
   } catch {
     return {}
   }
-}
-
-function messageText(content: unknown): string {
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return ''
-  return content
-    .map((part: { type?: unknown; text?: unknown }) =>
-      part?.type === 'text' && typeof part.text === 'string' ? part.text : ''
-    )
-    .join('')
 }
 
 function lastStreamingReply(transcript: Transcript): number {

@@ -10,6 +10,7 @@ import {
   composeSchedule,
   listRoutineRuns,
   loadRoutine,
+  openRoutineRun,
   runRoutine,
   saveRoutine,
   weekdayName
@@ -18,6 +19,7 @@ import type {
   RoutineDetails,
   RoutineDraft,
   RoutineRun,
+  RunOutput,
   ScheduleKind
 } from '@features/bots/routines'
 import type { TranslationKey } from '@shared/lib/i18n'
@@ -25,6 +27,7 @@ import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { Input, NativeSelect, Textarea } from '@shared/ui/input'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
+import { cn } from '@shared/lib/utils'
 
 const KINDS: Array<[ScheduleKind, TranslationKey]> = [
   ['daily', 'routines.kindDaily'],
@@ -110,6 +113,8 @@ export function RoutineDialog({
         ) : (
           <>
             <RoutineStatus
+              backend={backend}
+              profile={profile}
               details={details}
               runs={runs}
               runAction={
@@ -138,10 +143,14 @@ export function RoutineDialog({
 
 // Run now sits in the card it changes, so the button reads as part of the run status.
 function RoutineStatus({
+  backend,
+  profile,
   details,
   runs,
   runAction
 }: {
+  backend: RosterBackend
+  profile: string
   details: RoutineDetails
   runs: RoutineRun[]
   runAction: React.ReactNode
@@ -176,18 +185,70 @@ function RoutineStatus({
         ) : (
           <ul className="space-y-1 text-sm">
             {runs.map((run) => (
-              <li key={run.startedAt} className="wrap-break-word">
-                {when(new Date(run.startedAt * MS_PER_SECOND))}
-                {' · '}
-                {run.state === 'stopped'
-                  ? run.reason.replaceAll('_', ' ')
-                  : t(RUN_WORDS[run.state])}
+              <li key={run.id}>
+                <RunRow backend={backend} profile={profile} run={run} />
               </li>
             ))}
           </ul>
         )}
       </div>
     </div>
+  )
+}
+
+// One run: its time and outcome, opened to read what it wrote and why it stopped.
+function RunRow({
+  backend,
+  profile,
+  run
+}: {
+  backend: RosterBackend
+  profile: string
+  run: RoutineRun
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const [opened, setOpened] = useState<RunOutput | null>(null)
+  const [problem, setProblem] = useState<RosterProblem | null>(null)
+
+  function open(): void {
+    if (opened && run.state !== 'running') return
+    setProblem(null)
+    openRoutineRun(backend, profile, run).then(setOpened, (error: unknown) =>
+      setProblem(problemOf(error))
+    )
+  }
+
+  return (
+    <details onToggle={(event) => event.currentTarget.open && open()}>
+      <summary className="cursor-pointer wrap-break-word">
+        {when(new Date(run.startedAt * MS_PER_SECOND))}
+        {' · '}
+        <span className={cn(run.state === 'stopped' && 'text-destructive-text')}>
+          {run.state === 'stopped' ? run.reason.replaceAll('_', ' ') : t(RUN_WORDS[run.state])}
+        </span>
+      </summary>
+      <div className="mt-1 mb-2 space-y-2 pl-4">
+        {problem ? (
+          <ProblemMessage problem={problem} />
+        ) : !opened ? (
+          <Loading label={t('routines.runLoading')}>
+            <Skeleton className="h-12 w-full rounded-lg" />
+          </Loading>
+        ) : (
+          <>
+            {opened.error && (
+              <p className="text-destructive-text wrap-break-word">
+                {t('routines.runError')}: {opened.error.replaceAll('_', ' ')}
+              </p>
+            )}
+            {/* A long reply scrolls in place, so the run list stays in reach. */}
+            <p className="max-h-60 overflow-y-auto rounded-lg bg-card p-2 whitespace-pre-wrap wrap-break-word overscroll-contain">
+              {opened.output ?? t('routines.runNoOutput')}
+            </p>
+          </>
+        )}
+      </div>
+    </details>
   )
 }
 

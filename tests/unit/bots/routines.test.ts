@@ -8,6 +8,7 @@ import {
   listRoutineRuns,
   listRoutines,
   loadRoutine,
+  openRoutineRun,
   removeRoutine,
   runRoutine,
   saveRoutine,
@@ -21,7 +22,7 @@ import type {
 } from '../../../src/renderer/src/features/bots/routines'
 import { RosterError } from '../../../src/renderer/src/features/bots/roster'
 import { backendFor, engineDouble } from './engineDouble'
-import type { CronJob, EngineDouble } from './engineDouble'
+import type { CronJob, CronRun, EngineDouble } from './engineDouble'
 
 const schedule = (patch: Partial<ScheduleDraft>): ScheduleDraft => ({
   ...DEFAULT_SCHEDULE,
@@ -57,6 +58,14 @@ const draft = (patch: Partial<RoutineDraft> = {}): RoutineDraft => ({
   instruction: 'Summarise the cash position.',
   schedule: schedule({ kind: 'weekly', time: '08:00', weekday: 1 }),
   postsToChat: true,
+  ...patch
+})
+
+const run = (patch: Partial<CronRun> & { id: string }): CronRun => ({
+  started_at: 1,
+  is_active: false,
+  end_reason: 'cron_complete',
+  title: 'Cash',
   ...patch
 })
 
@@ -311,7 +320,7 @@ describe('routines', () => {
       expect(engine.jobs.analyst[0].schedule).toBe('0 8 * * 1')
     })
 
-    it('should run it now and show the run', async () => {
+    it('should run it now and show the run with its output', async () => {
       await open()
       expect(await listRoutineRuns(backend, 'analyst', 'cash')).toEqual([])
       await runRoutine(backend, 'analyst', 'cash')
@@ -319,9 +328,21 @@ describe('routines', () => {
         method: 'POST',
         path: '/api/cron/jobs/cash/trigger?profile=analyst'
       })
-      expect(await listRoutineRuns(backend, 'analyst', 'cash')).toEqual([
-        { startedAt: 1_794_045_600, state: 'finished', reason: '' }
+      const runs = await listRoutineRuns(backend, 'analyst', 'cash')
+      expect(runs).toEqual([
+        {
+          id: 'cash-run',
+          sessionId: 'cash-run',
+          startedAt: 1_794_045_600,
+          state: 'finished',
+          reason: '',
+          preview: null
+        }
       ])
+      expect(await openRoutineRun(backend, 'analyst', runs[0])).toEqual({
+        output: 'Cash is above the floor.',
+        error: null
+      })
       expect(await loadRoutine(backend, 'analyst', 'cash')).toMatchObject({
         lastStatus: 'ok',
         lastError: null
@@ -338,6 +359,7 @@ describe('routines', () => {
 
     it('should list only the five most recent runs', async () => {
       const runs = Array.from({ length: 7 }, (_, index) => ({
+        id: `run-${index}`,
         started_at: 1_794_000_000 - index,
         is_active: false,
         end_reason: 'cron_complete',
@@ -353,23 +375,114 @@ describe('routines', () => {
     it('should tell a running, a finished and a stopped run apart', async () => {
       await open({
         runs: [
-          { started_at: 3, is_active: true, end_reason: null, title: 'Cash' },
-          { started_at: 2, is_active: false, end_reason: 'cron_complete', title: 'Cash' },
-          {
-            started_at: 1,
-            is_active: false,
-            end_reason: 'cron_incomplete_no_output',
-            title: 'Cash'
-          },
-          { started_at: 0, is_active: false, end_reason: null, title: 'FAILED · timeout' }
+          run({ id: 'a', started_at: 3, is_active: true, end_reason: null }),
+          run({ id: 'b', started_at: 2 }),
+          run({ id: 'c', started_at: 1, end_reason: 'cron_incomplete_no_output' }),
+          run({ id: 'd', started_at: 0, end_reason: null, title: 'FAILED · timeout' })
         ]
       })
       expect(await listRoutineRuns(backend, 'analyst', 'cash')).toEqual([
-        { startedAt: 3, state: 'running', reason: '' },
-        { startedAt: 2, state: 'finished', reason: '' },
-        { startedAt: 1, state: 'stopped', reason: 'cron_incomplete_no_output' },
-        { startedAt: 0, state: 'stopped', reason: 'FAILED · timeout' }
+        { id: 'a', sessionId: 'a', startedAt: 3, state: 'running', reason: '', preview: null },
+        { id: 'b', sessionId: 'b', startedAt: 2, state: 'finished', reason: '', preview: null },
+        {
+          id: 'c',
+          sessionId: 'c',
+          startedAt: 1,
+          state: 'stopped',
+          reason: 'cron_incomplete_no_output',
+          preview: null
+        },
+        {
+          id: 'd',
+          sessionId: 'd',
+          startedAt: 0,
+          state: 'stopped',
+          reason: 'FAILED · timeout',
+          preview: null
+        }
       ])
+    })
+
+    it.each([
+      ['COMPLETED · Balance 1200', 'finished', ''],
+      ['Balance 1200', 'finished', ''],
+      ['FAILED · timeout', 'stopped', 'FAILED · timeout'],
+      [
+        'CANCELLED · cancelled on request (Stop)',
+        'stopped',
+        'CANCELLED · cancelled on request (Stop)'
+      ],
+      ['MISSED · Script-only run', 'stopped', 'MISSED · Script-only run']
+    ])('should read a script-only run titled "%s" as %s', async (title, state, reason) => {
+      await open({
+        runs: [run({ id: 'cron_output:cash:x', end_reason: null, title, source: 'cron_output' })]
+      })
+      expect(await listRoutineRuns(backend, 'analyst', 'cash')).toMatchObject([
+        { sessionId: null, state, reason }
+      ])
+    })
+
+    describe('opening a run', () => {
+      const runOf = async (row: CronRun): Promise<Awaited<ReturnType<typeof openRoutineRun>>> => {
+        await open({ runs: [row] })
+        const [listed] = await listRoutineRuns(backend, 'analyst', 'cash')
+        return openRoutineRun(backend, 'analyst', listed)
+      }
+
+      it("should show a finished run's last reply as its output", async () => {
+        engine.runMessages.s1 = [
+          { role: 'user', content: 'Summarise the cash position.' },
+          { role: 'assistant', content: 'Checking the accounts.' },
+          { role: 'tool', content: '{"balance": 1200}' },
+          { role: 'assistant', content: [{ type: 'text', text: 'Cash is 1,200.' }] }
+        ]
+        expect(await runOf(run({ id: 's1' }))).toEqual({ output: 'Cash is 1,200.', error: null })
+      })
+
+      it('should show why a stopped run stopped, with what it wrote before', async () => {
+        engine.runMessages.s2 = [
+          { role: 'user', content: 'Summarise the cash position.' },
+          { role: 'assistant', content: 'Half a report' }
+        ]
+        expect(await runOf(run({ id: 's2', end_reason: 'cron_incomplete_no_output' }))).toEqual({
+          output: 'Half a report',
+          error: 'cron_incomplete_no_output'
+        })
+      })
+
+      it('should show no output for a run that wrote no reply', async () => {
+        engine.runMessages.s3 = [{ role: 'user', content: 'Summarise the cash position.' }]
+        const row = run({ id: 's3', preview: 'Summarise the cash position.', source: 'cron' })
+        expect(await runOf(row)).toEqual({ output: null, error: null })
+      })
+
+      it("should show a script-only run's output from its row, without a session", async () => {
+        const row = run({
+          id: 'cron_output:cash:2026-11-12_10-59-14',
+          end_reason: null,
+          title: 'Script-only run',
+          preview: 'Balance 1200',
+          source: 'cron_output'
+        })
+        expect(await runOf(row)).toEqual({ output: 'Balance 1200', error: null })
+      })
+
+      it("should show a failed script-only run's error", async () => {
+        const row = run({
+          id: 'cron_output:cash:exec:0',
+          end_reason: null,
+          title: 'FAILED · timeout',
+          preview: 'timeout',
+          source: 'cron_output'
+        })
+        expect(await runOf(row)).toEqual({ output: 'timeout', error: 'FAILED · timeout' })
+      })
+
+      it('should report a run whose session the engine no longer has', async () => {
+        await expect(runOf(run({ id: 'gone' }))).rejects.toMatchObject({
+          key: 'routines.errorRunOutput'
+        })
+      })
     })
   })
 })

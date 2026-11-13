@@ -133,9 +133,17 @@ const jobs: Record<string, Record<string, unknown>[]> = {
       last_status: 'ok',
       runs: [
         {
+          id: 'cash-run-2',
           started_at: 1_793_606_400,
           is_active: false,
           end_reason: 'cron_complete',
+          title: 'Cash run'
+        },
+        {
+          id: 'cash-run-1',
+          started_at: 1_793_001_600,
+          is_active: false,
+          end_reason: 'cron_incomplete_no_output',
           title: 'Cash run'
         }
       ]
@@ -151,6 +159,18 @@ const jobs: Record<string, Record<string, unknown>[]> = {
   ]
 }
 let nextJob = 1
+// Each routine run's session, as the engine stores it.
+const runMessages: Record<string, { role: string; content: string }[]> = {
+  'cash-run-2': [
+    { role: 'user', content: 'Post the cash position across our accounts.' },
+    {
+      role: 'assistant',
+      content:
+        'Cash position, Monday 2 November:\n\n- Operating: 48,200 EUR\n- Payroll: 21,750 EUR\n- Reserve: 90,000 EUR\n\nAll accounts are above the floor.'
+    }
+  ],
+  'cash-run-1': [{ role: 'user', content: 'Post the cash position across our accounts.' }]
+}
 
 function configure(profile: string, params: Record<string, unknown>): unknown {
   const bot = profiles.find((bot) => bot.name === profile)!
@@ -263,7 +283,12 @@ function cronRest(request: EngineApiRequest): unknown {
   if (action === 'trigger') {
     job.last_run_at = new Date().toISOString()
     job.last_status = 'ok'
-    const run = { started_at: Date.now() / 1000, is_active: false, end_reason: 'cron_complete' }
+    const id = `${job.job_id}-run-${Date.now()}`
+    const run = { id, started_at: Date.now() / 1000, is_active: false, end_reason: 'cron_complete' }
+    runMessages[id] = [
+      { role: 'user', content: String(job.prompt) },
+      { role: 'assistant', content: `Ran just now: ${String(job.name)} is done.` }
+    ]
     job.runs = [{ ...run, title: `${job.name} run` }, ...((job.runs as unknown[]) ?? [])]
   }
   if (request.method === 'PUT')
@@ -287,6 +312,9 @@ function cronRest(request: EngineApiRequest): unknown {
 // A bot's model pin and a routine's details; every other call is the Providers page's double.
 async function http<T>(request: EngineApiRequest): Promise<T> {
   if (request.path.startsWith('/api/cron/jobs/')) return cronRest(request) as T
+  const run = /^\/api\/sessions\/([^/?]+)\/messages/.exec(request.path)?.[1]
+  if (run && runMessages[decodeURIComponent(run)])
+    return { messages: runMessages[decodeURIComponent(run)] } as T
   if (!request.path.startsWith('/api/model/set')) return providers.http<T>(request)
   const body = request.body as {
     provider: string
