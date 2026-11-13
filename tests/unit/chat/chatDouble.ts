@@ -84,8 +84,6 @@ export function chatDouble(
         return { messages: page(chat?.messages ?? [], params) }
       case 'POST /api/chat/image-upload':
         return { path: '/images/pasted.png', mime_type: 'image/png' }
-      case 'POST /api/audio/transcribe':
-        return { transcript: 'dictated words' }
       case 'GET /api/model/options':
         if (profile === KEPT_ENDPOINT_PROFILE)
           return {
@@ -165,6 +163,10 @@ export function chatDouble(
       return (await held(route, () =>
         answer(url.searchParams.get('profile') ?? '', route, params)
       )) as T
+    },
+    transcribe: async (profile, audio) => {
+      calls.push({ profile, method: 'transcribe', params: audio })
+      return 'dictated words'
     }
   }
   return {

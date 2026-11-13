@@ -1103,7 +1103,7 @@ describe('bot chat', () => {
           mime: 'audio/webm'
         })
       ).toBe('dictated words')
-      expect(call('POST /api/audio/transcribe')?.params).toMatchObject({ mime_type: 'audio/webm' })
+      expect(call('transcribe')?.params).toMatchObject({ mime: 'audio/webm' })
       expect(await actions.mediaUrl(MANAGER, '/images/a b.png')).toBe('data:image/png;base64,AAAA')
       expect(call('GET /api/media')?.params).toMatchObject({ path: '/api/media' })
       expect(engine.calls.at(-1)?.profile).toBe(MANAGER)

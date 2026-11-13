@@ -212,7 +212,9 @@ admits no Origin header and takes the ticket in a subprotocol) and relays frames
 ```
 src/renderer/src/
 ├── app/              # Global state, browser dev bridge, the hooks that wire `host` into
-│                     # features (useRosterBackend, useChatBackend, useProvidersBackend)
+│                     # features (useRosterBackend, useChatBackend, useProvidersBackend);
+│                     # engine/: each feature's backend over the engine. Only it names engine
+│                     # methods and REST paths (tests/unit/featureBackends.test.ts)
 ├── pages/            # AgentsPage (the selected bot's chat or room, and details), SettingsPage
 ├── widgets/          # AppShell, Roster (sidebar bots and rooms, create dialogs), Chat (transcript,
 │                     # cards, composer, RoomPane, the ⌘F search: ChatSearch on the pill's line

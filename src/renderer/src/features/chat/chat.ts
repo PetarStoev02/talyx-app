@@ -35,6 +35,8 @@ export interface ChatBackend {
     params?: Record<string, unknown>
   ) => Promise<T>
   http: <T = unknown>(request: EngineApiRequest) => Promise<T>
+  /** The words in a voice recording. */
+  transcribe: (profile: string, audio: { dataUrl: string; mime: string }) => Promise<string>
 }
 
 export interface ChatImage {
@@ -527,15 +529,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
       return { path, mime }
     },
 
-    transcribe: async (profile, { dataUrl, mime }) => {
-      const { transcript } = await backend.http<{ transcript: string }>({
-        path: `/api/audio/transcribe?profile=${encodeURIComponent(profile)}`,
-        method: 'POST',
-        body: { data_url: dataUrl, mime_type: mime },
-        profile
-      })
-      return transcript
-    },
+    transcribe: backend.transcribe,
 
     mediaUrl: async (profile, path) => {
       const query = new URLSearchParams({ path, profile })

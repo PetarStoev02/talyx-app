@@ -7,8 +7,9 @@ import { activityOf, handleEvent, promptHandler } from '@features/chat/events'
 import type { ChatUpdate } from '@features/chat/events'
 import { useChat } from '@features/chat/store'
 import { host } from '@shared/engine/host'
-import { engineHttp } from '@shared/engine/http'
 import { reportError } from '@shared/lib/report'
+import { engineAccess } from '@app/engine/access'
+import { engineChatBackend } from '@app/engine/chat'
 import { forgetDeleted } from './forgetDeleted'
 
 /**
@@ -36,7 +37,7 @@ export function useChatBackend(): ChatActions | null {
   }, [])
 
   const actions = useMemo(
-    () => (opened ? chatActions({ request: host.request, http: engineHttp }) : null),
+    () => (opened ? chatActions(engineChatBackend(engineAccess)) : null),
     [opened]
   )
 

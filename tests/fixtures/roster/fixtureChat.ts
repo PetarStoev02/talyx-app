@@ -1,5 +1,6 @@
 import { chatActions } from '../../../src/renderer/src/features/chat/chat'
 import type { ChatActions, ChatBackend } from '../../../src/renderer/src/features/chat/chat'
+import { engineChatBackend } from '../../../src/renderer/src/app/engine/chat'
 import type { ProvidersBackend } from '../../../src/renderer/src/features/providers/providers'
 import { handleEvent, handlePrompt } from '../../../src/renderer/src/features/chat/events'
 import type { ChatUpdate } from '../../../src/renderer/src/features/chat/events'
@@ -310,7 +311,7 @@ export function fixtureChat(providers: ProvidersBackend): ChatActions {
     throw new Error('Unsupported fixture call')
   }
 
-  const actions = chatActions({ request, http })
+  const actions = chatActions(engineChatBackend({ request, http }))
   return actions
 }
 
