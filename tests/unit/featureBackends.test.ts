@@ -20,7 +20,7 @@ const ENGINE_METHODS = new Set<string>(
 const REST_PATH = /^\/api\b/
 
 // Files not moved to the wiring yet. Each PR of #67 takes its files off; the last empties it.
-const NOT_YET_MOVED = new Set(['chat/chat.ts', 'chat/room.ts', 'providers/providers.ts'])
+const NOT_YET_MOVED = new Set(['chat/chat.ts', 'chat/room.ts'])
 // Calls already moved out of a file that is still on the list above: they must not come back.
 const MOVED_CALLS = ['/api/audio/transcribe']
 
