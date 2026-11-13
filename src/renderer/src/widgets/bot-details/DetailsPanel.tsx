@@ -131,7 +131,7 @@ export function DetailsPanel({
           return closeIfShowing()
         }
         // Everything but the model is saved; the panel now opens from there.
-        setLoaded({ ...draft, model: opening.model })
+        setLoaded({ description: draft.description, soul: draft.soul, model: opening.model })
         setConfirm(asked)
       } finally {
         // Also after a refusal of another section: Talyx's model may have changed all the same.
@@ -195,6 +195,7 @@ export function DetailsPanel({
   // Declining keeps the model the engine has, in the field as well.
   function keepModel(): void {
     setConfirm(null)
+    setUsesDefault(bot.meta.usesDefault === true)
     setFields((value) => value && { ...value, model: loaded?.model ?? null })
   }
 
