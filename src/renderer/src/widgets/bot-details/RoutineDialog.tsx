@@ -39,9 +39,10 @@ const KINDS: Array<[ScheduleKind, TranslationKey]> = [
 // Cron counts weekdays from Sunday = 0; the list starts on Monday.
 const WEEK = [1, 2, 3, 4, 5, 6, 0]
 const MS_PER_SECOND = 1000
-const RUN_WORDS: Record<'running' | 'finished', TranslationKey> = {
+const RUN_WORDS: Record<RoutineRun['state'], TranslationKey> = {
   running: 'routines.runActive',
-  finished: 'routines.runFinished'
+  finished: 'routines.runFinished',
+  stopped: 'routines.runStopped'
 }
 const WHEN = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' })
 
@@ -185,7 +186,8 @@ function RoutineStatus({
         ) : (
           <ul className="space-y-1 text-sm">
             {runs.map((run) => (
-              <li key={run.id}>
+              // A run that was still going when opened reads its output again once it ends.
+              <li key={`${run.id}:${run.state}`}>
                 <RunRow backend={backend} profile={profile} run={run} />
               </li>
             ))}
@@ -224,7 +226,9 @@ function RunRow({
         {when(new Date(run.startedAt * MS_PER_SECOND))}
         {' · '}
         <span className={cn(run.state === 'stopped' && 'text-destructive-text')}>
-          {run.state === 'stopped' ? run.reason.replaceAll('_', ' ') : t(RUN_WORDS[run.state])}
+          {run.state === 'stopped' && run.reason
+            ? run.reason.replaceAll('_', ' ')
+            : t(RUN_WORDS[run.state])}
         </span>
       </summary>
       <div className="mt-1 mb-2 space-y-2 pl-4">
@@ -238,13 +242,16 @@ function RunRow({
           <>
             {opened.error && (
               <p className="text-destructive-text wrap-break-word">
-                {t('routines.runError')}: {opened.error.replaceAll('_', ' ')}
+                {t('routines.runError').replace('{reason}', opened.error.replaceAll('_', ' '))}
               </p>
             )}
             {/* A long reply scrolls in place, so the run list stays in reach. */}
             <p className="max-h-60 overflow-y-auto rounded-lg bg-card p-2 whitespace-pre-wrap wrap-break-word overscroll-contain">
               {opened.output ?? t('routines.runNoOutput')}
             </p>
+            {!run.sessionId && opened.output && (
+              <p className="text-muted-foreground">{t('routines.runExcerpt')}</p>
+            )}
           </>
         )}
       </div>

@@ -378,7 +378,8 @@ describe('routines', () => {
           run({ id: 'a', started_at: 3, is_active: true, end_reason: null }),
           run({ id: 'b', started_at: 2 }),
           run({ id: 'c', started_at: 1, end_reason: 'cron_incomplete_no_output' }),
-          run({ id: 'd', started_at: 0, end_reason: null, title: 'FAILED · timeout' })
+          // A run that stopped without saying why keeps its session title out of the reason.
+          run({ id: 'd', started_at: 0, end_reason: null, title: 'Cash · Nov 12 10:59' })
         ]
       })
       expect(await listRoutineRuns(backend, 'analyst', 'cash')).toEqual([
@@ -397,7 +398,7 @@ describe('routines', () => {
           sessionId: 'd',
           startedAt: 0,
           state: 'stopped',
-          reason: 'FAILED · timeout',
+          reason: '',
           preview: null
         }
       ])
@@ -448,6 +449,17 @@ describe('routines', () => {
           output: 'Half a report',
           error: 'cron_incomplete_no_output'
         })
+      })
+
+      it('should find a reply written before many tool calls', async () => {
+        const tools = Array.from({ length: 30 }, () => ({ role: 'tool', content: '{}' }))
+        engine.runMessages.s4 = [
+          { role: 'user', content: 'Summarise the cash position.' },
+          { role: 'assistant', content: 'Cash is 1,200.' },
+          ...tools
+        ]
+        const row = run({ id: 's4', end_reason: 'cron_incomplete_no_output' })
+        expect(await runOf(row)).toMatchObject({ output: 'Cash is 1,200.' })
       })
 
       it('should show no output for a run that wrote no reply', async () => {

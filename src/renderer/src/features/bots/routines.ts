@@ -53,7 +53,7 @@ export interface RoutineRun {
   state: RunState
   /** Why a run that did not finish stopped, as the engine says it; empty otherwise. */
   reason: string
-  /** A script-only run's output, as the engine keeps it on the row. */
+  /** A script-only run's output, as the engine keeps it on the row: only its start. */
   preview: string | null
 }
 
@@ -100,8 +100,8 @@ const RUN_TIMEOUT_MS = 600_000
 const SCRIPT_RUN = 'cron_output'
 // How the engine titles a script-only run that did not complete.
 const SCRIPT_STOPPED = /^(FAILED|CANCELLED|MISSED) · /
-// Enough of a run's tail to hold its last reply past the tool calls before it.
-const RUN_TAIL = 20
+// The most the engine pages at once: a run's last reply can sit behind many tool calls.
+const RUN_TAIL = 500
 
 const listSchema = z.object({
   jobs: z
@@ -305,7 +305,9 @@ export async function listRoutineRuns(
       ? !SCRIPT_STOPPED.test(run.title ?? '')
       : run.end_reason === RUN_COMPLETE
     const state: RunState = run.is_active ? 'running' : finished ? 'finished' : 'stopped'
-    const reason = state === 'stopped' ? (run.end_reason ?? run.title ?? '') : ''
+    // A script-only run's title carries its outcome; a session's title is only its name.
+    const said = script ? run.title : run.end_reason
+    const reason = state === 'stopped' ? (said ?? '') : ''
     return {
       id: run.id,
       sessionId: script ? null : run.id,

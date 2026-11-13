@@ -154,7 +154,19 @@ const jobs: Record<string, Record<string, unknown>[]> = {
       prompt: 'List the invoices more than 30 days overdue and draft a reminder for each.',
       schedule: '0 17 * * *',
       enabled: false,
-      state: 'paused'
+      state: 'paused',
+      runs: [
+        {
+          id: 'cron_output:invoices:2026-11-05_17-00-00',
+          source: 'cron_output',
+          started_at: 1_793_890_800,
+          is_active: false,
+          end_reason: null,
+          title: 'COMPLETED · Script-only run',
+          preview:
+            '# Cron Job: Invoice chase **Job ID:** invoices **Run Time:** 2026-11-05 17:00:00 ## Response Three invoices are more than 30 days overdue: INV-1042, INV-1057 and INV-1063. Reminder…'
+        }
+      ]
     }
   ]
 }
