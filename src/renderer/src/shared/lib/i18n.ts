@@ -281,8 +281,10 @@ const en = {
   'details.descriptionHint': 'What this bot is for, in a line.',
   'details.model': 'Model',
   'details.modelDefault': 'Engine default',
+  'details.usesDefault': 'Uses default ({model})',
   'details.modelHint':
-    'This bot keeps its own model. Talyx’s model in Settings applies only to new bots.',
+    'On Uses default, the bot follows Talyx’s model in Settings. A model of its own stays.',
+  'details.modelHintTalyx': 'Bots on Uses default follow this model.',
   'details.soul': 'SOUL.md',
   'details.save': 'Save',
   'details.saving': 'Saving…',
@@ -437,6 +439,8 @@ const en = {
   'roster.errorNoDefault':
     'The engine did not return Talyx’s own bot. Restart it with talyx-engine gateway restart, then refresh.',
   'roster.errorFolderGone': 'That folder no longer exists. Refresh the roster.',
+  'mcp.stillOnOldModel':
+    'Talyx’s model changed, but these bots on Uses default stayed on the old model:',
   'mcp.approveTitle': 'An agent asks to change Talyx',
   'mcp.approveSource':
     'The request came through Talyx’s MCP server, from one of your bots or an outside agent. Nothing changes unless you allow it.',
@@ -463,6 +467,8 @@ const en = {
   'mcp.errorRoomGone': 'That room no longer exists.',
   'mcp.errorRoutineGone': 'That routine no longer exists.',
   'mcp.errorLook': 'That look is not one Talyx has; list_looks shows the shapes and hues.',
+  'details.errorFollowersUnreached':
+    'Talyx’s model changed, but the bots on Uses default could not be reached. Pick Talyx’s model again in Settings to move them.',
   'details.errorNotApplied': 'Some changes were not saved. Your edits are still here; save again.',
   'details.errorModel':
     'The engine did not switch to this model. Check that its provider is set up in Settings → Providers, then save again.',
@@ -589,6 +595,8 @@ const en = {
   'providers.signedOut': 'Signed out.',
   'providers.notOnBots': 'Not saved on: {bots}. Save again to try those bots.',
   'providers.stillOnBots': 'Still on: {bots}. Remove it again to try those bots.',
+  'providers.notFollowing':
+    'Still on the old model: {bots}. Pick Talyx’s model again in Settings to try those bots.',
   'providers.addTitle': 'Add provider',
   'providers.editTitle': 'Edit {name}',
   'providers.addHint':
@@ -653,7 +661,7 @@ const en = {
   'providers.errorNotSignedOut': 'There was no sign-in to remove.',
   'providers.defaultTitle': 'Talyx’s model',
   'providers.defaultHint':
-    'Talyx answers on this model, and new bots start on it. Other bots keep their own.',
+    'Talyx answers on this model, new bots start on it, and bots on Uses default follow it. Other bots keep their own.',
   'providers.defaultChanged': 'Talyx now uses {model}.',
   'update.label': 'Updates',
   'update.labelPending': 'Update available',

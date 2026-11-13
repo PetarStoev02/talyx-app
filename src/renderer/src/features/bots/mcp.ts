@@ -9,7 +9,7 @@ import type { BlockShape } from '@shared/ui/blockGeometry'
 import { refreshRoster, rosterActions, runRosterMutation } from './actions'
 import { createBot, profileIdFor } from './create'
 import type { RosterBackend } from './data'
-import { MANAGER, confirmModel, loadDetails, saveDetails } from './details'
+import { MANAGER, confirmModel, followIfDefaultChanged, loadDetails, saveDetails } from './details'
 import type { DetailsDraft } from './details'
 import { lookOf, matchName } from './look'
 import type { Look } from './look'
@@ -117,38 +117,59 @@ function toolsFor(
       const opening: DetailsDraft = {
         ...(await loadDetails(backend, profile)),
         title: botTitle(bot),
-        look: lookOf(bot)
+        look: lookOf(bot),
+        usesDefault: bot.meta.usesDefault === true
       }
       const draft: DetailsDraft = {
         title: title ?? opening.title,
         description: description ?? opening.description,
         soul: soul ?? opening.soul,
         model: model ?? opening.model,
-        look: look ? lookFrom(look) : opening.look
+        look: look ? lookFrom(look) : opening.look,
+        // A model named for the bot is its own.
+        usesDefault: !model && opening.usesDefault
       }
-      if (draft.soul !== opening.soul)
-        await ask('update_bot', say('mcp.replaceSoul', { name: botTitle(bot) }))
-      const costly = await change((snapshot) =>
-        saveDetails(backend, botOf(snapshot, profile), { opening, draft })
-      )
-      if (costly) {
+      const save = async (): Promise<void> => {
+        if (draft.soul !== opening.soul)
+          await ask('update_bot', say('mcp.replaceSoul', { name: botTitle(bot) }))
+        const costly = await change((snapshot) =>
+          saveDetails(backend, botOf(snapshot, profile), { opening, draft })
+        )
+        if (!costly) return
         const action = say('mcp.costlyModel', {
           name: botTitle(bot),
           model: costly.model.model,
           message: costly.message
         })
-        // The other fields are saved by now: a no to the model must not say nothing changed.
-        const othersSaved = Object.keys(draft).some(
-          (key) =>
-            key !== 'model' &&
-            JSON.stringify(draft[key as keyof DetailsDraft]) !==
-              JSON.stringify(opening[key as keyof DetailsDraft])
-        )
         if (!(await approve({ tool: 'update_bot', action })))
-          throw othersSaved ? new RosterError('mcp.refusedModel') : new ApprovalRefusedError()
+          throw othersSaved(opening, draft)
+            ? new RosterError('mcp.refusedModel')
+            : new ApprovalRefusedError()
         await confirmModel(backend, profile, costly.model)
       }
-      return { profile }
+      if (profile !== MANAGER) {
+        await save()
+        return { profile }
+      }
+      // Talyx's model is the default: the bots on "Uses default" move with it, also when another
+      // field was refused after the model changed.
+      const failure = await save().then(
+        () => null,
+        (error: unknown) => error
+      )
+      const following = followIfDefaultChanged(backend, opening.model)
+      if (!failure) {
+        const stillOnOldModel = await following
+        return stillOnOldModel.length > 0 ? { profile, stillOnOldModel } : { profile }
+      }
+      // The save's own error is what the agent must see; a follow that could not run adds nothing.
+      const stillOnOldModel = await following.catch(() => [])
+      if (stillOnOldModel.length > 0)
+        throw new RosterError(
+          'mcp.stillOnOldModel',
+          `${stillOnOldModel.join(', ')}. ${problemText((key) => t(key, 'en'), problemOf(failure))}`
+        )
+      throw failure
     },
     set_reasoning: async ({ profile, level }) => {
       botOf(await fresh(), profile)
@@ -415,5 +436,16 @@ function say(key: TranslationKey, values: Record<string, string>): string {
   return Object.entries(values).reduce(
     (text, [name, value]) => text.replaceAll(`{${name}}`, value),
     t(key, 'en')
+  )
+}
+
+// The other fields are saved before the model's cost is asked: a no to the model must not say
+// nothing changed.
+function othersSaved(opening: DetailsDraft, draft: DetailsDraft): boolean {
+  return Object.keys(draft).some(
+    (key) =>
+      key !== 'model' &&
+      JSON.stringify(draft[key as keyof DetailsDraft]) !==
+        JSON.stringify(opening[key as keyof DetailsDraft])
   )
 }

@@ -10,7 +10,7 @@ import {
 } from '@shared/engine/endpoints'
 import { assignMainModel } from '@shared/engine/mainModel'
 import type { ModelAssignmentResponse } from '@shared/engine/types'
-import { saveBotMeta } from './data'
+import { readProfiles, saveBotMeta } from './data'
 import type { RosterBackend } from './data'
 import { exportAvatar, lookMeta, sameLook } from './look'
 import type { Look } from './look'
@@ -34,6 +34,8 @@ export interface ProfileDetails {
 export interface DetailsDraft extends ProfileDetails {
   title: string
   look: Look
+  /** On "Uses default": `model` is Talyx's, and the bot moves when Talyx's model changes. */
+  usesDefault: boolean
 }
 
 /** The engine wants a yes before it pins this model; nothing else is waiting on it. */
@@ -124,11 +126,51 @@ async function saveAll(
   const look = lookMeta(draft.look)
   const meta: Partial<BotMeta> = !lookChanged ? {} : manager ? { faces: look.faces } : look
   if (draft.title.trim() !== opening.title.trim()) meta.title = draft.title.trim()
+  const leaving = leavesDefault(change)
+  // Absent rather than false, as on every bot made before this choice.
+  if (draft.usesDefault !== opening.usesDefault && !leaving)
+    meta.usesDefault = draft.usesDefault || undefined
   // An older client's description in the metadata would hide the one saved on the profile.
   if (descriptionChanged && bot.meta.description !== undefined) meta.description = undefined
   if (Object.keys(meta).length > 0) await saveBotMeta(backend, bot.name, meta)
 
-  return saveSections(backend, bot.name, change)
+  const leave = (): Promise<void> =>
+    leaving ? leaveDefaultIfPinned(backend, bot.name, leaving) : Promise.resolve()
+  const confirm = await saveSections(backend, bot.name, change).catch(async (error: unknown) => {
+    // A refused section does not stop the model's pin; the refusal stays the error reported.
+    await leave().catch(() => undefined)
+    throw error
+  })
+  await leave()
+  return confirm
+}
+
+// The model a bot on Uses default picks as its own, or null. It leaves Uses default only once
+// that model is pinned: a no to a costly one keeps it following.
+function leavesDefault({
+  opening,
+  draft
+}: {
+  opening: DetailsDraft
+  draft: DetailsDraft
+}): ModelChoice | null {
+  return opening.usesDefault &&
+    !draft.usesDefault &&
+    draft.model &&
+    !sameModelChoice(draft.model, opening.model)
+    ? draft.model
+    : null
+}
+
+// The engine's pin is the fact: the bot leaves Uses default once its own model is on it.
+async function leaveDefaultIfPinned(
+  backend: RosterBackend,
+  profile: string,
+  model: ModelChoice
+): Promise<void> {
+  const pinned = (await loadDetails(backend, profile)).model
+  if (pinned && sameModelChoice(pinned, model))
+    await saveBotMeta(backend, profile, { usesDefault: undefined })
 }
 
 export async function confirmModel(
@@ -138,6 +180,8 @@ export async function confirmModel(
 ): Promise<void> {
   try {
     await confirmBotModel(backend, profile, model)
+    // A confirmed model is the bot's own pick, so the bot no longer follows Talyx's.
+    if (profile !== MANAGER) await saveBotMeta(backend, profile, { usesDefault: undefined })
   } finally {
     detailsChanged()
   }
@@ -262,9 +306,55 @@ async function saveSections(
     return null
   }
   if (Object.keys(sections).length > 0) await configure(backend, profile, sections).catch(refusing)
-  const confirm = model ? await setBotModel(backend, profile, model).catch(refusing) : null
+  const confirm = model ? await pinModel(backend, profile, { model, draft }).catch(refusing) : null
   if (refused.length > 0) throw new SectionsNotSavedError(refused, reason)
   return confirm
+}
+
+// Talyx's model was agreed to when it was picked, a costly one included: a bot that follows it
+// is not asked again.
+async function pinModel(
+  backend: RosterBackend,
+  profile: string,
+  { model, draft }: { model: ModelChoice; draft: DetailsDraft }
+): Promise<ModelConfirm | null> {
+  if (!draft.usesDefault) return setBotModel(backend, profile, model)
+  await confirmBotModel(backend, profile, model)
+  return null
+}
+
+/**
+ * Moves every bot on "Uses default" to Talyx's new model, without asking about its cost again;
+ * returns the bots that did not take it. A bot with its own model keeps it.
+ */
+export async function followDefault(backend: RosterBackend, pick: ModelChoice): Promise<string[]> {
+  const bots = await readProfiles(backend).catch((error: unknown) => {
+    // Talyx's model has changed by now: say the followers were not reached, not that it failed.
+    throw new RosterError('details.errorFollowersUnreached', problemOf(error).detail)
+  })
+  const followers = bots
+    .filter((bot) => bot.meta.usesDefault === true && bot.name !== MANAGER)
+    .map((bot) => bot.name)
+  try {
+    const results = await Promise.allSettled(
+      followers.map((profile) => confirmBotModel(backend, profile, pick))
+    )
+    return followers.filter((_, index) => results[index].status === 'rejected')
+  } finally {
+    detailsChanged()
+  }
+}
+
+/**
+ * After a save that may have changed Talyx's model, in part or after a refusal: reads the model
+ * Talyx has now and moves the followers when it differs from `before`.
+ */
+export async function followIfDefaultChanged(
+  backend: RosterBackend,
+  before: ModelChoice | null
+): Promise<string[]> {
+  const { model } = await loadDetails(backend, MANAGER)
+  return model && !sameModelChoice(model, before) ? followDefault(backend, model) : []
 }
 
 export function sameModelChoice(a: ModelChoice, b: ModelChoice | null): boolean {

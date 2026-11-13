@@ -3,12 +3,19 @@ import { DropdownMenu } from 'radix-ui'
 import { ChevronDown } from 'lucide-react'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
-import { CheckItem, menuContentClass, menuLabelClass } from '@shared/ui/menu'
+import { CheckItem, menuContentClass, menuLabelClass, separatorClass } from '@shared/ui/menu'
 import { cn } from '@shared/lib/utils'
 
 export interface ModelPick {
   provider: string
   model: string
+}
+
+/** A choice above the models that stands for one of them, such as "Uses default". */
+export interface StandInChoice {
+  label: string
+  selected: boolean
+  onSelect: () => void
 }
 
 /** The menu's two placeholder lines: while the list loads, and when it did not. */
@@ -28,6 +35,7 @@ export function ModelPicker({
   labels,
   contentClassName,
   returnFocusTo,
+  standIn = null,
   children
 }: {
   load: () => Promise<ModelOptionProvider[]>
@@ -35,6 +43,7 @@ export function ModelPicker({
   onSelect: (pick: ModelPick) => void
   labels: ModelPickerLabels
   contentClassName?: string
+  standIn?: StandInChoice | null
   // Where focus goes when the menu closes; the trigger when absent.
   returnFocusTo?: React.RefObject<HTMLElement | null>
   children: React.ReactNode
@@ -67,6 +76,12 @@ export function ModelPicker({
             returnFocusTo.current?.focus()
           }}
         >
+          {standIn && (
+            <>
+              <CheckItem {...standIn} />
+              <DropdownMenu.Separator className={separatorClass} />
+            </>
+          )}
           {failure ? (
             <div role="alert" className="max-w-72 px-2.5 py-1.5">
               <p>{labels.failed}</p>
@@ -114,14 +129,20 @@ export function ModelField({
   labels,
   value,
   load,
-  onSelect
+  onSelect,
+  standIn = null
 }: {
   labels: ModelPickerLabels & { field: string; empty: string }
   value: ModelPick | null
   load: (() => Promise<ModelOptionProvider[]>) | null
   onSelect: (pick: ModelPick) => void
+  standIn?: StandInChoice | null
 }): React.JSX.Element {
-  const shown = value ? `${value.provider} · ${value.model}` : labels.empty
+  const shown = standIn?.selected
+    ? standIn.label
+    : value
+      ? `${value.provider} · ${value.model}`
+      : labels.empty
   const preloaded = useRef(false)
   useEffect(() => {
     if (!load || preloaded.current) return
@@ -132,9 +153,11 @@ export function ModelField({
   return (
     <ModelPicker
       load={load ?? (() => Promise.resolve([]))}
-      selected={value}
+      // A stand-in that is chosen is the one ticked, not the model it stands for.
+      selected={standIn?.selected ? null : value}
       onSelect={onSelect}
       labels={labels}
+      standIn={standIn}
       // A field's menu lines up with the field: as wide as the trigger.
       contentClassName="w-(--radix-dropdown-menu-trigger-width)"
     >

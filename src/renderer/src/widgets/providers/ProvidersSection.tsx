@@ -20,13 +20,15 @@ import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import type { ModelLists } from '@features/chat/chat'
+import type { RosterBackend } from '@features/bots/data'
 import { AddProviderDialog } from './AddProviderDialog'
 import { DefaultModelSection } from './DefaultModelSection'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { useArrival } from '@shared/hooks/useStayMounted'
 import { reportError } from '@shared/lib/report'
 import { cn } from '@shared/lib/utils'
-import { failureText, reportSpread } from './feedback'
+import { reportSpread } from '@features/bots/spread'
+import { failureText } from './feedback'
 
 const linkClass =
   'text-sm underline underline-offset-4 hover:decoration-2 disabled:opacity-50 disabled:hover:decoration-1'
@@ -49,10 +51,12 @@ type Removal =
  */
 export function ProvidersSection({
   backend,
+  roster,
   chat,
   onOverview
 }: {
   backend: ProvidersBackend
+  roster: RosterBackend | null
   chat: ModelLists | null
   /** Told each overview that loads, e.g. so setup knows whether a provider exists. */
   onOverview: ((overview: ProvidersOverview) => void) | null
@@ -286,6 +290,7 @@ export function ProvidersSection({
       </section>
       <DefaultModelSection
         backend={backend}
+        roster={roster}
         model={overview?.model ?? null}
         models={overview && chat ? chat.models : null}
         onChanged={load}

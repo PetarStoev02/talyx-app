@@ -27,7 +27,7 @@ export const menuContentClass =
 export const menuItemClass =
   'flex cursor-default items-center gap-2.5 rounded-lg px-2.5 py-1.5 select-none data-[disabled]:opacity-40 data-[highlighted]:bg-foreground/10 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground'
 export const menuLabelClass = 'px-2.5 pt-2 pb-1 text-xs text-muted-foreground'
-const separatorClass = '-mx-1.5 my-1.5 h-px bg-border'
+export const separatorClass = '-mx-1.5 my-1.5 h-px bg-border'
 const destructiveClass = 'text-destructive-text [&_svg]:text-destructive-text'
 
 // The dropdown and the context menu are built from the same Radix menu parts.
