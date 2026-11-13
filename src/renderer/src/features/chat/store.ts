@@ -29,6 +29,8 @@ export interface ChatState {
   error: Problem | null
   // Oldest first; the first goes when the running answer ends.
   waiting: WaitingMessage[]
+  // The chat holds every stored message, not only the newest, so a search covers all of it.
+  whole: boolean
 }
 
 interface ChatStore {
@@ -48,7 +50,8 @@ const blank = (profile: string): ChatState => ({
   pending: null,
   loading: false,
   error: null,
-  waiting: []
+  waiting: [],
+  whole: false
 })
 
 export const useChat = create<ChatStore>((set, get) => ({

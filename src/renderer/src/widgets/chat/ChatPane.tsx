@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUp, Pencil, RefreshCw, RotateCcw, X } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
@@ -8,6 +8,8 @@ import { MANAGER } from '@features/bots/details'
 import type { Bot } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
 import { draftWithPaths } from '@features/chat/attachments'
+import type { RoomActions } from '@features/chat/room'
+import { botHits } from '@features/chat/botSearch'
 import { useChat } from '@features/chat/store'
 import type { WaitingMessage } from '@features/chat/store'
 import { useSetup } from '@features/setup/store'
@@ -25,6 +27,11 @@ import type { ComposerTarget } from './Composer'
 import { ChatIntro } from './ChatIntro'
 import type { Starter } from './ChatIntro'
 import { ChatSkeleton } from './ChatSkeleton'
+import { ChatSearch } from './ChatSearch'
+import type { SearchFound } from './ChatSearch'
+import { useBotRoomLogs } from './useBotRoomLogs'
+import { FindSlot } from './FindSlot'
+import { usePlaceFind } from './usePlaceFind'
 import { Button } from '@shared/ui/button'
 import { Reveal } from '@shared/ui/Reveal'
 import { useArrival } from '@shared/hooks/useStayMounted'
@@ -35,12 +42,18 @@ import { Transcript } from './Transcript'
 export function ChatPane({
   bot,
   roster,
-  actions
+  actions,
+  rooms,
+  searchSlot
 }: {
   bot: Bot
   // Reads the bot's description and model for the intro before its first message.
   roster: RosterBackend | null
   actions: ChatActions | null
+  // Read by the search, for what the bot said in its group chats.
+  rooms: RoomActions | null
+  // Where the search sits: the page's header, on the line with the name pill.
+  searchSlot: HTMLElement | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const chat = useChat((state) => state.chats[bot.name])
@@ -67,6 +80,36 @@ export function ChatPane({
   }
   // An answered card unmounts with focus on it; the composer is where the conversation goes on.
   useRefocus(composer, chat?.transcript?.prompts.length)
+  const [transcriptArea, setTranscriptArea] = useState<HTMLDivElement | null>(null)
+  const { request, open: openFind, close } = usePlaceFind('bot', bot.name)
+  const place = useMemo(() => ({ kind: 'bot' as const, id: bot.name }), [bot.name])
+  // What the bot said in its group chats, read while the search is open.
+  const roomLogs = useBotRoomLogs(bot.name, rooms, !!request)
+  const chatItems = chat?.transcript?.items
+  const find = useCallback(
+    (query: string): SearchFound => ({
+      hits: botHits(
+        { profile: bot.name, chat: chatItems ?? [], rooms: roomLogs.logs ?? [] },
+        query
+      ),
+      note: !roomLogs.logs ? t('search.searching') : roomLogs.failed ? t('search.roomsFailed') : ''
+    }),
+    [bot.name, chatItems, roomLogs, t]
+  )
+  const loadWhole = useCallback(
+    () => actions?.loadWhole(bot.name) ?? Promise.resolve(),
+    [actions, bot.name]
+  )
+  const closeSearch = (): void => {
+    close()
+    composer.current?.focus()
+  }
+  // However the search ends (closed, or another bot opened), the chat goes back to its newest part.
+  const searching = !!request
+  useEffect(() => {
+    if (!searching) return undefined
+    return () => actions?.keepNewest(bot.name)
+  }, [searching, actions, bot.name])
 
   // The roster learns the chat id after the first send; the open chat already has it.
   useEffect(() => {
@@ -111,7 +154,25 @@ export function ChatPane({
 
   return (
     <>
-      <div className={cn('flex min-h-0 flex-1 flex-col', arrival)}>
+      <FindSlot
+        slot={searchSlot}
+        label={t('search.title').replace('{name}', title)}
+        onOpen={openFind}
+      >
+        {request && transcriptArea && (
+          <ChatSearch
+            key={`${request.query}\n${request.messageId}`}
+            transcript={transcriptArea}
+            place={place}
+            label={t('search.title').replace('{name}', title)}
+            start={request}
+            find={find}
+            loadWhole={loadWhole}
+            onClose={closeSearch}
+          />
+        )}
+      </FindSlot>
+      <div ref={setTranscriptArea} className={cn('flex min-h-0 flex-1 flex-col', arrival)}>
         {items.length || prompts.length || chat.waiting.length ? (
           <Transcript items={items} loadImage={loadImage}>
             {activity && (

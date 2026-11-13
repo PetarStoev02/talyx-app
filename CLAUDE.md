@@ -215,7 +215,8 @@ src/renderer/src/
 │                     # features (useRosterBackend, useChatBackend, useProvidersBackend)
 ├── pages/            # AgentsPage (the selected bot's chat or room, and details), SettingsPage
 ├── widgets/          # AppShell, Roster (sidebar bots and rooms, create dialogs), Chat (transcript,
-│                     # cards, composer, RoomPane), BotDetails (the details panel and routines),
+│                     # cards, composer, RoomPane, the ⌘F search: ChatSearch on the pill's line
+│                     # with its SearchResults list), BotDetails (the details panel and routines),
 │                     # Providers (the settings sections, add-provider dialog, sign-in),
 │                     # settings-nav (Settings' sidebar: one page per row),
 │                     # settings-engine (Settings: the engine's state and path, the debug console),
@@ -224,7 +225,8 @@ src/renderer/src/
 │                     # shortcuts (the ⌘/ cheat sheet)
 ├── features/         # bots (roster data, folders, pins, unread, details, routines, create, rooms),
 │                     # bots/mcp.ts (the MCP tools over those use cases; deletes ask first),
-│                     # chat (transcript, use cases, hosted rooms polled over `groups.*`),
+│                     # chat (transcript, use cases, hosted rooms polled over `groups.*`, search:
+│                     # a bot's chat and its own room messages, botSearch.ts),
 │                     # providers (keys, endpoints and sign-ins over REST; writes go to every bot),
 │                     # setup (which step comes first, the engine install and its screens),
 │                     # modules (license state, module pages; nothing shows without a key),

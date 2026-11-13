@@ -15,6 +15,7 @@ export type ShortcutId =
   | 'newBot'
   | 'previousChat'
   | 'nextChat'
+  | 'searchChat'
   | 'focusComposer'
   | 'send'
   | 'newLine'
@@ -38,8 +39,9 @@ export interface ShortcutGroup {
 
 /**
  * Every shortcut Talyx has, as the cheat sheet lists them. Most are bound by
- * `useKeyboardShortcuts`; the composer, the roster, the dock and Settings bind the rest where they
- * apply. The menu's own (copy, paste, zoom, quit) are the system's and not listed.
+ * `useKeyboardShortcuts`; the chat's search, the composer, the roster, the dock and Settings bind
+ * the rest where they apply. The menu's own (copy, paste, zoom, quit) are the system's and not
+ * listed.
  */
 export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
@@ -48,6 +50,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { id: 'newBot', label: 'shortcuts.newBot', keys: { mod: true, key: 'n' } },
       { id: 'previousChat', label: 'shortcuts.previousChat', keys: { alt: true, key: 'ArrowUp' } },
       { id: 'nextChat', label: 'shortcuts.nextChat', keys: { alt: true, key: 'ArrowDown' } },
+      { id: 'searchChat', label: 'shortcuts.searchChat', keys: { mod: true, key: 'f' } },
       { id: 'pickRow', label: 'shortcuts.pickRow', keys: { mod: true, key: 'Click' } },
       { id: 'pickRange', label: 'shortcuts.pickRange', keys: { shift: true, key: 'Click' } }
     ]

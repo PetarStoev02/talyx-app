@@ -24,6 +24,16 @@ export interface ChatDouble {
   goneMedia: Set<string>
 }
 
+// The engine's paging of a transcript: at most 500 a page, the newest or the oldest first.
+const ENGINE_PAGE_MAX = 500
+function page(messages: SessionMessage[], params: Record<string, unknown>): SessionMessage[] {
+  const limit = Math.min(Number(params.limit ?? ENGINE_PAGE_MAX), ENGINE_PAGE_MAX)
+  const offset = Number(params.offset ?? 0)
+  if (params.order === 'oldest') return messages.slice(offset, offset + limit)
+  const end = messages.length - offset
+  return messages.slice(Math.max(0, end - limit), Math.max(0, end))
+}
+
 /** A profile on its bare custom endpoint that also keeps the same URL as a named one. */
 export const KEPT_ENDPOINT_PROFILE = 'acme-kept'
 const ROUTER_URL = 'http://127.0.0.1:20128/v1'
@@ -71,7 +81,7 @@ export function chatDouble(
           info: { model: '9-route-provider', provider: 'custom', reasoning_effort: 'medium' }
         }
       case 'GET /api/sessions':
-        return { messages: chat?.messages ?? [] }
+        return { messages: page(chat?.messages ?? [], params) }
       case 'POST /api/chat/image-upload':
         return { path: '/images/pasted.png', mime_type: 'image/png' }
       case 'POST /api/audio/transcribe':

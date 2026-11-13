@@ -20,6 +20,8 @@ export interface RoomDraft {
 export interface RoomActions {
   /** Read the room's state and any log rows after the last one read. A poll calls it. */
   refresh: (roomId: string) => Promise<void>
+  /** The room's whole log, for a search; the open room's view is left as it is. */
+  log: (roomId: string) => Promise<RoomEvent[]>
   /** False when nothing was sent; the caller keeps the draft. */
   send: (roomId: string, draft: RoomDraft) => Promise<boolean>
   stop: (roomId: string) => Promise<void>
@@ -255,6 +257,8 @@ export function roomActions(backend: RoomBackend): RoomActions {
 
   return {
     refresh,
+
+    log: (roomId) => readLog(roomId, 0),
 
     send: async (roomId, draft) => {
       const text = draft.text.trim()
