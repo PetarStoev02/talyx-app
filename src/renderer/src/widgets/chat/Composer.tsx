@@ -9,6 +9,7 @@ import type { ChatActions } from '@features/chat/chat'
 import type { ChatState } from '@features/chat/store'
 import { dataUrlOf, dictationProblem, useDictation } from '@features/chat/useDictation'
 import { openSettings } from '@features/settings/sections'
+import { filesApi } from '@shared/api/ipc'
 import { problemOf, problemText } from '@shared/lib/problem'
 import { cn } from '@shared/lib/utils'
 import { IconButton } from '@shared/ui/IconButton'
@@ -23,6 +24,7 @@ const iconButton = 'inline-flex size-9 shrink-0 items-center justify-center roun
 const ICON_SIZE = 18
 // Electron says where a file is on disk; a page in a plain browser (the dev bridge) cannot.
 const pathOf = (file: File): string => window.electron?.pathOf?.(file) ?? ''
+const names = (files: File[]): string => files.map((file) => file.name).join(', ')
 const REASONING_LEVELS: Array<[string, TranslationKey]> = [
   ['low', 'chat.reasoningLow'],
   ['medium', 'chat.reasoningMedium'],
@@ -120,23 +122,38 @@ export function Composer({
   }
 
   async function attach(list: Iterable<File>): Promise<void> {
-    const { images, paths: linked, refused } = sortAttachments(list, pathOf)
-    setPaths((current) => [...new Set([...current, ...linked])])
-    if (refused.length)
-      toast.error(
-        t('chat.attachFailed').replace('{name}', refused.map((file) => file.name).join(', ')),
-        { description: t('chat.notOnDisk') }
-      )
-    for (const file of images) {
-      try {
-        const attached = await target.upload(file, await dataUrlOf(file))
-        setFiles((current) => [...current, attached])
-      } catch (error) {
-        toast.error(t('chat.attachFailed').replace('{name}', file.name), {
-          description: problemText(t, problemOf(error)),
-          duration: Infinity
-        })
-      }
+    const { images, paths: linked, copies, tooBig } = sortAttachments(list, pathOf)
+    addPaths(linked)
+    if (tooBig.length)
+      toast.error(t('chat.attachFailed').replace('{name}', names(tooBig)), {
+        description: t('chat.fileTooBig')
+      })
+    for (const file of images) await attachOne(file, uploadImage)
+    for (const file of copies) await attachOne(file, keepCopy)
+  }
+
+  function addPaths(added: string[]): void {
+    setPaths((current) => [...new Set([...current, ...added])])
+  }
+
+  async function uploadImage(file: File): Promise<void> {
+    const attached = await target.upload(file, await dataUrlOf(file))
+    setFiles((current) => [...current, attached])
+  }
+
+  // A file with no path of its own goes by the path of a copy Talyx keeps.
+  async function keepCopy(file: File): Promise<void> {
+    addPaths([await filesApi.keep({ name: file.name, dataUrl: await dataUrlOf(file) })])
+  }
+
+  async function attachOne(file: File, how: (file: File) => Promise<void>): Promise<void> {
+    try {
+      await how(file)
+    } catch (error) {
+      toast.error(t('chat.attachFailed').replace('{name}', file.name), {
+        description: problemText(t, problemOf(error)),
+        duration: Infinity
+      })
     }
   }
 

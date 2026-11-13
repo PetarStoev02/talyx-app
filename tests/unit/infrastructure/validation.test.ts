@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   EngineHttpRequestSchema,
   EnginePathSchema,
+  KeptFileSchema,
   RendererErrorSchema,
   validateInput,
   UserSettingsPartialSchema
@@ -100,5 +101,20 @@ describe('RendererErrorSchema', () => {
     ['a missing scope', { message: 'boom' }]
   ])('should refuse %s', (_case, report) => {
     expect(() => validateInput(RendererErrorSchema, report)).toThrow()
+  })
+})
+
+describe('KeptFileSchema', () => {
+  it('should take a named file read as a data URL', () => {
+    const file = { name: 'invoice.pdf', dataUrl: 'data:application/pdf;base64,JVBERg==' }
+    expect(validateInput(KeptFileSchema, file)).toEqual(file)
+  })
+
+  it.each([
+    ['a name longer than a file system allows', { name: 'x'.repeat(256), dataUrl: 'data:,' }],
+    ['a file bigger than the cap', { name: 'big.bin', dataUrl: 'x'.repeat(70_000_001) }],
+    ['a missing data URL', { name: 'a.txt' }]
+  ])('should refuse %s', (_case, file) => {
+    expect(() => validateInput(KeptFileSchema, file)).toThrow()
   })
 })

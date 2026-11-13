@@ -212,8 +212,8 @@ const en = {
   'chat.dictating': 'Stop dictating',
   'chat.transcribing': 'Transcribing…',
   'chat.attachFailed': 'Could not attach {name}.',
-  'chat.notOnDisk':
-    'Only images, and files and folders on this computer, can be added to a message.',
+  'chat.fileTooBig':
+    'It is over 50 MB. Save it to a folder on this computer, then add it from there.',
   'chat.micDenied':
     'Talyx cannot use the microphone. Allow it for Talyx in your system settings, then try again.',
   'chat.dictationFailed': 'Dictation did not work. Try again, or type your message.',

@@ -5,6 +5,7 @@ import {
   roomText,
   sortAttachments
 } from '../../../src/renderer/src/features/chat/attachments'
+import { KEPT_FILE_MAX_BYTES } from '../../../src/shared/keptFiles'
 
 function fileOf(name: string, type: string): File {
   return new File(['x'], name, { type })
@@ -17,7 +18,12 @@ function pathsOn(disk: Map<File, string>): (file: File) => string {
 
 describe('sortAttachments', () => {
   it('should attach nothing when no file is given', () => {
-    expect(sortAttachments([], pathsOn(new Map()))).toEqual({ images: [], paths: [], refused: [] })
+    expect(sortAttachments([], pathsOn(new Map()))).toEqual({
+      images: [],
+      paths: [],
+      copies: [],
+      tooBig: []
+    })
   })
 
   it('should upload every image and keep their order', () => {
@@ -26,7 +32,8 @@ describe('sortAttachments', () => {
     expect(sortAttachments([png, jpeg], pathsOn(new Map()))).toEqual({
       images: [png, jpeg],
       paths: [],
-      refused: []
+      copies: [],
+      tooBig: []
     })
   })
 
@@ -42,17 +49,28 @@ describe('sortAttachments', () => {
     expect(sortAttachments([pdf, png, folder], pathsOn(disk))).toEqual({
       images: [png],
       paths: ['/Users/me/Q3 report.pdf', '/Users/me/Reports'],
-      refused: []
+      copies: [],
+      tooBig: []
     })
   })
 
-  it('should refuse a file that is neither an image nor on this computer', () => {
-    const pdf = fileOf('report.pdf', 'application/pdf')
+  it('should keep a copy of a file with no path, such as a web download or a Mail attachment', () => {
+    const pdf = fileOf('invoice.pdf', 'application/pdf')
     expect(sortAttachments([pdf], pathsOn(new Map()))).toEqual({
       images: [],
       paths: [],
-      refused: [pdf]
+      copies: [pdf],
+      tooBig: []
     })
+  })
+
+  it.each([
+    ['at the cap', KEPT_FILE_MAX_BYTES, 'copies'],
+    ['over the cap', KEPT_FILE_MAX_BYTES + 1, 'tooBig']
+  ])('should keep a copy of a file with no path %s only up to the cap', (_case, size, list) => {
+    const big = fileOf('backup.zip', 'application/zip')
+    Object.defineProperty(big, 'size', { value: size })
+    expect(sortAttachments([big], pathsOn(new Map()))).toMatchObject({ [list]: [big] })
   })
 })
 

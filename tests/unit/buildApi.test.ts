@@ -34,6 +34,12 @@ describe('buildApi', () => {
     ['sendEngineSocket', ['id-1', '{}'], 'engine:socket-send', ['id-1', '{}']],
     ['closeEngineSocket', ['id-1'], 'engine:socket-close', ['id-1']],
     ['getAppVersion', [], 'app:version', []],
+    [
+      'keepFile',
+      [{ name: 'a.pdf', dataUrl: 'data:,' }],
+      'files:keep',
+      [{ name: 'a.pdf', dataUrl: 'data:,' }]
+    ],
     ['getDiagnostics', ['0.9.0'], 'app:diagnostics', ['0.9.0']],
     ['getUpdateState', [], 'updater:status', []],
     ['checkForUpdate', [], 'updater:check', []],
@@ -77,6 +83,7 @@ describe('buildApi', () => {
       'installModule',
       'installUpdate',
       'invokeModule',
+      'keepFile',
       'logError',
       'onActivationRequested',
       'onEngineSocketClosed',

@@ -70,6 +70,9 @@ export function buildApi(transport: ApiTransport) {
     getAppVersion: () => invoke('app:version'),
     getDiagnostics: (engine: string) => invoke('app:diagnostics', engine),
 
+    // A copy of a dropped or pasted file with no path of its own, so a bot can open it by path
+    keepFile: (file: { name: string; dataUrl: string }) => invoke('files:keep', file),
+
     // Talyx update (main picks, downloads and verifies the release; the page only asks)
     getUpdateState: () => invoke('updater:status'),
     checkForUpdate: () => invoke('updater:check'),
