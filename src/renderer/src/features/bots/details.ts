@@ -126,12 +126,7 @@ async function saveAll(
   const look = lookMeta(draft.look)
   const meta: Partial<BotMeta> = !lookChanged ? {} : manager ? { faces: look.faces } : look
   if (draft.title.trim() !== opening.title.trim()) meta.title = draft.title.trim()
-  // A bot leaves Uses default only once its own model is pinned: a no to a costly one keeps it.
-  const leaving =
-    opening.usesDefault &&
-    !draft.usesDefault &&
-    !!draft.model &&
-    !sameModelChoice(draft.model, opening.model)
+  const leaving = leavesDefault(change)
   // Absent rather than false, as on every bot made before this choice.
   if (draft.usesDefault !== opening.usesDefault && !leaving)
     meta.usesDefault = draft.usesDefault || undefined
@@ -139,9 +134,43 @@ async function saveAll(
   if (descriptionChanged && bot.meta.description !== undefined) meta.description = undefined
   if (Object.keys(meta).length > 0) await saveBotMeta(backend, bot.name, meta)
 
-  const confirm = await saveSections(backend, bot.name, change)
-  if (leaving && !confirm) await saveBotMeta(backend, bot.name, { usesDefault: undefined })
+  const leave = (): Promise<void> =>
+    leaving ? leaveDefaultIfPinned(backend, bot.name, leaving) : Promise.resolve()
+  const confirm = await saveSections(backend, bot.name, change).catch(async (error: unknown) => {
+    // A refused section does not stop the model's pin; the refusal stays the error reported.
+    await leave().catch(() => undefined)
+    throw error
+  })
+  await leave()
   return confirm
+}
+
+// The model a bot on Uses default picks as its own, or null. It leaves Uses default only once
+// that model is pinned: a no to a costly one keeps it following.
+function leavesDefault({
+  opening,
+  draft
+}: {
+  opening: DetailsDraft
+  draft: DetailsDraft
+}): ModelChoice | null {
+  return opening.usesDefault &&
+    !draft.usesDefault &&
+    draft.model &&
+    !sameModelChoice(draft.model, opening.model)
+    ? draft.model
+    : null
+}
+
+// The engine's pin is the fact: the bot leaves Uses default once its own model is on it.
+async function leaveDefaultIfPinned(
+  backend: RosterBackend,
+  profile: string,
+  model: ModelChoice
+): Promise<void> {
+  const pinned = (await loadDetails(backend, profile)).model
+  if (pinned && sameModelChoice(pinned, model))
+    await saveBotMeta(backend, profile, { usesDefault: undefined })
 }
 
 export async function confirmModel(

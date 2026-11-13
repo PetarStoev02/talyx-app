@@ -304,6 +304,44 @@ describe('bot details', () => {
       expect(engine.metadata.analyst[BOT_META_KEY]).toMatchObject({ usesDefault: true })
     })
 
+    it('should take a bot off the default once its own model is pinned, even when its SOUL was refused', async () => {
+      engine.metadata.analyst[BOT_META_KEY] = { title: 'Analyst', usesDefault: true }
+      engine.failSection('soul')
+      await refreshRoster(backend)
+      const before = await opening('analyst')
+      const own = { provider: 'custom', model: 'own' }
+      await expect(
+        saveDetails(backend, bot('analyst'), {
+          opening: before,
+          draft: { ...before, soul: '# New', usesDefault: false, model: own }
+        })
+      ).rejects.toBeInstanceOf(SectionsNotSavedError)
+      expect(engine.profiles.analyst.model).toEqual(own)
+      expect(
+        (engine.metadata.analyst[BOT_META_KEY] as Record<string, unknown>).usesDefault
+      ).toBeUndefined()
+    })
+
+    it('should keep a bot on the default when its SOUL is refused and its costly model waits for a yes', async () => {
+      engine.metadata.analyst[BOT_META_KEY] = { title: 'Analyst', usesDefault: true }
+      engine.failSection('soul')
+      engine.expensiveModels.add('big')
+      await refreshRoster(backend)
+      const before = await opening('analyst')
+      await expect(
+        saveDetails(backend, bot('analyst'), {
+          opening: before,
+          draft: {
+            ...before,
+            soul: '# New',
+            usesDefault: false,
+            model: { provider: 'custom', model: 'big' }
+          }
+        })
+      ).rejects.toBeInstanceOf(SectionsNotSavedError)
+      expect(engine.metadata.analyst[BOT_META_KEY]).toMatchObject({ usesDefault: true })
+    })
+
     it('should take a bot off the default once its costly model of its own is confirmed', async () => {
       engine.metadata.analyst[BOT_META_KEY] = { title: 'Analyst', usesDefault: true }
       engine.expensiveModels.add('big')
