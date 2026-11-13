@@ -4,9 +4,11 @@ import {
   rosterActions,
   runRosterMutation
 } from '../../../src/renderer/src/features/bots/actions'
-import { bulkChoices } from '../../../src/renderer/src/features/bots/bulk'
+import { bulkChoices, deleteRows } from '../../../src/renderer/src/features/bots/bulk'
 import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
 import {
+  ROOM_FOLDERS_KEY,
+  ROOM_PINS_KEY,
   folderItems,
   itemKey,
   itemRef,
@@ -245,5 +247,42 @@ describe('deleting several picked rows', () => {
     await act(() => actions().deleteRows([bot('default'), bot('writer')]))
     expect(useRoster.getState().actionError?.key).toBe('roster.errorKeepTalyx')
     expect(engine.deleted).toEqual([])
+  })
+})
+
+describe('deleteRows over a fake backend', () => {
+  it('should delete the rooms, then the bots, then save the layout without them', async () => {
+    const calls: string[] = []
+    const written: Record<string, unknown>[] = []
+    await deleteRows(
+      {
+        deleteRoom: async (roomId) => void calls.push(`deleteRoom ${roomId}`),
+        deleteProfile: async (profile) => void calls.push(`deleteProfile ${profile}`),
+        updateLayout: async (update) => {
+          calls.push('updateLayout')
+          written.push(
+            update({ [ROOM_FOLDERS_KEY]: { standup: null }, [ROOM_PINS_KEY]: ['standup'] })
+          )
+        },
+        saveBotMeta: async (profile) => void calls.push(`saveBotMeta ${profile}`)
+      },
+      {
+        bots: [
+          { name: 'default', meta: {} },
+          { name: 'writer', meta: {} }
+        ],
+        rooms: [{ room_id: 'standup', name: 'Standup', members: [] }],
+        folders: [],
+        roomFolders: { standup: null },
+        roomPins: ['standup'],
+        itemOrder: {}
+      },
+      [
+        { kind: 'bot', id: 'writer' },
+        { kind: 'room', id: 'standup' }
+      ]
+    )
+    expect(calls).toEqual(['deleteRoom standup', 'deleteProfile writer', 'updateLayout'])
+    expect(written).toEqual([{ [ROOM_FOLDERS_KEY]: {}, [ROOM_PINS_KEY]: [] }])
   })
 })

@@ -175,12 +175,15 @@ export function weekdayName(day: number): string {
   )
 }
 
-export function listRoutines(backend: RoutinesBackend, profile: string): Promise<Routine[]> {
+export function listRoutines(
+  backend: Pick<RoutinesBackend, 'listRoutines'>,
+  profile: string
+): Promise<Routine[]> {
   return backend.listRoutines(profile)
 }
 
 export function setRoutineActive(
-  backend: RoutinesBackend,
+  backend: Pick<RoutinesBackend, 'setRoutineActive'>,
   profile: string,
   routine: { id: string; active: boolean }
 ): Promise<void> {
@@ -188,7 +191,7 @@ export function setRoutineActive(
 }
 
 export function addRoutine(
-  backend: RoutinesBackend,
+  backend: Pick<RoutinesBackend, 'addRoutine'>,
   profile: string,
   draft: RoutineDraft
 ): Promise<void> {
@@ -201,7 +204,7 @@ export function addRoutine(
 }
 
 export function removeRoutine(
-  backend: RoutinesBackend,
+  backend: Pick<RoutinesBackend, 'removeRoutine'>,
   profile: string,
   id: string
 ): Promise<void> {
@@ -209,7 +212,7 @@ export function removeRoutine(
 }
 
 export async function loadRoutine(
-  backend: RoutinesBackend,
+  backend: Pick<RoutinesBackend, 'loadRoutine'>,
   profile: string,
   id: string
 ): Promise<RoutineDetails> {
@@ -221,7 +224,7 @@ export async function loadRoutine(
 }
 
 export function listRoutineRuns(
-  backend: RoutinesBackend,
+  backend: Pick<RoutinesBackend, 'listRoutineRuns'>,
   profile: string,
   id: string
 ): Promise<RoutineRun[]> {
@@ -229,7 +232,7 @@ export function listRoutineRuns(
 }
 
 export async function openRoutineRun(
-  backend: RoutinesBackend,
+  backend: Pick<RoutinesBackend, 'lastRunReply'>,
   profile: string,
   run: RoutineRun
 ): Promise<RunOutput> {
@@ -256,6 +259,10 @@ export async function saveRoutine(
 }
 
 /** Fires the routine now; resolves once the engine has run it. */
-export function runRoutine(backend: RoutinesBackend, profile: string, id: string): Promise<void> {
+export function runRoutine(
+  backend: Pick<RoutinesBackend, 'runRoutine'>,
+  profile: string,
+  id: string
+): Promise<void> {
   return backend.runRoutine(profile, id)
 }

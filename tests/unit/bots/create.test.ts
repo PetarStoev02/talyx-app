@@ -214,3 +214,50 @@ describe('creating a bot', () => {
     })
   })
 })
+
+describe('createBot over a fake backend', () => {
+  const recording = (
+    failing: string | null = null
+  ): { calls: string[]; backend: Parameters<typeof createBot>[0] } => {
+    const calls: string[] = []
+    const step =
+      (name: string): (() => Promise<void>) =>
+      async () => {
+        calls.push(name)
+        if (name === failing) throw new Error(`${name} failed`)
+      }
+    const backend = {
+      createProfile: step('createProfile'),
+      pinAgreedModel: step('pinAgreedModel'),
+      saveBotMeta: step('saveBotMeta'),
+      setAvatar: step('setAvatar'),
+      readPrompt: async (): Promise<unknown> => void calls.push('readPrompt'),
+      writePrompt: step('writePrompt')
+    }
+    return { calls, backend }
+  }
+
+  it('should create the profile, pin its model, file it, export its look, then write the rules', async () => {
+    const { calls, backend } = recording()
+    expect(await createBot(backend, newBot(), [])).toBe('agro-ops-legal')
+    expect(calls).toEqual([
+      'createProfile',
+      'pinAgreedModel',
+      'saveBotMeta',
+      'setAvatar',
+      'readPrompt',
+      'writePrompt'
+    ])
+  })
+
+  it('should name the created profile and stop when a later step fails', async () => {
+    const { calls, backend } = recording('setAvatar')
+    const creating = createBot(backend, newBot(), [])
+    await expect(creating).rejects.toBeInstanceOf(IncompleteBotError)
+    await expect(creating).rejects.toMatchObject({
+      profile: 'agro-ops-legal',
+      key: 'create.errorNoAvatar'
+    })
+    expect(calls).not.toContain('writePrompt')
+  })
+})

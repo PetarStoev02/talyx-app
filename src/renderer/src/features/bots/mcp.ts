@@ -7,7 +7,7 @@ import { BLOCK_HUES, BLOCK_SHAPES } from '@shared/ui/blockGeometry'
 import type { BlockShape } from '@shared/ui/blockGeometry'
 import { refreshRoster, rosterActions, runRosterMutation } from './actions'
 import { createBot, profileIdFor } from './create'
-import type { RosterBackend } from './data'
+import type { RosterBackend, RosterStore } from './data'
 import { MANAGER, confirmModel, followIfDefaultChanged, loadDetails, saveDetails } from './details'
 import type { DetailsDraft } from './details'
 import { lookOf, matchName } from './look'
@@ -21,6 +21,7 @@ import {
   removeRoutine,
   setRoutineActive
 } from './routines'
+import type { RoutinesBackend } from './routines'
 import { useRoster } from './store'
 import type { Bot, Room, RosterSnapshot } from './types'
 
@@ -66,6 +67,21 @@ export class ApprovalRefusedError extends RosterError {
   }
 }
 
+// The tools neither register MCP servers nor open a routine's runs or details.
+type ToolsBackend = Omit<
+  RosterBackend,
+  | 'listMcpServers'
+  | 'addMcpServer'
+  | 'removeMcpServer'
+  | 'reloadMcp'
+  | 'seatableProfiles'
+  | 'loadRoutine'
+  | 'updateRoutine'
+  | 'listRoutineRuns'
+  | 'lastRunReply'
+  | 'runRoutine'
+>
+
 // How many messages read_room_history returns when the agent does not say.
 const DEFAULT_HISTORY = 50
 
@@ -77,7 +93,7 @@ type Run<T extends McpToolName> = (args: McpToolArgs<T>) => Promise<unknown>
  * roster change goes through the roster's mutation queue, so the roster shows it at once.
  */
 export function mcpTools(
-  backend: RosterBackend,
+  backend: ToolsBackend,
   approve: Approve
 ): (tool: string, rawArgs: unknown) => Promise<McpAnswer> {
   return async (tool, rawArgs) => {
@@ -96,7 +112,7 @@ export function mcpTools(
 }
 
 function toolsFor(
-  backend: RosterBackend,
+  backend: ToolsBackend,
   approve: (request: Omit<ApprovalRequest, 'until'>) => Promise<boolean>
 ): { [T in McpToolName]: Run<T> } {
   const actions = rosterActions(backend)
@@ -356,7 +372,7 @@ async function roomHistory(
  * outcome back to the agent instead of showing a failure in the user's roster.
  */
 async function rosterChange<T>(
-  backend: RosterBackend,
+  backend: Pick<RosterStore, 'listBots' | 'listRooms' | 'olderRoomFolders'>,
   operation: (snapshot: RosterSnapshot) => Promise<T>
 ): Promise<T> {
   // Set inside the queued operation; a box, since TypeScript does not follow the closure's writes.
@@ -420,7 +436,7 @@ function folderOf(snapshot: RosterSnapshot, folderId: string): RosterSnapshot['f
 }
 
 async function routineOf(
-  backend: RosterBackend,
+  backend: Pick<RoutinesBackend, 'listRoutines'>,
   profile: string,
   routineId: string
 ): Promise<{ name: string }> {

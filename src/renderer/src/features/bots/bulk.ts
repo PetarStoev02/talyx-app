@@ -54,7 +54,7 @@ export function refusesFolder(
  * inside a picked folder stays in it.
  */
 export async function moveRows(
-  backend: RosterStore,
+  backend: Pick<RosterStore, 'updateLayout' | 'saveBotMeta'>,
   snapshot: RosterSnapshot,
   move: { rows: RosterRowRef[]; folderId: string | null; before: string | null }
 ): Promise<void> {
@@ -98,7 +98,7 @@ export async function moveRows(
 
 /** Pins every row, after the pins there are; or, when every row is pinned, unpins them all. */
 export async function pinRows(
-  backend: RosterStore,
+  backend: Pick<RosterStore, 'updateLayout' | 'saveBotMeta'>,
   snapshot: RosterSnapshot,
   rows: RosterRowRef[]
 ): Promise<void> {
@@ -121,7 +121,7 @@ export async function pinRows(
 }
 
 export async function hideRows(
-  backend: RosterStore,
+  backend: Pick<RosterStore, 'saveBotMeta'>,
   snapshot: RosterSnapshot,
   rows: RosterRowRef[]
 ): Promise<void> {
@@ -136,7 +136,7 @@ export async function hideRows(
  * hides one.
  */
 export async function deleteRows(
-  backend: RosterStore,
+  backend: Pick<RosterStore, 'deleteRoom' | 'deleteProfile' | 'updateLayout' | 'saveBotMeta'>,
   snapshot: RosterSnapshot,
   rows: RosterRowRef[]
 ): Promise<void> {

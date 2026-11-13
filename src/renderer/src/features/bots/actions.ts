@@ -27,6 +27,13 @@ import type { RosterState } from './store'
 import { sameJson } from '@shared/lib/utils'
 import type { Bot, Folder, Room, RosterItemRef, RosterRowRef, RosterSnapshot } from './types'
 
+// Reading the roster, and the roster's own changes: each needs only these of the store.
+type RosterReader = Pick<RosterStore, 'listBots' | 'listRooms' | 'olderRoomFolders'>
+type RosterWriter = Pick<
+  RosterStore,
+  'saveBotMeta' | 'updateLayout' | 'deleteRoom' | 'deleteProfile'
+>
+
 export interface RosterActions {
   pin: (bot: Bot) => Promise<void>
   moveBot: (bot: Bot, folderId: string | null) => Promise<void>
@@ -68,7 +75,7 @@ export interface RosterActions {
   deleteRows: (rows: RosterRowRef[]) => Promise<void>
 }
 
-export async function refreshRoster(backend: RosterStore): Promise<void> {
+export async function refreshRoster(backend: RosterReader): Promise<void> {
   applySnapshot(await readRoster(backend))
 }
 
@@ -152,7 +159,7 @@ function alike(a: unknown, b: unknown): boolean {
   )
 }
 
-export function rosterActions(backend: RosterStore): RosterActions {
+export function rosterActions(backend: RosterWriter): RosterActions {
   const snapshot = (): RosterSnapshot => useRoster.getState().snapshot
   const saveLayout = (update: (value: Folder[]) => Folder[]): Promise<void> =>
     saveFolders(backend, update, snapshot().folders)
@@ -243,7 +250,7 @@ export function rosterActions(backend: RosterStore): RosterActions {
 }
 
 function saveFolderOrder(
-  backend: RosterStore,
+  backend: Pick<RosterStore, 'updateLayout'>,
   folderId: string | null,
   keys: string[]
 ): Promise<void> {
@@ -252,7 +259,7 @@ function saveFolderOrder(
 
 // A pinned item dropped in a folder leaves the pins, as "Move to" does.
 async function placeItem(
-  backend: RosterStore,
+  backend: RosterWriter,
   snapshot: RosterSnapshot,
   place: { item: RosterItemRef; folderId: string | null; before: string | null }
 ): Promise<void> {
@@ -274,7 +281,7 @@ let queue: Promise<void> = Promise.resolve()
 
 // Mutations run one at a time so a quick second action waits instead of being lost.
 export function runRosterMutation(
-  backend: RosterStore,
+  backend: RosterReader,
   operation: () => Promise<void>
 ): Promise<void> {
   pending++
@@ -287,7 +294,7 @@ export function runRosterMutation(
   return queue
 }
 
-async function mutate(backend: RosterStore, operation: () => Promise<void>): Promise<void> {
+async function mutate(backend: RosterReader, operation: () => Promise<void>): Promise<void> {
   let failure: RosterProblem | null = null
   try {
     await operation()
@@ -304,7 +311,7 @@ async function mutate(backend: RosterStore, operation: () => Promise<void>): Pro
 
 // Writes only the pins whose position changed; a bot dropped onto the pins joins them.
 async function orderPin(
-  backend: RosterStore,
+  backend: Pick<RosterStore, 'saveBotMeta'>,
   bots: Bot[],
   move: { from: string; to: string }
 ): Promise<void> {

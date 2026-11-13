@@ -6,7 +6,11 @@ import {
   saveBotMeta,
   saveFolders
 } from '../../../src/renderer/src/features/bots/data'
-import { moveFolder } from '../../../src/renderer/src/features/bots/roster'
+import {
+  FOLDERS_KEY,
+  ROOM_PINS_KEY,
+  moveFolder
+} from '../../../src/renderer/src/features/bots/roster'
 import { BOT_META_KEY, backendFor, engineDouble } from './engineDouble'
 import type { EngineRequest } from './engineDouble'
 
@@ -101,5 +105,30 @@ describe('shared roster persistence', () => {
     expect(roster.roomFolders).toEqual({})
     await saveBotMeta(backendFor(engine), 'writer', { hidden: true })
     expect(engine.metadata.writer[BOT_META_KEY]).toEqual({ hidden: true })
+  })
+})
+
+describe('saving the layout over a fake backend', () => {
+  const TEAM = { id: 'team', name: 'Team' }
+  const CLIENTS = { id: 'clients', name: 'Clients' }
+
+  const written = async (stored: Record<string, unknown>): Promise<Record<string, unknown>> => {
+    let changes: Record<string, unknown> = {}
+    await saveFolders(
+      { updateLayout: async (update) => void (changes = update(stored)) },
+      (folders) => [...folders, CLIENTS],
+      [TEAM]
+    )
+    return changes
+  }
+
+  it('should change the stored folders and write only the folders', async () => {
+    expect(
+      await written({ [FOLDERS_KEY]: [{ id: 'empty', name: 'Empty' }], [ROOM_PINS_KEY]: ['x'] })
+    ).toEqual({ [FOLDERS_KEY]: [{ id: 'empty', name: 'Empty' }, CLIENTS] })
+  })
+
+  it('should start from the fallback when no folders are stored', async () => {
+    expect(await written({})).toEqual({ [FOLDERS_KEY]: [TEAM, CLIENTS] })
   })
 })

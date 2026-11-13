@@ -76,7 +76,10 @@ export const MANAGER = 'default'
  */
 export const useDetailsRevision = create<{ revision: number }>(() => ({ revision: 0 }))
 
-export function loadDetails(backend: DetailsBackend, profile: string): Promise<ProfileDetails> {
+export function loadDetails(
+  backend: Pick<DetailsBackend, 'loadDetails'>,
+  profile: string
+): Promise<ProfileDetails> {
   return backend.loadDetails(profile)
 }
 
@@ -153,7 +156,7 @@ function leavesDefault({
 
 // The engine's pin is the fact: the bot leaves Uses default once its own model is on it.
 async function leaveDefaultIfPinned(
-  backend: SaveBackend,
+  backend: Pick<DetailsBackend, 'loadDetails'> & Pick<RosterStore, 'saveBotMeta'>,
   profile: string,
   model: ModelChoice
 ): Promise<void> {
@@ -163,7 +166,7 @@ async function leaveDefaultIfPinned(
 }
 
 export async function confirmModel(
-  backend: DetailsBackend & Pick<RosterStore, 'saveBotMeta'>,
+  backend: Pick<DetailsBackend, 'pinAgreedModel'> & Pick<RosterStore, 'saveBotMeta'>,
   profile: string,
   model: ModelChoice
 ): Promise<void> {
@@ -181,7 +184,7 @@ export async function confirmModel(
  * comes back, `confirmBotModel` answers it. A refusal is a `SectionsNotSavedError` for `model`.
  */
 export function setBotModel(
-  backend: DetailsBackend,
+  backend: Pick<DetailsBackend, 'pinModel'>,
   profile: string,
   pick: ModelChoice
 ): Promise<ModelConfirm | null> {
@@ -200,7 +203,7 @@ export function confirmBotModel(
 // Description and SOUL go in one configure call, the model through its own pin; a refusal of
 // either does not stop the other, and every refused section is reported together.
 async function saveSections(
-  backend: DetailsBackend,
+  backend: Pick<DetailsBackend, 'saveSections' | 'pinModel' | 'pinAgreedModel'>,
   profile: string,
   { opening, draft }: { opening: DetailsDraft; draft: DetailsDraft }
 ): Promise<ModelConfirm | null> {
@@ -227,7 +230,7 @@ async function saveSections(
 // Talyx's model was agreed to when it was picked, a costly one included: a bot that follows it
 // is not asked again.
 async function pinModel(
-  backend: DetailsBackend,
+  backend: Pick<DetailsBackend, 'pinModel' | 'pinAgreedModel'>,
   profile: string,
   { model, draft }: { model: ModelChoice; draft: DetailsDraft }
 ): Promise<ModelConfirm | null> {
@@ -241,7 +244,7 @@ async function pinModel(
  * returns the bots that did not take it. A bot with its own model keeps it.
  */
 export async function followDefault(
-  backend: DetailsBackend & Pick<RosterStore, 'listBots'>,
+  backend: Pick<DetailsBackend, 'pinAgreedModel'> & Pick<RosterStore, 'listBots'>,
   pick: ModelChoice
 ): Promise<string[]> {
   const bots = await backend.listBots().catch((error: unknown) => {
@@ -266,7 +269,7 @@ export async function followDefault(
  * Talyx has now and moves the followers when it differs from `before`.
  */
 export async function followIfDefaultChanged(
-  backend: DetailsBackend & Pick<RosterStore, 'listBots'>,
+  backend: Pick<DetailsBackend, 'loadDetails' | 'pinAgreedModel'> & Pick<RosterStore, 'listBots'>,
   before: ModelChoice | null
 ): Promise<string[]> {
   const { model } = await loadDetails(backend, MANAGER)

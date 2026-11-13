@@ -627,3 +627,27 @@ describe('bot details', () => {
     })
   })
 })
+
+describe('followDefault over a fake backend', () => {
+  it('should pin only the bots on the default, never Talyx, and name the ones that failed', async () => {
+    const pinned: string[] = []
+    const bots: Bot[] = [
+      { name: 'default', meta: { usesDefault: true } },
+      { name: 'analyst', meta: { usesDefault: true } },
+      { name: 'writer', meta: {} },
+      { name: 'gone', meta: { usesDefault: true } }
+    ]
+    const failed = await followDefault(
+      {
+        listBots: async () => bots,
+        pinAgreedModel: async (profile) => {
+          pinned.push(profile)
+          if (profile === 'gone') throw new Error('Profile not found')
+        }
+      },
+      { provider: 'openai', model: 'gpt-5-mini' }
+    )
+    expect(pinned).toEqual(['analyst', 'gone'])
+    expect(failed).toEqual(['gone'])
+  })
+})

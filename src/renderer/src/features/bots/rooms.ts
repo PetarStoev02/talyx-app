@@ -24,13 +24,15 @@ export const MAX_ROOM_MEMBERS = 6
 const MANAGER_HANDLE = 'talyx'
 
 /** The profiles the engine will seat in a new room; null when it does not say. */
-export function seatableProfiles(backend: RoomsBackend): Promise<string[] | null> {
+export function seatableProfiles(
+  backend: Pick<RoomsBackend, 'seatableProfiles'>
+): Promise<string[] | null> {
   return backend.seatableProfiles()
 }
 
 /** Create a hosted room with these bots; returns its id. */
 export async function createRoom(
-  backend: RoomsBackend,
+  backend: Pick<RoomsBackend, 'createRoom'>,
   room: { name: string; members: Bot[] }
 ): Promise<string> {
   const roomId = crypto.randomUUID()
@@ -43,7 +45,7 @@ export async function createRoom(
  * from the next turn and reads the room's history; one that leaves gets no more turns.
  */
 export async function changeRoomMembers(
-  backend: RoomsBackend,
+  backend: Pick<RoomsBackend, 'setRoomMembers'>,
   change: { roomId: string; members: Bot[] }
 ): Promise<void> {
   await backend.setRoomMembers(change.roomId, seats(change.members))
@@ -61,7 +63,7 @@ function seats(members: Bot[]): RoomSeat[] {
 
 /** Renames a room on the engine, for every client; the room's log records the new name. */
 export async function renameRoom(
-  backend: RoomsBackend,
+  backend: Pick<RoomsBackend, 'renameRoom'>,
   rename: { roomId: string; name: string }
 ): Promise<void> {
   const name = rename.name.trim()
