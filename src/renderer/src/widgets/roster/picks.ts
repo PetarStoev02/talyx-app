@@ -1,8 +1,9 @@
-import { itemKey, rowOf } from '@features/bots/roster'
+import { itemKey, rowOf, stepChat } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
-import type { RosterRowRef } from '@features/bots/types'
+import type { RosterItemRef, RosterRowRef } from '@features/bots/types'
+import { platformOf } from '@features/shortcuts/shortcuts'
 
-const isMac = navigator.platform.toLowerCase().includes('mac')
+const isMac = platformOf(navigator.platform) === 'mac'
 
 /** Every row the roster shows, top to bottom; the rows of a closed folder are not on the page. */
 function shownKeys(): string[] {
@@ -44,4 +45,17 @@ export function clickRow(event: React.MouseEvent, row: RosterRowRef, plain: () =
     pick([], key)
     plain()
   }
+}
+
+/** Opens the bot or room `step` rows from the open one (⌥↑ and ⌥↓), as a click on its row would. */
+export function switchChat(step: 1 | -1): void {
+  const { selection, select, clearError, pick } = useRoster.getState()
+  const key = stepChat(shownKeys(), selection && itemKey(selection), step)
+  if (!key) return
+  clearError()
+  pick([], key)
+  select(rowOf(key) as RosterItemRef)
+  document
+    .querySelector(`[data-roster-row="${CSS.escape(key)}"]`)
+    ?.scrollIntoView({ block: 'nearest' })
 }

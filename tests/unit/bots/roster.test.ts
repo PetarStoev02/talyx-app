@@ -10,6 +10,7 @@ import {
   placeKey,
   recoverFolders,
   startSelection,
+  stepChat,
   timeInWords
 } from '../../../src/renderer/src/features/bots/roster'
 import { t } from '../../../src/renderer/src/shared/lib/i18n'
@@ -206,5 +207,26 @@ describe('the chat the Agents page opens', () => {
   it('should open another bot when Talyx is not in the roster, and nothing when no bot is', () => {
     expect(startSelection(roster([bot('analyst')]), null)).toEqual({ kind: 'bot', id: 'analyst' })
     expect(startSelection(roster([]), null)).toBeNull()
+  })
+})
+
+describe('switching chats', () => {
+  const shown = ['bot:talyx', 'folder:work', 'bot:writer', 'room:standup']
+
+  it.each([
+    ['the next chat', 'bot:talyx', 1, 'bot:writer'],
+    ['the previous chat', 'room:standup', -1, 'bot:writer'],
+    ['past a folder row', 'bot:writer', -1, 'bot:talyx'],
+    ['down with nothing open, the first chat', null, 1, 'bot:talyx'],
+    ['up with nothing open, the last chat', null, -1, 'room:standup'],
+    ['down from a chat in a closed folder, the first chat', 'bot:hidden', 1, 'bot:talyx'],
+    ['down from the last chat, nothing', 'room:standup', 1, null],
+    ['up from the first chat, nothing', 'bot:talyx', -1, null]
+  ] as const)('should go to %s', (_case, open, step, expected) => {
+    expect(stepChat(shown, open, step)).toBe(expected)
+  })
+
+  it('should go nowhere with no chats', () => {
+    expect(stepChat(['folder:work'], null, 1)).toBeNull()
   })
 })

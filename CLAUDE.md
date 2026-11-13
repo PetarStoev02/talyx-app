@@ -218,14 +218,17 @@ src/renderer/src/
 │                     # settings-nav (Settings' sidebar: one page per row),
 │                     # settings-engine (Settings: the engine's state and path, the debug console),
 │                     # settings-startup (Settings: launch at login),
-│                     # Setup (the first-run flow: welcome, engine, provider, bot steps)
+│                     # Setup (the first-run flow: welcome, engine, provider, bot steps),
+│                     # shortcuts (the ⌘/ cheat sheet)
 ├── features/         # bots (roster data, folders, pins, unread, details, routines, create, rooms),
 │                     # bots/mcp.ts (the MCP tools over those use cases; deletes ask first),
 │                     # chat (transcript, use cases, hosted rooms polled over `groups.*`),
 │                     # providers (keys, endpoints and sign-ins over REST; writes go to every bot),
 │                     # setup (which step comes first, the engine install and its screens),
 │                     # modules (license state, module pages; nothing shows without a key),
-│                     # settings (which Settings page is open)
+│                     # settings (which Settings page is open),
+│                     # shortcuts (every shortcut, one list: bound by app/providers/useKeyboardShortcuts,
+│                     # shown by the cheat sheet)
 └── shared/           # Reusable: ui/ (shadcn), hooks/, api/ (IPC wrappers), lib/,
                       # engine/ (vendored engine client; host.ts is the facade features use)
 ```

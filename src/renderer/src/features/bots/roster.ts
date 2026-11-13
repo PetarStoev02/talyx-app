@@ -293,3 +293,15 @@ export function startSelection(snapshot: RosterSnapshot, saved: Selection): Sele
   const fallback = visible.find((bot) => bot.name === 'default') ?? visible[0]
   return fallback ? { kind: 'bot', id: fallback.name } : null
 }
+
+/**
+ * The bot or room `step` rows from the open one among the rows the roster shows (`itemKey`s, top
+ * to bottom; folder rows are skipped). With nothing open, or the open one hidden in a closed
+ * folder, down starts at the top and up at the bottom. Null past either end.
+ */
+export function stepChat(shown: string[], open: string | null, step: 1 | -1): string | null {
+  const chats = shown.filter((key) => rowOf(key).kind !== 'folder')
+  const at = open === null ? -1 : chats.indexOf(open)
+  const next = at < 0 ? (step === 1 ? 0 : chats.length - 1) : at + step
+  return chats[next] ?? null
+}

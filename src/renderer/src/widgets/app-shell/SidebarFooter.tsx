@@ -4,6 +4,7 @@ import { useEngine } from '@app/providers/useEngine'
 import { useLanguage } from '@app/providers/useLanguage'
 import { type AppView, useNavigation } from '@app/providers/useNavigation'
 import { useRoster } from '@features/bots/store'
+import { platformOf } from '@features/shortcuts/shortcuts'
 import { anyUnread, dockSections, dockShortcut, type DockSection } from '@features/modules/sections'
 import { moduleView, runningModules, useModuleAttention, useModules } from '@features/modules/store'
 import { updateItems } from '@features/updates/items'
@@ -14,7 +15,7 @@ import { ModuleBackground } from './ModuleBackground'
 import { NavButton } from './NavButton'
 import { UpdateButton } from './UpdateButton'
 
-const isMac = navigator.platform.toLowerCase().includes('mac')
+const isMac = platformOf(navigator.platform) === 'mac'
 const mod = isMac ? '⌘' : 'Ctrl+'
 
 /**
