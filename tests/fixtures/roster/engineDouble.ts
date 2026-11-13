@@ -10,6 +10,7 @@ import { EXPECTED_ENGINE_VERSION, type EngineStatus } from '../../../src/shared/
 import { fixtureChat } from './fixtureChat'
 import { COSTLY_MODEL, DEFAULT_MODEL, fixtureProviders, PROVIDER } from './fixtureProviders'
 import { roomRequest, roomSessionRequest, setRoomMembers } from './fixtureRooms'
+import { fixtureMemory } from './fixtureMemory'
 
 // The in-memory engine the roster fixture and the website's live demo both run on. Deliberately
 // in-memory: it never connects to or modifies user profiles, and a reload resets it.
@@ -368,6 +369,8 @@ export const rosterBackend = {
     avatarPng: blockPng,
     setRoomMembers
   }),
+  // Memories and skills in Talyx's terms; the engine's own routes are covered by unit tests.
+  ...fixtureMemory(Object.keys(BOTS)).backend,
   room: engineRoomBackend(engine)
 }
 export const providersRest = fixtureProviders(profiles.map((bot) => bot.name))

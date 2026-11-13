@@ -13,6 +13,7 @@ import type { DetailsBackend } from './details'
 import type { AvatarBackend } from './look'
 import type { McpToolsBackend } from './mcp'
 import type { McpServersBackend } from './mcpRegistration'
+import type { MemoryBackend } from './memory'
 import type { RoomsBackend } from './rooms'
 import type { RoutinesBackend } from './routines'
 import type { RulesBackend } from './rules'
@@ -48,7 +49,8 @@ export type RosterBackend = RosterStore &
   RoutinesBackend &
   RulesBackend &
   McpServersBackend &
-  McpToolsBackend
+  McpToolsBackend &
+  MemoryBackend
 
 type RoomFolders = Record<string, string | null>
 

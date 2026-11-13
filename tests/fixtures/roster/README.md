@@ -29,6 +29,12 @@ Picking `claude-opus-4-1` makes the double ask for confirmation, as the engine d
 model. The model menu starts with "Uses default (<Talyx's model>)": a bot on it moves when Talyx's
 model changes, from Talyx's panel or Settings, and a bot with its own model stays. Check that the panel pushes the chat, Save applies title, description, model and SOUL,
 Cancel discards, the confirm dialog's two answers, routine toggles, New routine and Delete. The
+Memory tab (`fixtureMemory.ts`) lists memories and skills: Analyst remembers three things, one
+about the user; Researcher also keeps memories in another store (its note shows); every bot has four
+skills, one off. Memories and Skills are two views with counts, each with its own search that stays
+at the top while the list scrolls. A skill row opens its instructions to edit;
+only Analyst's own `cash-report` has Delete. Check Edit and Delete on a memory, editing and deleting
+a skill, the skill switches and both searches. The
 roster's `+` opens New bot: check the profile-id hint, a taken name, a non-Latin name (`bot-N`),
 the default folder, and that the new bot lands in its folder, is selected and answers a message.
 

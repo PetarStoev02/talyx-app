@@ -15,3 +15,22 @@ export function ProblemMessage({ problem }: { problem: RosterProblem }): React.J
     </p>
   )
 }
+
+/** A failed load with its Try again link. */
+export function TryAgain({
+  problem,
+  onRetry
+}: {
+  problem: RosterProblem
+  onRetry: () => void
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  return (
+    <div>
+      <ProblemMessage problem={problem} />
+      <button className="mt-2 underline underline-offset-4 hover:decoration-2" onClick={onRetry}>
+        {t('action.tryAgain')}
+      </button>
+    </div>
+  )
+}

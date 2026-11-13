@@ -9,6 +9,7 @@ import type { Room } from '@features/bots/types'
 import type { EngineAccess } from './access'
 import { engineDetailsBackend } from './details'
 import { engineMcpBackend } from './mcp'
+import { engineMemoryBackend } from './memory'
 import { engineRoutinesBackend } from './routines'
 
 /** What the roster needs beside the engine's socket and REST. */
@@ -112,6 +113,7 @@ export function engineRosterBackend(engine: EngineAccess, host: RosterHost): Ros
     ...engineRulesBackend(engine),
     ...engineDetailsBackend(engine),
     ...engineRoutinesBackend(engine),
+    ...engineMemoryBackend(engine),
     ...engineMcpBackend(engine),
     setAvatar: async (profile, look) => {
       await engine.request(profile, 'profiles.set_asset', {

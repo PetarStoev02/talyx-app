@@ -23,7 +23,7 @@ import type {
 } from '@features/bots/details'
 import { lookOf, sameLook } from '@features/bots/look'
 import { LookPicker } from '@features/bots/LookPicker'
-import { ProblemMessage } from '@features/bots/ProblemMessage'
+import { ProblemMessage, TryAgain } from '@features/bots/ProblemMessage'
 import { botTitle, problemOf } from '@features/bots/roster'
 import { reportFollowing } from '@features/bots/spread'
 import type { RosterProblem } from '@features/bots/roster'
@@ -39,13 +39,15 @@ import { ModelField } from '@shared/ui/ModelPicker'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { useArrival } from '@shared/hooks/useStayMounted'
 import { cn } from '@shared/lib/utils'
+import { MemoryTab } from './MemoryTab'
 import { RoutinesSection } from './RoutinesSection'
 
-type Tab = 'details' | 'look' | 'soul'
+type Tab = 'details' | 'look' | 'soul' | 'memory'
 const TABS: Array<[Tab, TranslationKey]> = [
   ['details', 'details.tabDetails'],
   ['look', 'details.tabLook'],
-  ['soul', 'details.tabSoul']
+  ['soul', 'details.tabSoul'],
+  ['memory', 'details.tabMemory']
 ]
 
 // The tab that holds each section's field, where its refusal shows.
@@ -252,19 +254,17 @@ export function DetailsPanel({
           value={tab}
           className={cn('scroll-y-stable flex min-h-0 flex-1 flex-col px-6 py-4', arrival)}
         >
-          {loadError ? (
-            <div>
-              <ProblemMessage problem={loadError} />
-              <button
-                className="mt-2 underline underline-offset-4 hover:decoration-2"
-                onClick={() => {
-                  setLoadError(null)
-                  setAttempt((n) => n + 1)
-                }}
-              >
-                {t('action.tryAgain')}
-              </button>
-            </div>
+          {tab === 'memory' ? (
+            // Loads on its own: it needs nothing the details load.
+            <MemoryTab bot={bot} backend={backend} />
+          ) : loadError ? (
+            <TryAgain
+              problem={loadError}
+              onRetry={() => {
+                setLoadError(null)
+                setAttempt((n) => n + 1)
+              }}
+            />
           ) : !draft ? (
             <Loading label={t('details.loading')} className="space-y-5">
               {[0, 1, 2].map((field) => (
@@ -355,13 +355,13 @@ export function DetailsPanel({
           )}
         </Tabs.Content>
       </Tabs.Root>
-      {error && (
+      {error && tab !== 'memory' && (
         <div className="px-6 pb-2">
           <ProblemMessage problem={error} />
         </div>
       )}
-      {/* Primary first, as in every dialog. */}
-      <footer className="flex gap-2 px-6 py-3">
+      {/* Primary first, as in every dialog. The Memory tab saves each change at once: no footer. */}
+      <footer className={cn('flex gap-2 px-6 py-3', tab === 'memory' && 'hidden')}>
         <Button disabled={!changed || saving} onClick={save}>
           {saving ? t('details.saving') : t('details.save')}
         </Button>
