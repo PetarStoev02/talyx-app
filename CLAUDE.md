@@ -176,7 +176,8 @@ src/main/
     │                           # gateway.ts (vendored attach + ticket mint), engineSockets.ts
     ├── ipc/                    # settings.ipc.ts, engine.ipc.ts, setup.ipc.ts (the engine install),
     │                           # updater.ipc.ts (update download and open), validation.ts (zod at the boundary),
-    │                           # modules.ipc.ts (modules: license, install, talyx-module:// files)
+    │                           # modules.ipc.ts (modules: license, install, talyx-module:// files),
+    │                           # files.ipc.ts (files:keep, a copy of a dropped file with no path)
     ├── mcp/                    # mcpServer.ts (Talyx's MCP server: loopback HTTP, bearer key, no
     │                           # browser Origin; tool calls go to the page, which runs them),
     │                           # see ipc/mcp.ipc.ts (start, key in userData/mcp-token, mcp:* IPC)
@@ -187,7 +188,8 @@ src/main/
     ├── security/               # webContentsGuard (no new windows, no navigation away),
     │                           # appProtocol.ts (serves the packaged renderer over app://)
     ├── setup/                  # installPin.ts (the hash pin), installSteps.ts (loads the install file), installRunner.ts (runs it)
-    ├── storage/SettingsStore.ts # settings.json in userData
+    ├── storage/                # SettingsStore.ts (settings.json in userData), keptFiles.ts
+    │                           # (copies of dropped files under userData/attachments, 50 MB cap)
     ├── system/loginItem.ts     # launch at login: macOS login item, Linux autostart .desktop
     └── updater/                # releaseCheck.ts (GitHub latest-release check), releaseChecks.ts
                                 # (one check at a time, the staleness limits), selfUpdate.ts

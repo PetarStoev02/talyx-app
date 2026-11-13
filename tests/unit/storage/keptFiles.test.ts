@@ -1,8 +1,13 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { NotADataUrlError, keepFile } from '../../../src/main/infrastructure/storage/keptFiles'
+import {
+  FileTooBigError,
+  NotADataUrlError,
+  keepFile
+} from '../../../src/main/infrastructure/storage/keptFiles'
+import { KEPT_FILE_MAX_BYTES } from '../../../src/shared/keptFiles'
 
 function dataUrlOf(text: string, mime = 'application/pdf'): string {
   return `data:${mime};base64,${Buffer.from(text).toString('base64')}`
@@ -55,4 +60,27 @@ describe('keepFile', () => {
       keepFile(root, { name: 'a.txt', dataUrl: 'https://example.com/a.txt' })
     ).rejects.toThrow(NotADataUrlError)
   })
+
+  it('should keep a file of exactly the cap', async () => {
+    const path = await keepFile(root, {
+      name: 'cap.bin',
+      dataUrl: `data:application/octet-stream;base64,${Buffer.alloc(KEPT_FILE_MAX_BYTES).toString('base64')}`
+    })
+    expect((await stat(path)).size).toBe(KEPT_FILE_MAX_BYTES)
+  })
+
+  it('should refuse a file one byte over the cap and leave nothing behind', async () => {
+    const dataUrl = `data:application/octet-stream;base64,${Buffer.alloc(KEPT_FILE_MAX_BYTES + 1).toString('base64')}`
+    await expect(keepFile(root, { name: 'big.bin', dataUrl })).rejects.toThrow(FileTooBigError)
+    expect(await readdir(root)).toEqual([])
+  })
+
+  it.skipIf(process.platform === 'win32')(
+    'should let only this user read a kept copy',
+    async () => {
+      const path = await keepFile(root, { name: 'invoice.pdf', dataUrl: dataUrlOf('%PDF') })
+      expect((await stat(path)).mode & 0o777).toBe(0o600)
+      expect((await stat(dirname(path))).mode & 0o777).toBe(0o700)
+    }
+  )
 })

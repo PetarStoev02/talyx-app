@@ -1,15 +1,27 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
+import { KEPT_FILE_MAX_BYTES } from '../../../shared/keptFiles'
 
 const DATA_URL = /^data:[^,]*;base64,([A-Za-z0-9+/=]*)$/
 const FALLBACK_NAME = 'file'
+// Copies of the user's own files: only their account reads them (Linux homes are often 0755).
+const FOLDER_MODE = 0o700
+const FILE_MODE = 0o600
 
 /** What the page sent was not a file read as a base64 data URL. */
 export class NotADataUrlError extends Error {
   constructor() {
     super('The file could not be read.')
     this.name = 'NotADataUrlError'
+  }
+}
+
+/** The file is over the cap a copy is kept for (the schema's check is a little looser). */
+export class FileTooBigError extends Error {
+  constructor() {
+    super('The file is over 50 MB.')
+    this.name = 'FileTooBigError'
   }
 }
 
@@ -25,10 +37,13 @@ export async function keepFile(
 ): Promise<string> {
   const data = DATA_URL.exec(file.dataUrl)?.[1]
   if (data === undefined) throw new NotADataUrlError()
+  const bytes = Buffer.from(data, 'base64')
+  if (bytes.length > KEPT_FILE_MAX_BYTES) throw new FileTooBigError()
+  await mkdir(root, { recursive: true, mode: FOLDER_MODE })
   const folder = join(root, randomUUID())
-  await mkdir(folder, { recursive: true })
+  await mkdir(folder, { mode: FOLDER_MODE })
   const path = join(folder, safeName(file.name))
-  await writeFile(path, Buffer.from(data, 'base64'))
+  await writeFile(path, bytes, { mode: FILE_MODE })
   return path
 }
 
