@@ -196,6 +196,7 @@ export function RoomPane({
           </div>
         )}
       </Reveal>
+      {/* The composer stays a direct child of the chat section: files dropped anywhere on it attach here. */}
       {view.live ? (
         <Composer target={target} inputRef={composer} seed={seed}>
           <RoomModelMenu

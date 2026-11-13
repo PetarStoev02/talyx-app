@@ -195,6 +195,7 @@ export function ChatPane({
           </Button>
         </p>
       )}
+      {/* A direct child of the chat section: files dropped anywhere on it attach here. */}
       <Composer target={target} inputRef={composer} seed={seed}>
         <ChatChips chat={chat} actions={actions} returnFocusTo={composer} />
       </Composer>

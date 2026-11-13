@@ -4,7 +4,7 @@ import { ArrowUp, ChevronDown, LoaderCircle, Mic, Plus, Square, X } from 'lucide
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
-import { carriesFiles, sortAttachments } from '@features/chat/attachments'
+import { sortAttachments } from '@features/chat/attachments'
 import type { ChatActions } from '@features/chat/chat'
 import type { ChatState } from '@features/chat/store'
 import { dataUrlOf, dictationProblem, useDictation } from '@features/chat/useDictation'
@@ -137,12 +137,13 @@ export function Composer({
     const area = form.current?.parentElement
     if (!area) return
     const over = (event: DragEvent): void => {
-      if (!carriesFiles([...(event.dataTransfer?.types ?? [])])) return
+      // Only a drag of files: selected text or a link still drops into the text field.
+      if (!event.dataTransfer?.types.includes('Files')) return
       event.preventDefault()
       if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
     }
     const drop = (event: DragEvent): void => {
-      if (!event.dataTransfer || !carriesFiles([...event.dataTransfer.types])) return
+      if (!event.dataTransfer?.types.includes('Files')) return
       event.preventDefault()
       attachDropped(event.dataTransfer.files)
     }
