@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { MediaGoneError, chatActions } from '../../../src/renderer/src/features/chat/chat'
-import type { ChatActions } from '../../../src/renderer/src/features/chat/chat'
+import type { ChatActions, ChatBackend } from '../../../src/renderer/src/features/chat/chat'
 import { useChat } from '../../../src/renderer/src/features/chat/store'
 import { handleEvent } from '../../../src/renderer/src/features/chat/events'
 import { addPrompt } from '../../../src/renderer/src/features/chat/transcript'
@@ -1103,7 +1103,7 @@ describe('bot chat', () => {
           mime: 'audio/webm'
         })
       ).toBe('dictated words')
-      expect(call('transcribe')?.params).toMatchObject({ mime: 'audio/webm' })
+      expect(call('POST /api/audio/transcribe')?.params).toMatchObject({ mime_type: 'audio/webm' })
       expect(await actions.mediaUrl(MANAGER, '/images/a b.png')).toBe('data:image/png;base64,AAAA')
       expect(call('GET /api/media')?.params).toMatchObject({ path: '/api/media' })
       expect(engine.calls.at(-1)?.profile).toBe(MANAGER)
@@ -1115,6 +1115,59 @@ describe('bot chat', () => {
         MediaGoneError
       )
     })
+  })
+})
+
+// Talyx's own rules, over a backend that speaks Talyx's terms and records what it is asked.
+describe('bot chat over a Talyx-terms backend', () => {
+  function talyxChat(): { backend: ChatBackend; steps: string[] } {
+    const steps: string[] = []
+    const unused = async (): Promise<never> => {
+      throw new Error('not used')
+    }
+    const backend: ChatBackend = {
+      findChat: async () => 'chat-1',
+      createChat: unused,
+      history: async () => {
+        steps.push('reload')
+        return []
+      },
+      newestMessages: unused,
+      resume: async () => ({ running: false }),
+      submit: async (_profile, _chatId, draft) => {
+        steps.push(`submit ${draft.text}${draft.whenBusy ? ` (${draft.whenBusy})` : ''}`)
+      },
+      interrupt: unused,
+      setModel: unused,
+      setReasoning: unused,
+      answerQuestion: unused,
+      models: unused,
+      uploadImage: unused,
+      transcribe: unused,
+      mediaUrl: unused
+    }
+    return { backend, steps }
+  }
+
+  it('should send waiting messages one at a time, in order, each after the answer before ends', async () => {
+    const { backend, steps } = talyxChat()
+    const chatOver = chatActions(backend)
+    await chatOver.open(MANAGER, 'chat-1')
+    steps.length = 0
+
+    for (const text of ['First', 'Second', 'Third'])
+      await chatOver.queue(MANAGER, { text, images: [] })
+    await chatOver.turnEnded(MANAGER)
+    await chatOver.turnEnded(MANAGER)
+
+    expect(steps).toEqual([
+      'submit First',
+      'reload',
+      'submit Second (queue)',
+      'reload',
+      'submit Third (queue)'
+    ])
+    expect(chat(MANAGER).waiting).toEqual([])
   })
 })
 

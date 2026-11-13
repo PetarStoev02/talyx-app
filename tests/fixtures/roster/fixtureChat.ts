@@ -1,5 +1,6 @@
 import { chatActions } from '../../../src/renderer/src/features/chat/chat'
-import type { ChatActions, ChatBackend } from '../../../src/renderer/src/features/chat/chat'
+import type { ChatActions } from '../../../src/renderer/src/features/chat/chat'
+import type { EngineAccess } from '../../../src/renderer/src/app/engine/access'
 import { engineChatBackend } from '../../../src/renderer/src/app/engine/chat'
 import { handleEvent, handlePrompt } from '../../../src/renderer/src/features/chat/events'
 import type { ChatUpdate } from '../../../src/renderer/src/features/chat/events'
@@ -256,7 +257,7 @@ export function fixtureChat(providers: EngineHttp): ChatActions {
     )
   }
 
-  const request: ChatBackend['request'] = async <T>(
+  const request: EngineAccess['request'] = async <T>(
     profile: string,
     method: string,
     params: Record<string, unknown> = {}
@@ -296,7 +297,7 @@ export function fixtureChat(providers: EngineHttp): ChatActions {
     return answer as T
   }
 
-  const http: ChatBackend['http'] = async <T>({ path }: { path: string }): Promise<T> => {
+  const http: EngineAccess['http'] = async <T>({ path }: { path: string }): Promise<T> => {
     const query = new URL(path, 'http://fixture.invalid').searchParams
     const profile = query.get('profile') ?? ''
     if (path.startsWith('/api/sessions/'))

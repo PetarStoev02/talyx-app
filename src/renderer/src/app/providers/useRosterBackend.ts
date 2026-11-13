@@ -5,11 +5,12 @@ import type { RosterBackend } from '@features/bots/data'
 import type { RoomBackend } from '@features/chat/room'
 import { useRoster } from '@features/bots/store'
 import { engineAccess } from '@app/engine/access'
+import { engineRoomBackend } from '@app/engine/room'
 import { engineRosterBackend } from '@app/engine/roster'
 import { useEngine } from './useEngine'
 
-// The chat's rooms still ask the engine by method name, until they move to the wiring (#67).
-type RosterAndRooms = RosterBackend & RoomBackend
+// The open room's view reads and acts on the room through `room`.
+type RosterAndRooms = RosterBackend & { room: RoomBackend }
 
 /**
  * The roster's engine access, once the engine is attached and the socket has opened once.
@@ -59,5 +60,5 @@ export function rosterBackendFor(keys: {
       await window.api.setRoomMembers({ roomId, members })
     }
   })
-  return { ...roster, request: engineAccess.request }
+  return { ...roster, room: engineRoomBackend(engineAccess) }
 }
