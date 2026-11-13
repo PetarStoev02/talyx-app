@@ -33,8 +33,7 @@ export function AgentsPage({
   roster
 }: {
   chat: ChatActions | null
-  // The rooms still ask the engine by method name, until they move to the wiring (#67).
-  roster: (RosterBackend & RoomBackend) | null
+  roster: (RosterBackend & { room: RoomBackend }) | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const snapshot = useRoster((s) => s.snapshot)
@@ -50,7 +49,7 @@ export function AgentsPage({
   )
   const phases = useRooms((state) => (room ? state.rooms[room.room_id]?.phases : undefined))
   const title = bot ? botTitle(bot) : room?.name
-  const rooms = useMemo(() => roster && roomActions(roster), [roster])
+  const rooms = useMemo(() => roster && roomActions(roster.room), [roster])
   // A find belongs to the chat or room it was opened in; selecting another ends it. Here, not when
   // a pane unmounts: a picked room hit asks for the find before its pane mounts.
   useEffect(() => {

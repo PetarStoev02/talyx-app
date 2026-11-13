@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { answering, roomActions } from '../../../src/renderer/src/features/chat/room'
-import type { RoomActions } from '../../../src/renderer/src/features/chat/room'
+import type { RoomActions, RoomBackend } from '../../../src/renderer/src/features/chat/room'
 import {
   attachmentKey,
   parseAttachmentKey,
@@ -554,5 +554,74 @@ describe('room mentions', () => {
       '@analyst @writer @ops @Scout'
     )
     expect(sendMentions('@Scout', twins)).toBe('@research')
+  })
+})
+
+// Talyx's own rules, over a backend that speaks Talyx's terms and records what it is asked.
+describe('room model switch over a Talyx-terms backend', () => {
+  function talyxRoom(): { backend: RoomBackend; steps: string[] } {
+    const steps: string[] = []
+    const unused = async (): Promise<never> => {
+      throw new Error('not used')
+    }
+    const backend: RoomBackend = {
+      state: async () => ({
+        latestSeq: 0,
+        live: true,
+        working: true,
+        phases: { analyst: 'working' },
+        tasks: []
+      }),
+      log: async () => [],
+      send: unused,
+      stop: unused,
+      approve: unused,
+      retry: unused,
+      discard: unused,
+      uploadImage: unused,
+      image: unused,
+      memberSession: async (profile) => `${profile}-session`,
+      sessionModel: async () => null,
+      openSession: async (profile, sessionId) => {
+        steps.push(`open ${profile}`)
+        return { sessionId, subscription: `sub-${profile}` }
+      },
+      setSessionModel: async (profile, _sessionId, choice) => {
+        steps.push(`model ${profile} ${choice.model}`)
+        return profile === 'writer'
+          ? { switched: false, confirmMessage: 'Costs more.' }
+          : { switched: true }
+      },
+      letGo: async (profile, _sessionId, subscription) => {
+        steps.push(`let go ${profile} ${subscription}`)
+      }
+    }
+    return { backend, steps }
+  }
+
+  it('should skip an answering member, switch the idle ones and let go of each one opened', async () => {
+    const { backend, steps } = talyxRoom()
+    const room = roomActions(backend)
+    await room.refresh(ROOM)
+
+    const result = await room.setModel(
+      ROOM,
+      [{ profile: 'analyst' }, { profile: 'scout' }, { profile: 'writer' }],
+      { model: 'claude-haiku', provider: 'anthropic' }
+    )
+
+    expect(result).toEqual({ switched: ['scout'], skipped: ['analyst', 'writer'] })
+    expect(steps).toEqual([
+      'open scout',
+      'model scout claude-haiku',
+      'let go scout sub-scout',
+      'open writer',
+      'model writer claude-haiku',
+      'let go writer sub-writer'
+    ])
+    expect(useRooms.getState().rooms[ROOM].actionError).toEqual({
+      key: 'rooms.modelNeedsConfirm',
+      detail: 'Costs more.'
+    })
   })
 })

@@ -19,6 +19,27 @@ function engineAnswering(answer: unknown): { engine: EngineAccess; sent: EngineA
 }
 
 describe('engine chat backend', () => {
+  describe('createChat', () => {
+    it('should keep a title refusal other than the race and look for no other chat', async () => {
+      const methods: string[] = []
+      const engine: EngineAccess = {
+        request: async <T>(_profile: string, method: string): Promise<T> => {
+          methods.push(method)
+          if (method === 'session.title') throw new Error('Gateway restarting')
+          return { session_id: 'created' } as T
+        },
+        http: async () => {
+          throw new Error('no REST call expected')
+        }
+      }
+
+      await expect(engineChatBackend(engine).createChat('acme')).rejects.toThrow(
+        'Gateway restarting'
+      )
+      expect(methods).toEqual(['session.create', 'session.title'])
+    })
+  })
+
   describe('transcribe', () => {
     it('should post the recording for the profile and return its words', async () => {
       const { engine, sent } = engineAnswering({ transcript: 'dictated words' })

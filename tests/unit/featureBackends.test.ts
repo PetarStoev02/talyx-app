@@ -4,6 +4,7 @@ import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import {
   CANONICAL_RPC_METHODS,
+  GATEWAY_EVENT_TYPES,
   RPC_METHODS,
   SERVER_REQUEST_METHODS
 } from '../../src/renderer/src/shared/engine/gateway-contract.generated'
@@ -17,12 +18,8 @@ const ENGINE_METHODS = new Set<string>(
     name.includes('.')
   )
 )
+const EVENT_TYPES = new Set<string>(GATEWAY_EVENT_TYPES)
 const REST_PATH = /^\/api\b/
-
-// Files not moved to the wiring yet. Each PR of #67 takes its files off; the last empties it.
-const NOT_YET_MOVED = new Set(['chat/chat.ts', 'chat/room.ts', 'providers/providers.ts'])
-// Calls already moved out of a file that is still on the list above: they must not come back.
-const MOVED_CALLS = ['/api/audio/transcribe']
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true, recursive: true })
@@ -33,7 +30,8 @@ function sourceFiles(dir: string): string[] {
 /**
  * The engine names a source passes as values: string and template literals that are an engine
  * method or start with a REST path. Comments are not code, and an event type compared with
- * `===` / `!==` or under `case` is the engine's event, not a call.
+ * `===` / `!==` or under `case` is the engine's event the feature reads, not a call. A method name
+ * that is also an event type (`session.info`) counts only where it is not compared.
  */
 function engineTermsInSource(source: string, fileName = 'source.ts'): string[] {
   // The name's extension picks the parser: a .tsx file read as .ts hides what follows its JSX.
@@ -43,7 +41,8 @@ function engineTermsInSource(source: string, fileName = 'source.ts'): string[] {
     if (ts.isStringLiteralLike(node) || ts.isTemplateHead(node)) {
       const text = node.text
       if (REST_PATH.test(text)) terms.push(text)
-      else if (ENGINE_METHODS.has(text) && !isEventComparison(node)) terms.push(text)
+      else if (ENGINE_METHODS.has(text) && !(EVENT_TYPES.has(text) && isComparison(node)))
+        terms.push(text)
     }
     ts.forEachChild(node, visit)
   }
@@ -51,7 +50,7 @@ function engineTermsInSource(source: string, fileName = 'source.ts'): string[] {
   return terms
 }
 
-function isEventComparison(node: ts.Node): boolean {
+function isComparison(node: ts.Node): boolean {
   const parent = node.parent
   if (ts.isCaseClause(parent)) return true
   if (!ts.isBinaryExpression(parent)) return false
@@ -69,24 +68,8 @@ function engineTermsIn(file: string): string[] {
 describe('feature backends', () => {
   const files = sourceFiles(FEATURES)
 
-  it('should name no engine method or REST path in a moved feature', () => {
-    const hits = files
-      .filter((file) => !NOT_YET_MOVED.has(file))
-      .flatMap((file) => engineTermsIn(file).map((term) => `${file}: ${term}`))
-    expect(hits).toEqual([])
-  })
-
-  it('should list only files that still name the engine as not yet moved', () => {
-    const moved = [...NOT_YET_MOVED].filter((file) => engineTermsIn(file).length === 0)
-    expect(moved).toEqual([])
-  })
-
-  it('should keep moved calls out of files not yet moved', () => {
-    const hits = files.flatMap((file) =>
-      engineTermsIn(file)
-        .filter((term) => MOVED_CALLS.some((call) => term.startsWith(call)))
-        .map((term) => `${file}: ${term}`)
-    )
+  it('should name no engine method or REST path in a feature', () => {
+    const hits = files.flatMap((file) => engineTermsIn(file).map((term) => `${file}: ${term}`))
     expect(hits).toEqual([])
   })
 
@@ -100,7 +83,9 @@ describe('feature backends', () => {
       ['a method with digits or capitals', "call('i18n.catalog')"],
       ['a REST path', "http({ path: '/api/env' })"],
       ['a bare REST root', "const root = '/api' + rest"],
-      ['a REST path in a template', 'http({ path: `/api/sessions/${id}` })']
+      ['a REST path in a template', 'http({ path: `/api/sessions/${id}` })'],
+      ['a method name compared', "if (method === 'profiles.create') return"],
+      ['a method name in a case', "switch (method) { case 'session.create': break }"]
     ])('should find %s', (_name, source) => {
       expect(engineTermsInSource(source)).toHaveLength(1)
     })

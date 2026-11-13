@@ -1,3 +1,4 @@
+import { engineRoomBackend } from '../../../src/renderer/src/app/engine/room'
 import type { RoomBackend } from '../../../src/renderer/src/features/chat/room'
 import type { RoomEvent } from '../../../src/renderer/src/features/chat/types'
 import type { ChatCall } from './chatDouble'
@@ -48,7 +49,8 @@ export const ROOM = 'team-room'
 // The engine pages by bytes too; two rows a page makes paging show in small tests.
 const PAGE_ROWS = 2
 
-// In-memory hosted room: state, a paged log, send (idempotent per event id) and the controls.
+// In-memory hosted room (state, a paged log, send idempotent per event id, and the controls), with
+// the room's real wiring over it.
 export function roomDouble(events: RoomEvent[] = []): RoomDouble {
   const calls: ChatCall[] = []
   const failures = new Map<string, string>()
@@ -56,15 +58,18 @@ export function roomDouble(events: RoomEvent[] = []): RoomDouble {
   const holds = new Map<string, Promise<void>>()
   let lostAnswer = false
   const double: RoomDouble = {
-    backend: {
-      request: async (profile, method, params) => {
+    backend: engineRoomBackend({
+      request: async <T>(profile: string, method: string, params: Record<string, unknown> = {}) => {
         const result = answer(profile, method, params)
         const hold = holds.get(method)
         holds.delete(method)
         await hold
-        return result
+        return result as T
+      },
+      http: async () => {
+        throw new Error('A room makes no REST call')
       }
-    },
+    }),
     calls,
     events,
     driver: { working: false, member_activity: [], pending_actions: [] },

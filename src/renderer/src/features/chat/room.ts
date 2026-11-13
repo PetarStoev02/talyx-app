@@ -1,16 +1,59 @@
 import type { ModelPick } from '@shared/ui/ModelPicker'
-import { readRoomLog, sendRoomMessage } from '@shared/engine/rooms'
 import { replyFinished } from './completionSound'
 import { useRooms } from './roomStore'
 import type { TranslationKey } from '@shared/lib/i18n'
-import { AppError, failureOf } from '@shared/lib/problem'
+import { failureOf } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'
 import { sameJson } from '@shared/lib/utils'
 import type { MemberPhase, RoomAttachment, RoomEvent, RoomTask, RoomView } from './types'
 
+/** A hosted room's backend. Rooms live on the engine; each member's room session in its profile. */
 export interface RoomBackend {
-  request: (profile: string, method: string, params: Record<string, unknown>) => Promise<unknown>
+  state: (roomId: string) => Promise<RoomState>
+  /** Every log row after `since`. */
+  log: (roomId: string, since: number) => Promise<RoomEvent[]>
+  /** Posts as the user; the same `eventId` again lands the message once. */
+  send: (
+    roomId: string,
+    message: { eventId: string; text: string; attachments: RoomAttachment[] }
+  ) => Promise<void>
+  stop: (roomId: string) => Promise<void>
+  approve: (roomId: string, task: RoomTask, choice: 'once' | 'deny') => Promise<void>
+  retry: (roomId: string, task: RoomTask) => Promise<void>
+  discard: (roomId: string, task: RoomTask) => Promise<void>
+  /** Stores an image for a send; the send names the file as stored. */
+  uploadImage: (
+    roomId: string,
+    image: { dataUrl: string; name: string; mime: string }
+  ) => Promise<RoomAttachment>
+  /** A posted file as a data URL. */
+  image: (roomId: string, file: { eventId: string; attachmentId: string }) => Promise<string>
+  /** The member's session in this room, or null before it first answers there. */
+  memberSession: (profile: string, roomId: string) => Promise<string | null>
+  /** The model a session runs on, or null when it does not say. */
+  sessionModel: (profile: string, sessionId: string) => Promise<string | null>
+  /** Opens a session in this window, to change it; `subscription` is what to let go of after. */
+  openSession: (
+    profile: string,
+    sessionId: string
+  ) => Promise<{ sessionId: string; subscription: string | null }>
+  setSessionModel: (profile: string, sessionId: string, choice: ModelPick) => Promise<ModelChange>
+  /** Lets go of a session this window opened. */
+  letGo: (profile: string, sessionId: string, subscription: string) => Promise<void>
 }
+
+/** What a poll reads of a room: its newest log row and, while the engine runs it, its rounds. */
+export interface RoomState {
+  latestSeq: number
+  /** Whether the engine is running the room. */
+  live: boolean
+  working: boolean
+  phases: Record<string, MemberPhase>
+  tasks: RoomTask[]
+}
+
+/** A model switch; a costly or restricted model asks for a yes first, with why (when it says). */
+export type ModelChange = { switched: true } | { switched: false; confirmMessage: string | null }
 
 export interface RoomDraft {
   text: string
@@ -50,22 +93,9 @@ export interface ModelSwitch {
   skipped: string[]
 }
 
-interface DriverStatus {
-  working?: boolean
-  member_activity?: { member_id: string; status: string }[]
-  pending_actions?: Record<string, unknown>[]
-}
-
-// Main relays socket frames up to 16 MiB; the image goes as base64 inside one, with room to spare
-// for the JSON around it.
-const MAX_UPLOAD_CHARS = 15 * 1024 * 1024
-
 export function roomActions(backend: RoomBackend): RoomActions {
   const { update } = useRooms.getState()
   const viewOf = (roomId: string): RoomView | undefined => useRooms.getState().rooms[roomId]
-  // Rooms live on the gateway, not in a profile; the default profile's socket reaches them.
-  const call = <T>(method: string, params: Record<string, unknown>): Promise<T> =>
-    backend.request('default', method, params) as Promise<T>
   // One read per room at a time: a send's refresh joins a poll already on its way.
   const reads = new Map<string, Promise<void>>()
   // The newest model reading per room; an older one that answers later is dropped.
@@ -96,23 +126,19 @@ export function roomActions(backend: RoomBackend): RoomActions {
     }
 
   async function read(roomId: string): Promise<void> {
-    const { room, driver_status: driver } = await call<{
-      room: { latest_seq?: number | null }
-      driver_status?: DriverStatus | null
-    }>('groups.state', { room_id: roomId })
+    const state = await backend.state(roomId)
     const from = viewOf(roomId)?.lastSeq ?? 0
-    const events = (room.latest_seq ?? 0) > from ? await readLog(roomId, from) : []
+    const events = state.latestSeq > from ? await backend.log(roomId, from) : []
     const current = viewOf(roomId)
     const known = current?.lastSeq ?? 0
     // A send's own read may have landed first; keep only what is still new.
     const fresh = events.filter((event) => event.seq > known)
     // Log rows are final, so each member message is a finished reply; the first read is history.
     if (known > 0 && fresh.some((event) => event.kind === 'message.member')) replyFinished()
-    const phases = phasesOf(driver)
-    const tasks = tasksOf(driver)
+    const { phases, tasks } = state
     const next = {
-      live: !!driver,
-      working: driver?.working === true,
+      live: state.live,
+      working: state.working,
       // Unchanged rounds and tasks keep their objects, so the room does not redraw for them.
       phases: current && sameJson(current.phases, phases) ? current.phases : phases,
       tasks: current && sameJson(current.tasks, tasks) ? current.tasks : tasks,
@@ -133,10 +159,6 @@ export function roomActions(backend: RoomBackend): RoomActions {
     })
   }
 
-  function readLog(roomId: string, since: number): Promise<RoomEvent[]> {
-    return readRoomLog<RoomEvent>(backend.request, roomId, since)
-  }
-
   function refresh(roomId: string): Promise<void> {
     const running = reads.get(roomId)
     if (running) return running
@@ -151,25 +173,12 @@ export function roomActions(backend: RoomBackend): RoomActions {
     await refresh(roomId)
   }
 
-  // A member's session in this room lives in the member's own profile, titled after the room.
-  async function memberSession(roomId: string, member: RoomMember): Promise<string | null> {
-    const { sessions } = (await backend.request(member.profile, 'session.list', {
-      title: `Group: ${roomId}`,
-      include_hidden: true,
-      limit: 1
-    })) as { sessions: { id: string; resolved_id?: string | null }[] }
-    return sessions[0] ? sessions[0].resolved_id || sessions[0].id : null
-  }
-
   // A member that cannot be read (a gone profile, a bot on another machine) is left out.
   async function readMemberModel(roomId: string, member: RoomMember): Promise<string | null> {
     try {
-      const sessionId = await memberSession(roomId, member)
+      const sessionId = await backend.memberSession(member.profile, roomId)
       if (!sessionId) return null
-      const info = (await backend.request(member.profile, 'session.info', {
-        session_id: sessionId
-      })) as { model?: string | null }
-      return info.model || null
+      return await backend.sessionModel(member.profile, sessionId)
     } catch (error) {
       console.warn(`Room ${roomId}: could not read ${member.profile}'s model`, messageOf(error))
       return null
@@ -201,39 +210,28 @@ export function roomActions(backend: RoomBackend): RoomActions {
     const id = member.member_id ?? member.profile
     if (view?.phases[id] || view?.tasks.some((task) => task.member_id === id))
       return { switched: false, problem: null }
-    const found = await memberSession(roomId, member)
+    const found = await backend.memberSession(member.profile, roomId)
     if (!found) return { switched: false, problem: null }
-    const { profile } = member
-    const opened = (await backend.request(profile, 'session.resume', {
-      session_id: found,
-      defer_history: true,
-      omit_messages: true
-    })) as { session_id?: string; subscription_id?: string }
-    const session = { profile, sessionId: opened.session_id ?? found }
+    const opened = await backend.openSession(member.profile, found)
+    const session = { profile: member.profile, sessionId: opened.sessionId }
     const outcome = await changeModel(session, choice)
-    const problem = opened.subscription_id ? await letGo(session, opened.subscription_id) : null
+    const problem = opened.subscription ? await letGo(session, opened.subscription) : null
     return { switched: outcome.switched, problem: outcome.problem ?? problem }
   }
 
-  // The engine client turns a model `config.set` into the engine's fenced model mutation, with
-  // its one retry and its confirmation answer for a costly or restricted model.
   async function changeModel(
     session: { profile: string; sessionId: string },
     choice: ModelPick
   ): Promise<{ switched: boolean; problem: Problem | null }> {
     try {
-      const answer = (await backend.request(session.profile, 'config.set', {
-        session_id: session.sessionId,
-        key: 'model',
-        value: `${choice.model} --provider ${choice.provider}`
-      })) as { confirm_required?: boolean; confirm_message?: string }
+      const change = await backend.setSessionModel(session.profile, session.sessionId, choice)
       // A costly or restricted model asks for a yes that a room's switch cannot give.
-      return answer.confirm_required
-        ? {
+      return change.switched
+        ? { switched: true, problem: null }
+        : {
             switched: false,
-            problem: { key: 'rooms.modelNeedsConfirm', detail: answer.confirm_message || null }
+            problem: { key: 'rooms.modelNeedsConfirm', detail: change.confirmMessage }
           }
-        : { switched: true, problem: null }
     } catch (error) {
       return { switched: false, problem: failureOf('rooms.errorModel', error) }
     }
@@ -245,10 +243,7 @@ export function roomActions(backend: RoomBackend): RoomActions {
     subscription: string
   ): Promise<Problem | null> {
     try {
-      await backend.request(session.profile, 'session.detach', {
-        session_id: session.sessionId,
-        subscription_id: subscription
-      })
+      await backend.letGo(session.profile, session.sessionId, subscription)
       return null
     } catch (error) {
       return failureOf('rooms.errorModel', error)
@@ -258,7 +253,7 @@ export function roomActions(backend: RoomBackend): RoomActions {
   return {
     refresh,
 
-    log: (roomId) => readLog(roomId, 0),
+    log: (roomId) => backend.log(roomId, 0),
 
     send: async (roomId, draft) => {
       const text = draft.text.trim()
@@ -267,12 +262,7 @@ export function roomActions(backend: RoomBackend): RoomActions {
       const failed = viewOf(roomId)?.failedSend
       const eventId = failed?.draft === key ? failed.eventId : crypto.randomUUID()
       try {
-        await sendRoomMessage(backend.request, {
-          roomId,
-          eventId,
-          text,
-          attachments: draft.attachments
-        })
+        await backend.send(roomId, { eventId, text, attachments: draft.attachments })
         update(roomId, { failedSend: null, actionError: null })
       } catch (error) {
         update(roomId, {
@@ -286,55 +276,24 @@ export function roomActions(backend: RoomBackend): RoomActions {
     },
 
     stop: acting('rooms.errorStop', async (roomId) => {
-      await call('groups.stop', { room_id: roomId, cancel_id: crypto.randomUUID() })
+      await backend.stop(roomId)
       await readAfterChange(roomId)
     }),
 
     approve: acting(
       'rooms.errorAnswer',
       async (roomId, task: RoomTask, choice: 'once' | 'deny') => {
-        await call('groups.approve', {
-          room_id: roomId,
-          member_id: task.member_id,
-          task_id: task.task_id,
-          execution_generation: task.execution_generation,
-          request_id: task.request_id,
-          choice
-        })
+        await backend.approve(roomId, task, choice)
         await readAfterChange(roomId)
       }
     ),
 
     settle: acting('rooms.errorSettle', async (roomId, task: RoomTask) => {
-      await call(task.kind === 'discard' ? 'groups.discard' : 'groups.retry', {
-        room_id: roomId,
-        member_id: task.member_id,
-        task_id: task.task_id,
-        execution_generation: task.execution_generation
-      })
+      await (task.kind === 'discard' ? backend.discard : backend.retry)(roomId, task)
       await readAfterChange(roomId)
     }),
 
-    uploadImage: async (roomId, { dataUrl, name, mime }) => {
-      // The upload rides one socket frame; a bigger one would be refused and time out unseen.
-      if (dataUrl.length > MAX_UPLOAD_CHARS) throw new AppError('rooms.imageTooBig')
-      const stored = await call<RoomAttachment>('groups.attachment.upload', {
-        room_id: roomId,
-        upload_id: crypto.randomUUID(),
-        kind: 'image',
-        name,
-        mime,
-        data_base64: dataUrl.slice(dataUrl.indexOf(',') + 1)
-      })
-      // The engine stores a normalized name and type; the send must name the file as stored.
-      return {
-        attachment_id: stored.attachment_id,
-        kind: stored.kind,
-        name: stored.name,
-        mime: stored.mime,
-        size: stored.size
-      }
-    },
+    uploadImage: backend.uploadImage,
 
     readModel,
 
@@ -356,14 +315,7 @@ export function roomActions(backend: RoomBackend): RoomActions {
       return result
     },
 
-    image: async (roomId, { eventId, attachmentId }) => {
-      const file = await call<{ mime: string; data_base64: string }>('groups.attachment.download', {
-        room_id: roomId,
-        event_id: eventId,
-        attachment_id: attachmentId
-      })
-      return `data:${file.mime};base64,${file.data_base64}`
-    }
+    image: backend.image
   }
 }
 
@@ -375,40 +327,6 @@ export function answering(
   return room.members
     .filter((member) => phases?.[member.member_id ?? member.profile] === 'working')
     .map((member) => member.profile)
-}
-
-// A member running (or stopping) outranks the same member still queued behind it.
-function phasesOf(driver: DriverStatus | null | undefined): Record<string, MemberPhase> {
-  const phases: Record<string, MemberPhase> = {}
-  for (const { member_id: member, status } of driver?.member_activity ?? []) {
-    if (status !== 'queued') phases[member] = 'working'
-    else phases[member] ??= 'queued'
-  }
-  return phases
-}
-
-// Only actions this client can answer: an approval names its request, a retry or discard its
-// member and generation (older rows without them are skipped).
-function tasksOf(driver: DriverStatus | null | undefined): RoomTask[] {
-  return (driver?.pending_actions ?? []).flatMap((action): RoomTask[] => {
-    const kind = action.kind
-    const approval = (action.approval ?? {}) as Record<string, unknown>
-    if (kind !== 'approval' && kind !== 'retry' && kind !== 'discard') return []
-    if (typeof action.member_id !== 'string' || typeof action.task_id !== 'string') return []
-    if (typeof action.execution_generation !== 'number') return []
-    if (kind === 'approval' && typeof action.request_id !== 'string') return []
-    return [
-      {
-        kind,
-        member_id: action.member_id,
-        task_id: action.task_id,
-        execution_generation: action.execution_generation,
-        request_id: typeof action.request_id === 'string' ? action.request_id : null,
-        command: typeof approval.command === 'string' ? approval.command : '',
-        description: typeof approval.description === 'string' ? approval.description : ''
-      }
-    ]
-  })
 }
 
 function messageOf(error: unknown): string {

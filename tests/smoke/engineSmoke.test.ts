@@ -35,7 +35,7 @@ const INSTALL_FILE = process.env.TALYX_SMOKE_INSTALL_FILE ?? null
 // The `groups.capabilities` protocol_version of the vendored client's last re-sync (observed on
 // engine 0.22.7); update it with the client.
 const ROOMS_PROTOCOL_VERSION = 2
-// The manager bot's profile, which the providers page reads (useProvidersBackend's HOME_PROFILE).
+// The manager bot's profile, which the providers page reads (app/engine/providers.ts HOME_PROFILE).
 const HOME_PROFILE = 'default'
 const SMOKE_PROFILE = 'talyx-smoke-1'
 const SMOKE_SOUL = '# Smoke\n\nA throwaway bot the smoke test creates and deletes.'
@@ -349,7 +349,7 @@ async function checkRoutines(rpc: Rpc): Promise<void> {
   CronListSchema.parse(result)
 }
 
-// useProvidersBackend.ts `listProfiles`: unscoped.
+// app/engine/providers.ts `profiles`: unscoped.
 async function checkRosterRest(engine: Engine): Promise<void> {
   const { profiles } = RestProfilesSchema.parse(await rest(engine, { path: '/api/profiles' }))
   const names = profiles.map((profile) => profile.name)
@@ -357,7 +357,7 @@ async function checkRosterRest(engine: Engine): Promise<void> {
     throw new SmokeFailure('/api/profiles is missing a profile')
 }
 
-// providers.ts `loadProviders`: each path scoped to the home profile, which also rides the request.
+// app/engine/providers.ts: each path scoped to the home profile, which also rides the request.
 async function checkProvidersRest(engine: Engine): Promise<void> {
   const read = (path: string): Promise<unknown> =>
     rest(engine, { path: scoped(path, HOME_PROFILE), profile: HOME_PROFILE })

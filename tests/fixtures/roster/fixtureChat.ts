@@ -1,12 +1,13 @@
 import { chatActions } from '../../../src/renderer/src/features/chat/chat'
-import type { ChatActions, ChatBackend } from '../../../src/renderer/src/features/chat/chat'
+import type { ChatActions } from '../../../src/renderer/src/features/chat/chat'
+import type { EngineAccess } from '../../../src/renderer/src/app/engine/access'
 import { engineChatBackend } from '../../../src/renderer/src/app/engine/chat'
-import type { ProvidersBackend } from '../../../src/renderer/src/features/providers/providers'
 import { handleEvent, handlePrompt } from '../../../src/renderer/src/features/chat/events'
 import type { ChatUpdate } from '../../../src/renderer/src/features/chat/events'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { DEFAULT_MODEL, PROVIDER } from './fixtureProviders'
 import type { GatewayEvent, ServerRequest } from '../../../src/renderer/src/shared/engine/shared'
+import type { EngineHttp } from '../../../src/renderer/src/shared/engine/http'
 
 // Deliberately in-memory: a scripted bot per profile. Words in your message pick the script:
 // "clarify" asks two questions, "approve" asks to run a command, "ask" delegates to another bot.
@@ -97,7 +98,7 @@ const clarifies: Record<string, { last: string; reply: (answer: string) => strin
 const idleAt: Record<string, number> = {}
 
 /** `providers` answers the model lists, so a provider added in Settings shows in every picker. */
-export function fixtureChat(providers: ProvidersBackend): ChatActions {
+export function fixtureChat(providers: EngineHttp): ChatActions {
   const sessionOf = (profile: string): string => `${profile}-chat`
   const emit = (profile: string, type: string, payload: Record<string, unknown> = {}): void =>
     show(
@@ -256,7 +257,7 @@ export function fixtureChat(providers: ProvidersBackend): ChatActions {
     )
   }
 
-  const request: ChatBackend['request'] = async <T>(
+  const request: EngineAccess['request'] = async <T>(
     profile: string,
     method: string,
     params: Record<string, unknown> = {}
@@ -296,13 +297,13 @@ export function fixtureChat(providers: ProvidersBackend): ChatActions {
     return answer as T
   }
 
-  const http: ChatBackend['http'] = async <T>({ path }: { path: string }): Promise<T> => {
+  const http: EngineAccess['http'] = async <T>({ path }: { path: string }): Promise<T> => {
     const query = new URL(path, 'http://fixture.invalid').searchParams
     const profile = query.get('profile') ?? ''
     if (path.startsWith('/api/sessions/'))
       return { messages: page(history[profile] ?? [], query) } as T
     if (path.startsWith('/api/model/options') || path.startsWith('/api/providers/'))
-      return providers.http<T>({ path, profile })
+      return providers<T>({ path, profile })
     if (path.startsWith('/api/chat/image-upload'))
       return { path: '/images/fixture.png', mime_type: 'image/png' } as T
     if (path.startsWith('/api/audio/transcribe'))
