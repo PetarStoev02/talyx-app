@@ -465,6 +465,8 @@ const en = {
   'mcp.errorRoomGone': 'That room no longer exists.',
   'mcp.errorRoutineGone': 'That routine no longer exists.',
   'mcp.errorLook': 'That look is not one Talyx has; list_looks shows the shapes and hues.',
+  'details.errorFollowersUnreached':
+    'Talyx’s model changed, but the bots on Uses default could not be reached. Pick Talyx’s model again in Settings to move them.',
   'details.errorNotApplied': 'Some changes were not saved. Your edits are still here; save again.',
   'details.errorModel':
     'The engine did not switch to this model. Check that its provider is set up in Settings → Providers, then save again.',
@@ -592,7 +594,7 @@ const en = {
   'providers.notOnBots': 'Not saved on: {bots}. Save again to try those bots.',
   'providers.stillOnBots': 'Still on: {bots}. Remove it again to try those bots.',
   'providers.notFollowing':
-    'Still on the old model: {bots}. Pick Talyx’s model again to try those bots.',
+    'Still on the old model: {bots}. Pick Talyx’s model again in Settings to try those bots.',
   'providers.addTitle': 'Add provider',
   'providers.editTitle': 'Edit {name}',
   'providers.addHint':

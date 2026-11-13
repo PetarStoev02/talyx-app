@@ -5,6 +5,7 @@ import {
   SectionsNotSavedError,
   confirmModel,
   followDefault,
+  followIfDefaultChanged,
   loadDetails,
   refusedSectionProblem,
   saveDetails,
@@ -322,6 +323,38 @@ describe('bot details', () => {
         engine.expensiveModels.add(next.model)
         expect(await followDefault(backend, next)).toEqual([])
         expect(engine.profiles.helper.model).toEqual(next)
+      })
+
+      it('should never move Talyx itself, even marked as using the default', async () => {
+        engine.metadata.default[BOT_META_KEY] = { usesDefault: true }
+        await followDefault(backend, next)
+        expect(engine.profiles.default.model).toEqual(talyx)
+      })
+
+      it('should say the bots on the default were not reached when the bot list cannot be read', async () => {
+        engine.failListOnce()
+        await expect(followDefault(backend, next)).rejects.toMatchObject({
+          key: 'details.errorFollowersUnreached'
+        })
+        expect(engine.modelSets).toEqual([])
+      })
+
+      it("should move the bots once Talyx's model changed, even when another section was refused", async () => {
+        engine.failSection('soul')
+        const before = await opening('default')
+        await expect(
+          saveDetails(backend, bot('default'), {
+            opening: before,
+            draft: { ...before, soul: '# New', model: next }
+          })
+        ).rejects.toBeInstanceOf(SectionsNotSavedError)
+        expect(await followIfDefaultChanged(backend, before.model)).toEqual([])
+        expect(engine.profiles.analyst.model).toEqual(next)
+      })
+
+      it("should move nothing when Talyx's model did not change", async () => {
+        expect(await followIfDefaultChanged(backend, talyx)).toEqual([])
+        expect(engine.modelSets).toEqual([])
       })
 
       it('should move nothing when no bot uses the default', async () => {

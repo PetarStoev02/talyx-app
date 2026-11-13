@@ -9,7 +9,7 @@ import {
   MANAGER,
   SectionsNotSavedError,
   confirmModel,
-  followDefault,
+  followIfDefaultChanged,
   loadDetails,
   refusedSectionProblem,
   sameModelChoice,
@@ -25,7 +25,7 @@ import { lookOf, sameLook } from '@features/bots/look'
 import { LookPicker } from '@features/bots/LookPicker'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
 import { botTitle, problemOf } from '@features/bots/roster'
-import { reportSpread } from '@features/bots/spread'
+import { reportFollowing } from '@features/bots/spread'
 import type { RosterProblem } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot } from '@features/bots/types'
@@ -123,16 +123,20 @@ export function DetailsPanel({
     if (!draft || !opening) return
     setRefused([])
     void runRosterMutation(backend, async () => {
-      const asked = await saveOrMarkRefused(draft, opening)
-      if (asked === undefined) return
-      if (!asked) {
-        if (draft.model && !sameModelChoice(draft.model, opening.model))
-          await modelChanged(draft.model)
-        return closeIfShowing()
+      try {
+        const asked = await saveOrMarkRefused(draft, opening)
+        if (asked === undefined) return
+        if (!asked) {
+          if (draft.model && !sameModelChoice(draft.model, opening.model)) followInChat(draft.model)
+          return closeIfShowing()
+        }
+        // Everything but the model is saved; the panel now opens from there.
+        setLoaded({ ...draft, model: opening.model })
+        setConfirm(asked)
+      } finally {
+        // Also after a refusal of another section: Talyx's model may have changed all the same.
+        await followTalyx(opening.model)
       }
-      // Everything but the model is saved; the panel now opens from there.
-      setLoaded({ ...draft, model: opening.model })
-      setConfirm(asked)
     })
   }
 
@@ -165,18 +169,22 @@ export function DetailsPanel({
   function applyModel(model: ModelChoice): void {
     void runRosterMutation(backend, async () => {
       await confirmModel(backend, bot.name, model)
-      await modelChanged(model)
+      followInChat(model)
       setConfirm(null)
       closeIfShowing()
+      await followTalyx(opening?.model ?? null)
     })
   }
 
   // The engine's pin is for new sessions; the bot's open chat switches too, as from its composer,
   // so its model chip agrees with the bot. With no chat yet, the first one starts on the pin.
-  // Talyx's model is the default: the bots on "Uses default" move with it.
-  async function modelChanged(model: ModelChoice): Promise<void> {
+  function followInChat(model: ModelChoice): void {
     if (useChat.getState().chats[bot.name]?.sessionId) void chat?.setModel(bot.name, model)
-    if (bot.name === MANAGER) reportSpread(t, await followDefault(backend, model), 'followed')
+  }
+
+  // Talyx's model is the default: the bots on "Uses default" move with it.
+  async function followTalyx(before: ModelChoice | null): Promise<void> {
+    if (bot.name === MANAGER) await reportFollowing(t, followIfDefaultChanged(backend, before))
   }
 
   // A save can finish after the user moved to another bot's panel; that panel stays open.
@@ -308,7 +316,12 @@ export function DetailsPanel({
                   standIn={
                     defaultModel && {
                       label: t('details.usesDefault').replace('{model}', defaultModel.model),
-                      selected: draft.usesDefault,
+                      // A follower that did not move shows the model it really has; picking
+                      // Uses default again moves it.
+                      selected:
+                        draft.usesDefault &&
+                        !!draft.model &&
+                        sameModelChoice(draft.model, defaultModel),
                       onSelect: () => {
                         setUsesDefault(true)
                         update({ model: defaultModel })

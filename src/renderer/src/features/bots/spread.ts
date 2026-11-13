@@ -1,6 +1,7 @@
 import { toast } from 'sonner'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { listOf } from '@shared/lib/list'
+import { problemOf, problemText } from '@shared/lib/problem'
 import { botTitle } from './roster'
 import { useRoster } from './store'
 
@@ -30,4 +31,13 @@ export function reportSpread(
     return bot ? botTitle(bot) : profile
   })
   toast.error(t(partial).replace('{bots}', listOf(titles)), { duration: Infinity })
+}
+
+/** Reports a move of the bots on "Uses default": the ones left behind, or why none were reached. */
+export async function reportFollowing(t: Translate, following: Promise<string[]>): Promise<void> {
+  try {
+    reportSpread(t, await following, 'followed')
+  } catch (error) {
+    toast.error(problemText(t, problemOf(error)), { duration: Infinity })
+  }
 }

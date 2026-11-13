@@ -82,6 +82,8 @@ export interface EngineDouble {
   expensiveModels: Set<string>
   /** Profiles whose model pin the engine refuses. */
   refuseModelOn: Set<string>
+  /** The next profiles.list fails, as a dropped socket does. */
+  failListOnce: () => void
   deleted: string[]
   conflictOnce: () => void
   failSection: (section: Section) => void
@@ -183,6 +185,7 @@ export function engineDouble(
   const cronWrites: EngineDouble['cronWrites'] = []
   const runMessages: EngineDouble['runMessages'] = {}
   let metaFailure = false
+  let listFailure = false
   let assetFailure = false
   const assets: EngineDouble['assets'] = []
   const modelSets: Record<string, unknown>[] = []
@@ -438,6 +441,10 @@ export function engineDouble(
   }
 
   const request: RosterRequest = async (profile, method, params) => {
+    if (method === 'profiles.list' && listFailure) {
+      listFailure = false
+      throw new Error('Gateway socket closed')
+    }
     if (method === 'profiles.list')
       return {
         profiles: Object.entries(metadata).map(([name, ui_meta]) => ({
@@ -543,6 +550,9 @@ export function engineDouble(
       cronRefusal = detail
     },
     cronWrites,
+    failListOnce: () => {
+      listFailure = true
+    },
     failMetaOnce: () => {
       metaFailure = true
     },

@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { RosterBackend } from '@features/bots/data'
 import { followDefault } from '@features/bots/details'
-import { reportSpread } from '@features/bots/spread'
+import { reportFollowing } from '@features/bots/spread'
 import { confirmDefaultModel, setDefaultModel } from '@features/providers/providers'
 import type { ModelConfirm, ModelPick, ProvidersBackend } from '@features/providers/providers'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
@@ -24,7 +24,8 @@ export function DefaultModelSection({
   onChanged
 }: {
   backend: ProvidersBackend
-  /** Reaches the bots on "Uses default"; null while the engine's socket has not opened. */
+  /** Reaches the bots on "Uses default"; null while the engine's socket has not opened, which
+   *  keeps the field disabled. */
   roster: RosterBackend | null
   /** Null while loading, or when Talyx runs on the engine's default. */
   model: ModelPick | null
@@ -40,8 +41,8 @@ export function DefaultModelSection({
       setConfirm(question)
       if (!question) {
         toast.success(t('providers.defaultChanged').replace('{model}', next.model))
-        if (roster) reportSpread(t, await followDefault(roster, next), 'followed')
         await onChanged()
+        if (roster) await reportFollowing(t, followDefault(roster, next))
       }
     } catch (error) {
       setConfirm(null)
@@ -61,7 +62,8 @@ export function DefaultModelSection({
           failed: t('chat.modelsFailed')
         }}
         value={model}
-        load={models && (() => models(backend.home))}
+        // Waits for the bots, so a change never leaves the ones on Uses default behind unseen.
+        load={models && roster && (() => models(backend.home))}
         onSelect={(next) => void apply(next, () => setDefaultModel(backend, next))}
       />
 

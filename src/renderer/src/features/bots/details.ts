@@ -288,7 +288,11 @@ async function pinModel(
  * returns the bots that did not take it. A bot with its own model keeps it.
  */
 export async function followDefault(backend: RosterBackend, pick: ModelChoice): Promise<string[]> {
-  const followers = (await readProfiles(backend))
+  const bots = await readProfiles(backend).catch((error: unknown) => {
+    // Talyx's model has changed by now: say the followers were not reached, not that it failed.
+    throw new RosterError('details.errorFollowersUnreached', problemOf(error).detail)
+  })
+  const followers = bots
     .filter((bot) => bot.meta.usesDefault === true && bot.name !== MANAGER)
     .map((bot) => bot.name)
   try {
@@ -299,6 +303,18 @@ export async function followDefault(backend: RosterBackend, pick: ModelChoice): 
   } finally {
     detailsChanged()
   }
+}
+
+/**
+ * After a save that may have changed Talyx's model, in part or after a refusal: reads the model
+ * Talyx has now and moves the followers when it differs from `before`.
+ */
+export async function followIfDefaultChanged(
+  backend: RosterBackend,
+  before: ModelChoice | null
+): Promise<string[]> {
+  const { model } = await loadDetails(backend, MANAGER)
+  return model && !sameModelChoice(model, before) ? followDefault(backend, model) : []
 }
 
 export function sameModelChoice(a: ModelChoice, b: ModelChoice | null): boolean {

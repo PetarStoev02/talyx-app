@@ -93,7 +93,7 @@ export const MCP_TOOLS = {
   },
   update_bot: {
     description:
-      'Change a bot’s title, description, SOUL, model or look. Only the fields given change. Replacing the SOUL, or a model that costs more, asks the user in Talyx first.',
+      'Change a bot’s title, description, SOUL, model or look. Only the fields given change. Replacing the SOUL, or a model that costs more, asks the user in Talyx first. A new model for Talyx (`default`) also moves the bots on Uses default; any that did not move come back in `stillOnOldModel`.',
     args: z.object({
       profile,
       title: z.string().trim().min(1).optional(),
