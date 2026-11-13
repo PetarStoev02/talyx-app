@@ -14,6 +14,7 @@ import { IconButton } from '@shared/ui/IconButton'
 import { ModelPicker } from '@shared/ui/ModelPicker'
 import { CheckItem, menuContentClass } from '@shared/ui/menu'
 import type { TranslationKey } from '@shared/lib/i18n'
+import { composerWanted } from './focusComposer'
 
 const MAX_ROWS = 8
 // Every round icon button in the composer: one circle, one icon size.
@@ -164,6 +165,9 @@ export function Composer({
         )}
         <textarea
           ref={inputRef}
+          data-composer
+          // Focus asked for (⌘L) before this box was on the page.
+          autoFocus={composerWanted()}
           value={text}
           rows={1}
           aria-label={target.placeholder}

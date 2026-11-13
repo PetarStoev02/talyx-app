@@ -9,7 +9,8 @@ import { useProvidersBackend } from '@app/providers/useProvidersBackend'
 import { useSetupBackend } from '@app/providers/useSetupBackend'
 import { useFirstSetupStep } from '@app/providers/useFirstSetupStep'
 import { useTheme } from '@shared/hooks/useTheme'
-import { useKeyboardShortcuts } from '@shared/hooks/useKeyboardShortcuts'
+import { useKeyboardShortcuts } from '@app/providers/useKeyboardShortcuts'
+import { CheatSheet } from '@widgets/shortcuts'
 import { reportError } from '@shared/lib/report'
 import { AgentsPage } from '@pages/agents'
 import { SettingsPage } from '@pages/settings'
@@ -33,7 +34,6 @@ import { useSelectionMemory } from '@app/providers/useSelectionMemory'
 import { useMcpBridge } from '@app/providers/useMcpBridge'
 
 function App(): React.JSX.Element {
-  useKeyboardShortcuts()
   useSelectionMemory()
   const { effectiveTheme } = useTheme()
   const currentView = useNavigation((s) => s.currentView)
@@ -139,6 +139,8 @@ function App(): React.JSX.Element {
       />
       <ActivationDialog />
       <ApprovalDialog />
+      {/* Not during setup: the roster and the composer are not on the page. */}
+      {!inSetup && <Shortcuts />}
       {inSetup ? (
         <SetupFlow
           providersForm={
@@ -178,6 +180,12 @@ function App(): React.JSX.Element {
       )}
     </TooltipProvider>
   )
+}
+
+/** The app-wide keys and their cheat sheet, while the app (not setup) is on screen. */
+function Shortcuts(): React.JSX.Element {
+  useKeyboardShortcuts()
+  return <CheatSheet />
 }
 
 export default App
