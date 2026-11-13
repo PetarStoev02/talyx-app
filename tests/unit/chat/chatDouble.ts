@@ -1,3 +1,4 @@
+import { engineChatBackend } from '../../../src/renderer/src/app/engine/chat'
 import type { ChatBackend } from '../../../src/renderer/src/features/chat/chat'
 import type { SessionMessage } from '../../../src/renderer/src/shared/engine/types'
 import type { EngineHttpRequest } from '../../../src/shared/engine'
@@ -38,7 +39,8 @@ function page(messages: SessionMessage[], params: Record<string, unknown>): Sess
 export const KEPT_ENDPOINT_PROFILE = 'acme-kept'
 const ROUTER_URL = 'http://127.0.0.1:20128/v1'
 
-// In-memory engine for the chat: Bot Chat lookup, create, resume, submit and the REST paths.
+// In-memory engine for the chat (Bot Chat lookup, create, resume, submit and the REST paths), with
+// the chat's real wiring over it.
 export function chatDouble(
   chats: ChatDouble['chats'] = {
     'acme-manager': {
@@ -82,10 +84,10 @@ export function chatDouble(
         }
       case 'GET /api/sessions':
         return { messages: page(chat?.messages ?? [], params) }
-      case 'POST /api/chat/image-upload':
-        return { path: '/images/pasted.png', mime_type: 'image/png' }
       case 'POST /api/audio/transcribe':
         return { transcript: 'dictated words' }
+      case 'POST /api/chat/image-upload':
+        return { path: '/images/pasted.png', mime_type: 'image/png' }
       case 'GET /api/model/options':
         if (profile === KEPT_ENDPOINT_PROFILE)
           return {
@@ -150,7 +152,7 @@ export function chatDouble(
     await hold
     return value
   }
-  const backend: ChatBackend = {
+  const backend = engineChatBackend({
     request: async <T>(profile: string, method: string, params: Record<string, unknown> = {}) =>
       (await held(method, () => answer(profile, method, params))) as T,
     http: async <T>(request: EngineHttpRequest) => {
@@ -166,7 +168,7 @@ export function chatDouble(
         answer(url.searchParams.get('profile') ?? '', route, params)
       )) as T
     }
-  }
+  })
   return {
     backend,
     calls,

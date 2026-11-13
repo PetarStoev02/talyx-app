@@ -3,12 +3,11 @@ import type { McpAnswer, McpToolArgs, McpToolName } from '../../../../shared/mcp
 import { t } from '@shared/lib/i18n'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { problemOf, problemText } from '@shared/lib/problem'
-import { readRoomLog, sendRoomMessage } from '@shared/engine/rooms'
 import { BLOCK_HUES, BLOCK_SHAPES } from '@shared/ui/blockGeometry'
 import type { BlockShape } from '@shared/ui/blockGeometry'
 import { refreshRoster, rosterActions, runRosterMutation } from './actions'
 import { createBot, profileIdFor } from './create'
-import type { RosterBackend } from './data'
+import type { RosterBackend, RosterStore } from './data'
 import { MANAGER, confirmModel, followIfDefaultChanged, loadDetails, saveDetails } from './details'
 import type { DetailsDraft } from './details'
 import { lookOf, matchName } from './look'
@@ -22,8 +21,30 @@ import {
   removeRoutine,
   setRoutineActive
 } from './routines'
+import type { RoutinesBackend } from './routines'
 import { useRoster } from './store'
 import type { Bot, Room, RosterSnapshot } from './types'
+
+/** What only the MCP tools ask of the engine; the rest goes through the roster's use cases. */
+export interface McpToolsBackend {
+  /** The profile's default reasoning level for new turns. */
+  setReasoning: (profile: string, level: string) => Promise<void>
+  /** Posts a message in the room as the user. */
+  sendRoomMessage: (roomId: string, text: string) => Promise<void>
+  /** The room's messages, oldest first. */
+  roomMessages: (roomId: string) => Promise<RoomMessage[]>
+}
+
+/** A message in a room: the user's (`memberId` null) or a member's. */
+export interface RoomMessage {
+  seq: number
+  memberId: string | null
+  /** The name the member had when it wrote, when the room recorded one. */
+  memberName: string | null
+  text: string
+  /** Seconds since the epoch. */
+  at: number
+}
 
 /** What the user is asked in Talyx before a tool that loses data runs. */
 export interface ApprovalRequest {
@@ -46,6 +67,21 @@ export class ApprovalRefusedError extends RosterError {
   }
 }
 
+// The tools neither register MCP servers nor open a routine's runs or details.
+type ToolsBackend = Omit<
+  RosterBackend,
+  | 'listMcpServers'
+  | 'addMcpServer'
+  | 'removeMcpServer'
+  | 'reloadMcp'
+  | 'seatableProfiles'
+  | 'loadRoutine'
+  | 'updateRoutine'
+  | 'listRoutineRuns'
+  | 'lastRunReply'
+  | 'runRoutine'
+>
+
 // How many messages read_room_history returns when the agent does not say.
 const DEFAULT_HISTORY = 50
 
@@ -57,7 +93,7 @@ type Run<T extends McpToolName> = (args: McpToolArgs<T>) => Promise<unknown>
  * roster change goes through the roster's mutation queue, so the roster shows it at once.
  */
 export function mcpTools(
-  backend: RosterBackend,
+  backend: ToolsBackend,
   approve: Approve
 ): (tool: string, rawArgs: unknown) => Promise<McpAnswer> {
   return async (tool, rawArgs) => {
@@ -76,7 +112,7 @@ export function mcpTools(
 }
 
 function toolsFor(
-  backend: RosterBackend,
+  backend: ToolsBackend,
   approve: (request: Omit<ApprovalRequest, 'until'>) => Promise<boolean>
 ): { [T in McpToolName]: Run<T> } {
   const actions = rosterActions(backend)
@@ -173,12 +209,7 @@ function toolsFor(
     },
     set_reasoning: async ({ profile, level }) => {
       botOf(await fresh(), profile)
-      await backend.http({
-        path: `/api/config?${new URLSearchParams({ profile })}`,
-        method: 'PUT',
-        body: { config: { agent: { reasoning_effort: level } } },
-        profile
-      })
+      await backend.setReasoning(profile, level)
       return { profile, reasoning: level }
     },
     delete_bot: async ({ profile }) => {
@@ -266,12 +297,7 @@ function toolsFor(
       }),
     send_room_message: async ({ roomId, text }) => {
       roomOf(await fresh(), roomId)
-      await sendRoomMessage(backend.request, {
-        roomId,
-        eventId: crypto.randomUUID(),
-        text,
-        attachments: []
-      })
+      await backend.sendRoomMessage(roomId, text)
       return { roomId, sent: true }
     },
     read_room_history: async ({ roomId, limit }) =>
@@ -322,29 +348,22 @@ function toolsFor(
   }
 }
 
-/** A room log row, as much of it as the history reads. */
-interface LogEvent {
-  seq: number
-  kind: string
-  actor: { id: string; display_name?: string }
-  payload: { text?: unknown }
-  created_at: number
-}
-
 // ponytail: reads the whole log for the last messages; page from the end if rooms grow long.
-async function roomHistory(backend: RosterBackend, room: Room, limit: number): Promise<unknown> {
-  const events = await readRoomLog<LogEvent>(backend.request, room.room_id, 0)
-  const nameOf = (id: string, fallback?: string): string =>
+async function roomHistory(
+  backend: Pick<McpToolsBackend, 'roomMessages'>,
+  room: Room,
+  limit: number
+): Promise<unknown> {
+  const nameOf = (id: string, fallback: string | null): string =>
     room.members.find((member) => (member.member_id ?? member.profile) === id)?.display_name ??
     fallback ??
     id
-  const messages = events.flatMap((event) => {
-    const text = typeof event.payload.text === 'string' ? event.payload.text.trim() : ''
-    if (!text || (event.kind !== 'message.user' && event.kind !== 'message.member')) return []
-    const from =
-      event.kind === 'message.user' ? 'user' : nameOf(event.actor.id, event.actor.display_name)
-    return [{ seq: event.seq, from, text, at: event.created_at }]
-  })
+  const messages = (await backend.roomMessages(room.room_id)).map((message) => ({
+    seq: message.seq,
+    from: message.memberId === null ? 'user' : nameOf(message.memberId, message.memberName),
+    text: message.text,
+    at: message.at
+  }))
   return { messages: messages.slice(-limit), more: messages.length > limit }
 }
 
@@ -353,7 +372,7 @@ async function roomHistory(backend: RosterBackend, room: Room, limit: number): P
  * outcome back to the agent instead of showing a failure in the user's roster.
  */
 async function rosterChange<T>(
-  backend: RosterBackend,
+  backend: Pick<RosterStore, 'listBots' | 'listRooms' | 'olderRoomFolders'>,
   operation: (snapshot: RosterSnapshot) => Promise<T>
 ): Promise<T> {
   // Set inside the queued operation; a box, since TypeScript does not follow the closure's writes.
@@ -417,7 +436,7 @@ function folderOf(snapshot: RosterSnapshot, folderId: string): RosterSnapshot['f
 }
 
 async function routineOf(
-  backend: RosterBackend,
+  backend: Pick<RoutinesBackend, 'listRoutines'>,
   profile: string,
   routineId: string
 ): Promise<{ name: string }> {

@@ -1,6 +1,9 @@
 import { useEngine } from '../../../src/renderer/src/app/providers/useEngine'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
-import type { RosterBackend, RosterRequest } from '../../../src/renderer/src/features/bots/data'
+import type { EngineAccess } from '../../../src/renderer/src/app/engine/access'
+import { engineProvidersBackend } from '../../../src/renderer/src/app/engine/providers'
+import { engineRoomBackend } from '../../../src/renderer/src/app/engine/room'
+import { engineRosterBackend } from '../../../src/renderer/src/app/engine/roster'
 import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/http'
 import { blockPng } from '../../../src/renderer/src/shared/ui/blockPng'
 import { EXPECTED_ENGINE_VERSION, type EngineStatus } from '../../../src/shared/engine'
@@ -248,7 +251,11 @@ function createProfile(params: Record<string, unknown>): unknown {
   return { ok: true, name, path: `/fixture/${name}`, mirrored: {} }
 }
 
-const request: RosterRequest = async (profile, method, params) => {
+async function request(
+  profile: string,
+  method: string,
+  params: Record<string, unknown> = {}
+): Promise<unknown> {
   if (method === 'profiles.list')
     return {
       profiles: structuredClone(profiles).map((bot) => ({
@@ -327,7 +334,7 @@ async function http<T>(request: EngineApiRequest): Promise<T> {
   const run = /^\/api\/sessions\/([^/?]+)\/messages/.exec(request.path)?.[1]
   if (run && runMessages[decodeURIComponent(run)])
     return { messages: runMessages[decodeURIComponent(run)] } as T
-  if (!request.path.startsWith('/api/model/set')) return providers.http<T>(request)
+  if (!request.path.startsWith('/api/model/set')) return providersRest<T>(request)
   const body = request.body as {
     provider: string
     model: string
@@ -349,17 +356,23 @@ async function deleteProfile(profile: string): Promise<void> {
   if (index >= 0) profiles.splice(index, 1)
 }
 
-export const rosterBackend: RosterBackend = {
-  request,
-  http,
-  deleteProfile,
-  botMetaKey: BOT_META_KEY,
-  botGroupsMetaKey: `${BOT_META_KEY}-groups`,
-  avatarPng: blockPng,
-  setRoomMembers
+const GROUPS_META_KEY = `${BOT_META_KEY}-groups`
+
+const engine: EngineAccess = { request: request as EngineAccess['request'], http }
+
+export const rosterBackend = {
+  ...engineRosterBackend(engine, {
+    botMetaKey: BOT_META_KEY,
+    botGroupsMetaKey: GROUPS_META_KEY,
+    deleteProfile,
+    avatarPng: blockPng,
+    setRoomMembers
+  }),
+  room: engineRoomBackend(engine)
 }
-export const providers = fixtureProviders(profiles.map((bot) => bot.name))
-export const chat = fixtureChat(providers)
+export const providersRest = fixtureProviders(profiles.map((bot) => bot.name))
+export const providers = engineProvidersBackend({ http: providersRest })
+export const chat = fixtureChat(providersRest)
 
 /** An attached engine as the fixture's pages need it. */
 export function attachedEngine(
@@ -373,8 +386,8 @@ export function attachedEngine(
     home: '/fixture/engine',
     path,
     stale: false,
-    botMetaKey: rosterBackend.botMetaKey,
-    botGroupsMetaKey: rosterBackend.botGroupsMetaKey,
+    botMetaKey: BOT_META_KEY,
+    botGroupsMetaKey: GROUPS_META_KEY,
     managerHandle: 'acme'
   }
 }

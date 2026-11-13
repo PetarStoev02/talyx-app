@@ -18,7 +18,11 @@ import {
   submitSignInCode,
   waitForSignIn
 } from '../../../src/renderer/src/features/providers/providers'
-import type { EndpointDraft } from '../../../src/renderer/src/features/providers/providers'
+import type {
+  EndpointDraft,
+  SignInPoll
+} from '../../../src/renderer/src/features/providers/providers'
+import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/http'
 import { HOME, ROUTER, providersDouble } from './providersDouble'
 import type { ProvidersDouble } from './providersDouble'
 
@@ -398,10 +402,10 @@ describe('providers', () => {
     })
 
     it('should not retry a poll that failed for another reason than time', async () => {
-      const original = engine.backend.http
-      engine.backend.http = async (request) => {
+      const original = engine.http
+      engine.http = async <T>(request: EngineApiRequest): Promise<T> => {
         if (request.path.includes('/poll/')) throw new Error('fetch failed')
-        return original(request)
+        return original<T>(request)
       }
 
       await expect(
@@ -452,5 +456,57 @@ describe('providers', () => {
         key: 'providers.errorNotSignedOut'
       })
     })
+  })
+})
+
+// Talyx's own rules, over a backend that speaks Talyx's terms and records what it is asked.
+describe('providers over a Talyx-terms backend', () => {
+  it('should write to Talyx first and stop there when Talyx refuses', async () => {
+    const saved: string[] = []
+    const backend = {
+      home: 'talyx',
+      profiles: async () => ['talyx', 'scout'],
+      saveKey: async (profile: string) => {
+        saved.push(profile)
+        if (profile === 'talyx') throw new Error('refused')
+      }
+    }
+
+    await expect(saveKey(backend, { key: 'KEY', value: 'v' })).rejects.toThrow('refused')
+    expect(saved).toEqual(['talyx'])
+  })
+
+  it('should count a removal a bot refused as done once the bot no longer has it', async () => {
+    const backend = {
+      home: 'talyx',
+      profiles: async () => ['talyx', 'scout', 'writer'],
+      removeKey: async () => {
+        throw new Error('not found')
+      },
+      hasKey: async (profile: string) => profile === 'writer'
+    }
+
+    expect(await removeKey(backend, 'KEY')).toEqual(['writer'])
+  })
+
+  it('should ask again after a timed-out wait and stop at the first answer', async () => {
+    const answers = [new Error('TimeoutError'), { status: 'pending' }, { status: 'approved' }]
+    const backend = {
+      pollSignIn: async () => {
+        const next = answers.shift()
+        if (next instanceof Error) throw next
+        return next as SignInPoll
+      }
+    }
+
+    expect(
+      await waitForSignIn(backend, {
+        providerId: 'p',
+        sessionId: 's',
+        expiresAt: Date.now() + 60_000,
+        live: () => true
+      })
+    ).toEqual({ status: 'approved' })
+    expect(answers).toEqual([])
   })
 })

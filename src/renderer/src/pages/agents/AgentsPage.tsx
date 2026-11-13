@@ -18,6 +18,7 @@ import { DetailsPanel, RoomDetailsPanel } from '@widgets/bot-details'
 import type { ChatActions } from '@features/chat/chat'
 import { SlidePanel } from '@shared/ui/Reveal'
 import type { RosterBackend } from '@features/bots/data'
+import type { RoomBackend } from '@features/chat/room'
 
 // Where the details and room panels sit: see their SlidePanel. Beside the chat from a 52rem page,
 // which leaves the chat at least about 490px; narrower, a docked panel would squeeze it unusable.
@@ -32,7 +33,7 @@ export function AgentsPage({
   roster
 }: {
   chat: ChatActions | null
-  roster: RosterBackend | null
+  roster: (RosterBackend & { room: RoomBackend }) | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const snapshot = useRoster((s) => s.snapshot)
@@ -48,7 +49,7 @@ export function AgentsPage({
   )
   const phases = useRooms((state) => (room ? state.rooms[room.room_id]?.phases : undefined))
   const title = bot ? botTitle(bot) : room?.name
-  const rooms = useMemo(() => roster && roomActions(roster), [roster])
+  const rooms = useMemo(() => roster && roomActions(roster.room), [roster])
   // A find belongs to the chat or room it was opened in; selecting another ends it. Here, not when
   // a pane unmounts: a picked room hit asks for the find before its pane mounts.
   useEffect(() => {

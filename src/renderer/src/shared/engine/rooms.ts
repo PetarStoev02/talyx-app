@@ -1,4 +1,4 @@
-// The room calls more than one feature makes: the chat's room view and Talyx's MCP tools. Rooms
+// Room calls shared by the room view's backend and Talyx's MCP tools. Rooms
 // live on the gateway, not in a profile; the default profile's socket reaches them.
 
 export type RoomRequest = (

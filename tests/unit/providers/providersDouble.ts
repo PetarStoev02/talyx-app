@@ -1,4 +1,5 @@
-import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/http'
+import { engineProvidersBackend } from '../../../src/renderer/src/app/engine/providers'
+import type { EngineApiRequest, EngineHttp } from '../../../src/renderer/src/shared/engine/http'
 import type { ProvidersBackend } from '../../../src/renderer/src/features/providers/providers'
 import type {
   CustomEndpoint,
@@ -50,7 +51,10 @@ const TIMED_OUT =
   "Error invoking remote method 'engine:http': TimeoutError: The operation was aborted due to timeout"
 
 export interface ProvidersDouble {
+  /** The real wiring over the in-memory REST below. */
   backend: ProvidersBackend
+  /** The in-memory engine REST; the backend reads it on each call, so a test can wrap it. */
+  http: EngineHttp
   profiles: Record<string, ProfileConfig>
   accounts: OAuthProvider[]
   /** Every write, as `<profile> <METHOD> <path>`, in order. */
@@ -242,18 +246,19 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
     if (account) account.status = { logged_in: true }
   }
 
-  const backend: ProvidersBackend = {
-    home: HOME,
-    profiles: async () => Object.keys(profiles),
-    http: async <T>(request: EngineApiRequest) => {
-      const url = new URL(request.path, 'http://engine.invalid')
-      const profile = url.searchParams.get('profile') ?? ''
-      if (profile !== request.profile) throw new Error('profile query and grant disagree')
-      return answer(profile, request.method ?? 'GET', url.pathname, request.body as Body) as T
-    }
+  const http = async <T>(request: EngineApiRequest): Promise<T> => {
+    if (request.path === '/api/profiles')
+      return { profiles: Object.keys(profiles).map((name) => ({ name })) } as T
+    const url = new URL(request.path, 'http://engine.invalid')
+    const profile = url.searchParams.get('profile') ?? ''
+    if (profile !== request.profile) throw new Error('profile query and grant disagree')
+    return answer(profile, request.method ?? 'GET', url.pathname, request.body as Body) as T
   }
-  return {
-    backend,
+  const double: ProvidersDouble = {
+    backend: engineProvidersBackend({
+      http: <T>(request: EngineApiRequest) => double.http<T>(request)
+    }),
+    http,
     profiles,
     accounts,
     writes,
@@ -261,6 +266,7 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
     polls,
     failOn: (profile) => failing.add(profile)
   }
+  return double
 }
 
 function savedKey(endpoint: CustomEndpoint | undefined): boolean {

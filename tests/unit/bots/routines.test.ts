@@ -18,6 +18,7 @@ import {
 import type {
   RoutineDetails,
   RoutineDraft,
+  RoutineUpdates,
   ScheduleDraft
 } from '../../../src/renderer/src/features/bots/routines'
 import { RosterError } from '../../../src/renderer/src/features/bots/roster'
@@ -496,5 +497,29 @@ describe('routines', () => {
         })
       })
     })
+  })
+})
+
+describe('saveRoutine', () => {
+  const saved = async (after: RoutineDraft): Promise<RoutineUpdates[]> => {
+    const updates: RoutineUpdates[] = []
+    await saveRoutine(
+      { updateRoutine: async (_profile, _id, change) => void updates.push(change) },
+      'analyst',
+      { id: 'cash', before: draft(), after }
+    )
+    return updates
+  }
+
+  it('should send only the fields that changed, trimmed', async () => {
+    expect(
+      await saved(draft({ name: '  Cash  ', instruction: 'Summarise the cash position.' }))
+    ).toEqual([{ name: 'Cash' }])
+  })
+
+  it('should send a new schedule as its line and a new chat choice', async () => {
+    expect(
+      await saved(draft({ schedule: schedule({ kind: 'hours', hours: 3 }), postsToChat: false }))
+    ).toEqual([{ schedule: 'every 3h', postsToChat: false }])
   })
 })

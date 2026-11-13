@@ -1,7 +1,11 @@
 import { BLOCK_HUES, BLOCK_SHAPES } from '@shared/ui/blockGeometry'
 import type { BlockShape } from '@shared/ui/blockGeometry'
-import type { RosterBackend } from './data'
 import type { Bot, BotMeta } from './types'
+
+export interface AvatarBackend {
+  /** Overwrites the profile's avatar image with the block, so the engine's other surfaces show it. */
+  setAvatar: (profile: string, look: Look) => Promise<void>
+}
 
 /** A bot's avatar: one of the block shapes in one of the hues, with or without its face. */
 export interface Look {
@@ -46,16 +50,8 @@ export function sameLook(a: Look, b: Look): boolean {
 }
 
 /** Overwrites the profile's avatar image, so the engine's other surfaces show the block too. */
-export async function exportAvatar(
-  backend: RosterBackend,
-  profile: string,
-  look: Look
-): Promise<void> {
-  await backend.request(profile, 'profiles.set_asset', {
-    name: profile,
-    asset: 'avatar',
-    data: await backend.avatarPng(look)
-  })
+export function exportAvatar(backend: AvatarBackend, profile: string, look: Look): Promise<void> {
+  return backend.setAvatar(profile, look)
 }
 
 function shapeOf(value: string | undefined): BlockShape | undefined {
