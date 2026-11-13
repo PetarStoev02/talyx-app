@@ -29,7 +29,7 @@ export interface RoomBackend {
   /** A posted file as a data URL. */
   image: (roomId: string, file: { eventId: string; attachmentId: string }) => Promise<string>
   /** The member's session in this room, or null before it first answers there. */
-  memberSession: (roomId: string, profile: string) => Promise<string | null>
+  memberSession: (profile: string, roomId: string) => Promise<string | null>
   /** The model a session runs on, or null when it does not say. */
   sessionModel: (profile: string, sessionId: string) => Promise<string | null>
   /** Opens a session in this window, to change it; `subscription` is what to let go of after. */
@@ -176,7 +176,7 @@ export function roomActions(backend: RoomBackend): RoomActions {
   // A member that cannot be read (a gone profile, a bot on another machine) is left out.
   async function readMemberModel(roomId: string, member: RoomMember): Promise<string | null> {
     try {
-      const sessionId = await backend.memberSession(roomId, member.profile)
+      const sessionId = await backend.memberSession(member.profile, roomId)
       if (!sessionId) return null
       return await backend.sessionModel(member.profile, sessionId)
     } catch (error) {
@@ -210,7 +210,7 @@ export function roomActions(backend: RoomBackend): RoomActions {
     const id = member.member_id ?? member.profile
     if (view?.phases[id] || view?.tasks.some((task) => task.member_id === id))
       return { switched: false, problem: null }
-    const found = await backend.memberSession(roomId, member.profile)
+    const found = await backend.memberSession(member.profile, roomId)
     if (!found) return { switched: false, problem: null }
     const opened = await backend.openSession(member.profile, found)
     const session = { profile: member.profile, sessionId: opened.sessionId }

@@ -17,8 +17,7 @@ import { findIn, useFind } from '@features/chat/findStore'
 import { DetailsPanel, RoomDetailsPanel } from '@widgets/bot-details'
 import type { ChatActions } from '@features/chat/chat'
 import { SlidePanel } from '@shared/ui/Reveal'
-import type { RosterBackend } from '@features/bots/data'
-import type { RoomBackend } from '@features/chat/room'
+import type { RosterAndRooms } from '@app/providers/useRosterBackend'
 
 // Where the details and room panels sit: see their SlidePanel. Beside the chat from a 52rem page,
 // which leaves the chat at least about 490px; narrower, a docked panel would squeeze it unusable.
@@ -33,7 +32,7 @@ export function AgentsPage({
   roster
 }: {
   chat: ChatActions | null
-  roster: (RosterBackend & { room: RoomBackend }) | null
+  roster: RosterAndRooms | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const snapshot = useRoster((s) => s.snapshot)

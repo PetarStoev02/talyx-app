@@ -92,7 +92,7 @@ export function engineRoomBackend(engine: EngineAccess): RoomBackend {
     },
 
     // A member's session in this room lives in the member's own profile, titled after the room.
-    memberSession: async (roomId, profile) => {
+    memberSession: async (profile, roomId) => {
       const { sessions } = await engine.request<{
         sessions: { id: string; resolved_id?: string | null }[]
       }>(profile, 'session.list', { title: `Group: ${roomId}`, include_hidden: true, limit: 1 })

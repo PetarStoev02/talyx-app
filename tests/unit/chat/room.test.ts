@@ -580,7 +580,7 @@ describe('room model switch over a Talyx-terms backend', () => {
       discard: unused,
       uploadImage: unused,
       image: unused,
-      memberSession: async (_roomId, profile) => `${profile}-session`,
+      memberSession: async (profile) => `${profile}-session`,
       sessionModel: async () => null,
       openSession: async (profile, sessionId) => {
         steps.push(`open ${profile}`)

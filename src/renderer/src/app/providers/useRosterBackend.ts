@@ -10,7 +10,7 @@ import { engineRosterBackend } from '@app/engine/roster'
 import { useEngine } from './useEngine'
 
 // The open room's view reads and acts on the room through `room`.
-type RosterAndRooms = RosterBackend & { room: RoomBackend }
+export type RosterAndRooms = RosterBackend & { room: RoomBackend }
 
 /**
  * The roster's engine access, once the engine is attached and the socket has opened once.
