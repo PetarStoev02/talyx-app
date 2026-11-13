@@ -1,14 +1,21 @@
 import { useEffect } from 'react'
 import { applySnapshot, runRosterMutation } from './actions'
 import { hasSharedLayout, publishRecoveredLayout, readRoster } from './data'
-import type { RosterBackend } from './data'
+import type { RosterStore } from './data'
 import { problemOf } from './roster'
 import { fillInRules } from './rules'
 import type { RulesBackend } from './rules'
 import { useRoster } from './store'
 
+/** What polling the roster asks of the backend: read it, publish a recovered layout, tell bots. */
+type ConnectionBackend = Pick<
+  RosterStore,
+  'listBots' | 'listRooms' | 'olderRoomFolders' | 'updateLayout'
+> &
+  RulesBackend
+
 // `backend` must be a stable reference, or polling restarts on every render.
-export function useRosterConnection(backend: RosterBackend): void {
+export function useRosterConnection(backend: ConnectionBackend): void {
   useEffect(() => {
     let disposed = false
     let inFlight = false
