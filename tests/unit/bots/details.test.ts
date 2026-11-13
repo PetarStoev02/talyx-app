@@ -575,4 +575,55 @@ describe('bot details', () => {
       expect(engine.profiles.analyst.model).toEqual(haiku)
     })
   })
+
+  describe('saveDetails over Talyx operations', () => {
+    const haiku = { provider: 'anthropic', model: 'claude-haiku' }
+    const draft: DetailsDraft = {
+      title: 'Analyst',
+      look: lookOf({ name: 'analyst', meta: {} }),
+      usesDefault: false,
+      description: 'Numbers',
+      soul: '# Analyst',
+      model: { provider: 'custom', model: '9-route-provider' }
+    }
+
+    // The engine refuses both description and SOUL, and the model with its own words.
+    function refusingBackend(): { backend: Parameters<typeof saveDetails>[0]; steps: string[] } {
+      const steps: string[] = []
+      const backend: Parameters<typeof saveDetails>[0] = {
+        loadDetails: async () => ({ ...draft }),
+        saveSections: async (_profile, sections) => {
+          steps.push(`sections ${Object.keys(sections).join(',')}`)
+          throw new SectionsNotSavedError(['description', 'soul'])
+        },
+        pinModel: async (_profile, pick) => {
+          steps.push(`pin ${pick.model}`)
+          throw new SectionsNotSavedError(['model'], 'No key for anthropic')
+        },
+        pinAgreedModel: async () => undefined,
+        saveBotMeta: async () => undefined,
+        setAvatar: async () => undefined
+      }
+      return { backend, steps }
+    }
+
+    it('should report every refused section together, with the model’s reason', async () => {
+      const { backend, steps } = refusingBackend()
+
+      const saving = saveDetails(
+        backend,
+        { name: 'analyst', meta: { title: 'Analyst' } },
+        {
+          opening: draft,
+          draft: { ...draft, description: 'Cash', soul: '# Cash', model: haiku }
+        }
+      )
+
+      await expect(saving).rejects.toMatchObject({
+        sections: ['description', 'soul', 'model'],
+        reason: 'No key for anthropic'
+      })
+      expect(steps).toEqual(['sections description,soul', 'pin claude-haiku'])
+    })
+  })
 })

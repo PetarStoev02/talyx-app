@@ -333,7 +333,11 @@ function toolsFor(
 }
 
 // ponytail: reads the whole log for the last messages; page from the end if rooms grow long.
-async function roomHistory(backend: RosterBackend, room: Room, limit: number): Promise<unknown> {
+async function roomHistory(
+  backend: Pick<McpToolsBackend, 'roomMessages'>,
+  room: Room,
+  limit: number
+): Promise<unknown> {
   const nameOf = (id: string, fallback: string | null): string =>
     room.members.find((member) => (member.member_id ?? member.profile) === id)?.display_name ??
     fallback ??

@@ -19,7 +19,7 @@ export interface RosterHost {
   deleteProfile: (profile: string) => Promise<void>
   /** Changes an existing room's members in place (Talyx's engine plugin; the engine has no call). */
   setRoomMembers: (roomId: string, members: RoomMemberRecord[]) => Promise<void>
-  // The block as a PNG data URL, for the profile's avatar image.
+  /** The block as a PNG data URL, for the profile's avatar image. */
   avatarPng: (look: Look) => Promise<string>
 }
 

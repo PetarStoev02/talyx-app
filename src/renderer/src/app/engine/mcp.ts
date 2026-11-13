@@ -25,7 +25,9 @@ export function engineMcpBackend(engine: EngineAccess): McpServersBackend & McpT
     `/api/mcp/servers?${new URLSearchParams({ profile })}`
   return {
     listMcpServers: async (profile) =>
-      listSchema.parse(await engine.http({ path: serversPath(profile), profile })).servers,
+      listSchema
+        .parse(await engine.http({ path: serversPath(profile), profile }))
+        .servers.map(({ name, url }) => ({ name, url: url ?? null })),
     addMcpServer: async (profile, { name, url, token }) => {
       await engine.http({
         path: serversPath(profile),

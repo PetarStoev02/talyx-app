@@ -3,7 +3,7 @@ import type { McpConnection } from '../../../../shared/mcp'
 
 /** A profile's MCP servers in its config, and the live ones its chats use. */
 export interface McpServersBackend {
-  listMcpServers: (profile: string) => Promise<{ name: string; url?: string | null }[]>
+  listMcpServers: (profile: string) => Promise<{ name: string; url: string | null }[]>
   /** Adds the server; its key goes to the profile's .env through the engine, never its config. */
   addMcpServer: (
     profile: string,
