@@ -4,7 +4,7 @@ import { ArrowUp, ChevronDown, LoaderCircle, Mic, Plus, Square, X } from 'lucide
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
-import { baseName, draftWithPaths, sortAttachments } from '@features/chat/attachments'
+import { baseName, sortAttachments } from '@features/chat/attachments'
 import type { ChatActions } from '@features/chat/chat'
 import type { ChatState } from '@features/chat/store'
 import { dataUrlOf, dictationProblem, useDictation } from '@features/chat/useDictation'
@@ -45,7 +45,8 @@ export interface ComposerTarget {
    * False when nothing was sent; the composer gets the draft back. A message sent while the bot or
    * room answers waits its turn instead of cutting in.
    */
-  send: (draft: { text: string; files: ComposerFile[] }) => Promise<boolean>
+  // `paths`: files and folders on this computer; each target joins them to the text its own way.
+  send: (draft: { text: string; files: ComposerFile[]; paths: string[] }) => Promise<boolean>
   upload: (file: File, dataUrl: string) => Promise<ComposerFile>
   transcribe: (audio: { dataUrl: string; mime: string }) => Promise<string>
   stop: () => void
@@ -109,7 +110,7 @@ export function Composer({
     setPaths([])
     setSending(true)
     const sent = await target
-      .send({ text: draftWithPaths(text, linked), files: attached })
+      .send({ text, files: attached, paths: linked })
       .finally(() => setSending(false))
     if (sent) return
     // A failed send gives the draft back, unless something new was typed meanwhile.
@@ -120,10 +121,10 @@ export function Composer({
 
   async function attach(list: Iterable<File>): Promise<void> {
     const { images, paths: linked, refused } = sortAttachments(list, pathOf)
-    setPaths((current) => [...current, ...linked.filter((path) => !current.includes(path))])
+    setPaths((current) => [...new Set([...current, ...linked])])
     if (refused.length)
       toast.error(
-        t('chat.imageFailed').replace('{name}', refused.map((file) => file.name).join(', ')),
+        t('chat.attachFailed').replace('{name}', refused.map((file) => file.name).join(', ')),
         { description: t('chat.notOnDisk') }
       )
     for (const file of images) {
@@ -131,7 +132,7 @@ export function Composer({
         const attached = await target.upload(file, await dataUrlOf(file))
         setFiles((current) => [...current, attached])
       } catch (error) {
-        toast.error(t('chat.imageFailed').replace('{name}', file.name), {
+        toast.error(t('chat.attachFailed').replace('{name}', file.name), {
           description: problemText(t, problemOf(error)),
           duration: Infinity
         })

@@ -211,7 +211,7 @@ const en = {
   'chat.dictate': 'Dictate',
   'chat.dictating': 'Stop dictating',
   'chat.transcribing': 'Transcribing…',
-  'chat.imageFailed': 'Could not attach {name}.',
+  'chat.attachFailed': 'Could not attach {name}.',
   'chat.notOnDisk':
     'Only images, and files and folders on this computer, can be added to a message.',
   'chat.micDenied':

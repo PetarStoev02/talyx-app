@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   baseName,
   draftWithPaths,
+  roomText,
   sortAttachments
 } from '../../../src/renderer/src/features/chat/attachments'
 
@@ -79,5 +80,19 @@ describe('baseName', () => {
     ['notes.md', 'notes.md']
   ])('should name %s by its last part', (path, name) => {
     expect(baseName(path)).toBe(name)
+  })
+})
+
+describe('roomText', () => {
+  const writer = { handle: 'bot-2', name: 'Writer' }
+
+  it('should route a typed @name to its handle and keep each path exactly as it is on disk', () => {
+    expect(roomText('@Writer read this', ['/tmp/review @Writer.md'], [writer])).toBe(
+      '@bot-2 read this\n/tmp/review @Writer.md'
+    )
+  })
+
+  it('should send only the paths when nothing was typed', () => {
+    expect(roomText('', ['/Users/me/@Writer/notes'], [writer])).toBe('/Users/me/@Writer/notes')
   })
 })

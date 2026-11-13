@@ -7,6 +7,7 @@ import type { RosterBackend } from '@features/bots/data'
 import { MANAGER } from '@features/bots/details'
 import type { Bot } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
+import { draftWithPaths } from '@features/chat/attachments'
 import { useChat } from '@features/chat/store'
 import type { WaitingMessage } from '@features/chat/store'
 import { useSetup } from '@features/setup/store'
@@ -95,9 +96,9 @@ export function ChatPane({
   const target: ComposerTarget = {
     placeholder: t('chat.placeholder').replace('{name}', title),
     running,
-    send: ({ text, files }) =>
+    send: ({ text, files, paths }) =>
       actions.queue(bot.name, {
-        text,
+        text: draftWithPaths(text, paths),
         images: files.map((file) => ({ path: file.id, mime: file.mime }))
       }),
     upload: async (file, dataUrl) => {
