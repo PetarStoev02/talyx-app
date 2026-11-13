@@ -1,29 +1,70 @@
-import type { EngineApiRequest } from '@shared/engine/http'
-import { CONFIG_YAML_SOURCE, keepBareEndpoint, namedTwinOfBare } from '@shared/engine/endpoints'
-import { assignMainModel } from '@shared/engine/mainModel'
-import type {
-  CustomEndpoint,
-  CustomEndpointsResponse,
-  CustomEndpointValidationResponse,
-  EnvVarInfo,
-  OAuthPollResponse,
-  OAuthProvider,
-  OAuthProvidersResponse,
-  OAuthStartResponse,
-  OAuthSubmitResponse
-} from '@shared/engine/types'
+import { CONFIG_YAML_SOURCE, namedTwinOfBare } from '@shared/engine/endpoints'
+import type { CustomEndpoint, OAuthProvider, OAuthStartResponse } from '@shared/engine/types'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { AppError, isTimeout } from '@shared/lib/problem'
 
 export type { CustomEndpoint, OAuthStartResponse }
 
 export interface ProvidersBackend {
-  http: <T = unknown>(request: EngineApiRequest) => Promise<T>
   /** The profile new bots copy their model and endpoint from; every bot reads its sign-ins. */
   home: string
   /** Every profile on the engine, the home one included. */
   profiles: () => Promise<string[]>
+  /** The home profile's provider keys, one slot per provider. */
+  keys: () => Promise<KeySlot[]>
+  endpoints: (profile: string) => Promise<CustomEndpoint[]>
+  /** The home profile's sign-ins. */
+  accounts: () => Promise<Account[]>
+  /** Talyx's model, or null when it has none. */
+  model: () => Promise<ModelPick | null>
+  saveKey: (profile: string, slot: { key: string; value: string }) => Promise<void>
+  removeKey: (profile: string, key: string) => Promise<void>
+  hasKey: (profile: string, key: string) => Promise<boolean>
+  revealKey: (key: string) => Promise<string>
+  checkKey: (slot: { key: string; value: string }) => Promise<KeyCheck>
+  checkEndpoint: (draft: EndpointDraft) => Promise<EndpointCheck>
+  /** `draft.models` are trimmed, unique and not empty. */
+  saveEndpoint: (profile: string, draft: EndpointDraft) => Promise<void>
+  removeEndpoint: (profile: string, id: string) => Promise<void>
+  /** Sets Talyx's model, or returns the question to ask first and saves nothing. */
+  setModel: (pick: ModelPick) => Promise<ModelConfirm | null>
+  /** Sets Talyx's model after the user said yes to its question. */
+  confirmModel: (pick: ModelPick) => Promise<void>
+  startSignIn: (providerId: string) => Promise<OAuthStartResponse>
+  /** One wait for the sign-in; a wait that runs out of time throws a timeout. */
+  pollSignIn: (sign: { providerId: string; sessionId: string }) => Promise<SignInPoll>
+  submitSignInCode: (sign: {
+    providerId: string
+    sessionId: string
+    code: string
+  }) => Promise<SignInResult>
+  cancelSignIn: (sessionId: string) => Promise<void>
+  signOut: (id: string) => Promise<void>
 }
+
+/**
+ * What the provider said about the key: `unchecked` when the engine could not reach it, which is
+ * no verdict (the key can still be saved); `message` says why a key was rejected.
+ */
+export interface KeyCheck {
+  verdict: 'works' | 'rejected' | 'unchecked'
+  message: string
+}
+
+/** `models` is what the endpoint serves. */
+export interface EndpointCheck {
+  ok: boolean
+  message: string
+  models: string[]
+}
+
+export type SignInPoll =
+  | { status: 'approved' }
+  | { status: 'pending' }
+  | { status: 'failed'; message: string }
+
+// The operations a write to every bot needs.
+type EveryBot = Pick<ProvidersBackend, 'home' | 'profiles'>
 
 /** One provider's API key, as the engine's key catalog lists it. */
 export interface KeySlot {
@@ -86,122 +127,64 @@ export class ProvidersError extends AppError {
   }
 }
 
-// The engine holds a long-poll this long at most, and answers `pending` when it runs out.
-const SIGN_IN_WAIT_SECONDS = 25
-const SIGN_IN_POLL_TIMEOUT_MS = 45_000
-// Starting a sign-in right after the gateway starts can take longer than the usual 30 s.
-const SIGN_IN_START_TIMEOUT_MS = 60_000
-const KEY_NAME = /(?:_API_KEY|_TOKEN|_KEY)$/
-const REDACTED = /^«redacted:(.+)»$/
-
-export async function loadProviders(backend: ProvidersBackend): Promise<ProvidersOverview> {
-  const profile = backend.home
-  const [env, custom, oauth, info] = await Promise.all([
-    backend.http<Record<string, EnvVarInfo>>({ path: scoped('/api/env', profile), profile }),
-    backend.http<CustomEndpointsResponse>({
-      path: scoped('/api/providers/custom-endpoints', profile),
-      profile
-    }),
-    backend.http<OAuthProvidersResponse>({
-      path: scoped('/api/providers/oauth', profile),
-      profile
-    }),
-    backend.http<{ model?: string; provider?: string }>({
-      path: scoped('/api/model/info', profile),
-      profile
-    })
+export async function loadProviders(
+  backend: Pick<ProvidersBackend, 'home' | 'keys' | 'endpoints' | 'accounts' | 'model'>
+): Promise<ProvidersOverview> {
+  const [keys, endpoints, accounts, model] = await Promise.all([
+    backend.keys(),
+    backend.endpoints(backend.home),
+    backend.accounts(),
+    backend.model()
   ])
   return {
-    keys: keySlots(env),
+    keys,
     // The bare endpoint is the active one and carries the badge; its named copy would repeat it.
-    endpoints: custom.endpoints.filter(
-      (endpoint) => endpoint !== namedTwinOfBare(custom.endpoints)
-    ),
-    accounts: oauth.providers.map(account),
-    model: info.model && info.provider ? { provider: info.provider, model: info.model } : null
+    endpoints: endpoints.filter((endpoint) => endpoint !== namedTwinOfBare(endpoints)),
+    accounts,
+    model
   }
 }
 
 /** Saves the key on every bot; returns the bots that did not take it. */
 export function saveKey(
-  backend: ProvidersBackend,
+  backend: EveryBot & Pick<ProvidersBackend, 'saveKey'>,
   slot: { key: string; value: string }
 ): Promise<string[]> {
   const value = slot.value.trim()
   if (!value) throw new ProvidersError('providers.errorKeyEmpty')
-  return onEveryBot(backend, (profile) =>
-    backend.http({
-      path: scoped('/api/env', profile),
-      method: 'PUT',
-      body: { key: slot.key, value, provider_setup: true },
-      profile
-    })
-  )
+  return onEveryBot(backend, (profile) => backend.saveKey(profile, { key: slot.key, value }))
 }
 
-export function removeKey(backend: ProvidersBackend, key: string): Promise<string[]> {
+export function removeKey(
+  backend: EveryBot & Pick<ProvidersBackend, 'removeKey' | 'hasKey'>,
+  key: string
+): Promise<string[]> {
   return onEveryBot(backend, (profile) =>
-    removing(
-      backend.http({ path: scoped('/api/env', profile), method: 'DELETE', body: { key }, profile }),
-      async () => {
-        const env = await backend.http<Record<string, EnvVarInfo>>({
-          path: scoped('/api/env', profile),
-          profile
-        })
-        return env[key]?.is_set === true
-      }
-    )
+    removing(backend.removeKey(profile, key), () => backend.hasKey(profile, key))
   )
 }
 
 /** The saved key in full, only on an explicit ask. */
-export async function revealKey(backend: ProvidersBackend, key: string): Promise<string> {
-  const profile = backend.home
-  const { value } = await backend.http<{ value: string }>({
-    path: scoped('/api/env/reveal', profile),
-    method: 'POST',
-    body: { key },
-    profile
-  })
-  return value
+export function revealKey(
+  backend: Pick<ProvidersBackend, 'revealKey'>,
+  key: string
+): Promise<string> {
+  return backend.revealKey(key)
 }
 
-/**
- * What the provider said about the key: `unchecked` when the engine could not reach it, which is
- * no verdict (the key can still be saved); `message` says why a key was rejected.
- */
-export async function checkKey(
-  backend: ProvidersBackend,
+export function checkKey(
+  backend: Pick<ProvidersBackend, 'checkKey'>,
   slot: { key: string; value: string }
-): Promise<{ verdict: 'works' | 'rejected' | 'unchecked'; message: string }> {
-  const profile = backend.home
-  const { ok, reachable, message } = await backend.http<{
-    ok: boolean
-    reachable: boolean
-    message: string
-  }>({
-    path: scoped('/api/providers/validate', profile),
-    method: 'POST',
-    body: { key: slot.key, value: slot.value.trim(), api_key: '' },
-    profile
-  })
-  const verdict = !reachable ? 'unchecked' : ok ? 'works' : 'rejected'
-  return { verdict, message }
+): Promise<KeyCheck> {
+  return backend.checkKey({ key: slot.key, value: slot.value.trim() })
 }
 
-/** Probes the endpoint's model list; `models` is what it serves. */
-export async function checkEndpoint(
-  backend: ProvidersBackend,
+/** Probes the endpoint's model list. */
+export function checkEndpoint(
+  backend: Pick<ProvidersBackend, 'checkEndpoint'>,
   draft: EndpointDraft
-): Promise<{ ok: boolean; message: string; models: string[] }> {
-  const profile = backend.home
-  const { ok, message, models } = await backend.http<CustomEndpointValidationResponse>({
-    path: scoped('/api/providers/custom-endpoints/validate', profile),
-    method: 'POST',
-    body: { ...endpointBody(draft, null), model: draft.models[0]?.trim() ?? '' },
-    profile
-  })
-  return { ok, message, models }
+): Promise<EndpointCheck> {
+  return backend.checkEndpoint(draft)
 }
 
 /**
@@ -209,21 +192,17 @@ export async function checkEndpoint(
  * never drops one, so an edit can only add models. It never changes a bot's model; the default
  * model picks one of them.
  */
-export function saveEndpoint(backend: ProvidersBackend, draft: EndpointDraft): Promise<string[]> {
+export function saveEndpoint(
+  backend: EveryBot & Pick<ProvidersBackend, 'saveEndpoint'>,
+  draft: EndpointDraft
+): Promise<string[]> {
   const models = [...new Set(draft.models.map((model) => model.trim()).filter(Boolean))]
   if (!draft.name.trim() || !draft.baseUrl.trim())
     throw new ProvidersError('providers.errorEndpointIncomplete')
   if (models.length === 0) throw new ProvidersError('providers.errorEndpointNoModels')
   if (keyMustBeRetyped(draft.editing) && !draft.apiKey.trim())
     throw new ProvidersError('providers.errorEndpointKeyNeeded')
-  return onEveryBot(backend, (profile) =>
-    backend.http({
-      path: scoped('/api/providers/custom-endpoints', profile),
-      method: 'POST',
-      body: endpointBody({ ...draft, models }, models[0]),
-      profile
-    })
-  )
+  return onEveryBot(backend, (profile) => backend.saveEndpoint(profile, { ...draft, models }))
 }
 
 /**
@@ -240,21 +219,13 @@ export function canRemoveEndpoint(endpoint: CustomEndpoint): boolean {
 }
 
 /** Removes the endpoint from every bot; a bot whose model it served falls back to its default. */
-export function removeEndpoint(backend: ProvidersBackend, id: string): Promise<string[]> {
+export function removeEndpoint(
+  backend: EveryBot & Pick<ProvidersBackend, 'removeEndpoint' | 'endpoints'>,
+  id: string
+): Promise<string[]> {
   return onEveryBot(backend, (profile) =>
-    removing(
-      backend.http({
-        path: scoped(`/api/providers/custom-endpoints/${encodeURIComponent(id)}`, profile),
-        method: 'DELETE',
-        profile
-      }),
-      async () => {
-        const { endpoints } = await backend.http<CustomEndpointsResponse>({
-          path: scoped('/api/providers/custom-endpoints', profile),
-          profile
-        })
-        return endpoints.some((endpoint) => endpoint.id === id)
-      }
+    removing(backend.removeEndpoint(profile, id), async () =>
+      (await backend.endpoints(profile)).some((endpoint) => endpoint.id === id)
     )
   )
 }
@@ -263,41 +234,26 @@ export function removeEndpoint(backend: ProvidersBackend, id: string): Promise<s
  * Talyx's model, which new bots copy; other bots keep the model each one has. For a costly model
  * the engine saves nothing and asks first: the question comes back, `confirmDefaultModel` answers.
  */
-export async function setDefaultModel(
-  backend: ProvidersBackend,
+export function setDefaultModel(
+  backend: Pick<ProvidersBackend, 'setModel'>,
   pick: ModelPick
 ): Promise<ModelConfirm | null> {
-  await keepBareEndpoint(backend.http, backend.home, pick)
-  const result = await assignMainModel(backend.http, backend.home, pick)
-  if (result.confirm_required) return { message: result.confirm_message ?? '', model: pick }
-  if (result.ok === false) throw new ProvidersError('providers.errorModelNotSet')
-  return null
+  return backend.setModel(pick)
 }
 
-export async function confirmDefaultModel(
-  backend: ProvidersBackend,
+export function confirmDefaultModel(
+  backend: Pick<ProvidersBackend, 'confirmModel'>,
   pick: ModelPick
 ): Promise<void> {
-  const result = await assignMainModel(backend.http, backend.home, {
-    ...pick,
-    confirm_expensive_model: true
-  })
-  if (result.ok === false) throw new ProvidersError('providers.errorModelNotSet')
+  return backend.confirmModel(pick)
 }
 
 /** Opens a sign-in; the caller shows its code or page, then waits or submits. */
-export async function startSignIn(
-  backend: ProvidersBackend,
+export function startSignIn(
+  backend: Pick<ProvidersBackend, 'startSignIn'>,
   providerId: string
 ): Promise<OAuthStartResponse> {
-  const profile = backend.home
-  return backend.http<OAuthStartResponse>({
-    path: scoped(`/api/providers/oauth/${encodeURIComponent(providerId)}/start`, profile),
-    method: 'POST',
-    body: {},
-    profile,
-    timeoutMs: SIGN_IN_START_TIMEOUT_MS
-  })
+  return backend.startSignIn(providerId)
 }
 
 /**
@@ -305,96 +261,45 @@ export async function startSignIn(
  * that times out is asked again: the engine's session keeps waiting until `expiresAt` (epoch ms).
  */
 export async function waitForSignIn(
-  backend: ProvidersBackend,
+  backend: Pick<ProvidersBackend, 'pollSignIn'>,
   sign: { providerId: string; sessionId: string; expiresAt: number; live: () => boolean }
 ): Promise<SignInResult> {
-  const profile = backend.home
-  const path = scoped(
-    `/api/providers/oauth/${encodeURIComponent(sign.providerId)}/poll/${encodeURIComponent(sign.sessionId)}`,
-    profile,
-    { wait: String(SIGN_IN_WAIT_SECONDS) }
-  )
   while (sign.live()) {
     const result = await backend
-      .http<OAuthPollResponse>({ path, profile, timeoutMs: SIGN_IN_POLL_TIMEOUT_MS })
-      .catch((error: unknown) => {
+      .pollSignIn({ providerId: sign.providerId, sessionId: sign.sessionId })
+      .catch((error: unknown): SignInPoll | null => {
         if (!isTimeout(error)) throw error
         if (Date.now() < sign.expiresAt) return null
-        return { session_id: sign.sessionId, status: 'expired' } as OAuthPollResponse
+        return { status: 'failed', message: 'expired' }
       })
     if (!sign.live()) break
-    if (!result) continue
-    if (result.status === 'approved') return { status: 'approved' }
-    if (result.status !== 'pending')
-      return { status: 'failed', message: result.error_message || result.status }
+    if (!result || result.status === 'pending') continue
+    return result
   }
   return { status: 'cancelled' }
 }
 
 /** Hands the engine the code the provider's page showed. */
-export async function submitSignInCode(
-  backend: ProvidersBackend,
+export function submitSignInCode(
+  backend: Pick<ProvidersBackend, 'submitSignInCode'>,
   sign: { providerId: string; sessionId: string; code: string }
 ): Promise<SignInResult> {
-  const profile = backend.home
-  const result = await backend.http<OAuthSubmitResponse>({
-    path: scoped(`/api/providers/oauth/${encodeURIComponent(sign.providerId)}/submit`, profile),
-    method: 'POST',
-    body: { session_id: sign.sessionId, code: sign.code.trim() },
-    profile
-  })
-  return result.ok && result.status === 'approved'
-    ? { status: 'approved' }
-    : { status: 'failed', message: result.message || result.status }
+  return backend.submitSignInCode({ ...sign, code: sign.code.trim() })
 }
 
-export async function cancelSignIn(backend: ProvidersBackend, sessionId: string): Promise<void> {
-  const profile = backend.home
-  await backend.http({
-    path: scoped(`/api/providers/oauth/sessions/${encodeURIComponent(sessionId)}`, profile),
-    method: 'DELETE',
-    profile
-  })
+export function cancelSignIn(
+  backend: Pick<ProvidersBackend, 'cancelSignIn'>,
+  sessionId: string
+): Promise<void> {
+  return backend.cancelSignIn(sessionId)
 }
 
 /** Signs Talyx out of the account; bots without a sign-in of their own lose it too. */
-export async function disconnectAccount(backend: ProvidersBackend, id: string): Promise<void> {
-  const profile = backend.home
-  const result = await backend.http<{ ok: boolean }>({
-    path: scoped(`/api/providers/oauth/${encodeURIComponent(id)}`, profile),
-    method: 'DELETE',
-    profile
-  })
-  if (!result.ok) throw new ProvidersError('providers.errorNotSignedOut')
-}
-
-/** Builds the provider key list from the engine's env catalog, one slot per provider. */
-function keySlots(env: Record<string, EnvVarInfo>): KeySlot[] {
-  const byProvider = new Map<string, { key: string; info: EnvVarInfo; primary: boolean }[]>()
-  for (const [key, info] of Object.entries(env)) {
-    if (info.category !== 'provider') continue
-    // A key shared by several routes is listed under each of them, saved once.
-    const routes = info.provider_profiles?.length
-      ? info.provider_profiles.map((route) => ({
-          name: route.provider_label || route.provider,
-          primary: route.primary === true,
-          url: route.url ?? info.url
-        }))
-      : [{ name: info.provider_label || info.provider || '', primary: false, url: info.url }]
-    for (const route of routes) {
-      const name = route.name?.trim()
-      if (!name || !(info.is_password || KEY_NAME.test(key))) continue
-      const entry = { key, info: { ...info, url: route.url }, primary: route.primary }
-      byProvider.set(name, [...(byProvider.get(name) ?? []), entry])
-    }
-  }
-  return [...byProvider].map(([provider, entries]) => {
-    const { key, info } =
-      entries.find((entry) => entry.primary) ??
-      entries.find((entry) => !entry.info.advanced) ??
-      entries[0]
-    return { key, provider, docsUrl: info.url, preview: info.is_set ? preview(info) : null }
-  })
+export function disconnectAccount(
+  backend: Pick<ProvidersBackend, 'signOut'>,
+  id: string
+): Promise<void> {
+  return backend.signOut(id)
 }
 
 // A bot that never had it refuses the removal; that bot is done all the same.
@@ -411,47 +316,11 @@ async function removing(
 
 // The home profile goes first: if it refuses the change, no bot gets it.
 async function onEveryBot(
-  backend: ProvidersBackend,
+  backend: EveryBot,
   write: (profile: string) => Promise<unknown>
 ): Promise<string[]> {
   await write(backend.home)
   const others = (await backend.profiles()).filter((profile) => profile !== backend.home)
   const results = await Promise.allSettled(others.map(write))
   return others.filter((_, index) => results[index].status === 'rejected')
-}
-
-function endpointBody(draft: EndpointDraft, model: string | null): Record<string, unknown> {
-  return {
-    ...(draft.editing ? { id: draft.editing.id } : {}),
-    name: draft.name.trim(),
-    base_url: draft.baseUrl.trim(),
-    ...(model ? { model, models: draft.models } : {}),
-    // A blank key would clear the saved one; leaving it out keeps it.
-    ...(draft.apiKey.trim() ? { api_key: draft.apiKey.trim() } : {}),
-    // The engine rewrites this on every save: keep what the endpoint had. Talyx lists only the
-    // saved models either way (see the chat's models).
-    discover_models: draft.editing?.discover_models ?? true
-  }
-}
-
-function account(provider: OAuthProvider): Account {
-  return {
-    id: provider.id,
-    name: provider.name,
-    flow: provider.flow,
-    // A free tier holds a token but no account.
-    signedIn: provider.status?.logged_in === true && provider.status.free_tier !== true,
-    disconnectable: provider.disconnectable ?? provider.flow !== 'external',
-    command: provider.cli_command
-  }
-}
-
-function preview(info: EnvVarInfo): string {
-  const value = info.redacted_value ?? ''
-  const inner = REDACTED.exec(value)?.[1]?.trim()
-  return inner || (value && !value.startsWith('«') ? value : '••••••••')
-}
-
-function scoped(path: string, profile: string, extra: Record<string, string> = {}): string {
-  return `${path}?${new URLSearchParams({ profile, ...extra })}`
 }

@@ -12,7 +12,8 @@ import { MANAGER } from '../../../src/renderer/src/features/bots/details'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { reportProvider, useSetup } from '../../../src/renderer/src/features/setup/store'
 import { useNavigation } from '../../../src/renderer/src/app/providers/useNavigation'
-import { assets, attachDouble, chat, providers, rosterBackend } from './engineDouble'
+import { engineProvidersBackend } from '../../../src/renderer/src/app/engine/providers'
+import { assets, attachDouble, chat, providers, providersRest, rosterBackend } from './engineDouble'
 import { fixtureSetup, setupMode, setupOutside, setupStuck } from './fixtureSetup'
 import { fixtureUpdates, updateMode, updateNeedsOlderEngine } from './fixtureUpdates'
 import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/http'
@@ -52,10 +53,9 @@ if (new URLSearchParams(location.search).has('nudge')) useSetup.getState().setHa
 const providerElsewhere = new URLSearchParams(location.search).get('provider') === 'elsewhere'
 let providerAdded = !providerElsewhere
 window.addEventListener('blur', () => (providerAdded = true), { once: true })
-const setupProviders: typeof providers = {
-  ...providers,
+const setupProviders = engineProvidersBackend({
   http: async <T,>(request: EngineApiRequest): Promise<T> => {
-    const answer = await providers.http<T>(request)
+    const answer = await providersRest<T>(request)
     if (providerAdded || request.method) return answer
     if (request.path.startsWith('/api/providers/custom-endpoints?'))
       return { ...answer, endpoints: [] } as T
@@ -66,7 +66,7 @@ const setupProviders: typeof providers = {
     }
     return answer
   }
-}
+})
 
 // The newest exported avatar image, so the PNG can be checked without an engine.
 function ExportedAvatar(): React.JSX.Element | null {
