@@ -439,6 +439,8 @@ const en = {
   'roster.errorNoDefault':
     'The engine did not return Talyx’s own bot. Restart it with talyx-engine gateway restart, then refresh.',
   'roster.errorFolderGone': 'That folder no longer exists. Refresh the roster.',
+  'mcp.stillOnOldModel':
+    'Talyx’s model changed, but these bots on Uses default stayed on the old model:',
   'mcp.approveTitle': 'An agent asks to change Talyx',
   'mcp.approveSource':
     'The request came through Talyx’s MCP server, from one of your bots or an outside agent. Nothing changes unless you allow it.',

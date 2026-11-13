@@ -225,6 +225,18 @@ describe('MCP tools', () => {
       expect(engine.profiles.analyst.model).toEqual(next)
     })
 
+    it('should name the bots left on the old model when another field of Talyx was refused', async () => {
+      engine.metadata.analyst[BOT_META_KEY] = { title: 'Analyst', usesDefault: true }
+      engine.failSection('soul')
+      engine.refuseModelOn.add('analyst')
+      const next = { provider: 'openai', model: 'gpt-5-mini' }
+      const answer = await call('update_bot', { profile: 'default', soul: '# New', model: next })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toContain('analyst')
+      expect(answer.text).toContain('soul')
+      expect(engine.profiles.default.model).toEqual(next)
+    })
+
     it('should name the bots that stayed on the old model when Talyx gets a new one', async () => {
       engine.metadata.analyst[BOT_META_KEY] = { title: 'Analyst', usesDefault: true }
       engine.refuseModelOn.add('analyst')

@@ -158,6 +158,11 @@ function toolsFor(
         (error: unknown) => error
       )
       const stillOnOldModel = await followIfDefaultChanged(backend, opening.model)
+      if (failure && stillOnOldModel.length > 0)
+        throw new RosterError(
+          'mcp.stillOnOldModel',
+          `${stillOnOldModel.join(', ')}. ${problemText((key) => t(key, 'en'), problemOf(failure))}`
+        )
       if (failure) throw failure
       return stillOnOldModel.length > 0 ? { profile, stillOnOldModel } : { profile }
     },

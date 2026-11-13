@@ -291,6 +291,28 @@ describe('bot details', () => {
       expect(engine.profiles.analyst.model).toEqual({ provider: 'custom', model: 'other' })
     })
 
+    it('should keep a bot on the default when the user says no to a costly model of its own', async () => {
+      engine.metadata.analyst[BOT_META_KEY] = { title: 'Analyst', usesDefault: true }
+      engine.expensiveModels.add('big')
+      await refreshRoster(backend)
+      const before = await opening('analyst')
+      const confirm = await saveDetails(backend, bot('analyst'), {
+        opening: before,
+        draft: { ...before, usesDefault: false, model: { provider: 'custom', model: 'big' } }
+      })
+      expect(confirm).not.toBeNull()
+      expect(engine.metadata.analyst[BOT_META_KEY]).toMatchObject({ usesDefault: true })
+    })
+
+    it('should take a bot off the default once its costly model of its own is confirmed', async () => {
+      engine.metadata.analyst[BOT_META_KEY] = { title: 'Analyst', usesDefault: true }
+      engine.expensiveModels.add('big')
+      await confirmModel(backend, 'analyst', { provider: 'custom', model: 'big' })
+      expect(
+        (engine.metadata.analyst[BOT_META_KEY] as Record<string, unknown>).usesDefault
+      ).toBeUndefined()
+    })
+
     describe('followDefault', () => {
       const next = { provider: 'openai', model: 'gpt-5-mini' }
 
