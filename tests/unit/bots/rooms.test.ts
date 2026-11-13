@@ -7,6 +7,8 @@ import {
 } from '../../../src/renderer/src/features/bots/actions'
 import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
 import {
+  MAX_ROOM_MEMBERS,
+  MIN_ROOM_MEMBERS,
   changeRoomMembers,
   createRoom,
   renameRoom,
@@ -258,5 +260,36 @@ describe('group rooms in the roster', () => {
       applySnapshot(withLatest({ standup: 8 }))
       expect(useRoster.getState().roomUnread.standup).toBe(true)
     })
+  })
+})
+
+describe('rooms over a fake backend', () => {
+  const calls: string[] = []
+  const fake = {
+    createRoom: async (): Promise<void> => void calls.push('createRoom'),
+    renameRoom: async (): Promise<void> => void calls.push('renameRoom')
+  }
+  const members = (count: number): Bot[] =>
+    Array.from({ length: count }, (_, index) => ({ name: `bot-${index}`, meta: {} }))
+
+  beforeEach(() => {
+    calls.length = 0
+  })
+
+  it.each([MIN_ROOM_MEMBERS - 1, MAX_ROOM_MEMBERS + 1])(
+    'should refuse a room of %i bots before asking the engine',
+    async (count) => {
+      await expect(
+        createRoom(fake, { name: 'Standup', members: members(count) })
+      ).rejects.toMatchObject({ key: 'rooms.errorMembers' })
+      expect(calls).toEqual([])
+    }
+  )
+
+  it('should refuse a blank room name before asking the engine', async () => {
+    await expect(renameRoom(fake, { roomId: 'standup', name: '   ' })).rejects.toMatchObject({
+      key: 'rooms.errorName'
+    })
+    expect(calls).toEqual([])
   })
 })

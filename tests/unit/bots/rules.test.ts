@@ -114,3 +114,18 @@ describe('telling bots they live in Talyx', () => {
     })
   })
 })
+
+describe('fillInRules over a fake backend', () => {
+  it("should leave the user's own prompt alone and fill in a blank one", async () => {
+    const prompts: Record<string, unknown> = { own: 'Be terse.', blank: '  ' }
+    const writes: [string, string][] = []
+    await fillInRules(
+      {
+        readPrompt: async (profile) => prompts[profile],
+        writePrompt: async (profile, prompt) => void writes.push([profile, prompt])
+      },
+      ['own', 'blank']
+    )
+    expect(writes).toEqual([['blank', TALYX_RULES]])
+  })
+})

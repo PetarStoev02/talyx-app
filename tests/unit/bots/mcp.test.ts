@@ -239,18 +239,17 @@ describe('MCP tools', () => {
 
     it('should report the refused field when the bots on "Uses default" cannot be reached either', async () => {
       engine.failSection('soul')
-      const backend = backendFor(engine)
       let describes = 0
       // Talyx's model is read once before the save and once after it, to follow: the second fails.
       const run = mcpTools(
-        {
-          ...backend,
+        backendFor({
+          ...engine,
           request: async (profile, method, params) => {
             if (method === 'profiles.describe' && ++describes > 1)
               throw new Error('Gateway socket closed')
-            return backend.request(profile, method, params)
+            return engine.request(profile, method, params)
           }
-        },
+        }),
         async () => true
       )
       const next = { provider: 'openai', model: 'gpt-5-mini' }
