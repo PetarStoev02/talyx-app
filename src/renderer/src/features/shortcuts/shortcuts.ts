@@ -73,21 +73,33 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
 
 export const SHORTCUTS: Shortcut[] = SHORTCUT_GROUPS.flatMap((group) => group.shortcuts)
 
-export type KeyPress = Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey'>
+export type KeyPress = Pick<
+  KeyboardEvent,
+  'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey' | 'isComposing'
+>
 
-/** The shortcut a key press is, with exactly its modifiers held; null for none. */
+/**
+ * The shortcut a key press is, with exactly its modifiers held; null for none, and for a key an
+ * input method is still composing.
+ */
 export function shortcutOf(event: KeyPress, platform: Platform): ShortcutId | null {
   const mod = platform === 'mac' ? event.metaKey : event.ctrlKey
   const other = platform === 'mac' ? event.ctrlKey : event.metaKey
-  if (other) return null
+  if (other || event.isComposing) return null
   const match = SHORTCUTS.find(
     ({ keys }) =>
       !!keys.mod === mod &&
       !!keys.alt === event.altKey &&
-      !!keys.shift === event.shiftKey &&
+      (!!keys.shift === event.shiftKey || shiftTyped(keys.key)) &&
       keys.key.toLowerCase() === event.key.toLowerCase()
   )
   return match?.id ?? null
+}
+
+// A punctuation key (/ or ,) needs Shift on some layouts (German: Shift+7 is /), so Shift there
+// is part of typing the key, not a modifier of the shortcut.
+function shiftTyped(key: string): boolean {
+  return key.length === 1 && !/[a-z0-9]/i.test(key)
 }
 
 const KEY_NAMES: Record<string, string> = { ArrowUp: '↑', ArrowDown: '↓', Escape: 'Esc' }
@@ -103,7 +115,12 @@ export function keyLabels(keys: Keys, platform: Platform): string[] {
   return [...held.filter((label): label is string => !!label), key]
 }
 
-/** macOS or Linux, from `navigator.platform` or Node's `process.platform`. */
+/** macOS or Linux, from `navigator.platform`. */
 export function platformOf(name: string): Platform {
-  return /mac|darwin/i.test(name) ? 'mac' : 'linux'
+  return /mac/i.test(name) ? 'mac' : 'linux'
+}
+
+/** Whether a dialog is open: the shortcuts behind it wait (only ⌘/ closes the cheat sheet). */
+export function dialogOpen(): boolean {
+  return !!document.querySelector('[role="dialog"], [role="alertdialog"]')
 }

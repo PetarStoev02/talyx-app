@@ -14,6 +14,7 @@ const press = (key: string, held: Partial<Omit<KeyPress, 'key'>> = {}): KeyPress
   ctrlKey: false,
   altKey: false,
   shiftKey: false,
+  isComposing: false,
   ...held
 })
 
@@ -33,7 +34,11 @@ describe('shortcuts', () => {
       ['mac', press(',', { metaKey: true }), 'settings'],
       ['linux', press(',', { ctrlKey: true }), 'settings'],
       // Caps Lock turns the key upper case without Shift.
-      ['mac', press('N', { metaKey: true }), 'newBot']
+      ['mac', press('N', { metaKey: true }), 'newBot'],
+      // Layouts where / or , needs Shift (German: Shift+7 is /).
+      ['mac', press('/', { metaKey: true, shiftKey: true }), 'cheatSheet'],
+      ['linux', press('/', { ctrlKey: true, shiftKey: true }), 'cheatSheet'],
+      ['linux', press(',', { ctrlKey: true, shiftKey: true }), 'settings']
     ] as const)('given %s and %o, should be %s', (platform, event, expected) => {
       expect(shortcutOf(event, platform)).toBe(expected)
     })
@@ -48,7 +53,9 @@ describe('shortcuts', () => {
       ],
       ['both modifiers', 'mac', press('n', { metaKey: true, ctrlKey: true })],
       ['a plain letter', 'mac', press('n')],
-      ['an arrow without Alt', 'linux', press('ArrowDown')]
+      ['an arrow without Alt', 'linux', press('ArrowDown')],
+      ['Shift with an arrow', 'mac', press('ArrowDown', { altKey: true, shiftKey: true })],
+      ['a key typed into an IME', 'mac', press('n', { metaKey: true, isComposing: true })]
     ] as const)('given %s, should be no shortcut', (_case, platform, event) => {
       expect(shortcutOf(event, platform)).toBeNull()
     })
@@ -94,7 +101,6 @@ describe('shortcuts', () => {
   describe('the platform', () => {
     it.each([
       ['MacIntel', 'mac'],
-      ['darwin', 'mac'],
       ['Linux x86_64', 'linux'],
       ['', 'linux']
     ] as const)('given %j, should be %s', (name, expected) => {
