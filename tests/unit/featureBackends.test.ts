@@ -50,8 +50,9 @@ function sourceFiles(dir: string): string[] {
  * method or start with a REST path. Comments are not code, and an event type compared with
  * `===` / `!==` or under `case` is the engine's event, not a call.
  */
-export function engineTermsInSource(source: string): string[] {
-  const file = ts.createSourceFile('source.ts', source, ts.ScriptTarget.Latest, true)
+export function engineTermsInSource(source: string, fileName = 'source.ts'): string[] {
+  // The name's extension picks the parser: a .tsx file read as .ts hides what follows its JSX.
+  const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true)
   const terms: string[] = []
   const visit = (node: ts.Node): void => {
     if (ts.isStringLiteralLike(node) || ts.isTemplateHead(node)) {
@@ -77,7 +78,7 @@ function isEventComparison(node: ts.Node): boolean {
 }
 
 function engineTermsIn(file: string): string[] {
-  return engineTermsInSource(readFileSync(join(FEATURES, file), 'utf8'))
+  return engineTermsInSource(readFileSync(join(FEATURES, file), 'utf8'), file)
 }
 
 describe('feature backends', () => {
@@ -117,6 +118,11 @@ describe('feature backends', () => {
       ['a REST path in a template', 'http({ path: `/api/sessions/${id}` })']
     ])('should find %s', (_name, source) => {
       expect(engineTermsInSource(source)).toHaveLength(1)
+    })
+
+    it('should find a REST path after JSX in a component file', () => {
+      const source = "const el = <div/>; http({ path: '/api/audio/transcribe' })"
+      expect(engineTermsInSource(source, 'Pane.tsx')).toEqual(['/api/audio/transcribe'])
     })
 
     it.each([
