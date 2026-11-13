@@ -9,6 +9,7 @@ import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
 import type { ProvidersBackend } from '@features/providers/providers'
 import type { ModelLists } from '@features/chat/chat'
+import type { RosterBackend } from '@features/bots/data'
 import { reportProvider, useSetup } from '@features/setup/store'
 import { ProvidersSection } from '@widgets/providers'
 import { EngineGate } from '@widgets/engine-gate'
@@ -30,9 +31,11 @@ const COLUMN = 'mx-auto w-full max-w-4xl px-8'
 
 export function SettingsPage({
   providers,
+  roster,
   chat
 }: {
   providers: ProvidersBackend | null
+  roster: RosterBackend | null
   chat: ModelLists | null
 }): React.JSX.Element {
   const { theme, setTheme } = useTheme()
@@ -122,7 +125,12 @@ export function SettingsPage({
     providers: (
       <EngineGate>
         {providers && (
-          <ProvidersSection backend={providers} chat={chat} onOverview={reportProvider} />
+          <ProvidersSection
+            backend={providers}
+            roster={roster}
+            chat={chat}
+            onOverview={reportProvider}
+          />
         )}
       </EngineGate>
     ),

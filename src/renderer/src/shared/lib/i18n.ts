@@ -281,8 +281,10 @@ const en = {
   'details.descriptionHint': 'What this bot is for, in a line.',
   'details.model': 'Model',
   'details.modelDefault': 'Engine default',
+  'details.usesDefault': 'Uses default ({model})',
   'details.modelHint':
-    'This bot keeps its own model. Talyx’s model in Settings applies only to new bots.',
+    'On Uses default, the bot follows Talyx’s model in Settings. A model of its own stays.',
+  'details.modelHintTalyx': 'Bots on Uses default follow this model.',
   'details.soul': 'SOUL.md',
   'details.save': 'Save',
   'details.saving': 'Saving…',
@@ -589,6 +591,8 @@ const en = {
   'providers.signedOut': 'Signed out.',
   'providers.notOnBots': 'Not saved on: {bots}. Save again to try those bots.',
   'providers.stillOnBots': 'Still on: {bots}. Remove it again to try those bots.',
+  'providers.notFollowing':
+    'Still on the old model: {bots}. Pick Talyx’s model again to try those bots.',
   'providers.addTitle': 'Add provider',
   'providers.editTitle': 'Edit {name}',
   'providers.addHint':
@@ -653,7 +657,7 @@ const en = {
   'providers.errorNotSignedOut': 'There was no sign-in to remove.',
   'providers.defaultTitle': 'Talyx’s model',
   'providers.defaultHint':
-    'Talyx answers on this model, and new bots start on it. Other bots keep their own.',
+    'Talyx answers on this model, new bots start on it, and bots on Uses default follow it. Other bots keep their own.',
   'providers.defaultChanged': 'Talyx now uses {model}.',
   'update.label': 'Updates',
   'update.labelPending': 'Update available',

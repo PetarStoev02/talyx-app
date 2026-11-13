@@ -4,6 +4,7 @@ import type { RosterBackend } from '../../../src/renderer/src/features/bots/data
 import {
   SectionsNotSavedError,
   confirmModel,
+  followDefault,
   loadDetails,
   refusedSectionProblem,
   saveDetails,
@@ -45,6 +46,7 @@ async function opening(name: string): Promise<DetailsDraft> {
   return {
     title: bot(name).meta.title ?? '',
     look: lookOf(bot(name)),
+    usesDefault: bot(name).meta.usesDefault === true,
     ...(await loadDetails(backend, name))
   }
 }
@@ -239,6 +241,94 @@ describe('bot details', () => {
       await expect(saving).rejects.toMatchObject({
         sections: ['soul', 'model'],
         reason: 'Engine HTTP 400: model switch rejected'
+      })
+    })
+  })
+
+  describe('uses default', () => {
+    const talyx = { provider: 'anthropic', model: 'claude-haiku-4-5' }
+
+    beforeEach(() => {
+      engine.profiles.default.model = talyx
+    })
+
+    it("should put a bot on Talyx's model and mark it as using the default", async () => {
+      const before = await opening('analyst')
+      expect(before.usesDefault).toBe(false)
+      const confirm = await saveDetails(backend, bot('analyst'), {
+        opening: before,
+        draft: { ...before, usesDefault: true, model: talyx }
+      })
+      expect(confirm).toBeNull()
+      expect(engine.profiles.analyst.model).toEqual(talyx)
+      expect(engine.metadata.analyst[BOT_META_KEY]).toMatchObject({ usesDefault: true })
+    })
+
+    it("should pin a costly default without asking again: Talyx's model was already agreed", async () => {
+      engine.expensiveModels.add(talyx.model)
+      const before = await opening('analyst')
+      const confirm = await saveDetails(backend, bot('analyst'), {
+        opening: before,
+        draft: { ...before, usesDefault: true, model: talyx }
+      })
+      expect(confirm).toBeNull()
+      expect(engine.profiles.analyst.model).toEqual(talyx)
+    })
+
+    it('should stop following the default when the bot gets a model of its own', async () => {
+      engine.metadata.analyst[BOT_META_KEY] = { title: 'Analyst', usesDefault: true }
+      await refreshRoster(backend)
+      const before = await opening('analyst')
+      expect(before.usesDefault).toBe(true)
+      await saveDetails(backend, bot('analyst'), {
+        opening: before,
+        draft: { ...before, usesDefault: false, model: { provider: 'custom', model: 'other' } }
+      })
+      expect(
+        (engine.metadata.analyst[BOT_META_KEY] as Record<string, unknown>).usesDefault
+      ).toBeUndefined()
+      expect(engine.profiles.analyst.model).toEqual({ provider: 'custom', model: 'other' })
+    })
+
+    describe('followDefault', () => {
+      const next = { provider: 'openai', model: 'gpt-5-mini' }
+
+      beforeEach(() => {
+        engine.metadata.analyst[BOT_META_KEY] = { title: 'Analyst', usesDefault: true }
+        engine.metadata.helper = { [BOT_META_KEY]: { title: 'Helper', usesDefault: true } }
+        engine.profiles.helper = { description: '', soul: '', model: talyx }
+        engine.profiles.blank.model = { provider: 'custom', model: 'own' }
+      })
+
+      it("should move every bot on the default to Talyx's new model", async () => {
+        expect(await followDefault(backend, next)).toEqual([])
+        expect(engine.profiles.analyst.model).toEqual(next)
+        expect(engine.profiles.helper.model).toEqual(next)
+      })
+
+      it('should leave a bot with its own model, as every bot made before this choice', async () => {
+        await followDefault(backend, next)
+        expect(engine.profiles.blank.model).toEqual({ provider: 'custom', model: 'own' })
+        expect(engine.modelSets.map((set) => set.profile)).toEqual(['analyst', 'helper'])
+      })
+
+      it('should name the bots that did not take the new model and still move the others', async () => {
+        engine.refuseModelOn.add('analyst')
+        expect(await followDefault(backend, next)).toEqual(['analyst'])
+        expect(engine.profiles.helper.model).toEqual(next)
+      })
+
+      it('should move bots onto a costly default without asking each one', async () => {
+        engine.expensiveModels.add(next.model)
+        expect(await followDefault(backend, next)).toEqual([])
+        expect(engine.profiles.helper.model).toEqual(next)
+      })
+
+      it('should move nothing when no bot uses the default', async () => {
+        delete engine.metadata.analyst[BOT_META_KEY]
+        delete engine.metadata.helper[BOT_META_KEY]
+        expect(await followDefault(backend, next)).toEqual([])
+        expect(engine.modelSets).toEqual([])
       })
     })
   })

@@ -10,6 +10,8 @@ export interface BotMeta {
   shape?: string
   color?: number | string
   faces?: boolean
+  // Follows Talyx's model: a change of Talyx's model moves this bot too. Absent: its own model.
+  usesDefault?: boolean
 }
 
 export interface SessionPreview {

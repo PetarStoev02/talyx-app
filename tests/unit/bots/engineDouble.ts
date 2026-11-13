@@ -80,6 +80,8 @@ export interface EngineDouble {
   created: Record<string, unknown>[]
   cronCalls: { profile: string; params: Record<string, unknown> }[]
   expensiveModels: Set<string>
+  /** Profiles whose model pin the engine refuses. */
+  refuseModelOn: Set<string>
   deleted: string[]
   conflictOnce: () => void
   failSection: (section: Section) => void
@@ -172,6 +174,7 @@ export function engineDouble(
   const created: Record<string, unknown>[] = []
   const cronCalls: EngineDouble['cronCalls'] = []
   const expensiveModels = new Set<string>()
+  const refuseModelOn = new Set<string>()
   const deleted: string[] = []
   const failing = new Set<Section>()
   let conflict = false
@@ -194,7 +197,8 @@ export function engineDouble(
     const { provider, model } = body as { provider: string; model: string }
     if (expensiveModels.has(model) && body.confirm_expensive_model !== true)
       return { ok: false, confirm_required: true, confirm_message: 'Costs more' }
-    if (failing.has('model')) throw new Error('Engine HTTP 400: model switch rejected')
+    if (failing.has('model') || refuseModelOn.has(profile))
+      throw new Error('Engine HTTP 400: model switch rejected')
     if (provider === 'custom' && !body.base_url)
       throw new Error('Engine HTTP 400: custom provider needs a base_url')
     const namedIds = Object.values(named).flatMap((list) => list.map((item) => item.id))
@@ -526,6 +530,7 @@ export function engineDouble(
     cronCalls,
     runMessages,
     expensiveModels,
+    refuseModelOn,
     deleted,
     conflictOnce: () => {
       conflict = true

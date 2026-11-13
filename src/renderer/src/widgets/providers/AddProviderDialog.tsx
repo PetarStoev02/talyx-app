@@ -18,7 +18,8 @@ import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { Input, NativeSelect, Textarea } from '@shared/ui/input'
-import { failureText, reportSpread } from './feedback'
+import { reportSpread } from '@features/bots/spread'
+import { failureText } from './feedback'
 import { SignIn } from './SignIn'
 
 const linkClass =

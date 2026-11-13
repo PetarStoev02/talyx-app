@@ -77,7 +77,8 @@ const metaSchema = z
     hidden: lenient(z.boolean()),
     shape: lenient(z.string()),
     color: lenient(z.union([z.number().finite(), z.string()])),
-    faces: lenient(z.boolean())
+    faces: lenient(z.boolean()),
+    usesDefault: lenient(z.boolean())
   })
   .catch({})
 const roomFoldersSchema = z.record(z.string(), z.string().nullable())
@@ -254,7 +255,7 @@ async function updateMetadata(
   throw new RosterError('roster.errorConflict')
 }
 
-async function readProfiles(backend: RosterBackend): Promise<Bot[]> {
+export async function readProfiles(backend: RosterBackend): Promise<Bot[]> {
   const { profiles } = profilesSchema.parse(
     await backend.request('default', 'profiles.list', { include_sessions: true })
   )

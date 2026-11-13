@@ -25,7 +25,8 @@ scroll-to-bottom and unread marks on a bot you leave while it replies.
 The details panel opens from the name pill or "Edit bot" (right-click a bot). Each profile has a one-line
 description, SOUL and model (`anthropic · claude-sonnet-4-5`); Analyst has two routines, one paused.
 Picking `claude-opus-4-1` makes the double ask for confirmation, as the engine does for a costly
-model. Check that the panel pushes the chat, Save applies title, description, model and SOUL,
+model. The model menu starts with "Uses default (<Talyx's model>)": a bot on it moves when Talyx's
+model changes, from Talyx's panel or Settings, and a bot with its own model stays. Check that the panel pushes the chat, Save applies title, description, model and SOUL,
 Cancel discards, the confirm dialog's two answers, routine toggles, New routine and Delete. The
 roster's `+` opens New bot: check the profile-id hint, a taken name, a non-Latin name (`bot-N`),
 the default folder, and that the new bot lands in its folder, is selected and answers a message.

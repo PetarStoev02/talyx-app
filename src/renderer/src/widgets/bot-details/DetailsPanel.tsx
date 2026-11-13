@@ -9,6 +9,7 @@ import {
   MANAGER,
   SectionsNotSavedError,
   confirmModel,
+  followDefault,
   loadDetails,
   refusedSectionProblem,
   sameModelChoice,
@@ -24,6 +25,7 @@ import { lookOf, sameLook } from '@features/bots/look'
 import { LookPicker } from '@features/bots/LookPicker'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
 import { botTitle, problemOf } from '@features/bots/roster'
+import { reportSpread } from '@features/bots/spread'
 import type { RosterProblem } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot } from '@features/bots/types'
@@ -71,6 +73,9 @@ export function DetailsPanel({
   const [loadError, setLoadError] = useState<RosterProblem | null>(null)
   const [title, setTitle] = useState(bot.meta.title ?? '')
   const [look, setLook] = useState(() => lookOf(bot))
+  const [usesDefault, setUsesDefault] = useState(bot.meta.usesDefault === true)
+  // Talyx's model, which "Uses default" stands for; null for Talyx itself, or when it has none.
+  const [defaultModel, setDefaultModel] = useState<ModelChoice | null>(null)
   const [fields, setFields] = useState<ProfileDetails | null>(null)
   const [confirm, setConfirm] = useState<ModelConfirm | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -80,18 +85,23 @@ export function DetailsPanel({
   const opening: DetailsDraft | null = loaded && {
     title: bot.meta.title ?? '',
     look: lookOf(bot),
+    usesDefault: bot.meta.usesDefault === true,
     ...loaded
   }
-  const draft: DetailsDraft | null = fields && { title, look, ...fields }
+  const draft: DetailsDraft | null = fields && { title, look, usesDefault, ...fields }
   const arrival = useArrival(!draft && !loadError)
 
   useEffect(() => {
     let current = true
-    loadDetails(backend, bot.name)
-      .then((details) => {
+    Promise.all([
+      loadDetails(backend, bot.name),
+      bot.name === MANAGER ? null : loadDetails(backend, MANAGER)
+    ])
+      .then(([details, talyx]) => {
         if (!current) return
         setLoaded(details)
         setFields(details)
+        setDefaultModel(talyx?.model ?? null)
       })
       .catch((failure: unknown) => current && setLoadError(problemOf(failure)))
     return () => {
@@ -106,6 +116,7 @@ export function DetailsPanel({
       !sameLook(draft.look, opening.look) ||
       draft.description.trim() !== opening.description.trim() ||
       draft.soul !== opening.soul ||
+      draft.usesDefault !== opening.usesDefault ||
       (!!draft.model && !sameModelChoice(draft.model, opening.model)))
 
   function save(): void {
@@ -115,7 +126,8 @@ export function DetailsPanel({
       const asked = await saveOrMarkRefused(draft, opening)
       if (asked === undefined) return
       if (!asked) {
-        if (draft.model && !sameModelChoice(draft.model, opening.model)) followInChat(draft.model)
+        if (draft.model && !sameModelChoice(draft.model, opening.model))
+          await modelChanged(draft.model)
         return closeIfShowing()
       }
       // Everything but the model is saved; the panel now opens from there.
@@ -153,7 +165,7 @@ export function DetailsPanel({
   function applyModel(model: ModelChoice): void {
     void runRosterMutation(backend, async () => {
       await confirmModel(backend, bot.name, model)
-      followInChat(model)
+      await modelChanged(model)
       setConfirm(null)
       closeIfShowing()
     })
@@ -161,8 +173,10 @@ export function DetailsPanel({
 
   // The engine's pin is for new sessions; the bot's open chat switches too, as from its composer,
   // so its model chip agrees with the bot. With no chat yet, the first one starts on the pin.
-  function followInChat(model: ModelChoice): void {
+  // Talyx's model is the default: the bots on "Uses default" move with it.
+  async function modelChanged(model: ModelChoice): Promise<void> {
     if (useChat.getState().chats[bot.name]?.sessionId) void chat?.setModel(bot.name, model)
+    if (bot.name === MANAGER) reportSpread(t, await followDefault(backend, model), 'followed')
   }
 
   // A save can finish after the user moved to another bot's panel; that panel stays open.
@@ -287,10 +301,23 @@ export function DetailsPanel({
                   // Talyx's models, as in the New bot dialog: a bot moved off a custom endpoint no
                   // longer lists it, and the pin brings the endpoint along.
                   load={chat && (() => chat.models(MANAGER))}
-                  onSelect={(model) => update({ model })}
+                  onSelect={(model) => {
+                    setUsesDefault(false)
+                    update({ model })
+                  }}
+                  standIn={
+                    defaultModel && {
+                      label: t('details.usesDefault').replace('{model}', defaultModel.model),
+                      selected: draft.usesDefault,
+                      onSelect: () => {
+                        setUsesDefault(true)
+                        update({ model: defaultModel })
+                      }
+                    }
+                  }
                 />
                 <span className="mt-1 block text-sm text-muted-foreground">
-                  {t('details.modelHint')}
+                  {t(bot.name === MANAGER ? 'details.modelHintTalyx' : 'details.modelHint')}
                 </span>
                 {fieldProblem('model')}
               </div>

@@ -59,7 +59,7 @@ function App(): React.JSX.Element {
   const openModule = modules.find((module) => module.id === moduleIdOf(currentView))
   const page =
     currentView === 'settings' ? (
-      <SettingsPage providers={providers} chat={chat} />
+      <SettingsPage providers={providers} roster={rosterBackend} chat={chat} />
     ) : openModule ? (
       <ModulePage module={openModule} />
     ) : (
@@ -146,7 +146,12 @@ function App(): React.JSX.Element {
           providersForm={
             providers &&
             ((onOverview) => (
-              <ProvidersSection backend={providers} chat={chat} onOverview={onOverview} />
+              <ProvidersSection
+                backend={providers}
+                roster={rosterBackend}
+                chat={chat}
+                onOverview={onOverview}
+              />
             ))
           }
           roster={rosterBackend}

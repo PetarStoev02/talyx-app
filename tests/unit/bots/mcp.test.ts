@@ -200,6 +200,32 @@ describe('MCP tools', () => {
     it('should refuse a bot that does not exist', async () => {
       expect((await call('update_bot', { profile: 'ghost', title: 'X' })).ok).toBe(false)
     })
+
+    it('should take a bot off "Uses default" when it is given a model of its own', async () => {
+      engine.metadata.analyst[BOT_META_KEY] = { title: 'Analyst', usesDefault: true }
+      await ok('update_bot', { profile: 'analyst', model: { provider: 'custom', model: 'own' } })
+      expect(metaOf('analyst').usesDefault).toBeUndefined()
+    })
+
+    it('should move the bots on "Uses default" when Talyx gets a new model', async () => {
+      engine.metadata.analyst[BOT_META_KEY] = { title: 'Analyst', usesDefault: true }
+      const next = { provider: 'openai', model: 'gpt-5-mini' }
+      expect(await ok('update_bot', { profile: 'default', model: next })).toEqual({
+        profile: 'default'
+      })
+      expect(engine.profiles.analyst.model).toEqual(next)
+    })
+
+    it('should name the bots that stayed on the old model when Talyx gets a new one', async () => {
+      engine.metadata.analyst[BOT_META_KEY] = { title: 'Analyst', usesDefault: true }
+      engine.refuseModelOn.add('analyst')
+      const next = { provider: 'openai', model: 'gpt-5-mini' }
+      expect(await ok('update_bot', { profile: 'default', model: next })).toEqual({
+        profile: 'default',
+        stillOnOldModel: ['analyst']
+      })
+      expect(engine.profiles.default.model).toEqual(next)
+    })
   })
 
   describe('set_reasoning', () => {

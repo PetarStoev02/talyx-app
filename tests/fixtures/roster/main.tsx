@@ -94,7 +94,12 @@ function Root(): React.JSX.Element {
       <Toaster position="bottom-right" closeButton />
       <SetupFlow
         providersForm={(onOverview) => (
-          <ProvidersSection backend={setupProviders} chat={chat} onOverview={onOverview} />
+          <ProvidersSection
+            backend={setupProviders}
+            roster={rosterBackend}
+            chat={chat}
+            onOverview={onOverview}
+          />
         )}
         roster={rosterBackend}
         chat={chat}
@@ -146,7 +151,12 @@ export function Fixture(): React.JSX.Element {
         {page === 'settings' ? (
           // The settings page's own sections, without Appearance: it needs the desktop bridge.
           <div className="mx-auto w-full max-w-2xl space-y-4 overflow-y-auto p-6">
-            <ProvidersSection backend={providers} chat={chat} onOverview={reportProvider} />
+            <ProvidersSection
+              backend={providers}
+              roster={rosterBackend}
+              chat={chat}
+              onOverview={reportProvider}
+            />
           </div>
         ) : (
           <AgentsPage chat={chat} roster={rosterBackend} />

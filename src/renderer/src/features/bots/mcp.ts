@@ -9,7 +9,14 @@ import type { BlockShape } from '@shared/ui/blockGeometry'
 import { refreshRoster, rosterActions, runRosterMutation } from './actions'
 import { createBot, profileIdFor } from './create'
 import type { RosterBackend } from './data'
-import { MANAGER, confirmModel, loadDetails, saveDetails } from './details'
+import {
+  MANAGER,
+  confirmModel,
+  followDefault,
+  loadDetails,
+  sameModelChoice,
+  saveDetails
+} from './details'
 import type { DetailsDraft } from './details'
 import { lookOf, matchName } from './look'
 import type { Look } from './look'
@@ -117,14 +124,17 @@ function toolsFor(
       const opening: DetailsDraft = {
         ...(await loadDetails(backend, profile)),
         title: botTitle(bot),
-        look: lookOf(bot)
+        look: lookOf(bot),
+        usesDefault: bot.meta.usesDefault === true
       }
       const draft: DetailsDraft = {
         title: title ?? opening.title,
         description: description ?? opening.description,
         soul: soul ?? opening.soul,
         model: model ?? opening.model,
-        look: look ? lookFrom(look) : opening.look
+        look: look ? lookFrom(look) : opening.look,
+        // A model named for the bot is its own.
+        usesDefault: !model && opening.usesDefault
       }
       if (draft.soul !== opening.soul)
         await ask('update_bot', say('mcp.replaceSoul', { name: botTitle(bot) }))
@@ -148,7 +158,10 @@ function toolsFor(
           throw othersSaved ? new RosterError('mcp.refusedModel') : new ApprovalRefusedError()
         await confirmModel(backend, profile, costly.model)
       }
-      return { profile }
+      // Talyx's model is the default: the bots on "Uses default" move with it.
+      if (profile !== MANAGER || !model || sameModelChoice(model, opening.model)) return { profile }
+      const stillOnOldModel = await followDefault(backend, model)
+      return stillOnOldModel.length > 0 ? { profile, stillOnOldModel } : { profile }
     },
     set_reasoning: async ({ profile, level }) => {
       botOf(await fresh(), profile)
