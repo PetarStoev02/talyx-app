@@ -54,6 +54,11 @@ export function failureOf(key: TranslationKey, error: unknown): Problem {
   return { key, detail: problemOf(error).detail }
 }
 
+/** Talyx's own error as it is; any other failure under the action's headline (`key`). */
+export function ownOrFailure(key: TranslationKey, error: unknown): Problem {
+  return error instanceof AppError ? problemOf(error) : failureOf(key, error)
+}
+
 /** A Problem as one line: the headline, then the detail. For toasts and plain-text notes. */
 export function problemText(t: (key: TranslationKey) => string, problem: Problem): string {
   return problem.detail ? `${t(problem.key)} ${problem.detail}` : t(problem.key)

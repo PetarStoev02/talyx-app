@@ -8,6 +8,7 @@ import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/h
 import { blockPng } from '../../../src/renderer/src/shared/ui/blockPng'
 import { EXPECTED_ENGINE_VERSION, type EngineStatus } from '../../../src/shared/engine'
 import { fixtureChat } from './fixtureChat'
+import { fixtureMemory } from './fixtureMemory'
 import { COSTLY_MODEL, DEFAULT_MODEL, fixtureProviders, PROVIDER } from './fixtureProviders'
 import { roomRequest, roomSessionRequest, setRoomMembers } from './fixtureRooms'
 
@@ -368,6 +369,8 @@ export const rosterBackend = {
     avatarPng: blockPng,
     setRoomMembers
   }),
+  // Memories and skills in Talyx's terms; the engine's own routes are covered by unit tests.
+  ...fixtureMemory(Object.keys(BOTS)).backend,
   room: engineRoomBackend(engine)
 }
 export const providersRest = fixtureProviders(profiles.map((bot) => bot.name))

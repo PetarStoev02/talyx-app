@@ -3,7 +3,7 @@ import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { RosterBackend } from '@features/bots/data'
-import { ProblemMessage } from '@features/bots/ProblemMessage'
+import { ProblemMessage, TryAgain } from '@features/bots/ProblemMessage'
 import { problemOf } from '@features/bots/roster'
 import { problemText } from '@shared/lib/problem'
 import type { RosterProblem } from '@features/bots/roster'
@@ -117,15 +117,7 @@ export function RoutinesSection({
         )}
       </div>
       {problem ? (
-        <div>
-          <ProblemMessage problem={problem} />
-          <button
-            className="mt-2 underline underline-offset-4 hover:decoration-2"
-            onClick={() => void load()}
-          >
-            {t('action.tryAgain')}
-          </button>
-        </div>
+        <TryAgain problem={problem} onRetry={() => void load()} />
       ) : !routines ? (
         <Loading label={t('routines.loading')} className="space-y-2">
           <Skeleton className="h-16 w-full rounded-xl" />
