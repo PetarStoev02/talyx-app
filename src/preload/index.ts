@@ -1,7 +1,11 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { buildApi, type ApiTransport } from '../shared/api'
 
-const windowControls = { platform: process.platform }
+const windowControls = {
+  platform: process.platform,
+  // Where a dropped or pasted file or folder is on disk, so the chat can hand a bot its path.
+  pathOf: (file: File): string => webUtils.getPathForFile(file)
+}
 
 const ipcTransport: ApiTransport = {
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),

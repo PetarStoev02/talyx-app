@@ -4,7 +4,7 @@ import { ArrowUp, ChevronDown, LoaderCircle, Mic, Plus, Square, X } from 'lucide
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
-import { sortAttachments } from '@features/chat/attachments'
+import { baseName, draftWithPaths, sortAttachments } from '@features/chat/attachments'
 import type { ChatActions } from '@features/chat/chat'
 import type { ChatState } from '@features/chat/store'
 import { dataUrlOf, dictationProblem, useDictation } from '@features/chat/useDictation'
@@ -21,6 +21,8 @@ const MAX_ROWS = 8
 // Every round icon button in the composer: one circle, one icon size.
 const iconButton = 'inline-flex size-9 shrink-0 items-center justify-center rounded-full'
 const ICON_SIZE = 18
+// Electron says where a file is on disk; a page in a plain browser (the dev bridge) cannot.
+const pathOf = (file: File): string => window.electron?.pathOf?.(file) ?? ''
 const REASONING_LEVELS: Array<[string, TranslationKey]> = [
   ['low', 'chat.reasoningLow'],
   ['medium', 'chat.reasoningMedium'],
@@ -67,6 +69,8 @@ export function Composer({
   const navigate = useNavigation((s) => s.navigate)
   const [text, setText] = useState('')
   const [files, setFiles] = useState<ComposerFile[]>([])
+  // Files and folders that go by their path on this computer: each joins the text on send.
+  const [paths, setPaths] = useState<string[]>([])
   const [sending, setSending] = useState(false)
   // A new seed fills the draft once, while rendering (no effect round trip).
   const [seenSeed, setSeenSeed] = useState(seed)
@@ -94,27 +98,33 @@ export function Composer({
     }
   )
 
+  const draft = !!text.trim() || files.length > 0 || paths.length > 0
+
   async function send(): Promise<void> {
-    if (sending || (!text.trim() && !files.length)) return
+    if (sending || !draft) return
     const attached = files
+    const linked = paths
     setText('')
     setFiles([])
+    setPaths([])
     setSending(true)
-    const sent = await target.send({ text, files: attached }).finally(() => setSending(false))
+    const sent = await target
+      .send({ text: draftWithPaths(text, linked), files: attached })
+      .finally(() => setSending(false))
     if (sent) return
     // A failed send gives the draft back, unless something new was typed meanwhile.
     setText((current) => current || text)
     setFiles((current) => (current.length ? current : attached))
+    setPaths((current) => (current.length ? current : linked))
   }
 
   async function attach(list: Iterable<File>): Promise<void> {
-    const { images, refused } = sortAttachments(list)
+    const { images, paths: linked, refused } = sortAttachments(list, pathOf)
+    setPaths((current) => [...current, ...linked.filter((path) => !current.includes(path))])
     if (refused.length)
       toast.error(
         t('chat.imageFailed').replace('{name}', refused.map((file) => file.name).join(', ')),
-        {
-          description: t('chat.imagesOnly')
-        }
+        { description: t('chat.notOnDisk') }
       )
     for (const file of images) {
       try {
@@ -155,8 +165,6 @@ export function Composer({
     }
   }, [])
 
-  const draft = !!text.trim() || files.length > 0
-
   function onKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>): void {
     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
     event.preventDefault()
@@ -173,23 +181,23 @@ export function Composer({
       }}
     >
       <div className="chat-composer flex flex-col gap-2 rounded-3xl bg-secondary p-3">
-        {files.length > 0 && (
+        {(files.length > 0 || paths.length > 0) && (
           <ul className="flex flex-wrap gap-2">
             {files.map((image) => (
-              <li
+              <AttachedChip
                 key={image.id}
-                className="flex items-center gap-1 rounded-full bg-background py-1 pr-1 pl-3 text-sm"
-              >
-                {image.name}
-                <button
-                  type="button"
-                  aria-label={t('chat.removeImage').replace('{name}', image.name)}
-                  onClick={() => setFiles((current) => current.filter((item) => item !== image))}
-                  className="rounded-full p-1 hover:bg-foreground/10"
-                >
-                  <X size={14} />
-                </button>
-              </li>
+                name={image.name}
+                title={null}
+                onRemove={() => setFiles((current) => current.filter((item) => item !== image))}
+              />
+            ))}
+            {paths.map((path) => (
+              <AttachedChip
+                key={path}
+                name={baseName(path)}
+                title={path}
+                onRemove={() => setPaths((current) => current.filter((item) => item !== path))}
+              />
             ))}
           </ul>
         )}
@@ -216,7 +224,7 @@ export function Composer({
         <div className="flex flex-wrap items-center gap-1">
           <IconButton
             type="button"
-            label={t('chat.addImage')}
+            label={t('chat.addFiles')}
             onClick={() => picker.current?.click()}
             className="text-foreground"
           >
@@ -225,7 +233,6 @@ export function Composer({
           <input
             ref={picker}
             type="file"
-            accept="image/*"
             multiple
             hidden
             onChange={(event) => {
@@ -288,6 +295,36 @@ export function Composer({
         </div>
       </div>
     </form>
+  )
+}
+
+// One thing attached to the draft, an image or a file on this computer, with a way to take it off.
+function AttachedChip({
+  name,
+  title,
+  onRemove
+}: {
+  name: string
+  // The full path of a file on this computer, shown on hover.
+  title: string | null
+  onRemove: () => void
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  return (
+    <li
+      title={title ?? undefined}
+      className="flex items-center gap-1 rounded-full bg-background py-1 pr-1 pl-3 text-sm"
+    >
+      {name}
+      <button
+        type="button"
+        aria-label={t('chat.removeAttachment').replace('{name}', name)}
+        onClick={onRemove}
+        className="rounded-full p-1 hover:bg-foreground/10"
+      >
+        <X size={14} />
+      </button>
+    </li>
   )
 }
 

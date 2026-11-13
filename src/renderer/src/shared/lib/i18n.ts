@@ -153,8 +153,8 @@ const en = {
   'chat.queuedImage': '1 image',
   'chat.queuedImages': '{count} images',
   'chat.stop': 'Stop',
-  'chat.addImage': 'Add images',
-  'chat.removeImage': 'Remove {name}',
+  'chat.addFiles': 'Add images or files',
+  'chat.removeAttachment': 'Remove {name}',
   'chat.scrollToBottom': 'Scroll to bottom',
   'chat.toolSeconds': '{seconds} s',
   'chat.elapsedMinutes': '{minutes} min {seconds} s',
@@ -212,7 +212,8 @@ const en = {
   'chat.dictating': 'Stop dictating',
   'chat.transcribing': 'Transcribing…',
   'chat.imageFailed': 'Could not attach {name}.',
-  'chat.imagesOnly': 'Only images can be added to a message.',
+  'chat.notOnDisk':
+    'Only images, and files and folders on this computer, can be added to a message.',
   'chat.micDenied':
     'Talyx cannot use the microphone. Allow it for Talyx in your system settings, then try again.',
   'chat.dictationFailed': 'Dictation did not work. Try again, or type your message.',
