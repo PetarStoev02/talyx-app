@@ -212,6 +212,7 @@ const en = {
   'chat.dictating': 'Stop dictating',
   'chat.transcribing': 'Transcribing…',
   'chat.imageFailed': 'Could not attach {name}.',
+  'chat.imagesOnly': 'Only images can be added to a message.',
   'chat.micDenied':
     'Talyx cannot use the microphone. Allow it for Talyx in your system settings, then try again.',
   'chat.dictationFailed': 'Dictation did not work. Try again, or type your message.',

@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { DropdownMenu } from 'radix-ui'
 import { ArrowUp, ChevronDown, LoaderCircle, Mic, Plus, Square, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
+import { carriesFiles, sortAttachments } from '@features/chat/attachments'
 import type { ChatActions } from '@features/chat/chat'
 import type { ChatState } from '@features/chat/store'
 import { dataUrlOf, dictationProblem, useDictation } from '@features/chat/useDictation'
@@ -107,8 +108,15 @@ export function Composer({
   }
 
   async function attach(list: Iterable<File>): Promise<void> {
-    for (const file of list) {
-      if (!file.type.startsWith('image/')) continue
+    const { images, refused } = sortAttachments(list)
+    if (refused.length)
+      toast.error(
+        t('chat.imageFailed').replace('{name}', refused.map((file) => file.name).join(', ')),
+        {
+          description: t('chat.imagesOnly')
+        }
+      )
+    for (const file of images) {
       try {
         const attached = await target.upload(file, await dataUrlOf(file))
         setFiles((current) => [...current, attached])
@@ -121,6 +129,31 @@ export function Composer({
     }
   }
 
+  // Files dropped anywhere on the chat, transcript included, land here: the composer's parent is
+  // the whole chat area (the panes render as fragments into it).
+  const form = useRef<HTMLFormElement>(null)
+  const attachDropped = useEffectEvent((files: FileList) => void attach(files))
+  useEffect(() => {
+    const area = form.current?.parentElement
+    if (!area) return
+    const over = (event: DragEvent): void => {
+      if (!carriesFiles([...(event.dataTransfer?.types ?? [])])) return
+      event.preventDefault()
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
+    }
+    const drop = (event: DragEvent): void => {
+      if (!event.dataTransfer || !carriesFiles([...event.dataTransfer.types])) return
+      event.preventDefault()
+      attachDropped(event.dataTransfer.files)
+    }
+    area.addEventListener('dragover', over)
+    area.addEventListener('drop', drop)
+    return () => {
+      area.removeEventListener('dragover', over)
+      area.removeEventListener('drop', drop)
+    }
+  }, [])
+
   const draft = !!text.trim() || files.length > 0
 
   function onKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>): void {
@@ -131,15 +164,11 @@ export function Composer({
 
   return (
     <form
+      ref={form}
       className="mx-auto w-full max-w-3xl px-6 pb-6"
       onSubmit={(event) => {
         event.preventDefault()
         void send()
-      }}
-      onDragOver={(event) => event.preventDefault()}
-      onDrop={(event) => {
-        event.preventDefault()
-        void attach(event.dataTransfer.files)
       }}
     >
       <div className="chat-composer flex flex-col gap-2 rounded-3xl bg-secondary p-3">
