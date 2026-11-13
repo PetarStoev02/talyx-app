@@ -7,7 +7,7 @@ import type { TranslationKey } from '@shared/lib/i18n'
 import { failureOf } from '@shared/lib/problem'
 import { useChat } from './store'
 import type { ChatInfo, ChatState } from './store'
-import { applyEvent, fromHistory, settlePrompt, withFailedTurns } from './transcript'
+import { applyEvent, fromHistory, settlePrompt, withFailedTurns, withoutTurn } from './transcript'
 import { SENDING_ID } from './turns'
 import type { ApprovalChoice, ChatItem, Transcript } from './types'
 
@@ -15,6 +15,8 @@ import type { ApprovalChoice, ChatItem, Transcript } from './types'
 export const BOT_CHAT_TITLE = 'Bot Chat'
 const HISTORY_LIMIT = 120
 const TITLE_TAKEN = 'already in use'
+// A stored message's id is its durable row id; a message not stored yet has a local one.
+const ROW_ID = /^\d+$/
 
 /** A transcript image the engine no longer has on disk. */
 export class MediaGoneError extends Error {
@@ -45,6 +47,9 @@ export interface ChatDraft {
   // redirecting it (the engine's default for a busy chat). Module pages send this way, so one
   // workflow task's message never cuts into another's turn.
   whenBusy?: 'queue'
+  // The id of your message this one is sent in place of: the engine cuts the chat back to before
+  // it (when it stored it), and its turn goes, so the new answer replaces the old.
+  replaces?: string
 }
 
 export interface ChatActions {
@@ -60,12 +65,23 @@ export interface ChatActions {
    * nothing was sent; the caller keeps the draft.
    */
   queue: (profile: string, draft: ChatDraft) => Promise<boolean>
+  /**
+   * Asks again for the answer to your last message, in its place: the old answer, or the failure,
+   * goes and a new turn answers the same words. False when nothing went (the bot is answering,
+   * or the engine refused): the caller puts the words back in the composer.
+   */
+  regenerate: (profile: string, asked: { id: string; text: string }) => Promise<boolean>
   /** Takes a waiting message back before it is sent. */
   unqueue: (profile: string, id: string) => void
   /** Stops the running answer so this waiting message goes next, ahead of the others. */
   sendNow: (profile: string, id: string) => Promise<void>
   /** The bot's answer ended: reloads the chat, then the oldest waiting message goes. */
   turnEnded: (profile: string) => Promise<void>
+  /**
+   * The engine cut the chat back (another client, or this one asking for an answer again). Ends
+   * the turn like turnEnded, except while this window asks again: the new turn's end reloads then.
+   */
+  rewound: (profile: string) => Promise<void>
   interrupt: (profile: string) => Promise<void>
   answerClarify: (
     profile: string,
@@ -110,6 +126,9 @@ export function chatActions(backend: ChatBackend): ChatActions {
   const out = new Set<string>()
   // The reload of an ended turn under way per profile.
   const ending = new Map<string, Promise<void>>()
+  // Profiles whose answer is being asked again: the engine reports its own cut of the old turn
+  // before the new message is stored, and a reload then would show neither.
+  const rewinding = new Set<string>()
 
   // A failed call shows on its chat, named by what it was, instead of throwing into the view.
   const guarded =
@@ -235,9 +254,13 @@ export function chatActions(backend: ChatBackend): ChatActions {
     const text = draft.text.trim()
     if (!text && !draft.images.length) return false
     const local = `${SENDING_ID}${Date.now()}-${Math.random()}`
+    // The chat before a send in place of a message, for when the send fails.
+    let replaced: Transcript | null = null
     try {
       const sessionId = sessionOf(profile) ?? (await startChat(profile))
-      const transcript = chatOf(profile)?.transcript ?? fromHistory(sessionId, [], false)
+      const shown = chatOf(profile)?.transcript ?? fromHistory(sessionId, [], false)
+      if (draft.replaces) replaced = shown
+      const transcript = draft.replaces ? withoutTurn(shown, draft.replaces) : shown
       const images = draft.images.map((image) => image.path)
       update(profile, {
         error: null,
@@ -248,25 +271,31 @@ export function chatActions(backend: ChatBackend): ChatActions {
       })
       // A pick made just before the send applies to it.
       await configuring.get(profile)
-      await backend.request(profile, 'prompt.submit', {
-        session_id: sessionId,
-        text,
-        ...(draft.images.length ? { attachments: draft.images } : {}),
-        ...(draft.whenBusy === 'queue' ? { queued: true } : {})
-      })
+      await backend.request(profile, 'prompt.submit', submitParams(sessionId, text, draft))
       return true
     } catch (error) {
+      const failure = failureOf('chat.errorSend', error)
+      if (replaced) await reloadReplaced(profile, replaced)
       // The composer gets the draft back, so the bubble for it goes.
-      const transcript = chatOf(profile)?.transcript ?? null
-      update(profile, {
-        error: failureOf('chat.errorSend', error),
-        transcript: transcript && {
-          ...transcript,
-          items: transcript.items.filter((item) => item.id !== local)
-        }
-      })
+      else {
+        const transcript = chatOf(profile)?.transcript ?? null
+        update(profile, {
+          transcript: transcript && {
+            ...transcript,
+            items: transcript.items.filter((item) => item.id !== local)
+          }
+        })
+      }
+      update(profile, { error: failure })
       return false
     }
+  }
+
+  // The engine may have cut the old turn before it refused the new one: its history says what is
+  // left. The chat as it was keeps a failed turn the engine never stored.
+  async function reloadReplaced(profile: string, replaced: Transcript): Promise<void> {
+    update(profile, { transcript: replaced })
+    await load(profile, replaced.sessionId).catch(() => undefined)
   }
 
   // A message is out from its send until its answer ends. Until the engine starts that answer
@@ -293,6 +322,13 @@ export function chatActions(backend: ChatBackend): ChatActions {
         .finally(() => ending.delete(profile))
     ending.set(profile, reload)
     return reload
+  }
+
+  async function turnEnded(profile: string): Promise<void> {
+    await reloadEnded(profile)
+    // The next message goes after the reload, so the reload neither drops its bubble nor its
+    // error. A second end of the same turn finds it out already (submit marks it at once).
+    await sendWaiting(profile)
   }
 
   async function sendWaiting(profile: string): Promise<void> {
@@ -346,6 +382,16 @@ export function chatActions(backend: ChatBackend): ChatActions {
       return true
     },
 
+    regenerate: async (profile, asked) => {
+      if (busy(profile)) return false
+      rewinding.add(profile)
+      try {
+        return await submit(profile, { text: asked.text, images: [], replaces: asked.id })
+      } finally {
+        rewinding.delete(profile)
+      }
+    },
+
     unqueue: (profile, id) => {
       const waiting = chatOf(profile)?.waiting ?? []
       update(profile, { waiting: waiting.filter((message) => message.id !== id) })
@@ -365,11 +411,10 @@ export function chatActions(backend: ChatBackend): ChatActions {
       }
     },
 
-    turnEnded: async (profile) => {
-      await reloadEnded(profile)
-      // The next message goes after the reload, so the reload neither drops its bubble nor its
-      // error. A second end of the same turn finds it out already (submit marks it at once).
-      await sendWaiting(profile)
+    turnEnded,
+
+    rewound: async (profile) => {
+      if (!rewinding.has(profile)) await turnEnded(profile)
     },
 
     interrupt,
@@ -451,6 +496,19 @@ export function chatActions(backend: ChatBackend): ChatActions {
       if (!media) throw new MediaGoneError(path)
       return media.data_url
     }
+  }
+}
+
+function submitParams(sessionId: string, text: string, draft: ChatDraft): Record<string, unknown> {
+  return {
+    session_id: sessionId,
+    text,
+    ...(draft.images.length ? { attachments: draft.images } : {}),
+    ...(draft.whenBusy === 'queue' ? { queued: true } : {}),
+    // Only a stored message can be cut: one the engine never stored is sent again as new.
+    ...(draft.replaces && ROW_ID.test(draft.replaces)
+      ? { truncate_before_row_id: Number(draft.replaces), confirm_truncate: true }
+      : {})
   }
 }
 

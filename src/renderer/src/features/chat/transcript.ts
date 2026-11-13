@@ -19,7 +19,7 @@ const NOTICE_KINDS = new Set([
 const QUIET_KINDS = new Set(['process_complete'])
 const MESSAGE_AGENT = 'message_agent'
 // The id prefix of a reply streamed live, before the history reload gives it its stored row id.
-const LIVE_ID = 'live-'
+export const LIVE_ID = 'live-'
 // The row the engine stores for a turn that failed after it reached the model.
 const FAILED_TURN = 'failed_turn'
 // What the engine stores, and the failure it names, for a turn the model gave no answer to.
@@ -172,6 +172,20 @@ function storedAt(items: ChatItem[], at: number, first: ChatItem | undefined): b
   return items
     .slice(from, end < 0 ? undefined : end)
     .some((item) => item.kind === 'bot' && item.error !== null)
+}
+
+/**
+ * The chat without your message and the turn that answered it, the last turn: what shows while it
+ * is asked again. A failed turn kept for that message goes with it.
+ */
+export function withoutTurn(transcript: Transcript, asked: string): Transcript {
+  const at = transcript.items.findIndex((item) => item.id === asked)
+  if (at < 0) return transcript
+  return {
+    ...transcript,
+    items: transcript.items.slice(0, at),
+    failed: transcript.failed.filter((turn) => !turn.items.some((item) => item.id === asked))
+  }
 }
 
 export function addPrompt(transcript: Transcript, prompt: ChatPrompt): Transcript {

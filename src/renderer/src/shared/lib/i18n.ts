@@ -167,6 +167,8 @@ const en = {
   'chat.replyFailedAnnounce': '{name}’s reply failed',
   'chat.replyFailed': 'This reply did not finish.',
   'chat.noReply': '{name} ended without a reply.',
+  'chat.regenerate': 'Regenerate',
+  'chat.regenerateLabel': 'Answer again, in place of this answer: {text}',
   'chat.retry': 'Retry',
   'chat.retryLabel': 'Retry: {text}',
   'chat.retryImages': 'Attach again',

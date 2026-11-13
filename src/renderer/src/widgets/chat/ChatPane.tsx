@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, Pencil, RotateCcw, X } from 'lucide-react'
+import { ArrowUp, Pencil, RefreshCw, RotateCcw, X } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
 import { botChatId, botTitle } from '@features/bots/roster'
@@ -83,10 +83,11 @@ export function ChatPane({
   // A retry waits for nothing else: not while a message is already lined up to go.
   const outcome = chat.waiting.length ? null : turnOutcome(chat.transcript?.items ?? [], running)
   // The engine keeps a sent image's upload only briefly, so a message with images goes back to
-  // the composer to attach them again; a text message is sent again as it was.
-  const retry = (asked: TurnOutcome['asked']): void => {
-    if (asked.images.length) start({ text: asked.text, send: false })
-    else void actions.queue(bot.name, { text: asked.text, images: [] })
+  // the composer to attach them again; a text message is asked again in its place, and goes to
+  // the composer when that could not be sent.
+  const askAgain = async (asked: TurnOutcome['asked']): Promise<void> => {
+    if (asked.images.length || !(await actions.regenerate(bot.name, asked)))
+      start({ text: asked.text, send: false })
   }
   const prompts = chat.transcript?.prompts ?? []
   const loadImage = (path: string): Promise<string> => actions.mediaUrl(bot.name, path)
@@ -119,7 +120,11 @@ export function ChatPane({
             )}
             {outcome && (
               <li>
-                <OutcomeLine outcome={outcome} name={title} onRetry={() => retry(outcome.asked)} />
+                <OutcomeLine
+                  outcome={outcome}
+                  name={title}
+                  onAskAgain={() => void askAgain(outcome.asked)}
+                />
               </li>
             )}
             {chat.waiting.map((message) => (
@@ -213,19 +218,30 @@ function announcement(
   return last.error ? 'chat.replyFailedAnnounce' : 'chat.replied'
 }
 
-// How a turn ended without an answer, and a way to send its message again.
+// How a turn ended, and a way to ask its message again: a new answer, or a retry of one that failed.
 function OutcomeLine({
   outcome,
   name,
-  onRetry
+  onAskAgain
 }: {
   outcome: TurnOutcome
   name: string
-  onRetry: () => void
-}): React.JSX.Element {
+  onAskAgain: () => void
+}): React.JSX.Element | null {
   const t = useLanguage((s) => s.t)
   const { kind, asked } = outcome
   const attach = asked.images.length > 0
+  // A new answer to a message with images would need them attached again: that is a new message.
+  if (kind === 'answered')
+    return attach ? null : (
+      <OutcomeButton
+        label={t('chat.regenerateLabel').replace('{text}', asked.text)}
+        onClick={onAskAgain}
+      >
+        <RefreshCw size={14} />
+        {t('chat.regenerate')}
+      </OutcomeButton>
+    )
   const said =
     kind === 'stopped'
       ? t('chat.replyStopped')
@@ -235,19 +251,38 @@ function OutcomeLine({
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 text-sm text-muted-foreground">
       {said && <p>{said}</p>}
-      <button
-        type="button"
-        aria-label={t(attach ? 'chat.retryImagesLabel' : 'chat.retryLabel').replace(
+      <OutcomeButton
+        label={t(attach ? 'chat.retryImagesLabel' : 'chat.retryLabel').replace(
           '{text}',
           asked.text
         )}
-        className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-foreground/10"
-        onClick={onRetry}
+        onClick={onAskAgain}
       >
         <RotateCcw size={14} />
         {t(attach ? 'chat.retryImages' : 'chat.retry')}
-      </button>
+      </OutcomeButton>
     </div>
+  )
+}
+
+function OutcomeButton({
+  label,
+  onClick,
+  children
+}: {
+  label: string
+  onClick: () => void
+  children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      className="inline-flex items-center gap-1 self-start rounded-md px-1.5 py-0.5 text-sm text-muted-foreground hover:bg-foreground/10"
+      onClick={onClick}
+    >
+      {children}
+    </button>
   )
 }
 
