@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { engineProvidersBackend } from '../../../src/renderer/src/app/engine/providers'
+import { ProvidersError } from '../../../src/renderer/src/features/providers/providers'
 import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/http'
 
 // The providers wiring's REST calls that the in-memory double does not look at closely.
@@ -18,6 +19,18 @@ function engineRecording(answer: unknown): {
 }
 
 describe('engine providers backend', () => {
+  it('should report a model the engine did not set as not set', async () => {
+    const engine = engineRecording({ ok: false })
+
+    const confirming = engineProvidersBackend(engine).confirmModel({
+      provider: 'anthropic',
+      model: 'claude-haiku'
+    })
+
+    await expect(confirming).rejects.toBeInstanceOf(ProvidersError)
+    await expect(confirming).rejects.toMatchObject({ key: 'providers.errorModelNotSet' })
+  })
+
   it('should list every profile with an unscoped call', async () => {
     const engine = engineRecording({ profiles: [{ name: 'default' }, { name: 'scout' }] })
 

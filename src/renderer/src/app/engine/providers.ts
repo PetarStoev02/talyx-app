@@ -13,7 +13,6 @@ import type {
   Account,
   EndpointDraft,
   KeySlot,
-  ModelPick,
   ProvidersBackend
 } from '@features/providers/providers'
 import type { EngineAccess } from './access'
@@ -30,7 +29,6 @@ const REDACTED = /^«redacted:(.+)»$/
 
 /** Providers, keys, endpoints, sign-ins and Talyx's model over the engine's REST. */
 export function engineProvidersBackend(engine: Pick<EngineAccess, 'http'>): ProvidersBackend {
-  const home = HOME_PROFILE
   const rest = <T>(
     profile: string,
     path: string,
@@ -39,21 +37,27 @@ export function engineProvidersBackend(engine: Pick<EngineAccess, 'http'>): Prov
   const env = (profile: string): Promise<Record<string, EnvVarInfo>> => rest(profile, '/api/env')
 
   return {
-    home,
+    home: HOME_PROFILE,
     profiles: async () => {
       const { profiles } = await engine.http<{ profiles: Array<{ name: string }> }>({
         path: '/api/profiles'
       })
       return profiles.map((profile) => profile.name)
     },
-    keys: async () => keySlots(await env(home)),
+    keys: async () => keySlots(await env(HOME_PROFILE)),
     endpoints: async (profile) => (await listEndpoints(engine.http, profile)).endpoints,
     accounts: async () => {
-      const { providers } = await rest<{ providers: OAuthProvider[] }>(home, '/api/providers/oauth')
+      const { providers } = await rest<{ providers: OAuthProvider[] }>(
+        HOME_PROFILE,
+        '/api/providers/oauth'
+      )
       return providers.map(account)
     },
     model: async () => {
-      const info = await rest<{ model?: string; provider?: string }>(home, '/api/model/info')
+      const info = await rest<{ model?: string; provider?: string }>(
+        HOME_PROFILE,
+        '/api/model/info'
+      )
       return info.model && info.provider ? { provider: info.provider, model: info.model } : null
     },
     saveKey: async (profile, slot) => {
@@ -67,7 +71,7 @@ export function engineProvidersBackend(engine: Pick<EngineAccess, 'http'>): Prov
     },
     hasKey: async (profile, key) => (await env(profile))[key]?.is_set === true,
     revealKey: async (key) => {
-      const { value } = await rest<{ value: string }>(home, '/api/env/reveal', {
+      const { value } = await rest<{ value: string }>(HOME_PROFILE, '/api/env/reveal', {
         method: 'POST',
         body: { key }
       })
@@ -78,7 +82,7 @@ export function engineProvidersBackend(engine: Pick<EngineAccess, 'http'>): Prov
         ok: boolean
         reachable: boolean
         message: string
-      }>(home, '/api/providers/validate', {
+      }>(HOME_PROFILE, '/api/providers/validate', {
         method: 'POST',
         body: { key: slot.key, value: slot.value, api_key: '' }
       })
@@ -87,7 +91,7 @@ export function engineProvidersBackend(engine: Pick<EngineAccess, 'http'>): Prov
     },
     checkEndpoint: async (draft) => {
       const { ok, message, models } = await rest<CustomEndpointValidationResponse>(
-        home,
+        HOME_PROFILE,
         '/api/providers/custom-endpoints/validate',
         {
           method: 'POST',
@@ -108,14 +112,14 @@ export function engineProvidersBackend(engine: Pick<EngineAccess, 'http'>): Prov
       })
     },
     setModel: async (pick) => {
-      await keepBareEndpoint(engine.http, home, pick)
-      const result = await assignMainModel(engine.http, home, pick)
+      await keepBareEndpoint(engine.http, HOME_PROFILE, pick)
+      const result = await assignMainModel(engine.http, HOME_PROFILE, pick)
       if (result.confirm_required) return { message: result.confirm_message ?? '', model: pick }
       if (result.ok === false) throw new ProvidersError('providers.errorModelNotSet')
       return null
     },
-    confirmModel: async (pick: ModelPick) => {
-      const result = await assignMainModel(engine.http, home, {
+    confirmModel: async (pick) => {
+      const result = await assignMainModel(engine.http, HOME_PROFILE, {
         ...pick,
         confirm_expensive_model: true
       })
@@ -123,19 +127,19 @@ export function engineProvidersBackend(engine: Pick<EngineAccess, 'http'>): Prov
     },
     startSignIn: (providerId) =>
       rest<OAuthStartResponse>(
-        home,
+        HOME_PROFILE,
         `/api/providers/oauth/${encodeURIComponent(providerId)}/start`,
         { method: 'POST', body: {}, timeoutMs: SIGN_IN_START_TIMEOUT_MS }
       ),
     pollSignIn: async (sign) => {
       const path = scoped(
         `/api/providers/oauth/${encodeURIComponent(sign.providerId)}/poll/${encodeURIComponent(sign.sessionId)}`,
-        home,
+        HOME_PROFILE,
         { wait: String(SIGN_IN_WAIT_SECONDS) }
       )
       const result = await engine.http<OAuthPollResponse>({
         path,
-        profile: home,
+        profile: HOME_PROFILE,
         timeoutMs: SIGN_IN_POLL_TIMEOUT_MS
       })
       if (result.status === 'approved' || result.status === 'pending')
@@ -144,7 +148,7 @@ export function engineProvidersBackend(engine: Pick<EngineAccess, 'http'>): Prov
     },
     submitSignInCode: async (sign) => {
       const result = await rest<OAuthSubmitResponse>(
-        home,
+        HOME_PROFILE,
         `/api/providers/oauth/${encodeURIComponent(sign.providerId)}/submit`,
         { method: 'POST', body: { session_id: sign.sessionId, code: sign.code } }
       )
@@ -153,13 +157,13 @@ export function engineProvidersBackend(engine: Pick<EngineAccess, 'http'>): Prov
         : { status: 'failed', message: result.message || result.status }
     },
     cancelSignIn: async (sessionId) => {
-      await rest(home, `/api/providers/oauth/sessions/${encodeURIComponent(sessionId)}`, {
+      await rest(HOME_PROFILE, `/api/providers/oauth/sessions/${encodeURIComponent(sessionId)}`, {
         method: 'DELETE'
       })
     },
     signOut: async (id) => {
       const result = await rest<{ ok: boolean }>(
-        home,
+        HOME_PROFILE,
         `/api/providers/oauth/${encodeURIComponent(id)}`,
         { method: 'DELETE' }
       )
