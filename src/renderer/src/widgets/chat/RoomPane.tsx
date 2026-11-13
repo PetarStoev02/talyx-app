@@ -10,7 +10,7 @@ import type { Bot, Room } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
 import { answering } from '@features/chat/room'
 import type { RoomActions } from '@features/chat/room'
-import { sendMentions } from '@features/chat/mentions'
+import { roomText } from '@features/chat/attachments'
 import type { Mention } from '@features/chat/mentions'
 import { parseAttachmentKey, roomItems } from '@features/chat/roomLog'
 import { useRooms } from '@features/chat/roomStore'
@@ -102,9 +102,9 @@ export function RoomPane({
   const target: ComposerTarget = {
     placeholder: t('rooms.placeholder'),
     running: view.working,
-    send: ({ text, files }) =>
+    send: ({ text, files, paths }) =>
       actions.send(roomId, {
-        text: sendMentions(text, mentions),
+        text: roomText(text, paths, mentions),
         attachments: files.map((file) => ({
           attachment_id: file.id,
           kind: 'image',
@@ -196,6 +196,7 @@ export function RoomPane({
           </div>
         )}
       </Reveal>
+      {/* The composer stays a direct child of the chat section: files dropped anywhere on it attach here. */}
       {view.live ? (
         <Composer target={target} inputRef={composer} seed={seed}>
           <RoomModelMenu

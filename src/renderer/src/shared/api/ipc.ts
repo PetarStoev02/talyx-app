@@ -60,6 +60,11 @@ export const appApi = {
     window.api.getDiagnostics(engine) as Promise<string>
 }
 
+export const filesApi = {
+  keep: (file: { name: string; dataUrl: string }): Promise<string> =>
+    window.api.keepFile(file) as Promise<string>
+}
+
 export const modulesApi = {
   state: (): Promise<ModulesState> => window.api.getModulesState() as Promise<ModulesState>,
   takeActivationRequest: (): Promise<ActivationRequest | null> =>

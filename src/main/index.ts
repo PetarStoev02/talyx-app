@@ -10,6 +10,7 @@ import { cancelInstall, registerSetupIpc } from './infrastructure/ipc/setup.ipc'
 import { registerLogIpc } from './infrastructure/ipc/log.ipc'
 import { registerAppIpc } from './infrastructure/ipc/app.ipc'
 import { closeEngineSockets, registerEngineIpc } from './infrastructure/ipc/engine.ipc'
+import { registerFilesIpc } from './infrastructure/ipc/files.ipc'
 import { registerMcpIpc, startMcpServer } from './infrastructure/ipc/mcp.ipc'
 import { registerUpdaterIpc, releaseChecks, updates } from './infrastructure/ipc/updater.ipc'
 import {
@@ -72,6 +73,7 @@ function registerIpc(): void {
   registerAppIpc()
   registerModulesIpc()
   registerMcpIpc()
+  registerFilesIpc()
   ipcMain.handle('theme:set-native', (_event, theme: unknown) =>
     syncNativeTheme(validateInput(ThemeSchema, theme))
   )

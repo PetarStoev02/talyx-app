@@ -1,13 +1,15 @@
-import { useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { DropdownMenu } from 'radix-ui'
 import { ArrowUp, ChevronDown, LoaderCircle, Mic, Plus, Square, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
+import { baseName, sortAttachments } from '@features/chat/attachments'
 import type { ChatActions } from '@features/chat/chat'
 import type { ChatState } from '@features/chat/store'
 import { dataUrlOf, dictationProblem, useDictation } from '@features/chat/useDictation'
 import { openSettings } from '@features/settings/sections'
+import { filesApi } from '@shared/api/ipc'
 import { problemOf, problemText } from '@shared/lib/problem'
 import { cn } from '@shared/lib/utils'
 import { IconButton } from '@shared/ui/IconButton'
@@ -20,6 +22,9 @@ const MAX_ROWS = 8
 // Every round icon button in the composer: one circle, one icon size.
 const iconButton = 'inline-flex size-9 shrink-0 items-center justify-center rounded-full'
 const ICON_SIZE = 18
+// Electron says where a file is on disk; a page in a plain browser (the dev bridge) cannot.
+const pathOf = (file: File): string => window.electron?.pathOf?.(file) ?? ''
+const names = (files: File[]): string => files.map((file) => file.name).join(', ')
 const REASONING_LEVELS: Array<[string, TranslationKey]> = [
   ['low', 'chat.reasoningLow'],
   ['medium', 'chat.reasoningMedium'],
@@ -42,7 +47,8 @@ export interface ComposerTarget {
    * False when nothing was sent; the composer gets the draft back. A message sent while the bot or
    * room answers waits its turn instead of cutting in.
    */
-  send: (draft: { text: string; files: ComposerFile[] }) => Promise<boolean>
+  // `paths`: files and folders on this computer; each target joins them to the text its own way.
+  send: (draft: { text: string; files: ComposerFile[]; paths: string[] }) => Promise<boolean>
   upload: (file: File, dataUrl: string) => Promise<ComposerFile>
   transcribe: (audio: { dataUrl: string; mime: string }) => Promise<string>
   stop: () => void
@@ -66,6 +72,8 @@ export function Composer({
   const navigate = useNavigation((s) => s.navigate)
   const [text, setText] = useState('')
   const [files, setFiles] = useState<ComposerFile[]>([])
+  // Files and folders that go by their path on this computer: each joins the text on send.
+  const [paths, setPaths] = useState<string[]>([])
   const [sending, setSending] = useState(false)
   // A new seed fills the draft once, while rendering (no effect round trip).
   const [seenSeed, setSeenSeed] = useState(seed)
@@ -93,35 +101,87 @@ export function Composer({
     }
   )
 
+  const draft = !!text.trim() || files.length > 0 || paths.length > 0
+
   async function send(): Promise<void> {
-    if (sending || (!text.trim() && !files.length)) return
+    if (sending || !draft) return
     const attached = files
+    const linked = paths
     setText('')
     setFiles([])
+    setPaths([])
     setSending(true)
-    const sent = await target.send({ text, files: attached }).finally(() => setSending(false))
+    const sent = await target
+      .send({ text, files: attached, paths: linked })
+      .finally(() => setSending(false))
     if (sent) return
     // A failed send gives the draft back, unless something new was typed meanwhile.
     setText((current) => current || text)
     setFiles((current) => (current.length ? current : attached))
+    setPaths((current) => (current.length ? current : linked))
   }
 
   async function attach(list: Iterable<File>): Promise<void> {
-    for (const file of list) {
-      if (!file.type.startsWith('image/')) continue
-      try {
-        const attached = await target.upload(file, await dataUrlOf(file))
-        setFiles((current) => [...current, attached])
-      } catch (error) {
-        toast.error(t('chat.imageFailed').replace('{name}', file.name), {
-          description: problemText(t, problemOf(error)),
-          duration: Infinity
-        })
-      }
+    const { images, paths: linked, copies, tooBig } = sortAttachments(list, pathOf)
+    addPaths(linked)
+    if (tooBig.length)
+      toast.error(t('chat.attachFailed').replace('{name}', names(tooBig)), {
+        description: t('chat.fileTooBig')
+      })
+    for (const file of images) await attachOne(file, uploadImage)
+    for (const file of copies) await attachOne(file, keepCopy)
+  }
+
+  function addPaths(added: string[]): void {
+    setPaths((current) => [...new Set([...current, ...added])])
+  }
+
+  async function uploadImage(file: File): Promise<void> {
+    const attached = await target.upload(file, await dataUrlOf(file))
+    setFiles((current) => [...current, attached])
+  }
+
+  // A file with no path of its own goes by the path of a copy Talyx keeps.
+  async function keepCopy(file: File): Promise<void> {
+    addPaths([await filesApi.keep({ name: file.name, dataUrl: await dataUrlOf(file) })])
+  }
+
+  async function attachOne(file: File, how: (file: File) => Promise<void>): Promise<void> {
+    try {
+      await how(file)
+    } catch (error) {
+      toast.error(t('chat.attachFailed').replace('{name}', file.name), {
+        description: problemText(t, problemOf(error)),
+        duration: Infinity
+      })
     }
   }
 
-  const draft = !!text.trim() || files.length > 0
+  // Files dropped anywhere on the chat, transcript included, land here: the composer's parent is
+  // the whole chat area (the panes render as fragments into it).
+  const form = useRef<HTMLFormElement>(null)
+  const attachDropped = useEffectEvent((files: FileList) => void attach(files))
+  useEffect(() => {
+    const area = form.current?.parentElement
+    if (!area) return
+    const over = (event: DragEvent): void => {
+      // Only a drag of files: selected text or a link still drops into the text field.
+      if (!event.dataTransfer?.types.includes('Files')) return
+      event.preventDefault()
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
+    }
+    const drop = (event: DragEvent): void => {
+      if (!event.dataTransfer?.types.includes('Files')) return
+      event.preventDefault()
+      attachDropped(event.dataTransfer.files)
+    }
+    area.addEventListener('dragover', over)
+    area.addEventListener('drop', drop)
+    return () => {
+      area.removeEventListener('dragover', over)
+      area.removeEventListener('drop', drop)
+    }
+  }, [])
 
   function onKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>): void {
     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
@@ -131,35 +191,31 @@ export function Composer({
 
   return (
     <form
+      ref={form}
       className="mx-auto w-full max-w-3xl px-6 pb-6"
       onSubmit={(event) => {
         event.preventDefault()
         void send()
       }}
-      onDragOver={(event) => event.preventDefault()}
-      onDrop={(event) => {
-        event.preventDefault()
-        void attach(event.dataTransfer.files)
-      }}
     >
       <div className="chat-composer flex flex-col gap-2 rounded-3xl bg-secondary p-3">
-        {files.length > 0 && (
+        {(files.length > 0 || paths.length > 0) && (
           <ul className="flex flex-wrap gap-2">
             {files.map((image) => (
-              <li
+              <AttachedChip
                 key={image.id}
-                className="flex items-center gap-1 rounded-full bg-background py-1 pr-1 pl-3 text-sm"
-              >
-                {image.name}
-                <button
-                  type="button"
-                  aria-label={t('chat.removeImage').replace('{name}', image.name)}
-                  onClick={() => setFiles((current) => current.filter((item) => item !== image))}
-                  className="rounded-full p-1 hover:bg-foreground/10"
-                >
-                  <X size={14} />
-                </button>
-              </li>
+                name={image.name}
+                title={null}
+                onRemove={() => setFiles((current) => current.filter((item) => item !== image))}
+              />
+            ))}
+            {paths.map((path) => (
+              <AttachedChip
+                key={path}
+                name={baseName(path)}
+                title={path}
+                onRemove={() => setPaths((current) => current.filter((item) => item !== path))}
+              />
             ))}
           </ul>
         )}
@@ -186,7 +242,7 @@ export function Composer({
         <div className="flex flex-wrap items-center gap-1">
           <IconButton
             type="button"
-            label={t('chat.addImage')}
+            label={t('chat.addFiles')}
             onClick={() => picker.current?.click()}
             className="text-foreground"
           >
@@ -195,7 +251,6 @@ export function Composer({
           <input
             ref={picker}
             type="file"
-            accept="image/*"
             multiple
             hidden
             onChange={(event) => {
@@ -258,6 +313,36 @@ export function Composer({
         </div>
       </div>
     </form>
+  )
+}
+
+// One thing attached to the draft, an image or a file on this computer, with a way to take it off.
+function AttachedChip({
+  name,
+  title,
+  onRemove
+}: {
+  name: string
+  // The full path of a file on this computer, shown on hover.
+  title: string | null
+  onRemove: () => void
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  return (
+    <li
+      title={title ?? undefined}
+      className="flex items-center gap-1 rounded-full bg-background py-1 pr-1 pl-3 text-sm"
+    >
+      {name}
+      <button
+        type="button"
+        aria-label={t('chat.removeAttachment').replace('{name}', name)}
+        onClick={onRemove}
+        className="rounded-full p-1 hover:bg-foreground/10"
+      >
+        <X size={14} />
+      </button>
+    </li>
   )
 }
 

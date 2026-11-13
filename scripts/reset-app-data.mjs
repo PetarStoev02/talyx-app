@@ -4,7 +4,8 @@
  * Clears Talyx app data for a fresh start.
  * Usage: npm run reset (or npm run dev:reset to reset and start the app)
  *
- * Deletes settings.json from Electron's userData folder. Data left behind by the
+ * Deletes settings.json and the copies of files added to chats (attachments/) from Electron's
+ * userData folder. Data left behind by the
  * file-organizer versions (talyx.db, models/) goes too.
  */
 
@@ -25,6 +26,7 @@ console.log(`\nClearing Talyx app data from: ${appData}\n`)
 
 const targets = [
   { path: join(appData, 'settings.json'), label: 'Settings' },
+  { path: join(appData, 'attachments'), label: 'Copies of files added to chats' },
   { path: join(appData, 'talyx.db'), label: 'Old database' },
   { path: join(appData, 'talyx.db-wal'), label: 'Old database WAL' },
   { path: join(appData, 'talyx.db-shm'), label: 'Old database SHM' },

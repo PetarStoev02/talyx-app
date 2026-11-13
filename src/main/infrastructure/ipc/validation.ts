@@ -1,5 +1,6 @@
 import { isAbsolute } from 'path'
 import { z } from 'zod/v4'
+import { KEPT_FILE_MAX_BYTES } from '../../../shared/keptFiles'
 import { SIDEBAR_WIDTH } from '../../../shared/sidebar'
 
 /** A bot (profile name) or room (room id) to open again on launch. */
@@ -34,6 +35,15 @@ export const EngineLabelSchema = z.string().max(200)
 export const RendererErrorSchema = z.object({
   scope: z.string().max(100),
   message: z.string().max(8000)
+})
+
+// Base64 takes 4 characters for every 3 bytes; the rest is room for the `data:<mime>;base64,` head.
+const KEPT_FILE_MAX_CHARS = Math.ceil(KEPT_FILE_MAX_BYTES / 3) * 4 + 1024
+
+/** A file the page could not name a path for, to keep a copy of (files.ipc.ts). */
+export const KeptFileSchema = z.object({
+  name: z.string().max(255),
+  dataUrl: z.string().max(KEPT_FILE_MAX_CHARS)
 })
 
 /** A profile name as the engine accepts it. */
