@@ -1,3 +1,4 @@
+import { LIVE_ID } from './transcript'
 import type { ChatItem, MessageItem } from './types'
 
 type ToolItem = Extract<ChatItem, { kind: 'tool' }>
@@ -61,7 +62,9 @@ export function turnOutcome(items: ChatItem[], running: boolean): TurnOutcome | 
   if (replies.some((reply) => reply.error !== null)) return { kind: 'failed', asked }
   const sending = asked.id.startsWith(SENDING_ID)
   // An answer is asked for again in the stored message's place, so not before the reload stores it.
-  if (replies.some((reply) => reply.text)) return sending ? null : { kind: 'answered', asked }
+  // A reply not stored yet may be another client's turn, whose message has not loaded yet.
+  const stored = !sending && !replies.some((reply) => reply.id.startsWith(LIVE_ID))
+  if (replies.some((reply) => reply.text)) return stored ? { kind: 'answered', asked } : null
   if (replies.some((reply) => reply.stopped)) return { kind: 'stopped', asked }
   // Still on its way: the engine has not started its turn yet.
   if (!replies.length && sending) return null

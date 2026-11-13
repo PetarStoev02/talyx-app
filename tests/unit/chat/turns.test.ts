@@ -171,6 +171,8 @@ describe('turn outcome', () => {
 
   it('should have none for an answer the engine has not stored yet', () => {
     expect(kind([user('local-1'), reply('live-1', 'Done.')])).toBeNull()
+    // A turn another client started streams in under the earlier stored message.
+    expect(kind([user('u1'), reply('b1', 'Hi'), reply('live-2', 'Done.')])).toBeNull()
   })
 
   it('should have none while your message is still on its way', () => {

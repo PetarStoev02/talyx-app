@@ -83,10 +83,11 @@ export function ChatPane({
   // A retry waits for nothing else: not while a message is already lined up to go.
   const outcome = chat.waiting.length ? null : turnOutcome(chat.transcript?.items ?? [], running)
   // The engine keeps a sent image's upload only briefly, so a message with images goes back to
-  // the composer to attach them again; a text message is asked again in its place.
-  const retry = (asked: TurnOutcome['asked']): void => {
-    if (asked.images.length) start({ text: asked.text, send: false })
-    else void actions.regenerate(bot.name, asked)
+  // the composer to attach them again; a text message is asked again in its place, and goes to
+  // the composer when that could not be sent.
+  const askAgain = async (asked: TurnOutcome['asked']): Promise<void> => {
+    if (asked.images.length || !(await actions.regenerate(bot.name, asked)))
+      start({ text: asked.text, send: false })
   }
   const prompts = chat.transcript?.prompts ?? []
   const loadImage = (path: string): Promise<string> => actions.mediaUrl(bot.name, path)
@@ -119,7 +120,11 @@ export function ChatPane({
             )}
             {outcome && (
               <li>
-                <OutcomeLine outcome={outcome} name={title} onRetry={() => retry(outcome.asked)} />
+                <OutcomeLine
+                  outcome={outcome}
+                  name={title}
+                  onAskAgain={() => void askAgain(outcome.asked)}
+                />
               </li>
             )}
             {chat.waiting.map((message) => (
@@ -217,11 +222,11 @@ function announcement(
 function OutcomeLine({
   outcome,
   name,
-  onRetry
+  onAskAgain
 }: {
   outcome: TurnOutcome
   name: string
-  onRetry: () => void
+  onAskAgain: () => void
 }): React.JSX.Element | null {
   const t = useLanguage((s) => s.t)
   const { kind, asked } = outcome
@@ -231,7 +236,7 @@ function OutcomeLine({
     return attach ? null : (
       <OutcomeButton
         label={t('chat.regenerateLabel').replace('{text}', asked.text)}
-        onClick={onRetry}
+        onClick={onAskAgain}
       >
         <RefreshCw size={14} />
         {t('chat.regenerate')}
@@ -251,7 +256,7 @@ function OutcomeLine({
           '{text}',
           asked.text
         )}
-        onClick={onRetry}
+        onClick={onAskAgain}
       >
         <RotateCcw size={14} />
         {t(attach ? 'chat.retryImages' : 'chat.retry')}

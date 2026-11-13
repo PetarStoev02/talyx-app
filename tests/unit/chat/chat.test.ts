@@ -647,7 +647,8 @@ describe('bot chat', () => {
       emit('message.start', { turn_id: 't1' })
       emit('message.complete', { text: 'Margins are', status: 'interrupted', partial: true })
       expect(shownText().at(-1)).toBe('Margins are')
-      expect(outcome()).not.toBe('stopped')
+      // An answer: asked for again once the reload stores the message.
+      expect(outcome()).toBeNull()
     })
 
     it('should offer the failed message to send again', async () => {
@@ -820,12 +821,54 @@ describe('bot chat', () => {
     it('should give the chat back as it was, and say why, when the engine refuses', async () => {
       await actions.open(MANAGER, 'manager-chat')
       engine.failNext('prompt.submit', 'session_busy')
-      await actions.regenerate(MANAGER, lastAsked())
+      expect(await actions.regenerate(MANAGER, lastAsked())).toBe(false)
       expect(shown()).toEqual([{ text: 'Hello' }, { text: 'Hi there', error: null }])
       expect(chat(MANAGER).error?.key).toBe('chat.errorSend')
       // Nothing is out: your next message goes at once.
       await actions.queue(MANAGER, { text: 'Next', images: [] })
       expect(submits().at(-1)?.text).toBe('Next')
+    })
+
+    it('should show what the engine kept when it cut the turn but then refused the new one', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      // The rewind went through; the submit after it did not.
+      engine.chats[MANAGER].messages = []
+      engine.failNext('prompt.submit', 'session_busy')
+      expect(await actions.regenerate(MANAGER, lastAsked())).toBe(false)
+      expect(chat(MANAGER).transcript?.items).toEqual([])
+      expect(chat(MANAGER).error?.key).toBe('chat.errorSend')
+    })
+
+    it('should not reload over the new turn when the engine reports its own rewind', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      const release = engine.holdNext('prompt.submit')
+      const asked = actions.regenerate(MANAGER, lastAsked())
+      await settled()
+      // The engine has cut the turn and says so before the new message is stored.
+      engine.chats[MANAGER].messages = []
+      emit('session.updated', { operation: 'rewind' })
+      await settled()
+      expect(shown()).toEqual([{ text: 'Hello' }])
+      await actions.queue(MANAGER, { text: 'Next', images: [] })
+      release()
+      await asked
+      expect(submits().map((params) => params.text)).toEqual(['Hello'])
+      await answeredAgain(
+        [
+          { id: 3, role: 'user', content: 'Hello' },
+          { id: 4, role: 'assistant', content: 'Hello again' }
+        ],
+        'Hello again'
+      )
+      expect(submits().map((params) => params.text)).toEqual(['Hello', 'Next'])
+    })
+
+    it('should send nothing while the bot is answering', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      const asked = lastAsked()
+      emit('message.start', { turn_id: 'busy' })
+      expect(await actions.regenerate(MANAGER, asked)).toBe(false)
+      expect(submits()).toEqual([])
     })
   })
 

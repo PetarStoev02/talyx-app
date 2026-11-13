@@ -19,7 +19,7 @@ const NOTICE_KINDS = new Set([
 const QUIET_KINDS = new Set(['process_complete'])
 const MESSAGE_AGENT = 'message_agent'
 // The id prefix of a reply streamed live, before the history reload gives it its stored row id.
-const LIVE_ID = 'live-'
+export const LIVE_ID = 'live-'
 // The row the engine stores for a turn that failed after it reached the model.
 const FAILED_TURN = 'failed_turn'
 // What the engine stores, and the failure it names, for a turn the model gave no answer to.
