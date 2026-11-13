@@ -46,7 +46,7 @@ export function Transcript({
           {items
             .filter((item) => !isQuietReply(item))
             .map((item, index) => (
-              <li key={item.id || index} className="flex flex-col">
+              <li key={item.id || index} data-message-id={item.id} className="flex flex-col">
                 <MessageBubble message={item} loadImage={loadImage} briefs={briefs} />
               </li>
             ))}

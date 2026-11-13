@@ -94,3 +94,77 @@
 .chat-composer textarea:focus-visible {
   outline: none;
 }
+
+/* Chat search: every match, and the one the search is on. Dark text, so both themes read it; the
+   current one is underlined too, so it never rests on its colour alone. */
+::highlight(chat-search) {
+  background-color: var(--search-hit);
+  color: var(--search-hit-text);
+}
+::highlight(chat-search-current) {
+  background-color: var(--search-hit-current);
+  color: var(--search-hit-text);
+  text-decoration: underline 2px;
+}
+
+/* A match in a search result, in the colours of a match in the chat. */
+.search-hit {
+  background-color: var(--search-hit);
+  color: var(--search-hit-text);
+  border-radius: 2px;
+}
+
+/* The search opens out of its button: it wipes in from the right, where the button was, and its
+   list of messages settles in under it. theme.css turns both off under reduced motion. */
+.chat-search {
+  animation: chat-search-open var(--duration-move) var(--ease-out);
+}
+@keyframes chat-search-open {
+  from {
+    clip-path: inset(0 0 0 calc(100% - 2.5rem) round 9999px);
+    opacity: 0.4;
+  }
+  to {
+    clip-path: inset(0 round 9999px);
+    opacity: 1;
+  }
+}
+.chat-search-list {
+  transform-origin: top right;
+  animation: talyx-pop-in var(--duration-in) var(--ease-out);
+}
+
+/* Like the composer, the search shows focus on its whole pill. */
+.chat-search:has(input:focus-visible) {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* A narrow chat has no room for the name pill beside the open search: the search takes the row. */
+@container chat (max-width: 36rem) {
+  .chat-header:has([role='search']) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .chat-header:has([role='search']) > .chat-pill {
+    display: none;
+  }
+  .chat-header:has([role='search']) > .chat-search-slot {
+    grid-column-start: 1;
+  }
+}
+/* Narrower still, the row's margins shrink and the Previous button steps aside (Shift+Enter still
+   goes back), so the count and Close stay in the window. */
+@container chat (max-width: 24rem) {
+  .chat-header:has([role='search']) {
+    padding-inline: 0.5rem;
+  }
+  .chat-search input {
+    min-width: 3rem;
+  }
+  .chat-search-count {
+    min-width: 0;
+  }
+  .chat-search-previous {
+    display: none;
+  }
+}

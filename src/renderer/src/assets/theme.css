@@ -231,6 +231,13 @@
   background-color: oklch(1 0 0 / 0.2);
 }
 
+/* Search matches: in the chat and in the list of results. Dark text on both, in either theme. */
+:root {
+  --search-hit: oklch(0.9 0.12 95);
+  --search-hit-current: oklch(0.78 0.16 65);
+  --search-hit-text: oklch(0.2 0 0);
+}
+
 /* Motion: quick and quiet. Appearing eases out (fast start, soft stop), leaving eases in and is
    shorter, moving or resizing on screen eases both ways. Reduced motion turns all of it off. */
 :root {

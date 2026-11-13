@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useRoster } from '@features/bots/store'
 import { botTitle } from '@features/bots/roster'
@@ -13,6 +13,7 @@ import { ChatPane, ChatSkeleton, RoomPane } from '@widgets/chat'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { answering, roomActions } from '@features/chat/room'
 import { useRooms } from '@features/chat/roomStore'
+import { findIn, useFind } from '@features/chat/findStore'
 import { DetailsPanel, RoomDetailsPanel } from '@widgets/bot-details'
 import type { ChatActions } from '@features/chat/chat'
 import { SlidePanel } from '@shared/ui/Reveal'
@@ -48,7 +49,17 @@ export function AgentsPage({
   const phases = useRooms((state) => (room ? state.rooms[room.room_id]?.phases : undefined))
   const title = bot ? botTitle(bot) : room?.name
   const rooms = useMemo(() => roster && roomActions(roster), [roster])
+  // A find belongs to the chat or room it was opened in; selecting another ends it. Here, not when
+  // a pane unmounts: a picked room hit asks for the find before its pane mounts.
+  useEffect(() => {
+    const { request, clear } = useFind.getState()
+    if (request && !(selection && findIn(request, selection))) clear()
+  }, [selection])
+  // Leaving the Agents page (Settings, a module) ends the find too.
+  useEffect(() => () => useFind.getState().clear(), [])
   const pill = useRef<HTMLButtonElement>(null)
+  // The header's right side, where a bot's chat puts its search.
+  const [searchSlot, setSearchSlot] = useState<HTMLDivElement | null>(null)
   // A room's panel stays open as you move between rooms, as a bot's does between bots.
   const [roomPanel, setRoomPanel] = useState(false)
   const detailsOpen = bot ? editingProfile === bot.name : !!room && roomPanel
@@ -64,10 +75,14 @@ export function AgentsPage({
       <div className="@container relative flex h-full min-w-0">
         <section
           aria-label={title ? t('agents.chatWith').replace('{name}', title) : t('nav.agents')}
-          className="flex min-w-0 flex-1 flex-col"
+          className="@container/chat flex min-w-0 flex-1 flex-col"
         >
           {title && (
-            <header className="flex min-h-16 shrink-0 items-center justify-center px-6 py-2">
+            // Three columns keep the pill centred; the search takes the right one, and when open it
+            // keeps the width it needs, pushing the pill left rather than covering it. The pill keeps
+            // its own: a bot's name truncates, a room's wraps at its words (chat.css: a narrow chat
+            // gives the open search the whole row).
+            <header className="chat-header grid min-h-16 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(min-content,1fr)] items-center gap-2 px-6 py-2">
               <button
                 ref={pill}
                 aria-expanded={detailsOpen}
@@ -78,7 +93,7 @@ export function AgentsPage({
                 onClick={toggleDetails}
                 className={cn(
                   pillClass,
-                  'group transition-colors select-none hover:bg-foreground/10 aria-expanded:bg-foreground/10'
+                  'chat-pill group col-start-2 min-w-[min(12rem,100%)] transition-colors select-none hover:bg-foreground/10 aria-expanded:bg-foreground/10'
                 )}
               >
                 {bot ? (
@@ -93,21 +108,39 @@ export function AgentsPage({
                     />
                   )
                 )}
-                {/* A room's name is shown nowhere else once it has messages: it wraps, never cuts off. */}
-                <span className={bot ? 'truncate' : 'min-w-0 wrap-break-word'}>{title}</span>
+                {/* A room's name is shown nowhere else once it has messages: it wraps, even inside a
+                    long word, never cuts off; the pill's minimum width keeps it readable. */}
+                <span className={bot ? 'truncate' : 'min-w-0 wrap-anywhere'}>{title}</span>
                 <ChevronRight
                   size={16}
                   aria-hidden="true"
                   className="shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-aria-expanded:rotate-180 group-aria-expanded:group-hover:-translate-x-0.5 motion-reduce:transition-none"
                 />
               </button>
+              <div
+                ref={setSearchSlot}
+                className="chat-search-slot col-start-3 flex min-w-0 justify-end"
+              />
             </header>
           )}
           <ErrorBoundary key={bot?.name ?? room?.room_id ?? 'none'} scope="chat">
             {bot ? (
-              <ChatPane key={bot.name} bot={bot} roster={roster} actions={chat} />
+              <ChatPane
+                key={bot.name}
+                bot={bot}
+                roster={roster}
+                actions={chat}
+                rooms={rooms}
+                searchSlot={searchSlot}
+              />
             ) : room ? (
-              <RoomPane key={room.room_id} room={room} actions={rooms} chat={chat} />
+              <RoomPane
+                key={room.room_id}
+                room={room}
+                actions={rooms}
+                chat={chat}
+                searchSlot={searchSlot}
+              />
             ) : opening ? (
               <ChatSkeleton label={t('chat.loading')} />
             ) : (

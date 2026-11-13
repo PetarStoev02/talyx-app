@@ -3,15 +3,12 @@ import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
-import { botTitle } from '@features/bots/roster'
-import { roomHandle } from '@features/bots/rooms'
 import { useRoster } from '@features/bots/store'
-import type { Bot, Room } from '@features/bots/types'
+import type { Room } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
 import { answering } from '@features/chat/room'
 import type { RoomActions } from '@features/chat/room'
 import { roomText } from '@features/chat/attachments'
-import type { Mention } from '@features/chat/mentions'
 import { parseAttachmentKey, roomItems } from '@features/chat/roomLog'
 import { useRooms } from '@features/chat/roomStore'
 import type { RoomTask, RoomView } from '@features/chat/types'
@@ -32,17 +29,28 @@ import { Reveal } from '@shared/ui/Reveal'
 import { useArrival } from '@shared/hooks/useStayMounted'
 import { cn } from '@shared/lib/utils'
 import { Transcript } from './Transcript'
+import { roomMember, roomMentions } from './roomPeople'
+import { ChatSearch } from './ChatSearch'
+import type { SearchFound } from './ChatSearch'
+import { placeHits } from '@features/chat/botSearch'
+import { FindSlot } from './FindSlot'
+import { usePlaceFind } from './usePlaceFind'
+
+const wholeAlready = (): Promise<void> => Promise.resolve()
 
 /** A hosted room: its log with who is answering below, then a composer with the room's model. */
 export function RoomPane({
   room,
   actions,
-  chat
+  chat,
+  searchSlot
 }: {
   room: Room
   actions: RoomActions | null
   // Dictation and the model list run through Talyx's own profile; a room has none.
   chat: ChatActions | null
+  // Where the search sits: the page's header, on the line with the room's pill.
+  searchSlot: HTMLElement | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const bots = useRoster((state) => state.snapshot.bots)
@@ -95,6 +103,18 @@ export function RoomPane({
     [actions, roomId]
   )
 
+  const [transcriptArea, setTranscriptArea] = useState<HTMLDivElement | null>(null)
+  const { request, open: openFind, close } = usePlaceFind('room', roomId)
+  const place = useMemo(() => ({ kind: 'room' as const, id: roomId }), [roomId])
+  const find = useCallback(
+    (query: string): SearchFound => ({ hits: placeHits(place, items, query), note: '' }),
+    [place, items]
+  )
+  const closeFind = (): void => {
+    close()
+    composer.current?.focus()
+  }
+
   const loading = !actions || !chat || !view || (view.loading && !view.events.length)
   const arrival = useArrival(loading)
   if (loading) return <ChatSkeleton label={t('chat.loading')} />
@@ -127,7 +147,22 @@ export function RoomPane({
 
   return (
     <>
-      <div className={cn('flex min-h-0 flex-1 flex-col', arrival)}>
+      <FindSlot slot={searchSlot} label={t('chat.search')} onOpen={openFind}>
+        {request && transcriptArea && (
+          <ChatSearch
+            key={`${request.query}\n${request.messageId}`}
+            transcript={transcriptArea}
+            place={place}
+            label={t('chat.search')}
+            start={request}
+            find={find}
+            // The room's view holds its whole log already.
+            loadWhole={wholeAlready}
+            onClose={closeFind}
+          />
+        )}
+      </FindSlot>
+      <div ref={setTranscriptArea} className={cn('flex min-h-0 flex-1 flex-col', arrival)}>
         {items.length || view.tasks.length ? (
           <Transcript items={items} loadImage={loadImage}>
             {view.tasks.map((task) => (
@@ -264,27 +299,6 @@ function RoomModelMenu({
       <Chip label={t('chat.model')} value={value} disabled={!shared || switching} />
     </ModelPicker>
   )
-}
-
-// A member's name as the roster shows it. Never its handle: Talyx's handle in rooms made by
-// other clients is not a name to show.
-function roomMember(room: Room, bots: Bot[], memberId: string): { name: string; profile: string } {
-  const member = room.members.find((item) => (item.member_id ?? item.profile) === memberId)
-  const profile = member?.profile ?? memberId
-  const bot = bots.find((item) => item.name === profile)
-  return { name: bot ? botTitle(bot) : member?.display_name || profile, profile }
-}
-
-// What each member answers to: its handle (rooms other clients made may set their own), shown
-// and written as its roster name.
-function roomMentions(
-  room: Room,
-  memberOf: (member: string) => { name: string; profile: string }
-): Mention[] {
-  return room.members.map((member) => ({
-    handle: member.handle ?? roomHandle(member.profile),
-    name: memberOf(member.member_id ?? member.profile).name
-  }))
 }
 
 function activityLine(

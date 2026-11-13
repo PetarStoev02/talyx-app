@@ -143,6 +143,76 @@ describe('bot chat', () => {
     })
   })
 
+  describe('searching the whole history', () => {
+    // More than the chat first loads and more than one engine page.
+    const LONG_HISTORY = 1203
+    const ids = (): string[] => chat(MANAGER).transcript?.items.map((item) => item.id) ?? []
+
+    beforeEach(() => {
+      engine.chats[MANAGER].messages = Array.from({ length: LONG_HISTORY }, (_, index) => ({
+        id: index + 1,
+        role: index % 2 ? 'assistant' : 'user',
+        content: `Message ${index + 1}`
+      }))
+    })
+
+    it('should first load only the newest part of a long chat', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      expect(ids()).toHaveLength(120)
+      expect(chat(MANAGER).whole).toBe(false)
+    })
+
+    it('should load every stored message, oldest first, when the whole history is asked for', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      await actions.loadWhole(MANAGER)
+      expect(ids()).toHaveLength(LONG_HISTORY)
+      expect([ids()[0], ids().at(-1)]).toEqual(['1', String(LONG_HISTORY)])
+      expect(chat(MANAGER)).toMatchObject({ whole: true, loading: false, error: null })
+    })
+
+    it('should keep the whole history when the chat reloads after a turn', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      await actions.loadWhole(MANAGER)
+      engine.chats[MANAGER].messages.push({ id: 1204, role: 'user', content: 'One more' })
+      await actions.rebuild(MANAGER)
+      expect(ids()).toHaveLength(LONG_HISTORY + 1)
+    })
+
+    it('should show a failed load of the whole history as the chat error', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      engine.failNext('GET /api/sessions', 'Gateway restarting')
+      await actions.loadWhole(MANAGER)
+      expect(chat(MANAGER).error).toMatchObject({
+        key: 'chat.errorLoad',
+        detail: 'Gateway restarting'
+      })
+      expect(ids()).toHaveLength(120)
+      expect(chat(MANAGER).whole).toBe(false)
+    })
+
+    it('should not load the whole history again while it is already whole', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      await actions.loadWhole(MANAGER)
+      const reads = engine.calls.length
+      await actions.loadWhole(MANAGER)
+      expect(engine.calls).toHaveLength(reads)
+    })
+
+    it('should load a chat opened after the search started whole', async () => {
+      await actions.loadWhole(MANAGER)
+      await actions.open(MANAGER, 'manager-chat')
+      expect(ids()).toHaveLength(LONG_HISTORY)
+    })
+
+    it('should go back to the newest part on the next reload once the search closes', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      await actions.loadWhole(MANAGER)
+      actions.keepNewest(MANAGER)
+      await actions.rebuild(MANAGER)
+      expect(ids()).toHaveLength(120)
+    })
+  })
+
   describe('a failed turn', () => {
     const UNKNOWN_PROVIDER = "Unknown provider 'acme'. Send it again if you still want me to."
     const NO_CREDENTIALS = 'No usable credentials found for provider acme'

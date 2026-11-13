@@ -62,7 +62,30 @@ const history: Record<string, Array<Record<string, unknown>>> = {
         'Found it: the export loop stopped one row early. **The fix is in and the tests pass.**'
     },
     { id: 3, role: 'user', content: 'Great, ship it.' }
-  ]
+  ],
+  // Longer than the chat first loads, so search has to load the rest: the refund tickets are oldest.
+  support: Array.from({ length: 300 }, (_, index) => {
+    const ticket = 1000 + Math.floor(index / 2)
+    const refund = ticket % 50 === 0
+    return index % 2
+      ? {
+          id: index + 1,
+          role: 'assistant',
+          content: refund
+            ? `Ticket ${ticket}: the customer asks for a **refund**; that needs your decision.`
+            : `Ticket ${ticket}: answered from the help docs.`
+        }
+      : { id: index + 1, role: 'user', content: `What happened with ticket ${ticket}?` }
+  })
+}
+// The engine's paging of a transcript: at most 500 a page, the newest page unless asked otherwise.
+const ENGINE_PAGE_MAX = 500
+function page<T>(messages: T[], query: URLSearchParams): T[] {
+  const limit = Math.min(Number(query.get('limit') ?? ENGINE_PAGE_MAX), ENGINE_PAGE_MAX)
+  const offset = Number(query.get('offset') ?? 0)
+  if (query.get('order') === 'oldest') return messages.slice(offset, offset + limit)
+  const end = messages.length - offset
+  return messages.slice(Math.max(0, end - limit), Math.max(0, end))
 }
 let seq = 100
 // Developer's cards open once per page load, with its history, so the chat opens scrolled to them.
@@ -273,8 +296,10 @@ export function fixtureChat(providers: ProvidersBackend): ChatActions {
   }
 
   const http: ChatBackend['http'] = async <T>({ path }: { path: string }): Promise<T> => {
-    const profile = new URL(path, 'http://fixture.invalid').searchParams.get('profile') ?? ''
-    if (path.startsWith('/api/sessions/')) return { messages: history[profile] ?? [] } as T
+    const query = new URL(path, 'http://fixture.invalid').searchParams
+    const profile = query.get('profile') ?? ''
+    if (path.startsWith('/api/sessions/'))
+      return { messages: page(history[profile] ?? [], query) } as T
     if (path.startsWith('/api/model/options') || path.startsWith('/api/providers/'))
       return providers.http<T>({ path, profile })
     if (path.startsWith('/api/chat/image-upload'))

@@ -33,6 +33,8 @@ describe('shortcuts', () => {
       ['linux', press('/', { ctrlKey: true }), 'cheatSheet'],
       ['mac', press(',', { metaKey: true }), 'settings'],
       ['linux', press(',', { ctrlKey: true }), 'settings'],
+      ['mac', press('f', { metaKey: true }), 'searchChat'],
+      ['linux', press('f', { ctrlKey: true }), 'searchChat'],
       // Caps Lock turns the key upper case without Shift.
       ['mac', press('N', { metaKey: true }), 'newBot'],
       // Layouts where / or , needs Shift (German: Shift+7 is /).

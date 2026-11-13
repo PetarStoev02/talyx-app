@@ -14,6 +14,8 @@ import type { ApprovalChoice, ChatItem, Transcript } from './types'
 /** The bot's chat is the profile's hidden session with this exact title. */
 export const BOT_CHAT_TITLE = 'Bot Chat'
 const HISTORY_LIMIT = 120
+// The most messages the engine sends in one page of a transcript.
+const ENGINE_PAGE_MAX = 500
 const TITLE_TAKEN = 'already in use'
 // A stored message's id is its durable row id; a message not stored yet has a local one.
 const ROW_ID = /^\d+$/
@@ -57,6 +59,10 @@ export interface ChatActions {
   /** The bot's newest replies as text, oldest first; none when it has no chat yet. */
   recent: (profile: string, limit: number) => Promise<string[]>
   rebuild: (profile: string) => Promise<void>
+  /** Loads every stored message, not only the newest, and keeps doing so on later reloads. */
+  loadWhole: (profile: string) => Promise<void>
+  /** Back to the newest messages only, from the next reload on (the search closed). */
+  keepNewest: (profile: string) => void
   /** False when nothing was sent; the caller keeps the draft. */
   send: (profile: string, draft: ChatDraft) => Promise<boolean>
   /**
@@ -157,17 +163,8 @@ export function chatActions(backend: ChatBackend): ChatActions {
     loads.set(profile, token)
     // Events that land while the history is on its way are kept and replayed over it.
     update(profile, { pending: [] })
-    const query = new URLSearchParams({
-      profile,
-      limit: String(HISTORY_LIMIT),
-      order: 'latest',
-      include_compacted: 'true'
-    })
-    const [history, resume] = await Promise.all([
-      backend.http<{ messages: SessionMessage[] }>({
-        path: `/api/sessions/${encodeURIComponent(sessionId)}/messages?${query}`,
-        profile
-      }),
+    const [messages, resume] = await Promise.all([
+      chatOf(profile)?.whole ? wholeHistory(profile, sessionId) : newestHistory(profile, sessionId),
       backend.request<ResumeSnapshot>(profile, 'session.resume', {
         session_id: sessionId,
         defer_history: true,
@@ -180,7 +177,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
     })
     if (loads.get(profile) !== token) return
     const current = chatOf(profile)
-    const fresh = rebuilt(current?.transcript ?? null, sessionId, history.messages, resume)
+    const fresh = rebuilt(current?.transcript ?? null, sessionId, messages, resume)
     update(profile, {
       sessionId,
       transcript: (current?.pending ?? []).reduce(applyEvent, fresh),
@@ -189,6 +186,44 @@ export function chatActions(backend: ChatBackend): ChatActions {
       loading: false,
       error: null
     })
+  }
+
+  async function newestHistory(profile: string, sessionId: string): Promise<SessionMessage[]> {
+    return historyPage(profile, sessionId, { limit: HISTORY_LIMIT, order: 'latest' })
+  }
+
+  // ponytail: while the search is open, each reload reads every page; a very long chat would want
+  // only the new pages.
+  async function wholeHistory(profile: string, sessionId: string): Promise<SessionMessage[]> {
+    const messages: SessionMessage[] = []
+    for (;;) {
+      const page = await historyPage(profile, sessionId, {
+        limit: ENGINE_PAGE_MAX,
+        order: 'oldest',
+        offset: messages.length
+      })
+      messages.push(...page)
+      if (page.length < ENGINE_PAGE_MAX) return messages
+    }
+  }
+
+  async function historyPage(
+    profile: string,
+    sessionId: string,
+    page: { limit: number; order: 'latest' | 'oldest'; offset?: number }
+  ): Promise<SessionMessage[]> {
+    const query = new URLSearchParams({
+      profile,
+      limit: String(page.limit),
+      order: page.order,
+      offset: String(page.offset ?? 0),
+      include_compacted: 'true'
+    })
+    const { messages } = await backend.http<{ messages: SessionMessage[] }>({
+      path: `/api/sessions/${encodeURIComponent(sessionId)}/messages?${query}`,
+      profile
+    })
+    return messages
   }
 
   function startChat(profile: string): Promise<string> {
@@ -370,6 +405,22 @@ export function chatActions(backend: ChatBackend): ChatActions {
     },
 
     rebuild,
+
+    loadWhole: guarded('chat.errorLoad', async (profile) => {
+      if (chatOf(profile)?.whole) return
+      // Set before the chat exists too, so the load that opens or creates it is whole.
+      update(profile, { whole: true })
+      const sessionId = sessionOf(profile)
+      if (!sessionId) return
+      try {
+        await load(profile, sessionId)
+      } catch (error) {
+        update(profile, { whole: false })
+        throw error
+      }
+    }),
+
+    keepNewest: (profile) => update(profile, { whole: false }),
 
     send,
 

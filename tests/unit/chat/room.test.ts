@@ -97,6 +97,12 @@ describe('group room', () => {
       expect(view()).toMatchObject({ live: false, working: false, tasks: [] })
     })
 
+    it("should read a room's whole log for a search, leaving the open view alone", async () => {
+      const log = await actions.log(ROOM)
+      expect(log.map((item) => item.seq)).toEqual([1, 2, 3])
+      expect(useRooms.getState().rooms[ROOM]).toBeUndefined()
+    })
+
     it('should show a failed read on the room', async () => {
       engine.failNext('groups.state', 'Socket closed')
       await actions.refresh(ROOM)
