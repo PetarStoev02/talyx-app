@@ -7,7 +7,7 @@ import type { TranslationKey } from '@shared/lib/i18n'
 import { failureOf } from '@shared/lib/problem'
 import { useChat } from './store'
 import type { ChatInfo, ChatState } from './store'
-import { applyEvent, fromHistory, settlePrompt, withFailedTurns } from './transcript'
+import { applyEvent, fromHistory, settlePrompt, withFailedTurns, withoutTurn } from './transcript'
 import { SENDING_ID } from './turns'
 import type { ApprovalChoice, ChatItem, Transcript } from './types'
 
@@ -15,6 +15,8 @@ import type { ApprovalChoice, ChatItem, Transcript } from './types'
 export const BOT_CHAT_TITLE = 'Bot Chat'
 const HISTORY_LIMIT = 120
 const TITLE_TAKEN = 'already in use'
+// A stored message's id is its durable row id; a message not stored yet has a local one.
+const ROW_ID = /^\d+$/
 
 /** A transcript image the engine no longer has on disk. */
 export class MediaGoneError extends Error {
@@ -45,6 +47,9 @@ export interface ChatDraft {
   // redirecting it (the engine's default for a busy chat). Module pages send this way, so one
   // workflow task's message never cuts into another's turn.
   whenBusy?: 'queue'
+  // The id of your message this one is sent in place of: the engine cuts the chat back to before
+  // it (when it stored it), and its turn goes, so the new answer replaces the old.
+  replaces?: string
 }
 
 export interface ChatActions {
@@ -60,6 +65,11 @@ export interface ChatActions {
    * nothing was sent; the caller keeps the draft.
    */
   queue: (profile: string, draft: ChatDraft) => Promise<boolean>
+  /**
+   * Asks again for the answer to your last message, in its place: the old answer, or the failure,
+   * goes and a new turn answers the same words. Nothing happens while the bot is answering.
+   */
+  regenerate: (profile: string, asked: { id: string; text: string }) => Promise<void>
   /** Takes a waiting message back before it is sent. */
   unqueue: (profile: string, id: string) => void
   /** Stops the running answer so this waiting message goes next, ahead of the others. */
@@ -235,9 +245,13 @@ export function chatActions(backend: ChatBackend): ChatActions {
     const text = draft.text.trim()
     if (!text && !draft.images.length) return false
     const local = `${SENDING_ID}${Date.now()}-${Math.random()}`
+    // The chat before a send in place of a message, put back when the send fails.
+    let replaced: Transcript | null = null
     try {
       const sessionId = sessionOf(profile) ?? (await startChat(profile))
-      const transcript = chatOf(profile)?.transcript ?? fromHistory(sessionId, [], false)
+      const shown = chatOf(profile)?.transcript ?? fromHistory(sessionId, [], false)
+      if (draft.replaces) replaced = shown
+      const transcript = draft.replaces ? withoutTurn(shown, draft.replaces) : shown
       const images = draft.images.map((image) => image.path)
       update(profile, {
         error: null,
@@ -252,18 +266,23 @@ export function chatActions(backend: ChatBackend): ChatActions {
         session_id: sessionId,
         text,
         ...(draft.images.length ? { attachments: draft.images } : {}),
-        ...(draft.whenBusy === 'queue' ? { queued: true } : {})
+        ...(draft.whenBusy === 'queue' ? { queued: true } : {}),
+        ...(draft.replaces && ROW_ID.test(draft.replaces)
+          ? { truncate_before_row_id: Number(draft.replaces), confirm_truncate: true }
+          : {})
       })
       return true
     } catch (error) {
-      // The composer gets the draft back, so the bubble for it goes.
+      // The composer gets the draft back, so the bubble for it goes; a turn it replaced comes back.
       const transcript = chatOf(profile)?.transcript ?? null
       update(profile, {
         error: failureOf('chat.errorSend', error),
-        transcript: transcript && {
-          ...transcript,
-          items: transcript.items.filter((item) => item.id !== local)
-        }
+        transcript:
+          replaced ??
+          (transcript && {
+            ...transcript,
+            items: transcript.items.filter((item) => item.id !== local)
+          })
       })
       return false
     }
@@ -344,6 +363,11 @@ export function chatActions(backend: ChatBackend): ChatActions {
       update(profile, { waiting: [...waiting, message] })
       void sendWaiting(profile)
       return true
+    },
+
+    regenerate: async (profile, asked) => {
+      if (busy(profile)) return
+      await submit(profile, { text: asked.text, images: [], replaces: asked.id })
     },
 
     unqueue: (profile, id) => {

@@ -174,6 +174,20 @@ function storedAt(items: ChatItem[], at: number, first: ChatItem | undefined): b
     .some((item) => item.kind === 'bot' && item.error !== null)
 }
 
+/**
+ * The chat without your message and the turn that answered it, the last turn: what shows while it
+ * is asked again. A failed turn kept for that message goes with it.
+ */
+export function withoutTurn(transcript: Transcript, asked: string): Transcript {
+  const at = transcript.items.findIndex((item) => item.id === asked)
+  if (at < 0) return transcript
+  return {
+    ...transcript,
+    items: transcript.items.slice(0, at),
+    failed: transcript.failed.filter((turn) => !turn.items.some((item) => item.id === asked))
+  }
+}
+
 export function addPrompt(transcript: Transcript, prompt: ChatPrompt): Transcript {
   return {
     ...transcript,

@@ -170,6 +170,8 @@ const en = {
   'chat.retry': 'Retry',
   'chat.retryLabel': 'Retry: {text}',
   'chat.retryImages': 'Attach again',
+  'chat.regenerate': 'Regenerate',
+  'chat.regenerateLabel': 'Answer again, in place of this answer: {text}',
   'chat.retryImagesLabel': 'Put back in the message box to attach its images again: {text}',
   'chat.waitRetryIn': 'retrying in {time}',
   'chat.replyStopped': 'Stopped',

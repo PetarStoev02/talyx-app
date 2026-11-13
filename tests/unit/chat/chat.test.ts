@@ -647,7 +647,7 @@ describe('bot chat', () => {
       emit('message.start', { turn_id: 't1' })
       emit('message.complete', { text: 'Margins are', status: 'interrupted', partial: true })
       expect(shownText().at(-1)).toBe('Margins are')
-      expect(outcome()).toBeNull()
+      expect(outcome()).not.toBe('stopped')
     })
 
     it('should offer the failed message to send again', async () => {
@@ -704,6 +704,128 @@ describe('bot chat', () => {
       await firstEnded
       await settled()
       expect(submitted()).toEqual(['Summarise Q3', 'Next', 'Third'])
+    })
+  })
+
+  describe('asking for an answer again', () => {
+    let seq = 10
+    const emit = (type: string, payload: Record<string, unknown> = {}): void => {
+      seq += 1
+      handleEvent(actions, { type, seq, payload, session_id: 'manager-chat' } as GatewayEvent)
+    }
+    const settled = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+    const shown = (): Array<Record<string, unknown>> =>
+      turnView(chat(MANAGER).transcript!.items, false).items.map((item) =>
+        item.kind === 'bot' ? { text: item.text, error: item.error } : { text: item.text }
+      )
+    const submits = (): Array<Record<string, unknown>> =>
+      engine.calls.filter((item) => item.method === 'prompt.submit').map((item) => item.params)
+    const lastAsked = (): TurnOutcome['asked'] => {
+      const transcript = chat(MANAGER).transcript!
+      return turnOutcome(transcript.items, transcript.running)!.asked
+    }
+    // The engine cut the chat back to before the message and stored the new turn.
+    const answeredAgain = async (rows: SessionMessage[], answer: string): Promise<void> => {
+      engine.chats[MANAGER].messages = rows
+      emit('message.start', { turn_id: `t${seq}` })
+      emit('message.complete', { text: answer, status: 'complete' })
+      await settled()
+    }
+
+    it('should replace the answer with a new one for the same message', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      await actions.regenerate(MANAGER, lastAsked())
+      expect(submits()).toEqual([
+        {
+          session_id: 'manager-chat',
+          text: 'Hello',
+          truncate_before_row_id: 1,
+          confirm_truncate: true
+        }
+      ])
+      // The old answer goes at once; the message shows once while the new answer comes.
+      expect(shown()).toEqual([{ text: 'Hello' }])
+      await answeredAgain(
+        [
+          { id: 3, role: 'user', content: 'Hello' },
+          { id: 4, role: 'assistant', content: 'Hello again' }
+        ],
+        'Hello again'
+      )
+      expect(shown()).toEqual([{ text: 'Hello' }, { text: 'Hello again', error: null }])
+    })
+
+    it('should hold your next message until the new answer ends', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      await actions.regenerate(MANAGER, lastAsked())
+      await actions.queue(MANAGER, { text: 'Next', images: [] })
+      expect(submits().map((params) => params.text)).toEqual(['Hello'])
+      await answeredAgain(
+        [
+          { id: 3, role: 'user', content: 'Hello' },
+          { id: 4, role: 'assistant', content: 'Hello again' }
+        ],
+        'Hello again'
+      )
+      expect(submits().map((params) => params.text)).toEqual(['Hello', 'Next'])
+    })
+
+    it('should retry a failed turn the engine stored in its place', async () => {
+      stored(engine, [
+        { id: 3, role: 'user', content: 'Summarise Q3' },
+        {
+          id: 4,
+          role: 'assistant',
+          content: 'Your request was not processed.',
+          display_kind: 'failed_turn',
+          display_metadata: { error: 'Rate limited' }
+        }
+      ])
+      await actions.open(MANAGER, 'manager-chat')
+      await actions.regenerate(MANAGER, lastAsked())
+      expect(submits()).toEqual([
+        expect.objectContaining({ text: 'Summarise Q3', truncate_before_row_id: 3 })
+      ])
+      expect(shown()).toEqual([
+        { text: 'Hello' },
+        { text: 'Hi there', error: null },
+        { text: 'Summarise Q3' }
+      ])
+    })
+
+    it('should retry a failed send the engine never stored, and show only the new turn', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      await actions.send(MANAGER, { text: 'Summarise Q3', images: [] })
+      emit('message.complete', { status: 'error', text: "Unknown provider 'acme'." })
+      await settled()
+      await actions.regenerate(MANAGER, lastAsked())
+      // Nothing of it is stored to cut: the words go again as a new message.
+      expect(submits().at(-1)).toEqual({ session_id: 'manager-chat', text: 'Summarise Q3' })
+      await answeredAgain(
+        [
+          ...engine.chats[MANAGER].messages,
+          { id: 3, role: 'user', content: 'Summarise Q3' },
+          { id: 4, role: 'assistant', content: 'Revenue rose 4%.' }
+        ],
+        'Revenue rose 4%.'
+      )
+      expect(shown()).toEqual([
+        { text: 'Hello' },
+        { text: 'Hi there', error: null },
+        { text: 'Summarise Q3' },
+        { text: 'Revenue rose 4%.', error: null }
+      ])
+    })
+
+    it('should give the chat back as it was, and say why, when the engine refuses', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      engine.failNext('prompt.submit', 'session_busy')
+      await actions.regenerate(MANAGER, lastAsked())
+      expect(shown()).toEqual([{ text: 'Hello' }, { text: 'Hi there', error: null }])
+      expect(chat(MANAGER).error?.key).toBe('chat.errorSend')
+      // Nothing is out: your next message goes at once.
+      await actions.queue(MANAGER, { text: 'Next', images: [] })
+      expect(submits().at(-1)?.text).toBe('Next')
     })
   })
 

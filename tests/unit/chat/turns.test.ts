@@ -154,10 +154,23 @@ describe('turn outcome', () => {
     sender: { name: 'CFO', profile: 'cfo' }
   }
 
-  it('should have none for an empty chat, an answered turn or one still running', () => {
+  it('should have none for an empty chat or one still running', () => {
     expect(kind([])).toBeNull()
-    expect(kind([user('u1'), tool('t1'), reply('b1', 'Done.')])).toBeNull()
     expect(kind([user('u1')], true)).toBeNull()
+    expect(kind([user('u1'), reply('b1', 'Half', null)], true)).toBeNull()
+  })
+
+  it('should name the message an answered turn answered, so the answer can be asked for again', () => {
+    expect(turnOutcome([user('u1'), tool('t1'), reply('b1', 'Done.')], false)).toEqual({
+      kind: 'answered',
+      asked: user('u1')
+    })
+    // A stop that left part of an answer is an answer too.
+    expect(kind([user('u1'), { ...reply('b1', 'Margins are'), stopped: true }])).toBe('answered')
+  })
+
+  it('should have none for an answer the engine has not stored yet', () => {
+    expect(kind([user('local-1'), reply('live-1', 'Done.')])).toBeNull()
   })
 
   it('should have none while your message is still on its way', () => {
