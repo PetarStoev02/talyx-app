@@ -157,14 +157,19 @@ function toolsFor(
         () => null,
         (error: unknown) => error
       )
-      const stillOnOldModel = await followIfDefaultChanged(backend, opening.model)
-      if (failure && stillOnOldModel.length > 0)
+      const following = followIfDefaultChanged(backend, opening.model)
+      if (!failure) {
+        const stillOnOldModel = await following
+        return stillOnOldModel.length > 0 ? { profile, stillOnOldModel } : { profile }
+      }
+      // The save's own error is what the agent must see; a follow that could not run adds nothing.
+      const stillOnOldModel = await following.catch(() => [])
+      if (stillOnOldModel.length > 0)
         throw new RosterError(
           'mcp.stillOnOldModel',
           `${stillOnOldModel.join(', ')}. ${problemText((key) => t(key, 'en'), problemOf(failure))}`
         )
-      if (failure) throw failure
-      return stillOnOldModel.length > 0 ? { profile, stillOnOldModel } : { profile }
+      throw failure
     },
     set_reasoning: async ({ profile, level }) => {
       botOf(await fresh(), profile)

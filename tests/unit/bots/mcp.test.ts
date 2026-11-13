@@ -237,6 +237,29 @@ describe('MCP tools', () => {
       expect(engine.profiles.default.model).toEqual(next)
     })
 
+    it('should report the refused field when the bots on "Uses default" cannot be reached either', async () => {
+      engine.failSection('soul')
+      const backend = backendFor(engine)
+      let describes = 0
+      // Talyx's model is read once before the save and once after it, to follow: the second fails.
+      const run = mcpTools(
+        {
+          ...backend,
+          request: async (profile, method, params) => {
+            if (method === 'profiles.describe' && ++describes > 1)
+              throw new Error('Gateway socket closed')
+            return backend.request(profile, method, params)
+          }
+        },
+        async () => true
+      )
+      const next = { provider: 'openai', model: 'gpt-5-mini' }
+      const answer = await run('update_bot', { profile: 'default', soul: '# New', model: next })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toContain('soul')
+      expect(answer.text).not.toContain('Gateway socket closed')
+    })
+
     it('should name the bots that stayed on the old model when Talyx gets a new one', async () => {
       engine.metadata.analyst[BOT_META_KEY] = { title: 'Analyst', usesDefault: true }
       engine.refuseModelOn.add('analyst')
