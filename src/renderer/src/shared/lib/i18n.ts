@@ -694,7 +694,7 @@ const en = {
   'providers.testChatAgain': 'Send again',
   'providers.testChatWaiting': 'Waiting for the reply…',
   'providers.testChatReply': '{model} replied:',
-  'providers.testChatFailed': 'The chat failed. The provider said:',
+  'providers.testChatFailed': 'The chat failed with this error:',
   'providers.checking': 'Checking…',
   'providers.checkOk': 'Works.',
   'providers.checkModel': 'Reachable, lists 1 model.',
