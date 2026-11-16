@@ -4,7 +4,7 @@ import { testChat } from '@features/providers/providers'
 import type {
   CustomEndpoint,
   ProvidersBackend,
-  TestChatResult
+  TestChatOutcome
 } from '@features/providers/providers'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
@@ -23,7 +23,7 @@ export function TestChatDialog({
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const [model, setModel] = useState(endpoint.models[0] ?? endpoint.model)
-  const [result, setResult] = useState<TestChatResult | null>(null)
+  const [result, setResult] = useState<TestChatOutcome | null>(null)
   const [busy, setBusy] = useState(false)
 
   async function send(): Promise<void> {
@@ -32,7 +32,7 @@ export function TestChatDialog({
     try {
       setResult(await testChat(backend, { provider: endpoint.id, model }))
     } catch (error) {
-      setResult({ ok: false, error: failureText(t, error) })
+      setResult({ ok: false, error: failureText(t, error), closed: true })
     } finally {
       setBusy(false)
     }
@@ -76,9 +76,12 @@ export function TestChatDialog({
           <div role="alert" className="space-y-1">
             <p className="text-sm text-muted-foreground">{t('providers.testChatFailed')}</p>
             <p className="rounded-xl bg-secondary p-3 font-mono text-sm text-destructive-text whitespace-pre-wrap wrap-anywhere select-text">
-              {result.error}
+              {result.error || t('providers.testChatEmpty')}
             </p>
           </div>
+        )}
+        {result?.closed === false && (
+          <p className="text-sm text-muted-foreground">{t('providers.testChatKept')}</p>
         )}
         <div className="flex gap-2">
           <Button disabled={busy || !model} onClick={() => void send()}>

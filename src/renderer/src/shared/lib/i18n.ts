@@ -695,6 +695,9 @@ const en = {
   'providers.testChatWaiting': 'Waiting for the reply…',
   'providers.testChatReply': '{model} replied:',
   'providers.testChatFailed': 'The chat failed with this error:',
+  'providers.testChatEmpty': 'The model sent back an empty reply.',
+  'providers.testChatKept':
+    'The engine did not delete the test chat. It stays hidden: no bot shows it.',
   'providers.checking': 'Checking…',
   'providers.checkOk': 'Works.',
   'providers.checkModel': 'Reachable, lists 1 model.',

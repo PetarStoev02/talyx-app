@@ -85,8 +85,12 @@ export interface ProvidersDouble {
   sessions: Record<string, EngineSession[]>
   /** How each model answers a message; a model not listed replies `pong`. */
   turns: Record<string, ModelTurn>
-  /** Socket methods that fail, as `<method>`. */
+  /** Socket methods and REST paths that fail, as `<method>` or `<path>`. */
   refusing: Set<string>
+  /** How many of the next session deletes the engine refuses as busy. */
+  busyDeletes: { left: number }
+  /** Sessions this window is subscribed to, so a redial would resume them. */
+  subscribed: Set<string>
   /** Every socket call, as `<profile> <method>`, in order. */
   calls: string[]
   /** The engine's agent log, oldest line first. */
@@ -153,6 +157,8 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
   )
   const turns: Record<string, ModelTurn> = {}
   const refusing = new Set<string>()
+  const busyDeletes = { left: 0 }
+  const subscribed = new Set<string>()
   const calls: string[] = []
   const params: Record<string, Record<string, unknown>> = {}
   const listeners = new Set<(event: GatewayEvent) => void>()
@@ -187,7 +193,8 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
         running: false
       })
       revisions.set(id, 0)
-      return { session_id: id } as T
+      subscribed.add(id)
+      return { session_id: id, subscription_id: `sub-${id}` } as T
     }
     if (!session) throw new Error('session not found')
     if (method === 'prompt.submit') {
@@ -197,9 +204,19 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
       setTimeout(() => answerTurn(session), 0)
       return { status: 'queued' } as T
     }
+    // Stopping takes the engine a moment: the turn ends, as interrupted, after the answer.
     if (method === 'session.interrupt') {
-      session.running = false
+      setTimeout(() => {
+        session.running = false
+        revisions.set(session.id, (revisions.get(session.id) ?? 0) + 1)
+        emit(session.id, 'message.complete', { text: '', status: 'interrupted' })
+      }, 50)
       return {} as T
+    }
+    if (method === 'session.detach') {
+      if (sent.subscription_id !== `sub-${session.id}`) throw new Error('unknown subscription')
+      subscribed.delete(session.id)
+      return { session_id: session.id } as T
     }
     throw new Error(`Unexpected ${method}`)
   }
@@ -254,6 +271,10 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
     if (Number(query.get('expected_revision')) !== revisions.get(id))
       throw new Error('revision_conflict')
     if (session.running) throw new Error('session_busy')
+    if (busyDeletes.left > 0) {
+      busyDeletes.left -= 1
+      throw new Error('session_busy')
+    }
     sessions[profile] = sessions[profile].filter((item) => item !== session)
     return { ok: true, deleted_ids: [id] }
   }
@@ -342,6 +363,7 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
       config.endpoints = [...config.endpoints.filter((e) => e.id !== id), saved]
       return { ok: true }
     }
+    if (refusing.has(path)) throw new Error(`HTTP 500 on ${path}`)
     if (path.startsWith('/api/sessions/')) return sessionRest(profile, method, path, query)
     if (path === '/api/logs')
       return { file: query.get('file'), lines: log.slice(-Number(query.get('lines') ?? 100)) }
@@ -427,6 +449,8 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
     sessions,
     turns,
     refusing,
+    busyDeletes,
+    subscribed,
     calls,
     params,
     log

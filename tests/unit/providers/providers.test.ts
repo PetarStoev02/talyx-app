@@ -301,8 +301,8 @@ describe('providers', () => {
 
       const result = await testChat(engine.backend, router)
 
-      expect(result).toEqual({ ok: true, reply: 'Hello from the router.' })
-      expect(engine.calls).toEqual([`${HOME} session.create`, `${HOME} prompt.submit`])
+      expect(result).toEqual({ ok: true, reply: 'Hello from the router.', closed: true })
+      expect(engine.calls.slice(0, 2)).toEqual([`${HOME} session.create`, `${HOME} prompt.submit`])
     })
 
     it('should send the message in a hidden chat on the endpoint and model picked', async () => {
@@ -332,7 +332,8 @@ describe('providers', () => {
 
       expect(result).toEqual({
         ok: false,
-        error: 'HTTP 404: No active credentials for provider: openai'
+        error: 'HTTP 404: No active credentials for provider: openai',
+        closed: true
       })
       expect(leftovers()).toEqual([])
     })
@@ -340,7 +341,7 @@ describe('providers', () => {
     it('should show the engine account of a failure that names no provider error', async () => {
       engine.turns['9-route-provider'] = { failure: 'Connection refused.', reason: 'network' }
 
-      expect(await testChat(engine.backend, router)).toEqual({
+      expect(await testChat(engine.backend, router)).toMatchObject({
         ok: false,
         error: 'Connection refused.'
       })
@@ -353,7 +354,7 @@ describe('providers', () => {
         logged: 'ValueError: Model m-small has a context window of 8,192 tokens.'
       }
 
-      expect(await testChat(engine.backend, router)).toEqual({
+      expect(await testChat(engine.backend, router)).toMatchObject({
         ok: false,
         error: 'ValueError: Model m-small has a context window of 8,192 tokens.'
       })
@@ -362,7 +363,7 @@ describe('providers', () => {
     it('should show the failure reason when the failure has no text', async () => {
       engine.turns['9-route-provider'] = { failure: '', reason: 'empty_response' }
 
-      expect(await testChat(engine.backend, router)).toEqual({
+      expect(await testChat(engine.backend, router)).toMatchObject({
         ok: false,
         error: 'empty_response'
       })
@@ -388,6 +389,66 @@ describe('providers', () => {
 
       expect(engine.calls).toContain(`${HOME} session.interrupt`)
       expect(leftovers()).toEqual([])
+    })
+
+    it('should still say no reply came when the engine cannot stop the turn', async () => {
+      vi.useFakeTimers()
+      engine.turns['9-route-provider'] = 'silent'
+      engine.refusing.add('session.interrupt')
+
+      const testing = testChat(engine.backend, router)
+      const settled = expect(testing).rejects.toMatchObject({
+        key: 'providers.errorTestChatTimeout'
+      })
+      await vi.runAllTimersAsync()
+      await settled
+    })
+
+    it('should remove the chat when the engine is still busy with it at first', async () => {
+      vi.useFakeTimers()
+      engine.busyDeletes.left = 2
+
+      const testing = testChat(engine.backend, router)
+      await vi.runAllTimersAsync()
+
+      expect(await testing).toMatchObject({ ok: true, closed: true })
+      expect(leftovers()).toEqual([])
+    })
+
+    it('should keep the reply and say the chat stayed when the engine never removes it', async () => {
+      vi.useFakeTimers()
+      engine.busyDeletes.left = 99
+
+      const testing = testChat(engine.backend, router)
+      await vi.runAllTimersAsync()
+
+      expect(await testing).toEqual({ ok: true, reply: 'pong', closed: false })
+    })
+
+    it('should not leave the chat to be resumed after a reconnect', async () => {
+      await testChat(engine.backend, router)
+
+      expect(engine.subscribed.size).toBe(0)
+    })
+
+    it("should show the engine's own words when its log cannot be read", async () => {
+      engine.turns['9-route-provider'] = { failure: 'Something went wrong.', reason: '' }
+      engine.refusing.add('/api/logs')
+
+      expect(await testChat(engine.backend, router)).toMatchObject({
+        ok: false,
+        error: 'Something went wrong.'
+      })
+    })
+
+    it('should report a reply with no text as a failure with no message', async () => {
+      engine.turns['9-route-provider'] = { reply: '' }
+
+      expect(await testChat(engine.backend, router)).toEqual({
+        ok: false,
+        error: '',
+        closed: true
+      })
     })
 
     it('should remove the chat when the message cannot be sent', async () => {

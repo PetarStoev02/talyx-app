@@ -2,6 +2,7 @@ import { CONFIG_YAML_SOURCE, namedTwinOfBare } from '@shared/engine/endpoints'
 import type { CustomEndpoint, OAuthProvider, OAuthStartResponse } from '@shared/engine/types'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { AppError, isTimeout } from '@shared/lib/problem'
+import { reportError } from '@shared/lib/report'
 
 export type { CustomEndpoint, OAuthStartResponse }
 
@@ -27,7 +28,7 @@ export interface ProvidersBackend {
   openTestChat: (pick: ModelPick) => Promise<string>
   /** Sends one message and waits for the whole answer; stops the turn when none comes in time. */
   askTestChat: (chatId: string, text: string) => Promise<TestChatResult>
-  /** Deletes the chat and everything in it. */
+  /** Lets go of the chat and deletes it with everything in it. */
   closeTestChat: (chatId: string) => Promise<void>
   /** `draft.models` are trimmed, unique and not empty. */
   saveEndpoint: (profile: string, draft: EndpointDraft) => Promise<void>
@@ -64,8 +65,12 @@ export interface EndpointCheck {
   models: string[]
 }
 
-/** The model's reply, or the provider's own error when the chat failed. */
+/**
+ * The model's reply, or the error the chat failed with (empty when the model sent nothing).
+ * `closed` is false when the engine kept the test chat; it stays hidden, so no bot shows it.
+ */
 export type TestChatResult = { ok: true; reply: string } | { ok: false; error: string }
+export type TestChatOutcome = TestChatResult & { closed: boolean }
 
 export type SignInPoll =
   | { status: 'approved' }
@@ -207,13 +212,18 @@ const TEST_CHAT_MESSAGE = 'Say hello in one short sentence. Do not use any tools
 export async function testChat(
   backend: Pick<ProvidersBackend, 'openTestChat' | 'askTestChat' | 'closeTestChat'>,
   pick: ModelPick
-): Promise<TestChatResult> {
+): Promise<TestChatOutcome> {
   const chatId = await backend.openTestChat(pick)
-  try {
-    return await backend.askTestChat(chatId, TEST_CHAT_MESSAGE)
-  } finally {
-    await backend.closeTestChat(chatId)
-  }
+  const asked = await settle(backend.askTestChat(chatId, TEST_CHAT_MESSAGE))
+  const closing = await settle(backend.closeTestChat(chatId))
+  // A chat the engine kept must not hide what the model said: the reply or error still shows.
+  if (closing.status === 'rejected') reportError('providers', closing.reason)
+  if (asked.status === 'rejected') throw asked.reason
+  return { ...asked.value, closed: closing.status === 'fulfilled' }
+}
+
+function settle<T>(promise: Promise<T>): Promise<PromiseSettledResult<T>> {
+  return Promise.allSettled([promise]).then(([result]) => result)
 }
 
 /**
