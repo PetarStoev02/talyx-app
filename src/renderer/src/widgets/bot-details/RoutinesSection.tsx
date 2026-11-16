@@ -136,7 +136,7 @@ export function RoutinesSection({
               <button
                 aria-label={t('routines.open').replace('{name}', routine.name)}
                 onClick={() => setOpened(routine)}
-                className="min-w-0 flex-1 rounded-lg text-left hover:opacity-80"
+                className="-my-1 -ms-2 min-w-0 flex-1 rounded-lg px-2 py-1 text-left transition-colors hover:bg-foreground/10"
               >
                 {/* Its name and schedule wrap, never cut off: the row is where a routine is found. */}
                 <span className="block text-base font-medium wrap-break-word">{routine.name}</span>

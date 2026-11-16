@@ -106,7 +106,8 @@ export function SkillDialog({
               <Button variant="destructive" disabled={busy} onClick={() => void remove()}>
                 {t('skills.delete')}
               </Button>
-              <Button variant="ghost" onClick={() => setConfirming(false)}>
+              {/* The Delete that opened this view is gone; focus lands on the safe choice. */}
+              <Button variant="ghost" autoFocus onClick={() => setConfirming(false)}>
                 {t('roster.cancel')}
               </Button>
             </>
@@ -124,7 +125,7 @@ export function SkillDialog({
               {skill.removable && (
                 <Button
                   variant="ghost"
-                  className="ms-auto text-destructive-text"
+                  className="ms-auto text-destructive-text hover:text-destructive-text"
                   onClick={() => {
                     setProblem(null)
                     setConfirming(true)

@@ -62,26 +62,29 @@ export function TestChatDialog({
             </NativeSelect>
           </label>
         )}
-        {result?.ok === true && (
-          <div role="status" className="space-y-1">
-            <p className="text-sm text-muted-foreground">
-              {t('providers.testChatReply').replace('{model}', model)}
-            </p>
-            <p className="rounded-xl bg-secondary p-3 text-base whitespace-pre-wrap wrap-anywhere select-text">
-              {result.reply}
-            </p>
-          </div>
-        )}
-        {result?.ok === false && (
-          <div role="alert" className="space-y-1">
-            <p className="text-sm text-muted-foreground">{t('providers.testChatFailed')}</p>
-            <p className="rounded-xl bg-secondary p-3 font-mono text-sm text-destructive-text whitespace-pre-wrap wrap-anywhere select-text">
-              {'cause' in result
-                ? failureText(t, result.cause)
-                : result.error || t('providers.testChatEmpty')}
-            </p>
-          </div>
-        )}
+        {/* Always in the page, so a screen reader announces the result when it is filled in. */}
+        <div role="status" className="space-y-1 empty:hidden">
+          {result?.ok === true && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                {t('providers.testChatReply').replace('{model}', model)}
+              </p>
+              <p className="rounded-xl bg-secondary p-3 text-base whitespace-pre-wrap wrap-anywhere select-text">
+                {result.reply}
+              </p>
+            </>
+          )}
+          {result?.ok === false && (
+            <>
+              <p className="text-sm text-muted-foreground">{t('providers.testChatFailed')}</p>
+              <p className="rounded-xl bg-secondary p-3 font-mono text-sm text-destructive-text whitespace-pre-wrap wrap-anywhere select-text">
+                {'cause' in result
+                  ? failureText(t, result.cause)
+                  : result.error || t('providers.testChatEmpty')}
+              </p>
+            </>
+          )}
+        </div>
         {result?.closed === false && (
           <p className="text-sm text-muted-foreground">{t('providers.testChatKept')}</p>
         )}

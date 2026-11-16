@@ -381,7 +381,7 @@ function EndpointModels({
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
       <span>{t('providers.modelsLabel')}</span>
-      <ul className="contents" aria-label={t('providers.modelsLabel')}>
+      <ul className="contents">
         {models.map((model) => (
           <li
             key={model}
@@ -393,9 +393,9 @@ function EndpointModels({
                 aria-label={t('providers.removeModelNamed').replace('{model}', model)}
                 title={t('providers.removeModelNamed').replace('{model}', model)}
                 onClick={() => onRemove(model)}
-                className="inline-flex size-5 items-center justify-center rounded-full hover:bg-foreground/10"
+                className="rounded-full p-1 transition-colors hover:bg-foreground/10"
               >
-                <X size={12} />
+                <X size={14} />
               </button>
             ) : (
               <span className="w-1" />

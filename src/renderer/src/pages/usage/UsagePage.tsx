@@ -44,10 +44,13 @@ export function UsagePage({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="h-14 shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
+      <header
+        className="min-h-14 shrink-0"
+        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      >
         <h1 className="sr-only">{t('usage.title')}</h1>
         {/* Back is in the sidebar; the period sits where Settings has nothing. */}
-        <div className={cn(COLUMN, 'flex h-full items-center justify-end')}>
+        <div className={cn(COLUMN, 'flex min-h-14 flex-wrap items-center justify-end-safe gap-1')}>
           <div
             className="flex items-center gap-1"
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
@@ -64,9 +67,9 @@ export function UsagePage({
                   aria-pressed={days === period}
                   onClick={() => setDays(period)}
                   className={cn(
-                    'h-7 rounded-full px-3 text-sm font-medium transition-colors',
+                    'h-7 rounded-full px-3 text-sm font-medium whitespace-nowrap transition-colors',
                     days === period
-                      ? 'bg-background text-foreground shadow-xs'
+                      ? 'bg-foreground text-background'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
