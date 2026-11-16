@@ -321,8 +321,9 @@ function Row({
   children: React.ReactNode
 }): React.JSX.Element {
   return (
-    <li className="flex items-center gap-4 rounded-xl bg-secondary p-3">
-      <div className="min-w-0 flex-1">
+    // A narrow pane puts the actions under the text instead of squeezing the text.
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-secondary p-3">
+      <div className="min-w-48 flex-1">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base font-medium">
           <span className="min-w-0 wrap-break-word">{title}</span>
           {badge && (
