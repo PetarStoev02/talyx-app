@@ -1,5 +1,8 @@
 import { keepBareEndpoint, listEndpoints } from '@shared/engine/endpoints'
 import { assignMainModel } from '@shared/engine/mainModel'
+import { randomUuid } from '@shared/engine/session-http-mutations'
+import type { SessionMutationSnapshot } from '@shared/engine/session-http-mutations'
+import type { GatewayEvent } from '@shared/engine/host'
 import type {
   CustomEndpointValidationResponse,
   EnvVarInfo,
@@ -13,7 +16,8 @@ import type {
   Account,
   EndpointDraft,
   KeySlot,
-  ProvidersBackend
+  ProvidersBackend,
+  TestChatResult
 } from '@features/providers/providers'
 import type { EngineAccess } from './access'
 
@@ -26,9 +30,15 @@ const SIGN_IN_POLL_TIMEOUT_MS = 45_000
 const SIGN_IN_START_TIMEOUT_MS = 60_000
 const KEY_NAME = /(?:_API_KEY|_TOKEN|_KEY)$/
 const REDACTED = /^«redacted:(.+)»$/
+// A reply on an agent-sized request through a slow router can take a while; past this it is stuck.
+const TEST_CHAT_TIMEOUT_MS = 120_000
+// The engine words a provider failure for people and quotes the provider's own message here.
+const PROVIDER_SAID = /^Provider said: (.+)$/m
 
 /** Providers, keys, endpoints, sign-ins and Talyx's model over the engine's REST. */
-export function engineProvidersBackend(engine: Pick<EngineAccess, 'http'>): ProvidersBackend {
+export function engineProvidersBackend(
+  engine: Pick<EngineAccess, 'http' | 'request' | 'onEvent'>
+): ProvidersBackend {
   const rest = <T>(
     profile: string,
     path: string,
@@ -100,6 +110,33 @@ export function engineProvidersBackend(engine: Pick<EngineAccess, 'http'>): Prov
       )
       return { ok, message, models }
     },
+    openTestChat: async ({ provider, model }) => {
+      const { session_id: chatId } = await engine.request<{ session_id: string }>(
+        HOME_PROFILE,
+        'session.create',
+        { hidden: true, provider, model }
+      )
+      return chatId
+    },
+    askTestChat: (chatId, text) => askOnce(engine, chatId, text),
+    closeTestChat: async (chatId) => {
+      const path = `/api/sessions/${encodeURIComponent(chatId)}`
+      const now = await rest<SessionMutationSnapshot>(HOME_PROFILE, `${path}/mutation-snapshot`)
+      if (!now.exists) return
+      // A delete names the revision it read, so it never removes a chat that changed since.
+      const fence = {
+        request_id: randomUuid(),
+        expected_revision: String(now.runtime_revision),
+        ...(now.runtime_generation === null
+          ? {}
+          : { expected_generation: String(now.runtime_generation) })
+      }
+      await engine.http({
+        path: scoped(path, HOME_PROFILE, fence),
+        method: 'DELETE',
+        profile: HOME_PROFILE
+      })
+    },
     saveEndpoint: async (profile, draft) => {
       await rest(profile, '/api/providers/custom-endpoints', {
         method: 'POST',
@@ -170,6 +207,54 @@ export function engineProvidersBackend(engine: Pick<EngineAccess, 'http'>): Prov
       if (!result.ok) throw new ProvidersError('providers.errorNotSignedOut')
     }
   }
+}
+
+/**
+ * Sends the message and resolves with the turn's end. Listening starts before the send, so a
+ * quick answer is not missed; a turn that runs out of time is stopped before the error.
+ */
+function askOnce(
+  engine: Pick<EngineAccess, 'request' | 'onEvent'>,
+  chatId: string,
+  text: string
+): Promise<TestChatResult> {
+  return new Promise<TestChatResult>((resolve, reject) => {
+    const stop = engine.onEvent((event) => {
+      if (event.session_id !== chatId || event.type !== 'message.complete') return
+      finish(() => resolve(turnResult(event)))
+    })
+    const timer = setTimeout(
+      () =>
+        finish(() =>
+          engine
+            .request(HOME_PROFILE, 'session.interrupt', { session_id: chatId })
+            .then(() => reject(new ProvidersError('providers.errorTestChatTimeout')), reject)
+        ),
+      TEST_CHAT_TIMEOUT_MS
+    )
+    function finish(settle: () => void): void {
+      clearTimeout(timer)
+      stop()
+      settle()
+    }
+    engine
+      .request(HOME_PROFILE, 'prompt.submit', { session_id: chatId, text })
+      .catch((error: unknown) => finish(() => reject(error)))
+  })
+}
+
+function turnResult(event: GatewayEvent): TestChatResult {
+  const payload = (event.payload ?? {}) as {
+    text?: unknown
+    status?: unknown
+    failure_reason?: unknown
+  }
+  const text = typeof payload.text === 'string' ? payload.text.trim() : ''
+  if (payload.status !== 'error' && payload.status !== 'interrupted' && text)
+    return { ok: true, reply: text }
+  const reason = typeof payload.failure_reason === 'string' ? payload.failure_reason : ''
+  const error = PROVIDER_SAID.exec(text)?.[1]?.trim() || text || reason
+  return { ok: false, error: error || String(payload.status ?? '') }
 }
 
 /** Builds the provider key list from the engine's env catalog, one slot per provider. */

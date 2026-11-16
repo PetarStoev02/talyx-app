@@ -312,7 +312,7 @@ export function fixtureChat(providers: EngineHttp): ChatActions {
     throw new Error('Unsupported fixture call')
   }
 
-  const actions = chatActions(engineChatBackend({ request, http }))
+  const actions = chatActions(engineChatBackend({ request, http, onEvent: () => () => undefined }))
   return actions
 }
 

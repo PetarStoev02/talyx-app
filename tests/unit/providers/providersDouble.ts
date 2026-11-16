@@ -1,5 +1,6 @@
 import { engineProvidersBackend } from '../../../src/renderer/src/app/engine/providers'
 import type { EngineApiRequest, EngineHttp } from '../../../src/renderer/src/shared/engine/http'
+import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/host'
 import type { ProvidersBackend } from '../../../src/renderer/src/features/providers/providers'
 import type {
   CustomEndpoint,
@@ -46,6 +47,22 @@ export interface ProfileConfig {
 
 type Poll = OAuthPollResponse['status'] | 'timeout'
 
+/** How the model behind a test chat answers: its reply, its failure, or never. */
+export type ModelTurn =
+  | { reply: string }
+  | { failure: string; reason: string }
+  | { stopped: true }
+  | 'silent'
+
+export interface EngineSession {
+  id: string
+  hidden: boolean
+  model: string
+  provider: string
+  sent: string[]
+  running: boolean
+}
+
 // How a request that ran out of time reaches the renderer from main.
 const TIMED_OUT =
   "Error invoking remote method 'engine:http': TimeoutError: The operation was aborted due to timeout"
@@ -64,6 +81,16 @@ export interface ProvidersDouble {
   /** The next polls answer these statuses, in order; `timeout` makes that poll time out. */
   polls: Poll[]
   failOn: (profile: string) => void
+  /** Each profile's sessions; a test chat must leave none behind. */
+  sessions: Record<string, EngineSession[]>
+  /** How each model answers a message; a model not listed replies `pong`. */
+  turns: Record<string, ModelTurn>
+  /** Socket methods that fail, as `<method>`. */
+  refusing: Set<string>
+  /** Every socket call, as `<profile> <method>`, in order. */
+  calls: string[]
+  /** The last params each socket method took. */
+  params: Record<string, Record<string, unknown>>
 }
 
 const catalog: Record<string, Partial<EnvVarInfo>> = {
@@ -119,7 +146,113 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
   const polls: Poll[] = []
   const failing = new Set<string>()
 
-  function answer(profile: string, method: string, path: string, body: Body): unknown {
+  const sessions: Record<string, EngineSession[]> = Object.fromEntries(
+    names.map((name) => [name, []])
+  )
+  const turns: Record<string, ModelTurn> = {}
+  const refusing = new Set<string>()
+  const calls: string[] = []
+  const params: Record<string, Record<string, unknown>> = {}
+  const listeners = new Set<(event: GatewayEvent) => void>()
+  let nextId = 0
+  const revisions = new Map<string, number>()
+
+  function emit(sessionId: string, type: string, payload: Record<string, unknown>): void {
+    for (const listener of listeners)
+      listener({ type, session_id: sessionId, payload } as GatewayEvent)
+  }
+
+  // The engine's socket: hidden sessions, one message each, answered on the next tick.
+  async function request<T>(
+    profile: string,
+    method: string,
+    sent: Record<string, unknown> = {}
+  ): Promise<T> {
+    calls.push(`${profile} ${method}`)
+    params[method] = sent
+    if (refusing.has(method)) throw new Error(`${method} refused`)
+    const own = sessions[profile]
+    const session = own.find((item) => item.id === sent.session_id)
+    if (method === 'session.create') {
+      const id = `local-${++nextId}`
+      own.push({
+        id,
+        hidden: sent.hidden === true,
+        model: String(sent.model ?? ''),
+        provider: String(sent.provider ?? ''),
+        sent: [],
+        running: false
+      })
+      revisions.set(id, 0)
+      return { session_id: id } as T
+    }
+    if (!session) throw new Error('session not found')
+    if (method === 'prompt.submit') {
+      session.sent.push(String(sent.text))
+      session.running = true
+      revisions.set(session.id, (revisions.get(session.id) ?? 0) + 1)
+      setTimeout(() => answerTurn(session), 0)
+      return { status: 'queued' } as T
+    }
+    if (method === 'session.interrupt') {
+      session.running = false
+      return {} as T
+    }
+    throw new Error(`Unexpected ${method}`)
+  }
+
+  function answerTurn(session: EngineSession): void {
+    const turn = turns[session.model] ?? { reply: 'pong' }
+    if (turn === 'silent') return
+    session.running = false
+    emit(session.id, 'message.start', {})
+    if ('reply' in turn) {
+      emit(session.id, 'message.delta', { text: turn.reply })
+      emit(session.id, 'message.complete', { text: turn.reply, status: 'complete' })
+    } else if ('failure' in turn)
+      emit(session.id, 'message.complete', {
+        text: turn.failure,
+        status: 'error',
+        failure_reason: turn.reason
+      })
+    else emit(session.id, 'message.complete', { text: '', status: 'interrupted' })
+  }
+
+  // Deleting a session is fenced: read its revision, then delete naming that revision.
+  function sessionRest(
+    profile: string,
+    method: string,
+    path: string,
+    query: URLSearchParams
+  ): unknown {
+    const id = decodeURIComponent(path.split('/')[3])
+    const session = sessions[profile].find((item) => item.id === id)
+    if (path.endsWith('/mutation-snapshot'))
+      return session
+        ? {
+            session_id: id,
+            exists: true,
+            runtime_revision: revisions.get(id),
+            runtime_generation: 1
+          }
+        : { session_id: id, exists: false, runtime_revision: 0, runtime_generation: null }
+    if (method !== 'DELETE') throw new Error(`Unexpected ${method} ${path}`)
+    if (!session) throw new Error('HTTP 404: not_found')
+    if (!query.get('request_id')) throw new Error('mutation_identity_required')
+    if (Number(query.get('expected_revision')) !== revisions.get(id))
+      throw new Error('revision_conflict')
+    if (session.running) throw new Error('session_busy')
+    sessions[profile] = sessions[profile].filter((item) => item !== session)
+    return { ok: true, deleted_ids: [id] }
+  }
+
+  function answer(
+    profile: string,
+    method: string,
+    path: string,
+    body: Body,
+    query = new URLSearchParams()
+  ): unknown {
     const config = profiles[profile]
     if (method !== 'GET') {
       if (failing.has(profile)) throw new Error(`HTTP 500 on ${profile}`)
@@ -197,6 +330,7 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
       config.endpoints = [...config.endpoints.filter((e) => e.id !== id), saved]
       return { ok: true }
     }
+    if (path.startsWith('/api/sessions/')) return sessionRest(profile, method, path, query)
     if (path === '/api/providers/oauth') return { providers: accounts }
     if (path.endsWith('/start'))
       return path.includes('xai')
@@ -252,11 +386,22 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
     const url = new URL(request.path, 'http://engine.invalid')
     const profile = url.searchParams.get('profile') ?? ''
     if (profile !== request.profile) throw new Error('profile query and grant disagree')
-    return answer(profile, request.method ?? 'GET', url.pathname, request.body as Body) as T
+    return answer(
+      profile,
+      request.method ?? 'GET',
+      url.pathname,
+      request.body as Body,
+      url.searchParams
+    ) as T
   }
   const double: ProvidersDouble = {
     backend: engineProvidersBackend({
-      http: <T>(request: EngineApiRequest) => double.http<T>(request)
+      http: <T>(request: EngineApiRequest) => double.http<T>(request),
+      request,
+      onEvent: (handler) => {
+        listeners.add(handler)
+        return () => listeners.delete(handler)
+      }
     }),
     http,
     profiles,
@@ -264,7 +409,12 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
     writes,
     bodies,
     polls,
-    failOn: (profile) => failing.add(profile)
+    failOn: (profile) => failing.add(profile),
+    sessions,
+    turns,
+    refusing,
+    calls,
+    params
   }
   return double
 }

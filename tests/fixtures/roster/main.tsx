@@ -13,7 +13,15 @@ import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { reportProvider, useSetup } from '../../../src/renderer/src/features/setup/store'
 import { useNavigation } from '../../../src/renderer/src/app/providers/useNavigation'
 import { engineProvidersBackend } from '../../../src/renderer/src/app/engine/providers'
-import { assets, attachDouble, chat, providers, providersRest, rosterBackend } from './engineDouble'
+import {
+  assets,
+  attachDouble,
+  chat,
+  engine,
+  providers,
+  providersRest,
+  rosterBackend
+} from './engineDouble'
 import { fixtureSetup, setupMode, setupOutside, setupStuck } from './fixtureSetup'
 import { fixtureUpdates, updateMode, updateNeedsOlderEngine } from './fixtureUpdates'
 import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/http'
@@ -54,6 +62,7 @@ const providerElsewhere = new URLSearchParams(location.search).get('provider') =
 let providerAdded = !providerElsewhere
 window.addEventListener('blur', () => (providerAdded = true), { once: true })
 const setupProviders = engineProvidersBackend({
+  ...engine,
   http: async <T,>(request: EngineApiRequest): Promise<T> => {
     const answer = await providersRest<T>(request)
     if (providerAdded || request.method) return answer

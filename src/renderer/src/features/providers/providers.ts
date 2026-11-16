@@ -23,6 +23,12 @@ export interface ProvidersBackend {
   revealKey: (key: string) => Promise<string>
   checkKey: (slot: { key: string; value: string }) => Promise<KeyCheck>
   checkEndpoint: (draft: EndpointDraft) => Promise<EndpointCheck>
+  /** Opens a chat on the home profile that no bot shows; returns its id. */
+  openTestChat: (pick: ModelPick) => Promise<string>
+  /** Sends one message and waits for the whole answer; stops the turn when none comes in time. */
+  askTestChat: (chatId: string, text: string) => Promise<TestChatResult>
+  /** Deletes the chat and everything in it. */
+  closeTestChat: (chatId: string) => Promise<void>
   /** `draft.models` are trimmed, unique and not empty. */
   saveEndpoint: (profile: string, draft: EndpointDraft) => Promise<void>
   removeEndpoint: (profile: string, id: string) => Promise<void>
@@ -57,6 +63,9 @@ export interface EndpointCheck {
   message: string
   models: string[]
 }
+
+/** The model's reply, or the provider's own error when the chat failed. */
+export type TestChatResult = { ok: true; reply: string } | { ok: false; error: string }
 
 export type SignInPoll =
   | { status: 'approved' }
@@ -185,6 +194,26 @@ export function checkEndpoint(
   draft: EndpointDraft
 ): Promise<EndpointCheck> {
   return backend.checkEndpoint(draft)
+}
+
+// Short, and asks for no tools, so a working model answers at once and nothing waits on an approval.
+const TEST_CHAT_MESSAGE = 'Say hello in one short sentence. Do not use any tools.'
+
+/**
+ * Sends one real message on the model, as a bot's chat would (the same tools and instructions),
+ * so it fails where a real chat would. The chat it uses is deleted afterwards whatever happened:
+ * no bot ever shows it.
+ */
+export async function testChat(
+  backend: Pick<ProvidersBackend, 'openTestChat' | 'askTestChat' | 'closeTestChat'>,
+  pick: ModelPick
+): Promise<TestChatResult> {
+  const chatId = await backend.openTestChat(pick)
+  try {
+    return await backend.askTestChat(chatId, TEST_CHAT_MESSAGE)
+  } finally {
+    await backend.closeTestChat(chatId)
+  }
 }
 
 /**

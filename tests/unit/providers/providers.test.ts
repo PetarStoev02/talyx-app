@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ProvidersError,
   canRemoveEndpoint,
@@ -16,6 +16,7 @@ import {
   setDefaultModel,
   startSignIn,
   submitSignInCode,
+  testChat,
   waitForSignIn
 } from '../../../src/renderer/src/features/providers/providers'
 import type {
@@ -280,6 +281,107 @@ describe('providers', () => {
       ['listed', 'providers', true]
     ] as const)('should say whether a %s endpoint can be removed', (_case, source, removable) => {
       expect(canRemoveEndpoint({ ...ROUTER, source })).toBe(removable)
+    })
+  })
+
+  describe('test chat', () => {
+    const router = { provider: 'custom', model: '9-route-provider' }
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    // Every bot's sessions, so a leftover in any of them shows.
+    function leftovers(): string[] {
+      return Object.values(engine.sessions).flatMap((own) => own.map((session) => session.id))
+    }
+
+    it('should show the model reply from one real message on the chosen model', async () => {
+      engine.turns['9-route-provider'] = { reply: 'Hello from the router.' }
+
+      const result = await testChat(engine.backend, router)
+
+      expect(result).toEqual({ ok: true, reply: 'Hello from the router.' })
+      expect(engine.calls).toEqual([`${HOME} session.create`, `${HOME} prompt.submit`])
+    })
+
+    it('should send the message in a hidden chat on the endpoint and model picked', async () => {
+      await testChat(engine.backend, router)
+
+      expect(engine.params['session.create']).toMatchObject({
+        hidden: true,
+        provider: 'custom',
+        model: '9-route-provider'
+      })
+    })
+
+    it('should leave no chat in any bot after a reply', async () => {
+      await testChat(engine.backend, router)
+
+      expect(leftovers()).toEqual([])
+    })
+
+    it('should show the provider error when the model fails', async () => {
+      engine.turns['missing-model'] = {
+        failure:
+          "Model 'missing-model' isn't available on custom.\n\nProvider said: HTTP 404: No active credentials for provider: openai\n\nYour request was not processed.",
+        reason: 'model_not_found'
+      }
+
+      const result = await testChat(engine.backend, { provider: 'custom', model: 'missing-model' })
+
+      expect(result).toEqual({
+        ok: false,
+        error: 'HTTP 404: No active credentials for provider: openai'
+      })
+      expect(leftovers()).toEqual([])
+    })
+
+    it('should show the engine account of a failure that names no provider error', async () => {
+      engine.turns['9-route-provider'] = { failure: 'Connection refused.', reason: 'network' }
+
+      expect(await testChat(engine.backend, router)).toEqual({
+        ok: false,
+        error: 'Connection refused.'
+      })
+    })
+
+    it('should show the failure reason when the failure has no text', async () => {
+      engine.turns['9-route-provider'] = { failure: '', reason: 'empty_response' }
+
+      expect(await testChat(engine.backend, router)).toEqual({
+        ok: false,
+        error: 'empty_response'
+      })
+    })
+
+    it('should report a turn stopped before it answered as a failure', async () => {
+      engine.turns['9-route-provider'] = { stopped: true }
+
+      expect(await testChat(engine.backend, router)).toMatchObject({ ok: false })
+      expect(leftovers()).toEqual([])
+    })
+
+    it('should stop and remove the chat when no reply comes in time', async () => {
+      vi.useFakeTimers()
+      engine.turns['9-route-provider'] = 'silent'
+
+      const testing = testChat(engine.backend, router)
+      const settled = expect(testing).rejects.toMatchObject({
+        key: 'providers.errorTestChatTimeout'
+      })
+      await vi.runAllTimersAsync()
+      await settled
+
+      expect(engine.calls).toContain(`${HOME} session.interrupt`)
+      expect(leftovers()).toEqual([])
+    })
+
+    it('should remove the chat when the message cannot be sent', async () => {
+      engine.refusing.add('prompt.submit')
+
+      await expect(testChat(engine.backend, router)).rejects.toThrow('prompt.submit refused')
+      expect(leftovers()).toEqual([])
     })
   })
 
