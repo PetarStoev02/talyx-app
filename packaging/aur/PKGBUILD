@@ -1,0 +1,29 @@
+# Maintainer: Petar Stoev <66165404+PetarStoev02@users.noreply.github.com>
+# Repackages the release's Talyx-amd64.deb: the same file as the GitHub release, pinned by its
+# sha256. The Release workflow writes pkgver and the sum (packaging/aur/bump.sh); edit them by
+# hand only to fix this file between releases (then bump pkgrel).
+pkgname=talyx-bin
+pkgver=1.0.7
+pkgrel=1
+pkgdesc='Tally your AI agents: one roster, one chat, a manager who briefs you'
+arch=('x86_64')
+url='https://talyx.app'
+license=('AGPL-3.0-only')
+depends=('gtk3' 'libnotify' 'nss' 'libxss' 'libxtst' 'xdg-utils' 'at-spi2-core' 'util-linux-libs'
+  'libsecret' 'alsa-lib' 'hicolor-icon-theme')
+optdepends=('libappindicator-gtk3: tray icon on some desktops')
+provides=('talyx')
+conflicts=('talyx')
+options=('!strip' '!debug')
+source=("Talyx-$pkgver-amd64.deb::https://github.com/PetarStoev02/talyx-app/releases/download/v$pkgver/Talyx-amd64.deb")
+sha256sums=('dce9b6d6a89abb8d44736afee1f45e55ef925b4eb3e2bb1eabb9f192e09e3b03')
+
+package() {
+  bsdtar -xf data.tar.* -C "$pkgdir"
+  # The deb's own changelog and AppArmor profile are Debian-only.
+  rm -rf "$pkgdir/usr/share/doc" "$pkgdir/opt/Talyx/resources/apparmor-profile"
+  install -dm755 "$pkgdir/usr/bin"
+  ln -s /opt/Talyx/talyx "$pkgdir/usr/bin/talyx"
+  install -dm755 "$pkgdir/usr/share/licenses/$pkgname"
+  ln -s /opt/Talyx/resources/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

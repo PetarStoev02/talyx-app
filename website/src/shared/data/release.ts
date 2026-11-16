@@ -6,6 +6,8 @@ export const APP_VERSION = version
 export const REPO_URL = 'https://github.com/PetarStoev02/talyx-app'
 export const ISSUES_URL = `${REPO_URL}/issues`
 export const SECURITY_REPORT_URL = `${REPO_URL}/security/advisories/new`
+/** The AUR package talyx-bin: written, not yet pushed to the AUR. */
+export const AUR_PACKAGING_URL = `${REPO_URL}/tree/main/packaging/aur`
 
 /** GitHub serves the newest release's assets under this stable path. */
 const DOWNLOAD_BASE = `${REPO_URL}/releases/latest/download`

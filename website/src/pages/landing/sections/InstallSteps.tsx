@@ -1,4 +1,4 @@
-import { ASSETS } from '../../../shared/data/release'
+import { ASSETS, AUR_PACKAGING_URL } from '../../../shared/data/release'
 import { SectionHeading, STEP, stagger } from '../../../shared/ui/page'
 
 /** How to install and open Talyx: the same steps as the README. */
@@ -19,6 +19,13 @@ export function InstallSteps() {
           On Linux, make the AppImage executable with <code>chmod +x {ASSETS.appImage}</code> and
           run it, or install the deb with <code>sudo apt install ./{ASSETS.deb}</code>. Linux shows
           no warning.
+        </li>
+        <li>
+          On Arch Linux, the AUR package <code>talyx-bin</code> is{' '}
+          <a href={AUR_PACKAGING_URL} className="underline underline-offset-4">
+            coming soon
+          </a>
+          . Until it is published, use the AppImage.
         </li>
         <li>
           Setup then installs the engine, asks for a model provider and helps you make your first

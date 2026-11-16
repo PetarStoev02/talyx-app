@@ -162,6 +162,20 @@ jobs:
           path: release/latest-*.yml
           if-no-files-found: error
 
+      # The AUR package talyx-bin, pointed at this release's deb by its sha256. Never pushed from
+      # here: the owner pushes it to the AUR after publishing (packaging/aur/README.md).
+      - name: Bump the AUR package
+        run: packaging/aur/bump.sh "$(node -p "require('./package.json').version")" release/Talyx-amd64.deb aur
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: aur
+          path: |
+            aur/PKGBUILD
+            aur/.SRCINFO
+          include-hidden-files: true
+          if-no-files-found: error
+
       # The update feeds (latest-*.yml) are not signed here: the key that signs them is never on
       # GitHub, so nobody who gets into the repository can sign an update. The owner signs the
       # draft's feeds with `npm run sign-release` before publishing; until then installed copies
