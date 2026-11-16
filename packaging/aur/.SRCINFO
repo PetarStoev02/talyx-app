@@ -1,0 +1,27 @@
+pkgbase = talyx-bin
+	pkgdesc = Tally your agents: one roster, one chat, a manager who briefs you
+	pkgver = 1.0.7
+	pkgrel = 1
+	url = https://talyx.app
+	arch = x86_64
+	license = AGPL-3.0-only
+	depends = gtk3
+	depends = libnotify
+	depends = nss
+	depends = libxss
+	depends = libxtst
+	depends = xdg-utils
+	depends = at-spi2-core
+	depends = util-linux-libs
+	depends = libsecret
+	depends = alsa-lib
+	depends = hicolor-icon-theme
+	optdepends = libappindicator-gtk3: tray icon on some desktops
+	provides = talyx
+	conflicts = talyx
+	options = !strip
+	options = !debug
+	source = Talyx-1.0.7-amd64.deb::https://github.com/PetarStoev02/talyx-app/releases/download/v1.0.7/Talyx-amd64.deb
+	sha256sums = dce9b6d6a89abb8d44736afee1f45e55ef925b4eb3e2bb1eabb9f192e09e3b03
+
+pkgname = talyx-bin

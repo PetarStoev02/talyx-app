@@ -204,3 +204,20 @@ jobs:
             --notes-file notes.md \
             --generate-notes \
             release/*
+
+      # The AUR package talyx-bin, pointed at this release's deb by its sha256. Never pushed from
+      # here: the owner pushes it to the AUR after publishing (packaging/aur/README.md). A failed
+      # bump only loses the aur artifact: the run stays green, which sign-release requires.
+      - name: Bump the AUR package
+        continue-on-error: true
+        run: packaging/aur/bump.sh "$VERSION" release/Talyx-amd64.deb aur
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        continue-on-error: true
+        with:
+          name: aur
+          path: |
+            aur/PKGBUILD
+            aur/.SRCINFO
+          include-hidden-files: true
+          if-no-files-found: error

@@ -93,7 +93,9 @@ release paths pass `forceCodeSigning`, notarize and staple the DMGs, and check t
 Releases come from the Release workflow (`.github/workflows/release.yml`, Actions → Release → Run
 workflow): macOS DMGs, Linux AppImage + deb, the real-engine smoke test on Linux, then a draft
 release `v<version>` with the update feed (`latest-*.yml`, the mac zips and their blockmaps),
-`engine-install.json` and `SHA256SUMS` (for checking a download by hand). Drafts are invisible to installed apps until published. Its body is the optional
+`engine-install.json` and `SHA256SUMS` (for checking a download by hand). Drafts are invisible to installed apps until published. The run also keeps an `aur` artifact: `packaging/aur/PKGBUILD` and
+`.SRCINFO` bumped to the release's deb by `packaging/aur/bump.sh`; the owner pushes it to the AUR
+by hand (`packaging/aur/README.md`, which also records why there is no Flatpak). Its body is the optional
 `highlights` input under `## Highlights`, then `docs/release-notes/<version>.md` (write it before
 releasing; no engine name), then GitHub's generated notes. It needs the secret
 `ENGINE_INSTALL_JSON` (base64 of `engine-install.json`), set once per file change with
