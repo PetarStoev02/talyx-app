@@ -381,12 +381,13 @@ describe('providers', () => {
       engine.turns['9-route-provider'] = 'silent'
 
       const testing = testChat(engine.backend, router)
-      const settled = expect(testing).rejects.toMatchObject({
-        key: 'providers.errorTestChatTimeout'
-      })
       await vi.runAllTimersAsync()
-      await settled
 
+      expect(await testing).toMatchObject({
+        ok: false,
+        cause: { key: 'providers.errorTestChatTimeout' },
+        closed: true
+      })
       expect(engine.calls).toContain(`${HOME} session.interrupt`)
       expect(leftovers()).toEqual([])
     })
@@ -397,11 +398,20 @@ describe('providers', () => {
       engine.refusing.add('session.interrupt')
 
       const testing = testChat(engine.backend, router)
-      const settled = expect(testing).rejects.toMatchObject({
-        key: 'providers.errorTestChatTimeout'
-      })
       await vi.runAllTimersAsync()
-      await settled
+
+      expect(await testing).toMatchObject({ cause: { key: 'providers.errorTestChatTimeout' } })
+    })
+
+    it('should say the chat stayed when neither the message nor the cleanup went through', async () => {
+      vi.useFakeTimers()
+      engine.refusing.add('prompt.submit')
+      engine.busyDeletes.left = 99
+
+      const testing = testChat(engine.backend, router)
+      await vi.runAllTimersAsync()
+
+      expect(await testing).toMatchObject({ ok: false, closed: false })
     })
 
     it('should remove the chat when the engine is still busy with it at first', async () => {
@@ -454,7 +464,10 @@ describe('providers', () => {
     it('should remove the chat when the message cannot be sent', async () => {
       engine.refusing.add('prompt.submit')
 
-      await expect(testChat(engine.backend, router)).rejects.toThrow('prompt.submit refused')
+      const result = await testChat(engine.backend, router)
+
+      expect(result).toMatchObject({ ok: false, closed: true })
+      expect(String('cause' in result && result.cause)).toContain('prompt.submit refused')
       expect(leftovers()).toEqual([])
     })
   })

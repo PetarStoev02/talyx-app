@@ -32,7 +32,7 @@ export function TestChatDialog({
     try {
       setResult(await testChat(backend, { provider: endpoint.id, model }))
     } catch (error) {
-      setResult({ ok: false, error: failureText(t, error), closed: true })
+      setResult({ ok: false, cause: error, closed: true })
     } finally {
       setBusy(false)
     }
@@ -76,7 +76,9 @@ export function TestChatDialog({
           <div role="alert" className="space-y-1">
             <p className="text-sm text-muted-foreground">{t('providers.testChatFailed')}</p>
             <p className="rounded-xl bg-secondary p-3 font-mono text-sm text-destructive-text whitespace-pre-wrap wrap-anywhere select-text">
-              {result.error || t('providers.testChatEmpty')}
+              {'cause' in result
+                ? failureText(t, result.cause)
+                : result.error || t('providers.testChatEmpty')}
             </p>
           </div>
         )}

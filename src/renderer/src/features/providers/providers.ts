@@ -65,12 +65,17 @@ export interface EndpointCheck {
   models: string[]
 }
 
-/**
- * The model's reply, or the error the chat failed with (empty when the model sent nothing).
- * `closed` is false when the engine kept the test chat; it stays hidden, so no bot shows it.
- */
+/** The model's reply, or the error the chat failed with (empty when the model sent nothing). */
 export type TestChatResult = { ok: true; reply: string } | { ok: false; error: string }
-export type TestChatOutcome = TestChatResult & { closed: boolean }
+
+/**
+ * What a test chat came to: the turn's result, or `cause` when no turn ended (it timed out or the
+ * message was not sent). `closed` is false when the engine kept the test chat; it stays hidden,
+ * so no bot shows it.
+ */
+export type TestChatOutcome = (TestChatResult | { ok: false; cause: unknown }) & {
+  closed: boolean
+}
 
 export type SignInPoll =
   | { status: 'approved' }
@@ -218,8 +223,10 @@ export async function testChat(
   const closing = await settle(backend.closeTestChat(chatId))
   // A chat the engine kept must not hide what the model said: the reply or error still shows.
   if (closing.status === 'rejected') reportError('providers', closing.reason)
-  if (asked.status === 'rejected') throw asked.reason
-  return { ...asked.value, closed: closing.status === 'fulfilled' }
+  const closed = closing.status === 'fulfilled'
+  return asked.status === 'fulfilled'
+    ? { ...asked.value, closed }
+    : { ok: false, cause: asked.reason, closed }
 }
 
 function settle<T>(promise: Promise<T>): Promise<PromiseSettledResult<T>> {
