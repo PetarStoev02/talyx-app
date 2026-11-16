@@ -302,6 +302,8 @@ const en = {
   'details.descriptionHint': 'What this bot is for, in a line.',
   'details.model': 'Model',
   'details.modelDefault': 'Engine default',
+  'details.modelLeftEndpoint':
+    'This model was removed from its endpoint. Pick another model below.',
   'details.usesDefault': 'Uses default ({model})',
   'details.modelHint':
     'On Uses default, the bot follows Talyx’s model in Settings. A model of its own stays.',
@@ -645,7 +647,13 @@ const en = {
   'providers.loading': 'Loading providers…',
   'providers.empty': 'No provider yet. Add an API key, an account or an endpoint.',
   'providers.active': 'Active',
-  'providers.models': 'Models: {models}',
+  'providers.modelsLabel': 'Models:',
+  'providers.removeModelNamed': 'Remove {model}',
+  'providers.removeModel': 'Remove model',
+  'providers.removeModelTitle': 'Remove {model} from {name}?',
+  'providers.removeModelWarning':
+    'Every bot loses this model. A bot that uses it keeps it and is marked, so you can pick another.',
+  'providers.modelStillUsed': 'Still set to {model}: {bots}. Pick another model in their details.',
   'providers.edit': 'Edit',
   'providers.remove': 'Remove',
   'providers.removeEndpoint': 'Remove endpoint',
@@ -740,6 +748,8 @@ const en = {
   'providers.errorKeyEmpty': 'Paste a key first.',
   'providers.errorEndpointIncomplete': 'An endpoint needs a name and a base URL.',
   'providers.errorEndpointNoModels': 'List at least one model.',
+  'providers.errorEndpointLastModel':
+    'An endpoint keeps at least one model. Remove the endpoint instead.',
   'providers.errorEndpointKeyNeeded': 'Enter the endpoint’s key again before saving.',
   'providers.errorEndpointKeyInConfig':
     'Talyx’s custom endpoint keeps its key inside its settings file, so switching would lose it. Edit the endpoint under Providers and type its key again, then switch.',

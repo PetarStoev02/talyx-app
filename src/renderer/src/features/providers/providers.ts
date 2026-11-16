@@ -1,4 +1,5 @@
 import { CONFIG_YAML_SOURCE, namedTwinOfBare } from '@shared/engine/endpoints'
+import type { ModelOptionProvider } from '@shared/engine/gateway-events'
 import type { CustomEndpoint, OAuthProvider, OAuthStartResponse } from '@shared/engine/types'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { AppError, isTimeout } from '@shared/lib/problem'
@@ -33,6 +34,10 @@ export interface ProvidersBackend {
   /** `draft.models` are trimmed, unique and not empty. */
   saveEndpoint: (profile: string, draft: EndpointDraft) => Promise<void>
   removeEndpoint: (profile: string, id: string) => Promise<void>
+  /** Takes one model off the bot's copy of the endpoint; a bot without that model is left as is. */
+  removeEndpointModel: (profile: string, drop: EndpointModel) => Promise<void>
+  /** Whether the bot's own model is this model on this endpoint. */
+  usesEndpointModel: (profile: string, pick: EndpointModel) => Promise<boolean>
   /** Sets Talyx's model, or returns the question to ask first and saves nothing. */
   setModel: (pick: ModelPick) => Promise<ModelConfirm | null>
   /** Sets Talyx's model after the user said yes to its question. */
@@ -103,6 +108,18 @@ export interface Account {
   disconnectable: boolean
   /** The command that signs in an external account. */
   command: string
+}
+
+/** One model on one endpoint, by the endpoint's id. */
+export interface EndpointModel {
+  endpoint: string
+  model: string
+}
+
+/** What a model removal did: the bots it did not reach, and the bots still on that model. */
+export interface ModelRemoval {
+  failed: string[]
+  flagged: string[]
 }
 
 export interface ModelPick {
@@ -274,6 +291,51 @@ export function removeEndpoint(
       (await backend.endpoints(profile)).some((endpoint) => endpoint.id === id)
     )
   )
+}
+
+/**
+ * Removes one model from the endpoint on every bot. The engine's endpoint save only ever adds
+ * models, so this is its own write. A bot whose model it was keeps that model and is flagged:
+ * Talyx never picks another model for it. An endpoint keeps at least one model; remove the
+ * endpoint instead.
+ */
+export async function removeEndpointModel(
+  backend: EveryBot &
+    Pick<ProvidersBackend, 'removeEndpointModel' | 'usesEndpointModel' | 'endpoints'>,
+  removal: { endpoint: CustomEndpoint; model: string }
+): Promise<ModelRemoval> {
+  const { endpoint, model } = removal
+  if (!endpoint.models.includes(model) || endpoint.models.length < 2)
+    throw new ProvidersError('providers.errorEndpointLastModel')
+  const drop = { endpoint: endpoint.id, model }
+  const failed = await onEveryBot(backend, (profile) =>
+    removing(backend.removeEndpointModel(profile, drop), async () =>
+      (await backend.endpoints(profile)).some(
+        (saved) => saved.id === endpoint.id && saved.models.includes(model)
+      )
+    )
+  )
+  const profiles = await backend.profiles()
+  // A bot whose model could not be read is not flagged: nothing says it is on the model.
+  const uses = await Promise.allSettled(
+    profiles.map((profile) => backend.usesEndpointModel(profile, drop))
+  )
+  const flagged = profiles.filter(
+    (_, index) => uses[index].status === 'fulfilled' && uses[index].value
+  )
+  return { failed, flagged }
+}
+
+/**
+ * A bot's model that its custom endpoint no longer lists, as after a removal: the bot still asks
+ * for it, so it is shown as needing a new pick. Only a custom endpoint lists exactly its saved
+ * models; a provider's menu leaves models out, so a missing one there means nothing.
+ */
+export function modelLeftEndpoint(pick: ModelPick, offered: ModelOptionProvider[]): boolean {
+  const provider = offered.find(
+    (item) => item.slug === pick.provider || (item.aliases ?? []).includes(pick.provider)
+  )
+  return !!provider?.is_user_defined && !(provider.models ?? []).includes(pick.model)
 }
 
 /**

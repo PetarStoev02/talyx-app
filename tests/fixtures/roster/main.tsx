@@ -19,6 +19,7 @@ import {
   chat,
   engine,
   providers,
+  providersConfig,
   providersRest,
   rosterBackend
 } from './engineDouble'
@@ -61,21 +62,24 @@ if (new URLSearchParams(location.search).has('nudge')) useSetup.getState().setHa
 const providerElsewhere = new URLSearchParams(location.search).get('provider') === 'elsewhere'
 let providerAdded = !providerElsewhere
 window.addEventListener('blur', () => (providerAdded = true), { once: true })
-const setupProviders = engineProvidersBackend({
-  ...engine,
-  http: async <T,>(request: EngineApiRequest): Promise<T> => {
-    const answer = await providersRest<T>(request)
-    if (providerAdded || request.method) return answer
-    if (request.path.startsWith('/api/providers/custom-endpoints?'))
-      return { ...answer, endpoints: [] } as T
-    if (request.path.startsWith('/api/providers/oauth?')) {
-      const { providers: accounts } = answer as { providers: Array<{ status: object }> }
-      const signedOut = accounts.map((account) => ({ ...account, status: { logged_in: false } }))
-      return { providers: signedOut } as T
+const setupProviders = engineProvidersBackend(
+  {
+    ...engine,
+    http: async <T,>(request: EngineApiRequest): Promise<T> => {
+      const answer = await providersRest<T>(request)
+      if (providerAdded || request.method) return answer
+      if (request.path.startsWith('/api/providers/custom-endpoints?'))
+        return { ...answer, endpoints: [] } as T
+      if (request.path.startsWith('/api/providers/oauth?')) {
+        const { providers: accounts } = answer as { providers: Array<{ status: object }> }
+        const signedOut = accounts.map((account) => ({ ...account, status: { logged_in: false } }))
+        return { providers: signedOut } as T
+      }
+      return answer
     }
-    return answer
-  }
-})
+  },
+  providersConfig
+)
 
 // The newest exported avatar image, so the PNG can be checked without an engine.
 function ExportedAvatar(): React.JSX.Element | null {

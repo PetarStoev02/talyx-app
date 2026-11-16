@@ -66,6 +66,20 @@ export const RoomMembersSchema = z.object({
     .max(6)
 })
 
+// eslint-disable-next-line no-control-regex
+const ConfigKeyPartSchema = z.string().regex(/^(?! )[^\x00-\x1f\x7f\\]{1,200}(?<! )$/)
+
+/**
+ * One model off a bot's custom endpoint. Both become parts of one engine config key, passed as one
+ * argument (no shell): they may hold spaces (`Go reasoning`, a hand-written endpoint key), but no
+ * control character, no backslash (the engine reads it as an escape) and no space at either end.
+ */
+export const EndpointModelRemovalSchema = z.object({
+  profile: ProfileNameSchema,
+  endpoint: ConfigKeyPartSchema,
+  model: ConfigKeyPartSchema
+})
+
 /** Chosen by the renderer before it opens the socket, so early frames find it. */
 export const EngineSocketIdSchema = z.string().regex(/^[A-Za-z0-9-]{8,64}$/)
 

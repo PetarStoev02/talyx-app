@@ -1,4 +1,4 @@
-import { keepBareEndpoint, listEndpoints } from '@shared/engine/endpoints'
+import { BARE_CUSTOM, keepBareEndpoint, listEndpoints, sameBaseUrl } from '@shared/engine/endpoints'
 import { assignMainModel } from '@shared/engine/mainModel'
 import { randomUuid } from '@shared/engine/session-http-mutations'
 import type { SessionMutationSnapshot } from '@shared/engine/session-http-mutations'
@@ -16,6 +16,7 @@ import { ProvidersError } from '@features/providers/providers'
 import type {
   Account,
   EndpointDraft,
+  EndpointModel,
   KeySlot,
   ProvidersBackend,
   TestChatResult
@@ -46,9 +47,15 @@ const LOG_TAIL_LINES = 400
 const LOG_STAMP = /^\d{4}-\d{2}-\d{2} /
 const SESSION_ERROR = 'Agent error in session'
 
+/** The engine's config unset, which main runs: its REST save only ever adds models. */
+export interface EndpointModelConfig {
+  removeEndpointModel: (drop: EndpointModel & { profile: string }) => Promise<void>
+}
+
 /** Providers, keys, endpoints, sign-ins and Talyx's model over the engine's REST. */
 export function engineProvidersBackend(
-  engine: Pick<EngineAccess, 'http' | 'request' | 'onEvent'>
+  engine: Pick<EngineAccess, 'http' | 'request' | 'onEvent'>,
+  config: EndpointModelConfig
 ): ProvidersBackend {
   const rest = <T>(
     profile: string,
@@ -210,6 +217,31 @@ export function engineProvidersBackend(
       await rest(profile, `/api/providers/custom-endpoints/${encodeURIComponent(id)}`, {
         method: 'DELETE'
       })
+    },
+    removeEndpointModel: async (profile, drop) => {
+      const { endpoints } = await listEndpoints(engine.http, profile)
+      const saved = endpoints.find((endpoint) => endpoint.id === drop.endpoint)
+      if (!saved?.models.includes(drop.model)) return
+      // The engine lists an endpoint's own model first whatever its model map holds, so the
+      // removed model stops being it first. The config merge keeps the rest of the entry. A bot
+      // whose copy has no other model keeps it: an endpoint needs one.
+      if (saved.model === drop.model) {
+        const next = saved.models.find((model) => model !== drop.model)
+        if (!next) throw new ProvidersError('providers.errorEndpointLastModel')
+        await rest(profile, '/api/config', {
+          method: 'PUT',
+          body: { config: { providers: { [drop.endpoint]: { model: next } } } }
+        })
+      }
+      await config.removeEndpointModel({ profile, ...drop })
+    },
+    usesEndpointModel: async (profile, pick) => {
+      const { endpoints, current } = await listEndpoints(engine.http, profile)
+      const saved = endpoints.find((endpoint) => endpoint.id === pick.endpoint)
+      if (!saved || current.model !== pick.model) return false
+      // A bot on the bare endpoint with the same URL is on this endpoint too (keepBareEndpoint).
+      const bare = current.provider === BARE_CUSTOM && sameBaseUrl(current.base_url, saved.base_url)
+      return saved.is_current === true || bare
     },
     setModel: async (pick) => {
       await keepBareEndpoint(engine.http, HOME_PROFILE, pick)

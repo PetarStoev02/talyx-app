@@ -5,9 +5,11 @@ import log from 'electron-log'
 import type { EngineHttpRequest, EngineStatus } from '../../../shared/engine'
 import { EngineHttpError, createEngine, userBinEngine } from '../engine/engine'
 import { EngineSockets, type SocketEventSink } from '../engine/engineSockets'
+import { removeEndpointModel } from '../engine/endpointModels'
 import { nodeFileDeps, roomMembers } from '../engine/roomMembers'
 import { settingsStore } from '../storage/SettingsStore'
 import {
+  EndpointModelRemovalSchema,
   EngineHttpRequestSchema,
   EnginePathSchema,
   EngineSocketIdSchema,
@@ -70,6 +72,11 @@ export function registerEngineIpc(): void {
     const { roomId, members } = validateInput(RoomMembersSchema, raw)
     return rooms.set(roomId, members)
   })
+
+  // The engine's REST only adds models to an endpoint; removing one is a config unset.
+  ipcMain.handle('engine:endpoint-model-remove', (_event, raw: unknown) =>
+    removeEndpointModel(engine, validateInput(EndpointModelRemovalSchema, raw))
+  )
 
   ipcMain.handle('engine:http', (_event, raw: unknown) =>
     engineHttp(validateInput(EngineHttpRequestSchema, raw))

@@ -31,6 +31,7 @@ import { useRoster } from '@features/bots/store'
 import type { Bot } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
 import { useChat } from '@features/chat/store'
+import { modelLeftEndpoint } from '@features/providers/providers'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
@@ -91,6 +92,7 @@ export function DetailsPanel({
     ...loaded
   }
   const draft: DetailsDraft | null = fields && { title, look, usesDefault, ...fields }
+  const stranded = useModelLeftEndpoint(bot.name, loaded?.model ?? null, chat)
   const arrival = useArrival(!draft && !loadError)
 
   useEffect(() => {
@@ -229,6 +231,11 @@ export function DetailsPanel({
             </span>
           )}
         </p>
+        {stranded && (
+          <p role="status" className="text-sm text-balance text-destructive-text">
+            {t('details.modelLeftEndpoint')}
+          </p>
+        )}
       </header>
       <Tabs.Root
         value={tab}
@@ -386,4 +393,32 @@ export function DetailsPanel({
       </Dialog>
     </aside>
   )
+}
+
+/**
+ * True when the bot's model is one its custom endpoint no longer lists. The bot keeps asking for
+ * it, so the panel says so instead of switching it; a new pick clears it.
+ */
+function useModelLeftEndpoint(
+  profile: string,
+  model: ModelChoice | null,
+  chat: ChatModels | null
+): boolean {
+  // The verdict names the model it is for, so a newly loaded model never shows an old verdict.
+  const [verdict, setVerdict] = useState<{ model: ModelChoice; stranded: boolean } | null>(null)
+  useEffect(() => {
+    let current = true
+    if (!model || !chat) return
+    chat
+      .models(profile)
+      .then(
+        (offered) => current && setVerdict({ model, stranded: modelLeftEndpoint(model, offered) })
+      )
+      // No list, no verdict: the model menu shows the failure when it opens.
+      .catch(() => undefined)
+    return () => {
+      current = false
+    }
+  }, [profile, model, chat])
+  return verdict?.model === model && verdict.stranded
 }

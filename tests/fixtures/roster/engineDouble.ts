@@ -379,8 +379,10 @@ export const rosterBackend = {
   ...fixtureMemory(Object.keys(BOTS)).backend,
   room: engineRoomBackend(engine)
 }
-export const providersRest = fixtureProviders(profiles.map((bot) => bot.name))
-export const providers = engineProvidersBackend({ ...engine, http: providersRest })
+const providersEngine = fixtureProviders(profiles.map((bot) => bot.name))
+export const providersRest = providersEngine.http
+export const providersConfig = providersEngine.config
+export const providers = engineProvidersBackend({ ...engine, http: providersRest }, providersConfig)
 export const chat = fixtureChat(providersRest)
 
 /** An attached engine as the fixture's pages need it. */

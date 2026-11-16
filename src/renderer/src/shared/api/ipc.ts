@@ -91,3 +91,12 @@ export const mcpApi = {
   connection: (): Promise<McpConnection> => window.api.getMcpConnection(),
   onCall: (cb: (call: McpCall) => void): (() => void) => window.api.onMcpCall(cb)
 }
+
+/** The engine config write its REST cannot make: one model off a bot's custom endpoint. */
+export const engineConfigApi = {
+  removeEndpointModel: (drop: {
+    profile: string
+    endpoint: string
+    model: string
+  }): Promise<void> => window.api.removeEndpointModel(drop) as Promise<void>
+}

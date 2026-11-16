@@ -1,4 +1,5 @@
 import { engineProvidersBackend } from '../../../src/renderer/src/app/engine/providers'
+import type { EndpointModelConfig } from '../../../src/renderer/src/app/engine/providers'
 import type { EngineApiRequest, EngineHttp } from '../../../src/renderer/src/shared/engine/http'
 import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/host'
 import type { ProvidersBackend } from '../../../src/renderer/src/features/providers/providers'
@@ -27,7 +28,7 @@ interface Body {
   discover_models: boolean
   provider: string
   confirm_expensive_model?: boolean
-  config: { providers: Record<string, NamedEntry> }
+  config: { providers: Record<string, Partial<NamedEntry>> }
 }
 
 interface NamedEntry {
@@ -72,6 +73,8 @@ export interface ProvidersDouble {
   backend: ProvidersBackend
   /** The in-memory engine REST; the backend reads it on each call, so a test can wrap it. */
   http: EngineHttp
+  /** The engine's config unset, which main runs for the page. */
+  config: EndpointModelConfig
   profiles: Record<string, ProfileConfig>
   accounts: OAuthProvider[]
   /** Every write, as `<profile> <METHOD> <path>`, in order. */
@@ -306,7 +309,21 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
           ? { ok: true, reachable: true, message: '' }
           : { ok: false, reachable: true, message: 'Key rejected' }
     if (path === '/api/providers/custom-endpoints' && method === 'GET')
-      return { current: {}, endpoints: config.endpoints }
+      return {
+        current: {
+          provider: config.model.provider,
+          model: config.model.model,
+          // The bare endpoint lives in the model section, its URL with it.
+          base_url:
+            config.endpoints.find(
+              (e) => e.source === 'direct-config' && e.id === config.model.provider
+            )?.base_url ?? ''
+        },
+        endpoints: config.endpoints.map((e) => ({
+          ...e,
+          is_current: e.id === config.model.provider
+        }))
+      }
     if (path === '/api/providers/custom-endpoints/validate')
       return { ok: true, reachable: true, message: '', models: ['a', 'b', 'c'] }
     if (path === '/api/providers/custom-endpoints') {
@@ -348,14 +365,20 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
     }
     if (path === '/api/config' && method === 'PUT') {
       const [[id, entry]] = Object.entries(body.config.providers)
+      const existing = config.endpoints.find((e) => e.id === id)
+      // The engine deep-merges the config: an entry naming only its model keeps everything else.
+      if (existing && entry.name === undefined) {
+        existing.model = entry.model!
+        return { ok: true }
+      }
       const keyEnv = entry.key_env
       const saved: CustomEndpoint = {
         id,
-        name: entry.name,
-        base_url: entry.base_url,
-        model: entry.model,
-        models: Object.keys(entry.models),
-        discover_models: entry.discover_models,
+        name: entry.name!,
+        base_url: entry.base_url!,
+        model: entry.model!,
+        models: Object.keys(entry.models!),
+        discover_models: entry.discover_models!,
         has_api_key: !!keyEnv,
         api_key_preview: keyEnv ? `\${${keyEnv}}` : null,
         source: 'providers'
@@ -430,16 +453,32 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
       url.searchParams
     ) as T
   }
+  // The engine's config unset: it removes one model and refuses one the bot does not have.
+  async function removeEndpointModel(drop: {
+    profile: string
+    endpoint: string
+    model: string
+  }): Promise<void> {
+    if (failing.has(drop.profile)) throw new Error(`config unset failed on ${drop.profile}`)
+    writes.push(`${drop.profile} unset ${drop.endpoint} ${drop.model}`)
+    const endpoint = profiles[drop.profile].endpoints.find((e) => e.id === drop.endpoint)
+    if (!endpoint?.models.includes(drop.model)) throw new Error('Config key not set')
+    endpoint.models = endpoint.models.filter((model) => model !== drop.model)
+  }
   const double: ProvidersDouble = {
-    backend: engineProvidersBackend({
-      http: <T>(request: EngineApiRequest) => double.http<T>(request),
-      request,
-      onEvent: (handler) => {
-        listeners.add(handler)
-        return () => listeners.delete(handler)
-      }
-    }),
+    backend: engineProvidersBackend(
+      {
+        http: <T>(request: EngineApiRequest) => double.http<T>(request),
+        request,
+        onEvent: (handler) => {
+          listeners.add(handler)
+          return () => listeners.delete(handler)
+        }
+      },
+      { removeEndpointModel }
+    ),
     http,
+    config: { removeEndpointModel },
     profiles,
     accounts,
     writes,
