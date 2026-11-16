@@ -101,7 +101,8 @@ export function engineProvidersBackend(
     if (start < 0) return null
     const end = lines.findIndex((line, index) => index > start && LOG_STAMP.test(line))
     const trace = lines.slice(start + 1, end < 0 ? undefined : end)
-    return trace.map((line) => line.trim()).findLast(Boolean) ?? null
+    const said = trace.map((line) => line.trim()).filter(Boolean)
+    return said[said.length - 1] ?? null
   }
 
   return {
