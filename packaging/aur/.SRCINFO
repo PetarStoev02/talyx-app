@@ -1,5 +1,5 @@
 pkgbase = talyx-bin
-	pkgdesc = Tally your AI agents: one roster, one chat, a manager who briefs you
+	pkgdesc = Tally your agents: one roster, one chat, a manager who briefs you
 	pkgver = 1.0.7
 	pkgrel = 1
 	url = https://talyx.app

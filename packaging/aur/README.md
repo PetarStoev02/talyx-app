@@ -24,7 +24,8 @@ cp aur-new/PKGBUILD aur-new/.SRCINFO ~/aur/talyx-bin/
 cd ~/aur/talyx-bin && git commit -am "Update to <version>" && git push
 ```
 
-Also copy them into `packaging/aur/` here in a PR, so the next release bumps from them.
+When you change the PKGBUILD by hand (a `pkgrel` or dependency fix), make the same change in
+`packaging/aur/` here, or the next release's bump drops it.
 
 ## One-time setup (owner)
 
