@@ -1,10 +1,11 @@
-import { useEffect } from 'react'
+import { useCallback } from 'react'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
 import { cn } from '@shared/lib/utils'
 import { reportError } from '@shared/lib/report'
 import { useTheme } from '@shared/hooks/useTheme'
+import { useEscape } from '@shared/hooks/useEscape'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
 import type { ProvidersBackend } from '@features/providers/providers'
@@ -41,6 +42,7 @@ export function SettingsPage({
   const { theme, setTheme } = useTheme()
   const t = useLanguage((s) => s.t)
   const goBack = useNavigation((s) => s.goBack)
+  const leave = useCallback((): void => void goBack(), [goBack])
   const licensed = useModules((s) => s.state.license !== null)
   // The chosen page, or General once it is gone (the license removed while on Modules).
   const section = shownPage(
@@ -54,16 +56,8 @@ export function SettingsPage({
     { value: 'system' as const, label: t('settings.system'), Icon: Monitor }
   ]
 
-  // Escape leaves Settings, unless a dialog or menu already took it (they mark it handled).
-  useEffect(() => {
-    function onKey(event: KeyboardEvent): void {
-      if (event.key !== 'Escape' || event.defaultPrevented) return
-      event.preventDefault()
-      void goBack()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [goBack])
+  // Escape leaves the page, unless a dialog or menu already took it.
+  useEscape(leave)
 
   function runSetupAgain(): void {
     useSetup

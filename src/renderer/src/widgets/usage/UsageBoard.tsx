@@ -147,20 +147,26 @@ function DailySection({
   days,
   t
 }: ViewProps & { providerId: string | null }): React.JSX.Element {
+  const picked = report.days && daysOf(report.days, providerId)
   return (
     <section className="space-y-3">
       <h2 className="text-xl font-semibold text-foreground">{t('usage.daily')}</h2>
-      {report.days ? (
-        <DailyChart
-          series={dailySeries(daysOf(report.days, providerId), { days, today: new Date() })}
-          t={t}
-        />
-      ) : (
+      {!picked ? (
         <p className="text-base">
           {t('usage.daysUnavailable').replace(
             '{reason}',
             problemText(t, problemOf(report.daysProblem))
           )}
+        </p>
+      ) : picked.every((point) => !point.tokens && !point.requests) ? (
+        // A flat line on an empty scale says less than a sentence.
+        <p className="text-base">{t('usage.dailyNone').replace('{days}', String(days))}</p>
+      ) : (
+        <DailyChart series={dailySeries(picked, { days, today: new Date() })} t={t} />
+      )}
+      {report.days && report.daysUnread.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {t('usage.daysUnread').replace('{bots}', botTitles(report.daysUnread))}
         </p>
       )}
     </section>

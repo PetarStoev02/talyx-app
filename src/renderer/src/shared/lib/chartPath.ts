@@ -26,9 +26,12 @@ export function smoothPath(points: Point[]): string {
 // Round tops for an axis, as multiples of a power of ten: fine enough that the peak fills most of it.
 const NICE_STEPS = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]
 
+// Below this the half-way gridline would fall between whole counts.
+const LEAST_TOP = 10
+
 /** The smallest round number at or above `peak`, from NICE_STEPS times a power of ten. */
 export function niceCeiling(peak: number): number {
-  if (peak <= 1) return 1
+  if (peak <= LEAST_TOP) return LEAST_TOP
   const power = 10 ** Math.floor(Math.log10(peak))
   const step = NICE_STEPS.find((factor) => factor * power >= peak) ?? 10
   return step * power

@@ -24,6 +24,16 @@ export interface PluginRun {
   answer: PluginAnswer | null
 }
 
+// One enable at a time across every plugin: the engine refuses an enable while another one is
+// changing its plugin list ("Plugin configuration changed since this selection was read").
+let enabling: Promise<unknown> = Promise.resolve()
+
+function oneAtATime<T>(task: () => Promise<T>): Promise<T> {
+  const turn = enabling.then(task, task)
+  enabling = turn.catch(() => undefined)
+  return turn
+}
+
 /**
  * Runs one of Talyx's engine plugins as an engine CLI command. The plugin is written into the
  * engine's plugins folder and enabled the first time; an older copy is replaced.
@@ -51,7 +61,7 @@ export function enginePlugin(
       await deps.mkdir(folder)
       for (const [name, text] of writes) await deps.writeFile(join(folder, name), text)
     }
-    const enabled = await deps.engine.cli(['plugins', 'enable', plugin.name])
+    const enabled = await oneAtATime(() => deps.engine.cli(['plugins', 'enable', plugin.name]))
     if (enabled.code !== 0)
       throw new Error(`The ${plugin.name} plugin was not enabled: ${lastLine(enabled)}`)
   }

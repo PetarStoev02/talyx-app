@@ -28,13 +28,11 @@ export interface MembersChange {
   changed: boolean
 }
 
-export type RoomMembersDeps = EnginePluginDeps
-
 /**
  * Changes the bots of an existing room in place, through Talyx's engine plugin: the engine has no
  * call for it, and a new room would lose the history.
  */
-export function roomMembers(deps: RoomMembersDeps): {
+export function roomMembers(deps: EnginePluginDeps): {
   set: (roomId: string, members: RoomMemberRecord[]) => Promise<MembersChange>
 } {
   const plugin = enginePlugin(deps, { name: ROOMS_PLUGIN, files: PLUGIN_FILES })

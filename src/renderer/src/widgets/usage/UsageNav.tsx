@@ -28,7 +28,7 @@ export function UsageNav(): React.JSX.Element {
       data-module-sidebar
       className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3"
     >
-      <SidebarBack label={t('settings.back')} onClick={() => void goBack()} />
+      <SidebarBack label={t('nav.back')} onClick={() => void goBack()} />
       <nav aria-label={t('usage.pages')} className="space-y-0.5 pt-1">
         {rows.map((row) => {
           const current = row.id === picked

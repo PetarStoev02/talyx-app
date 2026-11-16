@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { RotateCw } from 'lucide-react'
+import { useEscape } from '@shared/hooks/useEscape'
 import { useLanguage } from '@app/providers/useLanguage'
 import { useNavigation } from '@app/providers/useNavigation'
 import type { ProvidersBackend } from '@features/providers/providers'
@@ -22,6 +23,7 @@ export function UsagePage({
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const goBack = useNavigation((s) => s.goBack)
+  const leave = useCallback((): void => void goBack(), [goBack])
   const days = useUsageView((s) => s.days)
   const setDays = useUsageView((s) => s.setDays)
   const loading = useUsageView((s) => s.loading)
@@ -37,16 +39,8 @@ export function UsagePage({
   // Opening the page and each period load afresh, so the numbers are current.
   useEffect(load, [load, days])
 
-  // Escape leaves Usage, unless a dialog or menu already took it (they mark it handled).
-  useEffect(() => {
-    function onKey(event: KeyboardEvent): void {
-      if (event.key !== 'Escape' || event.defaultPrevented) return
-      event.preventDefault()
-      void goBack()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [goBack])
+  // Escape leaves the page, unless a dialog or menu already took it.
+  useEscape(leave)
 
   return (
     <div className="flex h-full flex-col">
@@ -65,6 +59,7 @@ export function UsagePage({
             >
               {USAGE_PERIODS.map((period) => (
                 <button
+                  type="button"
                   key={period}
                   aria-pressed={days === period}
                   onClick={() => setDays(period)}

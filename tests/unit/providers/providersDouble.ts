@@ -46,8 +46,9 @@ export interface ProfileConfig {
   model: { provider: string; model: string }
   /** What the bot ran in the period, one row per model and provider; null: its store is unreadable. */
   usage: UsageRow[] | null
-  /** The bot's usage per local day and billing provider, as Talyx's engine plugin reads it. */
-  daily: DailyRow[]
+  /** The bot's usage per local day and billing provider, as Talyx's engine plugin reads it; null:
+   *  the plugin cannot read its store. */
+  daily: DailyRow[] | null
 }
 
 export interface DailyRow {
@@ -520,7 +521,12 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
           return Object.fromEntries(
             asked.map((name) => {
               const config = profiles[name]
-              return [name, config.usage ? { rows: config.daily } : { error: 'store unreadable' }]
+              return [
+                name,
+                config.usage && config.daily
+                  ? { rows: config.daily }
+                  : { error: 'store unreadable' }
+              ]
             })
           )
         }

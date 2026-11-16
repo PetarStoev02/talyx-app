@@ -36,15 +36,19 @@ describe('chart path', () => {
 
   describe('niceCeiling', () => {
     it.each([
-      [0, 1],
-      [7, 8],
+      [0, 10],
+      [3, 10],
+      [7, 10],
       [4_800_000, 5_000_000],
       [5_400_000, 6_000_000],
       [1_200, 1_200],
       [500, 500],
       [26, 30]
-    ])('should round %i up to %i', (peak, ceiling) => {
-      expect(niceCeiling(peak)).toBe(ceiling)
-    })
+    ])(
+      'should round %i up to %i, ten at least so small counts get whole gridlines',
+      (peak, ceiling) => {
+        expect(niceCeiling(peak)).toBe(ceiling)
+      }
+    )
   })
 })

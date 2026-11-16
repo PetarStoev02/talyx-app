@@ -22,6 +22,8 @@ export interface UsageReport {
   days: ProviderDay[] | null
   /** Why no bot's days could be read; the totals still stand. */
   daysProblem: unknown
+  /** Bots whose days alone could not be read: their totals count, their days are left out. */
+  daysUnread: string[]
   total: Counts
   /** Bots whose usage could not be read; the totals leave them out. */
   unread: string[]
@@ -76,6 +78,7 @@ export async function loadUsage(
     models,
     days: bots.days && sumDays(bots.days.map((day) => ({ ...day, providerId: ownerOf(day).id }))),
     daysProblem: bots.daysProblem,
+    daysUnread: bots.daysUnread,
     total: models.reduce((sum, model) => add(sum, model) ?? sum, ZERO),
     unread: bots.unread
   }
@@ -90,14 +93,15 @@ export function daysOf(days: ProviderDay[], providerId: string | null): DayUsage
 }
 
 /**
- * Every day of the last `days` up to `today`, oldest first; a day with no usage is zero, so a chart
- * shows the quiet days too. Days are local dates, as the engine records them.
+ * Every local date the last `days` touch up to `today`, oldest first; a day with no usage is zero,
+ * so a chart shows the quiet days too. The period reaches back `days` times 24 hours, as the
+ * engine's own does, so it starts partway through the date `days` before today.
  */
 export function dailySeries(daily: DayUsage[], period: { days: number; today: Date }): DayUsage[] {
   const byDay = new Map(daily.map((point) => [point.day, point]))
-  return Array.from({ length: period.days }, (_, index) => {
+  return Array.from({ length: period.days + 1 }, (_, index) => {
     const date = new Date(period.today)
-    date.setDate(date.getDate() - (period.days - 1 - index))
+    date.setDate(date.getDate() - (period.days - index))
     const day = localDay(date)
     return byDay.get(day) ?? { day, ...ZERO }
   })
@@ -105,8 +109,8 @@ export function dailySeries(daily: DayUsage[], period: { days: number; today: Da
 
 const ZERO: Counts = { tokens: 0, requests: 0 }
 
-// A bot counts only when both its models and its days were read, so the totals agree. When no
-// day could be read at all, the totals stand without days.
+// A bot whose totals cannot be read is left out; one whose days alone cannot be read keeps its
+// totals and is left out of the days. When no day can be read at all, the totals stand alone.
 async function readBots(
   backend: Backend,
   days: number
@@ -114,6 +118,7 @@ async function readBots(
   rows: ModelUsage[]
   days: BilledDay[] | null
   daysProblem: unknown
+  daysUnread: string[]
   unread: string[]
 }> {
   const profiles = await backend.profiles()
@@ -124,17 +129,14 @@ async function readBots(
       (problem: unknown) => ({ read: null, problem })
     )
   ])
-  const unread = profiles.filter(
-    (profile, index) => models[index].status === 'rejected' || perDay.read?.[profile] === null
-  )
+  const unread = profiles.filter((_, index) => models[index].status === 'rejected')
   const read = profiles.filter((profile) => !unread.includes(profile))
+  const dayless = perDay.read ? read.filter((profile) => !perDay.read?.[profile]) : []
   return {
-    rows: read.flatMap((profile) => {
-      const result = models[profiles.indexOf(profile)]
-      return result.status === 'fulfilled' ? result.value : []
-    }),
+    rows: models.flatMap((result) => (result.status === 'fulfilled' ? result.value : [])),
     days: perDay.read && read.flatMap((profile) => perDay.read?.[profile] ?? []),
     daysProblem: perDay.problem,
+    daysUnread: dayless,
     unread
   }
 }

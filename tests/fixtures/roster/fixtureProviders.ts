@@ -1,7 +1,6 @@
-import type { MainCalls } from '../../../src/renderer/src/app/engine/providers'
 import type { EngineApiRequest, EngineHttp } from '../../../src/renderer/src/shared/engine/http'
 import { providersDouble } from '../../unit/providers/providersDouble'
-import type { EndpointModelConfig } from '../../../src/renderer/src/app/engine/providers'
+import type { EndpointModelConfig, MainCalls } from '../../../src/renderer/src/app/engine/providers'
 
 const POLL_DELAY_MS = 1500
 /** Every bot's provider and model. */

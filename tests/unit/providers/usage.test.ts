@@ -384,6 +384,20 @@ describe('provider usage', () => {
       expect(unread).toEqual(['writer'])
     })
 
+    it("should keep a bot's totals when only its days cannot be read, and name it", async () => {
+      engine.profiles[HOME].usage = [row()]
+      engine.profiles[HOME].daily = [day({})]
+      engine.profiles.writer.usage = [row({ input_tokens: 40, output_tokens: 0, api_calls: 1 })]
+      engine.profiles.writer.daily = null
+
+      const report = await usage()
+
+      expect(report.total).toEqual({ tokens: 1040, requests: 3 })
+      expect(daysOf(report.days!, null)).toEqual([{ day: '2026-11-15', tokens: 100, requests: 1 }])
+      expect(report.unread).toEqual([])
+      expect(report.daysUnread).toEqual(['writer'])
+    })
+
     it('should keep the totals and say why when no day can be read', async () => {
       engine.profiles[HOME].usage = [row()]
       engine.daysFail = new Error('invalid choice: talyx-usage')
@@ -398,15 +412,17 @@ describe('provider usage', () => {
   })
 
   describe('dailySeries', () => {
-    it('should give every day of the period, the quiet ones as zero, oldest first', () => {
-      const series = dailySeries([{ day: '2026-11-15', tokens: 7, requests: 1 }], {
+    // The period reaches back `days` times 24 hours, so it touches one more date than that.
+    it('should give every date the period touches, the quiet ones as zero, oldest first', () => {
+      const series = dailySeries([{ day: '2026-11-13', tokens: 7, requests: 1 }], {
         days: 3,
-        today: new Date(2026, 10, 16, 9, 30)
+        today: new Date(2026, 10, 16, 15, 0)
       })
 
       expect(series).toEqual([
+        { day: '2026-11-13', tokens: 7, requests: 1 },
         { day: '2026-11-14', tokens: 0, requests: 0 },
-        { day: '2026-11-15', tokens: 7, requests: 1 },
+        { day: '2026-11-15', tokens: 0, requests: 0 },
         { day: '2026-11-16', tokens: 0, requests: 0 }
       ])
     })
@@ -414,7 +430,23 @@ describe('provider usage', () => {
     it('should cross a month end', () => {
       const series = dailySeries([], { days: 2, today: new Date(2026, 11, 1) })
 
-      expect(series.map((point) => point.day)).toEqual(['2026-11-30', '2026-12-01'])
+      expect(series.map((point) => point.day)).toEqual(['2026-11-29', '2026-11-30', '2026-12-01'])
+    })
+
+    it('should count calendar dates across a clock change, not 24-hour steps', () => {
+      // Late October: most of Europe falls back an hour, a 25-hour day.
+      const series = dailySeries([], { days: 7, today: new Date(2026, 10, 1, 0, 30) })
+
+      expect(series.map((point) => point.day)).toEqual([
+        '2026-10-25',
+        '2026-10-26',
+        '2026-10-27',
+        '2026-10-28',
+        '2026-10-29',
+        '2026-10-30',
+        '2026-10-31',
+        '2026-11-01'
+      ])
     })
   })
 })
