@@ -17,6 +17,7 @@ import { findMatches, pointIn } from '@features/chat/search'
 import { dialogOpen, platformOf, shortcutOf } from '@features/shortcuts/shortcuts'
 import { SearchResults } from './SearchResults'
 import { cn } from '@shared/lib/utils'
+import { IconButton } from '@shared/ui/IconButton'
 
 const platform = platformOf(navigator.platform)
 const ALL = 'chat-search'
@@ -192,8 +193,7 @@ export function ChatSearch({
             .replace('{current}', String(shown + 1))
             .replace('{total}', String(matches.length))
         : t('chat.searchNone')
-  const button =
-    'inline-flex size-8 shrink-0 items-center justify-center rounded-full hover:bg-foreground/10 disabled:opacity-50'
+  const button = 'size-8 text-foreground [&_svg]:size-4'
 
   const note = [
     found.note,
@@ -241,27 +241,25 @@ export function ChatSearch({
       >
         {status}
       </span>
-      <button
-        type="button"
-        aria-label={t('chat.searchPrevious')}
+      <IconButton
+        label={t('chat.searchPrevious')}
         disabled={!matches.length}
         onClick={() => step(-1)}
         className={cn(button, 'chat-search-previous')}
       >
-        <ChevronUp size={16} />
-      </button>
-      <button
-        type="button"
-        aria-label={t('chat.searchNext')}
+        <ChevronUp />
+      </IconButton>
+      <IconButton
+        label={t('chat.searchNext')}
         disabled={!matches.length}
         onClick={() => step(1)}
         className={button}
       >
-        <ChevronDown size={16} />
-      </button>
-      <button type="button" aria-label={t('chat.searchClose')} onClick={onClose} className={button}>
-        <X size={16} />
-      </button>
+        <ChevronDown />
+      </IconButton>
+      <IconButton label={t('chat.searchClose')} onClick={onClose} className={button}>
+        <X />
+      </IconButton>
       {listShown && (
         <SearchResults
           id={listId}

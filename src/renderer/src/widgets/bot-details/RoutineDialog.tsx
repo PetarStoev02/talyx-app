@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import type { RosterBackend } from '@features/bots/data'
-import { ProblemMessage } from '@features/bots/ProblemMessage'
+import { ProblemMessage, TryAgain } from '@features/bots/ProblemMessage'
 import { problemOf } from '@features/bots/roster'
 import type { RosterProblem } from '@features/bots/roster'
 import {
@@ -233,7 +233,7 @@ function RunRow({
       </summary>
       <div className="mt-1 mb-2 space-y-2 pl-4">
         {problem ? (
-          <ProblemMessage problem={problem} />
+          <TryAgain problem={problem} onRetry={open} />
         ) : !opened ? (
           <Loading label={t('routines.runLoading')}>
             <Skeleton className="h-12 w-full rounded-lg" />

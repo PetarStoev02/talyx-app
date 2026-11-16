@@ -349,7 +349,7 @@ function EndpointForm({
 // Always mounted, so a screen reader hears each new note; empty, it takes no room.
 function Note({ text }: { text: string | null }): React.JSX.Element {
   return (
-    <p role="status" className="text-base empty:hidden">
+    <p role="status" className="text-base empty:sr-only">
       {text}
     </p>
   )

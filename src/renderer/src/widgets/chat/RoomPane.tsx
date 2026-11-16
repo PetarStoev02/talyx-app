@@ -190,7 +190,7 @@ export function RoomPane({
       </div>
       <p
         role="status"
-        className="mx-auto flex w-full max-w-3xl items-center gap-2 px-6 pb-2 text-sm text-muted-foreground empty:hidden"
+        className="mx-auto flex w-full max-w-3xl items-center gap-2 px-6 pb-2 text-sm text-muted-foreground empty:sr-only"
       >
         {answering(room, view.phases).map((profile) => (
           <BotAvatar

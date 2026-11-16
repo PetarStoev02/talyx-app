@@ -49,7 +49,7 @@ export function SearchResults({
     // Holds pointer focus in the field, so a click on a row does not first close the list.
     <div
       onMouseDown={(event) => event.preventDefault()}
-      className="chat-search-list absolute top-full right-0 z-30 mt-2 w-[min(28rem,calc(100cqw-1rem))] overflow-hidden rounded-xl border border-border bg-popover shadow-lg"
+      className="chat-search-list absolute top-full right-0 z-30 mt-2 w-[min(28rem,calc(100cqw-3rem))] overflow-hidden rounded-2xl bg-popover shadow-lg ring-1 ring-border"
     >
       <div
         id={id}
@@ -125,7 +125,7 @@ function Snippet({ hit, you }: { hit: MessageHit; you: string }): React.JSX.Elem
   const { before, match, after } = snippetOf(hit.text, hit.match)
   const author = hit.fromYou ? you : hit.sender
   return (
-    <p className="min-w-0 flex-1 truncate text-base">
+    <p className="min-w-0 flex-1 line-clamp-2 wrap-anywhere text-base">
       {author && <span className="text-muted-foreground">{`${author}: `}</span>}
       {before}
       <mark className="search-hit">{match}</mark>

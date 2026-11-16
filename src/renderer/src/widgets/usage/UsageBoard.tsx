@@ -3,9 +3,9 @@ import { botTitles } from '@features/bots/spread'
 import { dailySeries, daysOf } from '@features/providers/usage'
 import type { ProviderUsage, UsageReport } from '@features/providers/usage'
 import { useUsageView } from '@features/providers/usageView'
+import { TryAgain } from '@features/bots/ProblemMessage'
 import { problemOf, problemText } from '@shared/lib/problem'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
-import { cn } from '@shared/lib/utils'
 import { BarList, DailyChart, type Bar } from './charts'
 import { compact, requestsText, shareText, type Translate } from './format'
 
@@ -17,15 +17,7 @@ export function UsageBoard({ onRetry }: { onRetry: () => void }): React.JSX.Elem
   const problem = useUsageView((s) => s.problem)
   const picked = useUsageView((s) => s.provider)
 
-  if (problem)
-    return (
-      <div role="alert" className="text-base">
-        <p>{problemText(t, problemOf(problem))}</p>
-        <button className="mt-2 underline underline-offset-4 hover:decoration-2" onClick={onRetry}>
-          {t('action.tryAgain')}
-        </button>
-      </div>
-    )
+  if (problem) return <TryAgain problem={problemOf(problem)} onRetry={onRetry} />
   if (!shown)
     return (
       <Loading label={t('usage.loading')} className="space-y-3">
@@ -37,17 +29,12 @@ export function UsageBoard({ onRetry }: { onRetry: () => void }): React.JSX.Elem
       </Loading>
     )
 
-  // The last period stays on screen while the next loads, dimmed, so nothing jumps or blanks.
+  // The last period stays on screen while the next loads, so nothing jumps or blanks. It is not
+  // dimmed: that would drop the muted text under 4.5:1; aria-busy and the spinning refresh show it.
   const { report, days } = shown
   const provider = report.providers.find((item) => item.id === picked)
   return (
-    <div
-      aria-busy={loading}
-      className={cn(
-        'animate-arrive space-y-10 transition-opacity duration-200',
-        loading && 'opacity-60'
-      )}
-    >
+    <div aria-busy={loading} className="animate-arrive space-y-10">
       <p role="status" className="sr-only">
         {loading ? t('usage.updating') : ''}
       </p>
@@ -185,6 +172,13 @@ function Total({
   requests: number
   t: Translate
 }): React.JSX.Element {
+  // A provider that reports requests but no tokens has no token figure: lead with the requests.
+  if (tokens === 0 && requests > 0)
+    return (
+      <p className="text-2xl font-semibold text-foreground tabular-nums">
+        {requestsText(t, requests)}
+      </p>
+    )
   return (
     <div>
       <p className="text-2xl font-semibold text-foreground tabular-nums">{compact(tokens)}</p>
@@ -226,9 +220,12 @@ function ModelTable({ report, days, t }: ViewProps): React.JSX.Element {
           <thead className="text-left text-muted-foreground">
             <tr className="border-b border-foreground/10">
               <th className="py-2 pr-4 font-normal">{t('usage.model')}</th>
-              <th className="py-2 pr-4 font-normal">{t('usage.provider')}</th>
-              <th className="py-2 pr-4 text-right font-normal">{t('usage.requestsColumn')}</th>
-              <th className="py-2 text-right font-normal">{t('usage.tokensColumn')}</th>
+              <th className="py-2 pr-4 text-right font-normal whitespace-nowrap">
+                {t('usage.requestsColumn')}
+              </th>
+              <th className="py-2 text-right font-normal whitespace-nowrap">
+                {t('usage.tokensColumn')}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -237,12 +234,18 @@ function ModelTable({ report, days, t }: ViewProps): React.JSX.Element {
                 key={`${model.providerId}:${model.model}`}
                 className="border-b border-foreground/5"
               >
-                <td className="py-2.5 pr-4 font-medium break-all text-foreground">{model.model}</td>
-                <td className="py-2.5 pr-4 text-muted-foreground">
-                  {model.provider ?? t('usage.unknown')}
+                <td className="py-2.5 pr-4">
+                  <span className="block font-medium wrap-anywhere text-foreground">
+                    {model.model}
+                  </span>
+                  <span className="block text-muted-foreground">
+                    {model.provider ?? t('usage.unknown')}
+                  </span>
                 </td>
-                <td className="py-2.5 pr-4 text-right tabular-nums">{compact(model.requests)}</td>
-                <td className="py-2.5 text-right text-foreground tabular-nums">
+                <td className="py-2.5 pr-4 text-right whitespace-nowrap tabular-nums">
+                  {compact(model.requests)}
+                </td>
+                <td className="py-2.5 text-right whitespace-nowrap text-foreground tabular-nums">
                   {model.tokens > 0 && compact(model.tokens)}
                 </td>
               </tr>

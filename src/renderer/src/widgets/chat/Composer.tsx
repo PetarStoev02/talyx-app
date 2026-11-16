@@ -323,22 +323,20 @@ function AttachedChip({
   onRemove
 }: {
   name: string
-  // The full path of a file on this computer, shown on hover.
+  // The full path of a file on this computer: the remove button's tooltip and its name.
   title: string | null
   onRemove: () => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   return (
-    <li
-      title={title ?? undefined}
-      className="flex items-center gap-1 rounded-full bg-background py-1 pr-1 pl-3 text-sm"
-    >
+    <li className="flex min-w-0 items-center gap-1 rounded-full bg-background py-1 pr-1 pl-3 text-sm wrap-anywhere">
       {name}
       <button
         type="button"
-        aria-label={t('chat.removeAttachment').replace('{name}', name)}
+        aria-label={t('chat.removeAttachment').replace('{name}', title ?? name)}
+        title={title ?? undefined}
         onClick={onRemove}
-        className="rounded-full p-1 hover:bg-foreground/10"
+        className="rounded-full p-1 transition-colors hover:bg-foreground/10"
       >
         <X size={14} />
       </button>

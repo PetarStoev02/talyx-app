@@ -8,6 +8,7 @@ import {
   SHORTCUTS,
   shortcutOf
 } from '@features/shortcuts/shortcuts'
+import { IconButton } from '@shared/ui/IconButton'
 
 const platform = platformOf(navigator.platform)
 // The search's shortcut, read from the shortcut list, as the button's tooltip shows it and as
@@ -54,16 +55,15 @@ export function FindSlot({
   if (!slot) return null
   return createPortal(
     children || (
-      <button
-        type="button"
-        aria-label={label}
+      <IconButton
+        label={label}
+        shortcut={KEY_LABEL}
         aria-keyshortcuts={KEY_ARIA}
-        title={`${label} (${KEY_LABEL})`}
         onClick={onOpen}
-        className="inline-flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+        className="size-10"
       >
-        <Search size={18} />
-      </button>
+        <Search />
+      </IconButton>
     ),
     slot
   )

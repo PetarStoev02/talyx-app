@@ -141,7 +141,7 @@ export function SignIn({
         <code className="block rounded-lg bg-secondary px-3 py-2 font-mono text-sm select-text">
           {account.command}
         </code>
-        <p role="status" className="empty:hidden">
+        <p role="status" className="empty:sr-only">
           {note}
         </p>
         <div className="flex items-center gap-4">

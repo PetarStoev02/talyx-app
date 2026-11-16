@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Tabs } from 'radix-ui'
-import { X } from 'lucide-react'
+import { CircleAlert, X } from 'lucide-react'
 import { useLanguage } from '@app/providers/useLanguage'
 import { runRosterMutation } from '@features/bots/actions'
 import { BotAvatar } from '@features/bots/BotAvatar'
@@ -231,11 +231,15 @@ export function DetailsPanel({
             </span>
           )}
         </p>
-        {stranded && (
-          <p role="status" className="text-sm text-balance text-destructive-text">
-            {t('details.modelLeftEndpoint')}
-          </p>
-        )}
+        {/* Always in the page, so a screen reader announces the notice when it appears. */}
+        <div role="status" className="text-sm text-balance text-destructive-text empty:sr-only">
+          {stranded && (
+            <p className="flex items-start justify-center gap-2">
+              <CircleAlert aria-hidden size={16} className="mt-0.5 shrink-0" />
+              {t('details.modelLeftEndpoint')}
+            </p>
+          )}
+        </div>
       </header>
       <Tabs.Root
         value={tab}
@@ -259,7 +263,13 @@ export function DetailsPanel({
         {/* One panel for the selected tab; Radix names it after its tab. */}
         <Tabs.Content
           value={tab}
-          className={cn('scroll-y-stable flex min-h-0 flex-1 flex-col px-6 py-4', arrival)}
+          className={cn(
+            'scroll-y-stable flex min-h-0 flex-1 flex-col px-6 py-4',
+            // The memory tab's sticky tabs and search stay over the top of the list: a row focused
+            // by Shift+Tab scrolls to below them.
+            tab === 'memory' && 'scroll-pt-28',
+            arrival
+          )}
         >
           {tab === 'memory' ? (
             // Loads on its own: it needs nothing the details load.

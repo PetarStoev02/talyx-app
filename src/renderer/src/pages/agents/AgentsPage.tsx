@@ -24,6 +24,13 @@ import type { RoomBackend } from '@features/chat/room'
 // which leaves the chat at least about 490px; narrower, a docked panel would squeeze it unusable.
 const PANEL_PLACE =
   'absolute inset-y-0 right-0 z-10 max-w-full shadow-xl @min-[52rem]:static @min-[52rem]:max-w-[50%] @min-[52rem]:shadow-none'
+// The page width PANEL_PLACE sits beside the chat from, for the one place that cannot ask CSS.
+const PANEL_BESIDE_REM = 52
+
+function panelOverlaysChat(page: HTMLElement | null): boolean {
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
+  return !!page && page.clientWidth < PANEL_BESIDE_REM * rem
+}
 
 const pillClass =
   'flex max-w-full items-center gap-2 rounded-full bg-secondary px-4 py-2 text-base font-medium'
@@ -59,10 +66,22 @@ export function AgentsPage({
   // Leaving the Agents page (Settings, a module) ends the find too.
   useEffect(() => () => useFind.getState().clear(), [])
   const pill = useRef<HTMLButtonElement>(null)
+  const page = useRef<HTMLDivElement>(null)
   // The header's right side, where a bot's chat puts its search.
   const [searchSlot, setSearchSlot] = useState<HTMLDivElement | null>(null)
   // A room's panel stays open as you move between rooms, as a bot's does between bots.
   const [roomPanel, setRoomPanel] = useState(false)
+  // A panel laid over the chat would cover the search that just opened in the header (Cmd+F), so
+  // opening a find closes it. Beside the chat it covers nothing and stays.
+  useEffect(
+    () =>
+      useFind.subscribe((state, before) => {
+        if (!state.request || before.request || !panelOverlaysChat(page.current)) return
+        editProfile(null)
+        setRoomPanel(false)
+      }),
+    [editProfile]
+  )
   const detailsOpen = bot ? editingProfile === bot.name : !!room && roomPanel
   const toggleDetails = (): void => {
     if (bot) editProfile(editingProfile === bot.name ? null : bot.name)
@@ -73,7 +92,7 @@ export function AgentsPage({
   return (
     <EngineGate>
       {/* A container, so the details panel can tell when the page is too narrow to sit beside it. */}
-      <div className="@container relative flex h-full min-w-0">
+      <div ref={page} className="@container relative flex h-full min-w-0">
         <section
           aria-label={title ? t('agents.chatWith').replace('{name}', title) : t('nav.agents')}
           className="@container/chat flex min-w-0 flex-1 flex-col"

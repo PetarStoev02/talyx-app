@@ -35,6 +35,17 @@ const VIEWS: Record<View, { label: TranslationKey; search: TranslationKey }> = {
   skills: { label: 'skills.title', search: 'skills.search' }
 }
 
+// What a screen reader hears as a search narrows the list: how many are left, or that none is.
+// `count` is undefined while there is no search or the list has not loaded.
+function announce(
+  t: (key: TranslationKey) => string,
+  count: number | undefined,
+  noMatch: TranslationKey
+): string {
+  if (count === undefined) return ''
+  return count ? t('memory.shown').replace('{count}', String(count)) : t(noMatch)
+}
+
 /** What a view tells the tab: how many it lists, once loaded. */
 type Counted = (view: View, count: number) => void
 
@@ -172,6 +183,9 @@ function MemoriesSection({
           {t('memory.otherStore').replace('{store}', list.otherStore)}
         </p>
       )}
+      <p role="status" className="sr-only">
+        {announce(t, query.trim() ? shown?.length : undefined, 'memory.noMatch')}
+      </p>
       {problem ? (
         <TryAgain problem={problem} onRetry={() => void load()} />
       ) : !list ? (
@@ -312,6 +326,9 @@ function SkillsSection({
 
   return (
     <div className="space-y-2">
+      <p role="status" className="sr-only">
+        {announce(t, query.trim() ? shown?.length : undefined, 'skills.noMatch')}
+      </p>
       {problem ? (
         <TryAgain
           problem={problem}
@@ -340,9 +357,8 @@ function SkillsSection({
                 >
                   {/* The row opens the skill to read, edit or delete it. */}
                   <button
-                    aria-label={t('skills.open').replace('{name}', skill.name)}
                     onClick={() => setOpened(skill)}
-                    className="min-w-0 flex-1 rounded-lg text-start hover:opacity-80"
+                    className="-my-1 -ms-2 min-w-0 flex-1 rounded-lg px-2 py-1 text-start transition-colors hover:bg-foreground/10"
                   >
                     <span className="block text-sm font-medium wrap-break-word">{skill.name}</span>
                     {skill.description && (

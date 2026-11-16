@@ -68,7 +68,7 @@ export function DailyChart({ series, t }: { series: DayUsage[]; t: Translate }):
               y1={HEIGHT - share * HEIGHT}
               y2={HEIGHT - share * HEIGHT}
               stroke="currentColor"
-              strokeOpacity={share === 0 ? 0.2 : 0.08}
+              strokeOpacity={share === 0 ? 0.2 : 0.14}
               vectorEffect="non-scaling-stroke"
             />
           ))}
@@ -97,34 +97,47 @@ export function DailyChart({ series, t }: { series: DayUsage[]; t: Translate }):
       <span />
       <figcaption
         aria-hidden="true"
-        className="flex justify-between text-xs text-muted-foreground uppercase tabular-nums"
+        className="flex justify-between text-xs tracking-wide text-muted-foreground uppercase tabular-nums"
       >
         <span>{series[0] && dayLabel(series[0].day)}</span>
         <span>{middle && dayLabel(middle.day)}</span>
         <span>{series.at(-1) && dayLabel(series.at(-1)!.day)}</span>
       </figcaption>
-      {/* The days the chart shows on hover, for screen readers and the keyboard: quiet days left out. */}
-      <table className="sr-only">
-        <caption>{t('usage.daily')}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{t('usage.day')}</th>
-            <th scope="col">{t('usage.tokensColumn')}</th>
-            <th scope="col">{t('usage.requestsColumn')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {series
-            .filter((point) => point.tokens || point.requests)
-            .map((point) => (
-              <tr key={point.day}>
-                <th scope="row">{dayLabel(point.day)}</th>
-                <td>{compact(point.tokens)}</td>
-                <td>{compact(point.requests)}</td>
-              </tr>
-            ))}
-        </tbody>
-      </table>
+      {/* The days the chart names on hover, as a table for the keyboard and screen readers: quiet days left out. */}
+      <details className="col-span-2 text-sm">
+        <summary className="w-fit cursor-pointer text-muted-foreground hover:text-foreground">
+          {t('usage.dailyTable')}
+        </summary>
+        <table className="mt-2 w-full text-left">
+          <caption className="sr-only">{t('usage.daily')}</caption>
+          <thead className="text-muted-foreground">
+            <tr className="border-b border-foreground/10">
+              <th scope="col" className="py-1.5 pr-4 font-normal">
+                {t('usage.day')}
+              </th>
+              <th scope="col" className="py-1.5 pr-4 text-right font-normal">
+                {t('usage.tokensColumn')}
+              </th>
+              <th scope="col" className="py-1.5 text-right font-normal">
+                {t('usage.requestsColumn')}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {series
+              .filter((point) => point.tokens || point.requests)
+              .map((point) => (
+                <tr key={point.day} className="border-b border-foreground/5">
+                  <th scope="row" className="py-1.5 pr-4 font-normal text-foreground">
+                    {dayLabel(point.day)}
+                  </th>
+                  <td className="py-1.5 pr-4 text-right tabular-nums">{compact(point.tokens)}</td>
+                  <td className="py-1.5 text-right tabular-nums">{compact(point.requests)}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </details>
     </figure>
   )
 }
