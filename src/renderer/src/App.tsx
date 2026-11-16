@@ -14,8 +14,10 @@ import { CheatSheet } from '@widgets/shortcuts'
 import { reportError } from '@shared/lib/report'
 import { AgentsPage } from '@pages/agents'
 import { SettingsPage } from '@pages/settings'
+import { UsagePage } from '@pages/usage'
 import { ModulePage } from '@pages/module'
 import { SettingsNav } from '@widgets/settings-nav'
+import { UsageNav } from '@widgets/usage'
 import { ActivationDialog } from '@widgets/modules'
 import { TooltipProvider } from '@shared/ui/tooltip'
 import { ApprovalDialog, Roster, RosterAdd, RosterRefresh } from '@widgets/roster'
@@ -60,6 +62,8 @@ function App(): React.JSX.Element {
   const page =
     currentView === 'settings' ? (
       <SettingsPage providers={providers} roster={rosterBackend} chat={chat} />
+    ) : currentView === 'usage' ? (
+      <UsagePage providers={providers} />
     ) : openModule ? (
       <ModulePage module={openModule} />
     ) : (
@@ -162,7 +166,7 @@ function App(): React.JSX.Element {
       ) : (
         <AppShell
           titleEnd={
-            currentView === 'settings'
+            currentView === 'settings' || currentView === 'usage'
               ? null
               : rosterBackend && <RosterAdd module={openModule ?? null} />
           }
@@ -173,6 +177,8 @@ function App(): React.JSX.Element {
               <ModuleSidebar module={openModule} />
             ) : currentView === 'settings' ? (
               <SettingsNav />
+            ) : currentView === 'usage' ? (
+              <UsageNav />
             ) : undefined
           }
         >

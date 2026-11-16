@@ -44,6 +44,8 @@ export function buildApi(transport: ApiTransport) {
       invoke('engine:room-members', change),
     removeEndpointModel: (drop: { profile: string; endpoint: string; model: string }) =>
       invoke('engine:endpoint-model-remove', drop),
+    usageDays: (request: { profiles: string[]; days: number }) =>
+      invoke('engine:usage-days', request),
     openEngineSocket: (id: string, profile: string) => invoke('engine:socket-open', id, profile),
     sendEngineSocket: (id: string, text: string) => invoke('engine:socket-send', id, text),
     closeEngineSocket: (id: string) => invoke('engine:socket-close', id),

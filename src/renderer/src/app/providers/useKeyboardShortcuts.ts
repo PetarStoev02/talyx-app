@@ -64,7 +64,7 @@ const ACTIONS: Partial<Record<ShortcutId, () => unknown>> = {
   focusComposer: async () => {
     if (await useNavigation.getState().navigate('agents')) focusComposer()
   },
-  settings: () => useNavigation.getState().toggleSettings(),
+  settings: () => useNavigation.getState().toggle('settings'),
   cheatSheet: () => {
     const { open, setOpen } = useCheatSheet.getState()
     setOpen(!open)

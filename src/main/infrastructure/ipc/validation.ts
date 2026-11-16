@@ -80,6 +80,12 @@ export const EndpointModelRemovalSchema = z.object({
   model: ConfigKeyPartSchema
 })
 
+/** The bots and the period the Usage page reads days for; the engine keeps a year at most. */
+export const UsageDaysSchema = z.object({
+  profiles: z.array(ProfileNameSchema).max(500),
+  days: z.number().int().min(1).max(365)
+})
+
 /** Chosen by the renderer before it opens the socket, so early frames find it. */
 export const EngineSocketIdSchema = z.string().regex(/^[A-Za-z0-9-]{8,64}$/)
 

@@ -103,6 +103,7 @@ describe('buildApi', () => {
       'setSettings',
       'takeActivationRequest',
       'uninstallModule',
+      'usageDays',
       'useInstalledEngine'
     ])
   })

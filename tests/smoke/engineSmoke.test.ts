@@ -124,6 +124,18 @@ const RestModelInfoSchema = z.object({
   model: z.string().nullish(),
   provider: z.string().nullish()
 })
+// providers.ts `usage`: the per-model analytics a bot recorded over the period.
+const RestModelUsageSchema = z.object({
+  models: z.array(
+    z.object({
+      model: z.string(),
+      provider: z.string(),
+      input_tokens: z.number().nullable(),
+      output_tokens: z.number().nullable(),
+      api_calls: z.number().nullable()
+    })
+  )
+})
 // routines.ts: `cron.manage` reports its own failures inside a successful result.
 const CronOutcomeSchema = z.object({
   success: z.boolean().nullish(),
@@ -365,6 +377,12 @@ async function checkProvidersRest(engine: Engine): Promise<void> {
   RestCustomEndpointsSchema.parse(await read('/api/providers/custom-endpoints'))
   RestOAuthSchema.parse(await read('/api/providers/oauth'))
   RestModelInfoSchema.parse(await read('/api/model/info'))
+  RestModelUsageSchema.parse(
+    await rest(engine, {
+      path: `${scoped('/api/analytics/models', HOME_PROFILE)}&days=30`,
+      profile: HOME_PROFILE
+    })
+  )
 }
 
 function scoped(path: string, profile: string): string {

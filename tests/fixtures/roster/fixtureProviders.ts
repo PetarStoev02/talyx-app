@@ -1,3 +1,4 @@
+import type { MainCalls } from '../../../src/renderer/src/app/engine/providers'
 import type { EngineApiRequest, EngineHttp } from '../../../src/renderer/src/shared/engine/http'
 import { providersDouble } from '../../unit/providers/providersDouble'
 import type { EndpointModelConfig } from '../../../src/renderer/src/app/engine/providers'
@@ -12,7 +13,8 @@ export const COSTLY_MODEL = 'claude-opus-4-1'
 /**
  * The Providers page's engine REST: the unit tests' in-memory double, with every bot on one endpoint
  * and a device-code sign-in the "browser" approves on the second poll. A pasted code `good` is
- * accepted. `config` takes a model off an endpoint, as main's config unset does.
+ * accepted. `config` takes a model off an endpoint, as main's config unset does. Usage: the endpoint has some on every
+ * bot, the OpenAI key and the sign-in none.
  */
 export function fixtureProviders(profiles: string[]): {
   http: EngineHttp
@@ -29,7 +31,18 @@ export function fixtureProviders(profiles: string[]): {
       models: [DEFAULT_MODEL, COSTLY_MODEL]
     }
     config.model = { provider: PROVIDER, model: DEFAULT_MODEL }
+    // Every bot ran on the endpoint this month; the saved OpenAI key below ran nothing.
+    config.usage = [
+      {
+        model: DEFAULT_MODEL,
+        provider: `custom:${PROVIDER}`,
+        input_tokens: 182_400,
+        output_tokens: 23_900,
+        api_calls: 61
+      }
+    ]
   }
+  engine.profiles[profiles[0]].env.OPENAI_API_KEY = 'sk-fixture-openai'
   let polls = 0
   const http = async <T>(request: EngineApiRequest): Promise<T> => {
     if (request.path.includes('/poll/')) {
@@ -52,4 +65,33 @@ export function fixtureProviders(profiles: string[]): {
     return engine.http<T>(request)
   }
   return { http, config: engine.config }
+}
+
+const DAY_MS = 86_400_000
+
+/**
+ * Talyx's usage plugin for the fixture: every bot on the endpoint each day of the period, busier
+ * mid-week, so the Usage page's charts have a shape. The saved OpenAI key ran nothing.
+ */
+export const fixturePlugins: Pick<MainCalls, 'usageDays'> = {
+  usageDays: async ({ profiles, days }) =>
+    Object.fromEntries(
+      profiles.map((profile, bot) => [
+        profile,
+        {
+          rows: Array.from({ length: days }, (_, back) => {
+            const date = new Date(Date.now() - back * DAY_MS)
+            const weekday = date.getDay()
+            const busy = weekday === 0 || weekday === 6 ? 0.2 : 1 + Math.sin(back + bot) / 2
+            return {
+              day: date.toLocaleDateString('en-CA'),
+              provider: `custom:${PROVIDER}`,
+              input_tokens: Math.round(6_000 * busy * (bot + 1)),
+              output_tokens: Math.round(800 * busy * (bot + 1)),
+              api_calls: Math.round(2 * busy * (bot + 1))
+            }
+          })
+        }
+      ])
+    )
 }

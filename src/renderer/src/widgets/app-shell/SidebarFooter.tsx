@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Settings } from 'lucide-react'
+import { ChartNoAxesColumn, Settings } from 'lucide-react'
 import { useEngine } from '@app/providers/useEngine'
 import { useLanguage } from '@app/providers/useLanguage'
 import { type AppView, useNavigation } from '@app/providers/useNavigation'
@@ -19,9 +19,9 @@ const isMac = platformOf(navigator.platform) === 'mac'
 const mod = isMac ? '⌘' : 'Ctrl+'
 
 /**
- * Settings on the left, `end` (the roster's refresh) on the right, and between them the dock: Agents
+ * Settings and Usage on the left, `end` (the roster's refresh) on the right, and between them the dock: Agents
  * and each running module, with ⌘1, ⌘2, … in that order. Without a running module there is no
- * dock. Settings toggles: open, it closes back to the page it was opened from. While a Talyx or
+ * dock. Settings and Usage toggle: open, each closes back to the page it was opened from. While a Talyx or
  * engine update is pending, the update button takes `end`'s place. Each running module's
  * Background lives here too, so it keeps watching whatever page is open.
  */
@@ -30,8 +30,10 @@ export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Elem
   const engine = useEngine((s) => s.status)
   const update = useUpdates((s) => s.state)
   const items = updateItems(engine, update)
-  const settingsOpen = useNavigation((s) => s.currentView === 'settings')
-  const toggleSettings = useNavigation((s) => s.toggleSettings)
+  const currentView = useNavigation((s) => s.currentView)
+  const toggle = useNavigation((s) => s.toggle)
+  const settingsOpen = currentView === 'settings'
+  const usageOpen = currentView === 'usage'
   const modules = runningModules(useModules((s) => s.state))
   const unread = useRoster((s) => anyUnread(s.unread, s.roomUnread))
   const needsYou = useModuleAttention((s) => s.needsYou)
@@ -73,15 +75,23 @@ export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Elem
 
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 pt-2 pb-3">
-      <span className="justify-self-start">
+      <span className="flex justify-self-start">
         <IconButton
           label={settingsOpen ? t('nav.closeSettings') : t('nav.settings')}
           shortcut={`${mod},`}
           aria-current={settingsOpen ? 'page' : undefined}
-          onClick={() => void toggleSettings()}
+          onClick={() => void toggle('settings')}
           className={settingsOpen ? 'bg-foreground/10 text-foreground' : undefined}
         >
           <Settings />
+        </IconButton>
+        <IconButton
+          label={usageOpen ? t('nav.closeUsage') : t('nav.usage')}
+          aria-current={usageOpen ? 'page' : undefined}
+          onClick={() => void toggle('usage')}
+          className={usageOpen ? 'bg-foreground/10 text-foreground' : undefined}
+        >
+          <ChartNoAxesColumn />
         </IconButton>
       </span>
       {showDock ? <Dock sections={sections} label={t('nav.sections')} /> : <span />}

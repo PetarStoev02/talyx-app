@@ -18,9 +18,11 @@ import type {
   EndpointDraft,
   EndpointModel,
   KeySlot,
+  Billed,
   ProvidersBackend,
   TestChatResult
 } from '@features/providers/providers'
+import type { BotDays } from '@shared/api/ipc'
 import type { EngineAccess } from './access'
 
 /** The manager bot's profile: new bots copy its model and endpoint, every bot reads its sign-ins. */
@@ -52,10 +54,27 @@ export interface EndpointModelConfig {
   removeEndpointModel: (drop: EndpointModel & { profile: string }) => Promise<void>
 }
 
+/** What main runs where the engine's REST has no route: a config unset, Talyx's usage plugin. */
+export interface MainCalls extends EndpointModelConfig {
+  usageDays: (request: { profiles: string[]; days: number }) => Promise<Record<string, BotDays>>
+}
+
+// Sign-ins whose usage the engine records under another provider id than the sign-in's own.
+const BILLED_AS: Record<string, string> = { 'claude-code': 'anthropic' }
+
+// A row of the engine's per-model analytics; tokens and calls are summed over the period.
+interface ModelAnalytics {
+  model: string
+  provider: string
+  input_tokens: number | null
+  output_tokens: number | null
+  api_calls: number | null
+}
+
 /** Providers, keys, endpoints, sign-ins and Talyx's model over the engine's REST. */
 export function engineProvidersBackend(
   engine: Pick<EngineAccess, 'http' | 'request' | 'onEvent'>,
-  config: EndpointModelConfig
+  main: MainCalls
 ): ProvidersBackend {
   const rest = <T>(
     profile: string,
@@ -233,7 +252,7 @@ export function engineProvidersBackend(
           body: { config: { providers: { [drop.endpoint]: { model: next } } } }
         })
       }
-      await config.removeEndpointModel({ profile, ...drop })
+      await main.removeEndpointModel({ profile, ...drop })
     },
     usesEndpointModel: async (profile, pick) => {
       const { endpoints, current } = await listEndpoints(engine.http, profile)
@@ -300,6 +319,36 @@ export function engineProvidersBackend(
         { method: 'DELETE' }
       )
       if (!result.ok) throw new ProvidersError('providers.errorNotSignedOut')
+    },
+    usage: async (profile, days) => {
+      const { models } = await engine.http<{ models: ModelAnalytics[] }>({
+        path: scoped('/api/analytics/models', profile, { days: String(days) }),
+        profile
+      })
+      return models.map((row) => ({
+        model: row.model,
+        ...billedTo(row.provider),
+        tokens: (row.input_tokens ?? 0) + (row.output_tokens ?? 0),
+        requests: row.api_calls ?? 0
+      }))
+    },
+    dailyUsage: async (profiles, days) => {
+      const bots = await main.usageDays({ profiles, days })
+      return Object.fromEntries(
+        profiles.map((profile) => {
+          const read = bots[profile]
+          if (!read || 'error' in read) return [profile, null]
+          return [
+            profile,
+            read.rows.map((row) => ({
+              day: row.day,
+              ...billedTo(row.provider ?? ''),
+              tokens: (row.input_tokens ?? 0) + (row.output_tokens ?? 0),
+              requests: row.api_calls ?? 0
+            }))
+          ]
+        })
+      )
     }
   }
 }
@@ -360,32 +409,60 @@ function turnEnd(payload: MessageCompletePayload = {}): TurnEnd {
   return { turn: { ok: false, error }, quotesProvider: !!said }
 }
 
+/**
+ * The engine bills the bare custom endpoint as `custom` (its id) and a named one as
+ * `custom:<name>`; any other value is a provider id, and an empty one is no provider.
+ */
+function billedTo(provider: string): Billed {
+  if (provider === BARE_CUSTOM) return { provider: null, endpoint: BARE_CUSTOM }
+  if (provider.startsWith(`${BARE_CUSTOM}:`))
+    return { provider: null, endpoint: provider.slice(BARE_CUSTOM.length + 1) }
+  return { provider: provider || null, endpoint: null }
+}
+
 /** Builds the provider key list from the engine's env catalog, one slot per provider. */
 function keySlots(env: Record<string, EnvVarInfo>): KeySlot[] {
-  const byProvider = new Map<string, { key: string; info: EnvVarInfo; primary: boolean }[]>()
+  const byProvider = new Map<
+    string,
+    { key: string; id: string; info: EnvVarInfo; primary: boolean }[]
+  >()
   for (const [key, info] of Object.entries(env)) {
     if (info.category !== 'provider') continue
     // A key shared by several routes is listed under each of them, saved once.
     const routes = info.provider_profiles?.length
       ? info.provider_profiles.map((route) => ({
+          id: route.provider,
           name: route.provider_label || route.provider,
           primary: route.primary === true,
           url: route.url ?? info.url
         }))
-      : [{ name: info.provider_label || info.provider || '', primary: false, url: info.url }]
+      : [
+          {
+            id: info.provider ?? '',
+            name: info.provider_label || info.provider || '',
+            primary: false,
+            url: info.url
+          }
+        ]
     for (const route of routes) {
       const name = route.name?.trim()
       if (!name || !(info.is_password || KEY_NAME.test(key))) continue
-      const entry = { key, info: { ...info, url: route.url }, primary: route.primary }
+      const entry = { key, id: route.id, info: { ...info, url: route.url }, primary: route.primary }
       byProvider.set(name, [...(byProvider.get(name) ?? []), entry])
     }
   }
   return [...byProvider].map(([provider, entries]) => {
-    const { key, info } =
+    const { key, id, info } =
       entries.find((entry) => entry.primary) ??
       entries.find((entry) => !entry.info.advanced) ??
       entries[0]
-    return { key, provider, docsUrl: info.url, preview: info.is_set ? preview(info) : null }
+    return {
+      key,
+      provider,
+      providerId: id,
+      docsUrl: info.url,
+      preview: info.is_set ? preview(info) : null
+    }
   })
 }
 
@@ -411,7 +488,8 @@ function account(provider: OAuthProvider): Account {
     // A free tier holds a token but no account.
     signedIn: provider.status?.logged_in === true && provider.status.free_tier !== true,
     disconnectable: provider.disconnectable ?? provider.flow !== 'external',
-    command: provider.cli_command
+    command: provider.cli_command,
+    providerId: BILLED_AS[provider.id] ?? provider.id
   }
 }
 

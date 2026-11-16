@@ -100,3 +100,21 @@ export const engineConfigApi = {
     model: string
   }): Promise<void> => window.api.removeEndpointModel(drop) as Promise<void>
 }
+
+/** One day of one bot's usage with one billing provider, as Talyx's engine plugin reads it. */
+export interface BotDayRow {
+  day: string
+  provider: string | null
+  input_tokens: number | null
+  output_tokens: number | null
+  api_calls: number | null
+}
+
+/** A bot's days, or why its store could not be read. */
+export type BotDays = { rows: BotDayRow[] } | { error: string }
+
+/** Usage per day and provider, which Talyx's engine plugin reads in main: the REST has neither. */
+export const engineUsageApi = {
+  usageDays: (request: { profiles: string[]; days: number }): Promise<Record<string, BotDays>> =>
+    window.api.usageDays(request) as Promise<Record<string, BotDays>>
+}

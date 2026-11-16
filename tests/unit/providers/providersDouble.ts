@@ -44,6 +44,27 @@ export interface ProfileConfig {
   env: Record<string, string>
   endpoints: CustomEndpoint[]
   model: { provider: string; model: string }
+  /** What the bot ran in the period, one row per model and provider; null: its store is unreadable. */
+  usage: UsageRow[] | null
+  /** The bot's usage per local day and billing provider, as Talyx's engine plugin reads it. */
+  daily: DailyRow[]
+}
+
+export interface DailyRow {
+  day: string
+  provider: string
+  input_tokens: number
+  output_tokens: number
+  api_calls: number
+}
+
+/** One row of the engine's per-model analytics. */
+export interface UsageRow {
+  model: string
+  provider: string
+  input_tokens: number
+  output_tokens: number
+  api_calls: number
 }
 
 type Poll = OAuthPollResponse['status'] | 'timeout'
@@ -100,12 +121,18 @@ export interface ProvidersDouble {
   log: string[]
   /** The last params each socket method took. */
   params: Record<string, Record<string, unknown>>
+  /** Set, Talyx's engine plugin fails with it, as on an engine that cannot run plugins. */
+  daysFail: Error | null
 }
 
 const catalog: Record<string, Partial<EnvVarInfo>> = {
-  OPENAI_API_KEY: { provider_label: 'OpenAI API', url: 'https://openai.example/keys' },
+  OPENAI_API_KEY: {
+    provider: 'openai',
+    provider_label: 'OpenAI API',
+    url: 'https://openai.example/keys'
+  },
   OPENAI_BASE_URL: { provider_label: 'OpenAI API', is_password: false, advanced: true },
-  GLM_API_KEY: { provider_label: 'Z.AI (GLM)', advanced: true },
+  GLM_API_KEY: { provider: 'zai', provider_label: 'Z.AI (GLM)', advanced: true },
   ZAI_API_KEY: { provider_label: 'Z.AI (GLM)', advanced: true },
   DASHSCOPE_API_KEY: {
     provider_profiles: [
@@ -141,7 +168,13 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
   const profiles: Record<string, ProfileConfig> = Object.fromEntries(
     names.map((name) => [
       name,
-      { env: {}, endpoints: [{ ...ROUTER }], model: { provider: 'custom', model: ROUTER.model } }
+      {
+        env: {},
+        endpoints: [{ ...ROUTER }],
+        model: { provider: 'custom', model: ROUTER.model },
+        usage: [],
+        daily: []
+      }
     ])
   )
   const accounts: OAuthProvider[] = [
@@ -354,6 +387,10 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
       return { endpoints: config.endpoints }
     }
     if (path === '/api/model/info') return config.model
+    if (path === '/api/analytics/models') {
+      if (!config.usage) throw new Error('HTTP 503: session store unreadable')
+      return { models: config.usage, totals: {}, period_days: Number(query.get('days')) }
+    }
     if (path === '/api/model/set') {
       if (COSTLY.has(body.model) && !body.confirm_expensive_model)
         return { ok: false, confirm_required: true, confirm_message: `${body.model} costs more.` }
@@ -475,7 +512,19 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
           return () => listeners.delete(handler)
         }
       },
-      { removeEndpointModel }
+      {
+        removeEndpointModel,
+        // A bot whose store is unreadable fails its days the same way it fails its models.
+        usageDays: async ({ profiles: asked }) => {
+          if (double.daysFail) throw double.daysFail
+          return Object.fromEntries(
+            asked.map((name) => {
+              const config = profiles[name]
+              return [name, config.usage ? { rows: config.daily } : { error: 'store unreadable' }]
+            })
+          )
+        }
+      }
     ),
     http,
     config: { removeEndpointModel },
@@ -492,7 +541,8 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
     subscribed,
     calls,
     params,
-    log
+    log,
+    daysFail: null
   }
   return double
 }

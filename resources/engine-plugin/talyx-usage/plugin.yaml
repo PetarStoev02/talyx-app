@@ -1,0 +1,4 @@
+name: talyx-usage
+version: 1.0.0
+description: 'Talyx: read each bot''s token usage per day and provider, for the Usage page.'
+author: Talyx

@@ -52,6 +52,38 @@ export interface ProvidersBackend {
   }) => Promise<SignInResult>
   cancelSignIn: (sessionId: string) => Promise<void>
   signOut: (id: string) => Promise<void>
+  /** What one bot ran over the last `days`, one row per model and provider. */
+  usage: (profile: string, days: number) => Promise<ModelUsage[]>
+  /**
+   * What each bot used per local day and provider over the last `days`; days with none are left
+   * out, and a bot whose usage could not be read is null.
+   */
+  dailyUsage: (profiles: string[], days: number) => Promise<Record<string, BilledDay[] | null>>
+}
+
+/**
+ * Who a usage ran on: a provider (its id, as an account's or a key's `providerId`) or a custom
+ * endpoint (its id or name), or neither when the engine recorded no provider.
+ */
+export interface Billed {
+  provider: string | null
+  endpoint: string | null
+}
+
+/** One local day's usage, `day` as YYYY-MM-DD; tokens are input plus output. */
+export interface DayUsage {
+  day: string
+  tokens: number
+  requests: number
+}
+
+export interface BilledDay extends DayUsage, Billed {}
+
+/** One model's usage on one bot; tokens are input plus output. */
+export interface ModelUsage extends Billed {
+  model: string
+  tokens: number
+  requests: number
 }
 
 /**
@@ -94,6 +126,8 @@ type EveryBot = Pick<ProvidersBackend, 'home' | 'profiles'>
 export interface KeySlot {
   key: string
   provider: string
+  /** The engine's id for the provider, the one its usage is recorded under. */
+  providerId: string
   docsUrl: string | null
   /** The engine's masked preview; null when no key is saved. */
   preview: string | null
@@ -108,6 +142,8 @@ export interface Account {
   disconnectable: boolean
   /** The command that signs in an external account. */
   command: string
+  /** The provider the account's usage is recorded under, as a key's `providerId`. */
+  providerId: string
 }
 
 /** One model on one endpoint, by the endpoint's id. */

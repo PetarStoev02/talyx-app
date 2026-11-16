@@ -3,32 +3,39 @@ import { moduleIdOf } from '@features/modules/store'
 import type { ModuleView } from '@features/modules/store'
 import { mayLeave } from '@features/modules/leaveGuard'
 
-export type AppView = 'agents' | 'settings' | ModuleView
+/** Pages opened over the others from the footer; closing one goes back to where it was opened. */
+const FOOTER_VIEWS = ['settings', 'usage'] as const
+export type FooterView = (typeof FOOTER_VIEWS)[number]
+export type AppView = 'agents' | FooterView | ModuleView
+
+function isFooterView(view: AppView): view is FooterView {
+  return (FOOTER_VIEWS as readonly AppView[]).includes(view)
+}
 
 interface NavigationState {
   currentView: AppView
-  // The page Settings was opened from, where closing Settings goes back to.
-  settingsFrom: AppView
+  // The page Settings or Usage was opened from, where closing it goes back to.
+  returnTo: AppView
   /**
    * Goes to `view`; leaving a module page first asks the page, which may keep the user there.
    * Resolves true once the view moved, false when the user stayed.
    */
   navigate: (view: AppView) => Promise<boolean>
-  /** Leaves Settings for the page it was opened from (the agents keep their open chat). */
-  closeSettings: () => Promise<boolean>
-  /** Opens Settings, or closes it when it is open: the gear and ⌘,. */
-  toggleSettings: () => Promise<boolean>
+  /** Leaves Settings or Usage for the page it was opened from (the agents keep their open chat). */
+  goBack: () => Promise<boolean>
+  /** Opens Settings or Usage, or closes it when it is open: the footer buttons and ⌘,. */
+  toggle: (view: FooterView) => Promise<boolean>
 }
 
 export const useNavigation = create<NavigationState>((set, get) => ({
   currentView: 'agents',
-  settingsFrom: 'agents',
+  returnTo: 'agents',
   navigate: async (view) => {
     const from = get().currentView
     const move = (): void =>
       set(
-        view === 'settings' && from !== 'settings'
-          ? { currentView: view, settingsFrom: from }
+        isFooterView(view) && !isFooterView(from)
+          ? { currentView: view, returnTo: from }
           : { currentView: view }
       )
     if (view === from || !moduleIdOf(from)) {
@@ -41,12 +48,12 @@ export const useNavigation = create<NavigationState>((set, get) => ({
     move()
     return true
   },
-  closeSettings: async () => {
-    const { currentView, settingsFrom, navigate } = get()
-    return currentView === 'settings' ? navigate(settingsFrom) : false
+  goBack: async () => {
+    const { currentView, returnTo, navigate } = get()
+    return isFooterView(currentView) ? navigate(returnTo) : false
   },
-  toggleSettings: async () => {
-    const { currentView, closeSettings, navigate } = get()
-    return currentView === 'settings' ? closeSettings() : navigate('settings')
+  toggle: async (view) => {
+    const { currentView, goBack, navigate } = get()
+    return currentView === view ? goBack() : navigate(view)
   }
 }))

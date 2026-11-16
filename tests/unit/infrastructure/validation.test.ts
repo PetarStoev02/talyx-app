@@ -4,6 +4,7 @@ import {
   EnginePathSchema,
   KeptFileSchema,
   RendererErrorSchema,
+  UsageDaysSchema,
   validateInput,
   UserSettingsPartialSchema
 } from '../../../src/main/infrastructure/ipc/validation'
@@ -116,5 +117,22 @@ describe('KeptFileSchema', () => {
     ['a missing data URL', { name: 'a.txt' }]
   ])('should refuse %s', (_case, file) => {
     expect(() => validateInput(KeptFileSchema, file)).toThrow()
+  })
+})
+
+describe('UsageDaysSchema', () => {
+  it('should take bot names and a period in days', () => {
+    const request = { profiles: ['default', 'agro-ops.cto'], days: 90 }
+    expect(validateInput(UsageDaysSchema, request)).toEqual(request)
+  })
+
+  it.each([
+    ['a name that is a path', { profiles: ['../other'], days: 30 }],
+    ['a name that is a flag', { profiles: ['--days'], days: 30 }],
+    ['no days', { profiles: ['default'], days: 0 }],
+    ['more than a year', { profiles: ['default'], days: 366 }],
+    ['part of a day', { profiles: ['default'], days: 1.5 }]
+  ])('should refuse %s', (_case, request) => {
+    expect(() => validateInput(UsageDaysSchema, request)).toThrow()
   })
 })
