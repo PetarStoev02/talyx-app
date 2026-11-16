@@ -9,8 +9,8 @@ describe('release configuration', () => {
     scripts: Record<string, string>
   }
 
-  it('should be version 1.0.7 and declare the AGPL-3.0-only licence', () => {
-    expect(pkg.version).toBe('1.0.7')
+  it('should be version 1.1.0 and declare the AGPL-3.0-only licence', () => {
+    expect(pkg.version).toBe('1.1.0')
     expect(pkg.license).toBe('AGPL-3.0-only')
   })
 
