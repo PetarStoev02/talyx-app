@@ -1,5 +1,5 @@
 import type { Engine } from './engine'
-import { lastLine } from './roomMembers'
+import { lastLine } from './enginePlugin'
 
 export interface EndpointModelRemoval {
   profile: string

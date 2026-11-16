@@ -9,7 +9,13 @@ import { blockPng } from '../../../src/renderer/src/shared/ui/blockPng'
 import { EXPECTED_ENGINE_VERSION, type EngineStatus } from '../../../src/shared/engine'
 import { fixtureChat } from './fixtureChat'
 import { fixtureMemory } from './fixtureMemory'
-import { COSTLY_MODEL, DEFAULT_MODEL, fixtureProviders, PROVIDER } from './fixtureProviders'
+import {
+  COSTLY_MODEL,
+  DEFAULT_MODEL,
+  fixturePlugins,
+  fixtureProviders,
+  PROVIDER
+} from './fixtureProviders'
 import { roomRequest, roomSessionRequest, setRoomMembers } from './fixtureRooms'
 
 // The in-memory engine the roster fixture and the website's live demo both run on. Deliberately
@@ -382,7 +388,10 @@ export const rosterBackend = {
 const providersEngine = fixtureProviders(profiles.map((bot) => bot.name))
 export const providersRest = providersEngine.http
 export const providersConfig = providersEngine.config
-export const providers = engineProvidersBackend({ ...engine, http: providersRest }, providersConfig)
+export const providers = engineProvidersBackend(
+  { ...engine, http: providersRest },
+  { ...providersConfig, ...fixturePlugins }
+)
 export const chat = fixtureChat(providersRest)
 
 /** An attached engine as the fixture's pages need it. */

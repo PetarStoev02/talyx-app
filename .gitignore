@@ -51,3 +51,7 @@ docs/superpowers/
 
 # Release highlights for the update button (written by hand before a release)
 /release-highlights.md
+
+# Python bytecode (the engine plugins ship as source)
+__pycache__/
+*.pyc

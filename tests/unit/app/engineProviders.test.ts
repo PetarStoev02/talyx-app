@@ -4,7 +4,10 @@ import { ProvidersError } from '../../../src/renderer/src/features/providers/pro
 import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/http'
 
 // These calls never reach the engine's config unset.
-const noConfig = { removeEndpointModel: async (): Promise<void> => undefined }
+const noConfig = {
+  removeEndpointModel: async (): Promise<void> => undefined,
+  usageDays: async () => ({})
+}
 
 // The providers wiring's REST calls that the in-memory double does not look at closely.
 function engineRecording(answer: unknown): {

@@ -1,7 +1,9 @@
 import { useLanguage } from '@app/providers/useLanguage'
+import { useNavigation } from '@app/providers/useNavigation'
 import { useModules } from '@features/modules/store'
 import { settingsPages, shownPage, useSettingsSection } from '@features/settings/sections'
 import { cn } from '@shared/lib/utils'
+import { SidebarBack } from '@shared/ui/SidebarBack'
 
 /**
  * Settings' own sidebar: one row per Settings page, the open one marked. It is marked
@@ -16,11 +18,13 @@ export function SettingsNav(): React.JSX.Element {
     licensed
   )
   const pages = settingsPages(licensed)
+  const goBack = useNavigation((s) => s.goBack)
   return (
     <div
       data-module-sidebar
       className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3"
     >
+      <SidebarBack label={t('nav.back')} onClick={() => void goBack()} />
       <nav aria-label={t('settings.pages')} className="space-y-0.5 pt-1">
         {pages.map((item) => {
           const current = item.key === section

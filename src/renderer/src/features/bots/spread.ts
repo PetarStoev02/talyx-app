@@ -25,17 +25,18 @@ export function reportSpread(
 ): void {
   const { done, partial } = SPREAD[change]
   if (failed.length === 0) return void (done && toast.success(t(done)))
-  toast.error(t(partial).replace('{bots}', titlesOf(failed)), { duration: Infinity })
+  toast.error(t(partial).replace('{bots}', botTitles(failed)), { duration: Infinity })
 }
 
 /** Bots still on a model their endpoint no longer lists: they keep it until someone picks. */
 export function reportFlagged(t: Translate, model: string, profiles: string[]): void {
   if (profiles.length === 0) return
   const text = t('providers.modelStillUsed').replace('{model}', model)
-  toast.warning(text.replace('{bots}', titlesOf(profiles)), { duration: Infinity })
+  toast.warning(text.replace('{bots}', botTitles(profiles)), { duration: Infinity })
 }
 
-function titlesOf(profiles: string[]): string {
+/** The bots' titles as the roster shows them, as one list; a bot it does not know keeps its name. */
+export function botTitles(profiles: string[]): string {
   const bots = useRoster.getState().snapshot.bots
   return listOf(
     profiles.map((profile) => {

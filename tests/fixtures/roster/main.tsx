@@ -13,6 +13,7 @@ import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { reportProvider, useSetup } from '../../../src/renderer/src/features/setup/store'
 import { useNavigation } from '../../../src/renderer/src/app/providers/useNavigation'
 import { engineProvidersBackend } from '../../../src/renderer/src/app/engine/providers'
+import { fixturePlugins } from './fixtureProviders'
 import {
   assets,
   attachDouble,
@@ -78,7 +79,7 @@ const setupProviders = engineProvidersBackend(
       return answer
     }
   },
-  providersConfig
+  { ...providersConfig, ...fixturePlugins }
 )
 
 // The newest exported avatar image, so the PNG can be checked without an engine.

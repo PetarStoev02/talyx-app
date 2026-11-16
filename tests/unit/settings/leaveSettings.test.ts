@@ -12,14 +12,14 @@ function openSettingsFrom(view: AppView): Promise<boolean> {
 describe('leaving Settings', () => {
   afterEach(() => {
     setLeaveGuard(null)
-    useNavigation.setState({ currentView: 'agents', settingsFrom: 'agents' })
+    useNavigation.setState({ currentView: 'agents', returnTo: 'agents' })
   })
 
   it.each<AppView>(['agents', WORKFLOWS])(
     'should go back to %s, the page Settings was opened from',
     async (from) => {
       await openSettingsFrom(from)
-      await useNavigation.getState().closeSettings()
+      await useNavigation.getState().goBack()
       expect(useNavigation.getState().currentView).toBe(from)
     }
   )
@@ -27,13 +27,13 @@ describe('leaving Settings', () => {
   it('should keep the page it was opened from while moving between Settings pages', async () => {
     await openSettingsFrom(WORKFLOWS)
     await useNavigation.getState().navigate('settings')
-    await useNavigation.getState().closeSettings()
+    await useNavigation.getState().goBack()
     expect(useNavigation.getState().currentView).toBe(WORKFLOWS)
   })
 
   it('should stay put when Settings is not open', async () => {
-    useNavigation.setState({ currentView: WORKFLOWS, settingsFrom: 'agents' })
-    expect(await useNavigation.getState().closeSettings()).toBe(false)
+    useNavigation.setState({ currentView: WORKFLOWS, returnTo: 'agents' })
+    expect(await useNavigation.getState().goBack()).toBe(false)
     expect(useNavigation.getState().currentView).toBe(WORKFLOWS)
   })
 
@@ -43,16 +43,34 @@ describe('leaving Settings', () => {
     await useNavigation.getState().navigate('settings')
     expect(useNavigation.getState()).toMatchObject({
       currentView: WORKFLOWS,
-      settingsFrom: 'agents'
+      returnTo: 'agents'
     })
   })
 
   describe('the gear and its shortcut', () => {
     it('should open Settings from a page and close it back to that page', async () => {
       useNavigation.setState({ currentView: WORKFLOWS })
-      await useNavigation.getState().toggleSettings()
+      await useNavigation.getState().toggle('settings')
       expect(useNavigation.getState().currentView).toBe('settings')
-      await useNavigation.getState().toggleSettings()
+      await useNavigation.getState().toggle('settings')
+      expect(useNavigation.getState().currentView).toBe(WORKFLOWS)
+    })
+  })
+
+  describe('Usage, a page beside Settings', () => {
+    it('should open Usage from a page and close it back to that page', async () => {
+      useNavigation.setState({ currentView: WORKFLOWS })
+      await useNavigation.getState().toggle('usage')
+      expect(useNavigation.getState().currentView).toBe('usage')
+      await useNavigation.getState().toggle('usage')
+      expect(useNavigation.getState().currentView).toBe(WORKFLOWS)
+    })
+
+    it('should go back to the page both were opened from after moving between them', async () => {
+      useNavigation.setState({ currentView: WORKFLOWS })
+      await useNavigation.getState().toggle('settings')
+      await useNavigation.getState().toggle('usage')
+      await useNavigation.getState().goBack()
       expect(useNavigation.getState().currentView).toBe(WORKFLOWS)
     })
   })

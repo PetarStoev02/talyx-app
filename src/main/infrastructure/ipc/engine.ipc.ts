@@ -6,7 +6,9 @@ import type { EngineHttpRequest, EngineStatus } from '../../../shared/engine'
 import { EngineHttpError, createEngine, userBinEngine } from '../engine/engine'
 import { EngineSockets, type SocketEventSink } from '../engine/engineSockets'
 import { removeEndpointModel } from '../engine/endpointModels'
-import { nodeFileDeps, roomMembers } from '../engine/roomMembers'
+import { nodeFileDeps } from '../engine/enginePlugin'
+import { roomMembers } from '../engine/roomMembers'
+import { usageDays } from '../engine/usageDays'
 import { settingsStore } from '../storage/SettingsStore'
 import {
   EndpointModelRemovalSchema,
@@ -16,6 +18,7 @@ import {
   EngineSocketTextSchema,
   ProfileNameSchema,
   RoomMembersSchema,
+  UsageDaysSchema,
   validateInput
 } from './validation'
 
@@ -24,6 +27,7 @@ const MEDIA_PATH = '/api/media'
 const engine = createEngine({ enginePath: () => settingsStore.store.enginePath })
 const sockets = new EngineSockets(engine)
 const rooms = roomMembers({ engine, ...nodeFileDeps() })
+const usage = usageDays({ engine, ...nodeFileDeps() })
 
 /** The IPC sender, or the dev bridge's stand-in (which broadcasts and has no lifecycle). */
 interface Sender {
@@ -77,6 +81,12 @@ export function registerEngineIpc(): void {
   ipcMain.handle('engine:endpoint-model-remove', (_event, raw: unknown) =>
     removeEndpointModel(engine, validateInput(EndpointModelRemovalSchema, raw))
   )
+
+  // The engine's REST has days and providers, not the two together; Talyx's plugin reads them.
+  ipcMain.handle('engine:usage-days', (_event, raw: unknown) => {
+    const { profiles, days } = validateInput(UsageDaysSchema, raw)
+    return usage.read(profiles, days)
+  })
 
   ipcMain.handle('engine:http', (_event, raw: unknown) =>
     engineHttp(validateInput(EngineHttpRequestSchema, raw))
