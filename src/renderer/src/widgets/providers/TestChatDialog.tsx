@@ -63,7 +63,7 @@ export function TestChatDialog({
           </label>
         )}
         {/* Always in the page, so a screen reader announces the result when it is filled in. */}
-        <div role="status" className="space-y-1 empty:hidden">
+        <div role="status" className="space-y-1 empty:sr-only">
           {result?.ok === true && (
             <>
               <p className="text-sm text-muted-foreground">

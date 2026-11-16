@@ -36,13 +36,13 @@ const VIEWS: Record<View, { label: TranslationKey; search: TranslationKey }> = {
 }
 
 // What a screen reader hears as a search narrows the list: how many are left, or that none is.
+// `count` is undefined while there is no search or the list has not loaded.
 function announce(
   t: (key: TranslationKey) => string,
-  query: string,
   count: number | undefined,
   noMatch: TranslationKey
 ): string {
-  if (count === undefined || !query.trim()) return ''
+  if (count === undefined) return ''
   return count ? t('memory.shown').replace('{count}', String(count)) : t(noMatch)
 }
 
@@ -184,7 +184,7 @@ function MemoriesSection({
         </p>
       )}
       <p role="status" className="sr-only">
-        {announce(t, query, shown?.length, 'memory.noMatch')}
+        {announce(t, query.trim() ? shown?.length : undefined, 'memory.noMatch')}
       </p>
       {problem ? (
         <TryAgain problem={problem} onRetry={() => void load()} />
@@ -327,7 +327,7 @@ function SkillsSection({
   return (
     <div className="space-y-2">
       <p role="status" className="sr-only">
-        {announce(t, query, shown?.length, 'skills.noMatch')}
+        {announce(t, query.trim() ? shown?.length : undefined, 'skills.noMatch')}
       </p>
       {problem ? (
         <TryAgain

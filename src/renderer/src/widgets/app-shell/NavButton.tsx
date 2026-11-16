@@ -23,7 +23,7 @@ export function NavButton({ view, label, glyph, shortcut }: NavButtonProps): Rea
       shortcut={shortcut}
       aria-current={active ? 'page' : undefined}
       onClick={() => navigate(view)}
-      className="relative z-10 size-8 transition-[opacity,scale] duration-150 ease-out enabled:active:scale-[0.96] hover:bg-transparent hover:opacity-75 aria-[current=page]:hover:opacity-100"
+      className="relative z-10 size-8 transition-[opacity,scale] duration-150 ease-out enabled:active:scale-[0.96] enabled:hover:bg-transparent hover:opacity-75 aria-[current=page]:hover:opacity-100"
     >
       <PageGlyph name={glyph} size={20} />
     </IconButton>

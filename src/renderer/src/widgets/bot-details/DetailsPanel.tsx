@@ -232,7 +232,7 @@ export function DetailsPanel({
           )}
         </p>
         {/* Always in the page, so a screen reader announces the notice when it appears. */}
-        <div role="status" className="text-sm text-balance text-destructive-text empty:hidden">
+        <div role="status" className="text-sm text-balance text-destructive-text empty:sr-only">
           {stranded && (
             <p className="flex items-start justify-center gap-2">
               <CircleAlert aria-hidden size={16} className="mt-0.5 shrink-0" />
