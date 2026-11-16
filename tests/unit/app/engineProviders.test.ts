@@ -3,6 +3,9 @@ import { engineProvidersBackend } from '../../../src/renderer/src/app/engine/pro
 import { ProvidersError } from '../../../src/renderer/src/features/providers/providers'
 import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/http'
 
+// These calls never reach the engine's config unset.
+const noConfig = { removeEndpointModel: async (): Promise<void> => undefined }
+
 // The providers wiring's REST calls that the in-memory double does not look at closely.
 function engineRecording(answer: unknown): {
   sent: EngineApiRequest[]
@@ -28,7 +31,7 @@ describe('engine providers backend', () => {
   it('should report a model the engine did not set as not set', async () => {
     const engine = engineRecording({ ok: false })
 
-    const confirming = engineProvidersBackend(engine).confirmModel({
+    const confirming = engineProvidersBackend(engine, noConfig).confirmModel({
       provider: 'anthropic',
       model: 'claude-haiku'
     })
@@ -40,7 +43,7 @@ describe('engine providers backend', () => {
   it('should list every profile with an unscoped call', async () => {
     const engine = engineRecording({ profiles: [{ name: 'default' }, { name: 'scout' }] })
 
-    expect(await engineProvidersBackend(engine).profiles()).toEqual(['default', 'scout'])
+    expect(await engineProvidersBackend(engine, noConfig).profiles()).toEqual(['default', 'scout'])
     expect(engine.sent).toEqual([{ path: '/api/profiles' }])
   })
 
@@ -48,7 +51,10 @@ describe('engine providers backend', () => {
     const engine = engineRecording({ session_id: 's', status: 'denied', error_message: '' })
 
     expect(
-      await engineProvidersBackend(engine).pollSignIn({ providerId: 'acme', sessionId: 's 1' })
+      await engineProvidersBackend(engine, noConfig).pollSignIn({
+        providerId: 'acme',
+        sessionId: 's 1'
+      })
     ).toEqual({ status: 'failed', message: 'denied' })
     expect(engine.sent).toEqual([
       {
@@ -62,7 +68,7 @@ describe('engine providers backend', () => {
   it('should give a sign-in a minute to start', async () => {
     const engine = engineRecording({ flow: 'pkce', session_id: 's' })
 
-    await engineProvidersBackend(engine).startSignIn('acme')
+    await engineProvidersBackend(engine, noConfig).startSignIn('acme')
 
     expect(engine.sent[0]).toMatchObject({
       path: '/api/providers/oauth/acme/start?profile=default',

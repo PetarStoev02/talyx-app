@@ -8,7 +8,9 @@ import {
   checkKey,
   disconnectAccount,
   loadProviders,
+  modelLeftEndpoint,
   removeEndpoint,
+  removeEndpointModel,
   removeKey,
   revealKey,
   saveEndpoint,
@@ -23,6 +25,7 @@ import type {
   EndpointDraft,
   SignInPoll
 } from '../../../src/renderer/src/features/providers/providers'
+import type { CustomEndpoint } from '../../../src/renderer/src/shared/engine/types'
 import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/http'
 import { HOME, ROUTER, providersDouble } from './providersDouble'
 import type { ProvidersDouble } from './providersDouble'
@@ -469,6 +472,140 @@ describe('providers', () => {
       expect(result).toMatchObject({ ok: false, closed: true })
       expect(String('cause' in result && result.cause)).toContain('prompt.submit refused')
       expect(leftovers()).toEqual([])
+    })
+  })
+
+  describe('removing a model from an endpoint', () => {
+    // A listed endpoint with three models on every bot; the writer's model is the middle one.
+    beforeEach(() => {
+      for (const [name, profile] of Object.entries(engine.profiles)) {
+        profile.endpoints.push({
+          ...ROUTER,
+          id: 'local',
+          name: 'Local',
+          model: 'small',
+          models: ['small', 'medium', 'large'],
+          source: 'providers'
+        })
+        if (name === 'writer') profile.model = { provider: 'local', model: 'medium' }
+      }
+    })
+
+    const local = (): CustomEndpoint =>
+      engine.profiles[HOME].endpoints.find((endpoint) => endpoint.id === 'local')!
+
+    it('should remove the model from every bot and keep the others', async () => {
+      expect(
+        await removeEndpointModel(engine.backend, { endpoint: local(), model: 'large' })
+      ).toEqual({ failed: [], flagged: [] })
+
+      for (const profile of Object.values(engine.profiles))
+        expect(profile.endpoints.find((e) => e.id === 'local')?.models).toEqual(['small', 'medium'])
+      expect(engine.writes[0]).toBe('default unset local large')
+    })
+
+    it("should move the endpoint's own default to the next model when it is the one removed", async () => {
+      await removeEndpointModel(engine.backend, { endpoint: local(), model: 'small' })
+
+      for (const profile of Object.values(engine.profiles))
+        expect(profile.endpoints.find((e) => e.id === 'local')).toMatchObject({
+          model: 'medium',
+          models: ['medium', 'large']
+        })
+    })
+
+    it('should flag a bot on the removed model and leave its model as it was', async () => {
+      expect(
+        await removeEndpointModel(engine.backend, { endpoint: local(), model: 'medium' })
+      ).toEqual({ failed: [], flagged: ['writer'] })
+
+      expect(engine.profiles.writer.model).toEqual({ provider: 'local', model: 'medium' })
+    })
+
+    it('should count a bot that never had the endpoint as done', async () => {
+      engine.profiles.analyst.endpoints = [{ ...ROUTER }]
+
+      expect(
+        await removeEndpointModel(engine.backend, { endpoint: local(), model: 'large' })
+      ).toEqual({ failed: [], flagged: [] })
+      expect(engine.writes.some((write) => write.startsWith('analyst'))).toBe(false)
+    })
+
+    it('should name a bot that did not take the removal', async () => {
+      engine.failOn('analyst')
+
+      expect(
+        await removeEndpointModel(engine.backend, { endpoint: local(), model: 'large' })
+      ).toEqual({ failed: ['analyst'], flagged: [] })
+    })
+
+    it('should leave every bot alone when Talyx refuses the removal', async () => {
+      engine.failOn(HOME)
+
+      await expect(
+        removeEndpointModel(engine.backend, { endpoint: local(), model: 'large' })
+      ).rejects.toThrow()
+      expect(engine.profiles.writer.endpoints.find((e) => e.id === 'local')?.models).toHaveLength(3)
+    })
+
+    it('should refuse to remove the last model, since an endpoint needs one', async () => {
+      const lone = { ...local(), model: 'small', models: ['small'] }
+
+      await expect(
+        removeEndpointModel(engine.backend, { endpoint: lone, model: 'small' })
+      ).rejects.toMatchObject({ key: 'providers.errorEndpointLastModel' })
+      expect(engine.writes).toEqual([])
+    })
+
+    it('should name a bot whose own copy has no other model and leave that copy whole', async () => {
+      const analyst = engine.profiles.analyst.endpoints.find((e) => e.id === 'local')!
+      Object.assign(analyst, { model: 'large', models: ['large'] })
+
+      expect(
+        await removeEndpointModel(engine.backend, { endpoint: local(), model: 'large' })
+      ).toEqual({ failed: ['analyst'], flagged: [] })
+      expect(analyst.models).toEqual(['large'])
+    })
+
+    it('should flag a bot on the bare endpoint that shares the URL', async () => {
+      const shared = { ...local(), base_url: ROUTER.base_url }
+      for (const profile of Object.values(engine.profiles))
+        Object.assign(profile.endpoints.find((e) => e.id === 'local')!, {
+          base_url: ROUTER.base_url
+        })
+      engine.profiles.analyst.model = { provider: 'custom', model: 'large' }
+
+      expect(
+        await removeEndpointModel(engine.backend, { endpoint: shared, model: 'large' })
+      ).toEqual({ failed: [], flagged: ['analyst'] })
+    })
+  })
+
+  describe('a model its endpoint no longer lists', () => {
+    const offered = [
+      { slug: 'local', name: 'Local', is_user_defined: true, models: ['small', 'large'] },
+      {
+        slug: 'endpoint-router',
+        name: 'Router',
+        is_user_defined: true,
+        aliases: ['custom'],
+        models: ['combo']
+      },
+      { slug: 'anthropic', name: 'Anthropic', is_user_defined: false, models: ['claude-opus'] }
+    ]
+
+    it.each([
+      ['a removed model on its endpoint', { provider: 'local', model: 'medium' }, true],
+      ['a model its endpoint still lists', { provider: 'local', model: 'small' }, false],
+      ['a removed model under an alias', { provider: 'custom', model: 'gone' }, true],
+      [
+        'a provider model the menu leaves out',
+        { provider: 'anthropic', model: 'claude-haiku' },
+        false
+      ],
+      ['a provider the bot cannot see', { provider: 'elsewhere', model: 'x' }, false]
+    ] as const)('should tell %s', (_case, pick, flagged) => {
+      expect(modelLeftEndpoint(pick, offered)).toBe(flagged)
     })
   })
 

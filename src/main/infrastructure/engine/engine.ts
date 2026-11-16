@@ -65,8 +65,8 @@ export interface Engine {
   mint(profile: string, purpose: GatewayTicketPurpose): Promise<Attachment & { ticket: string }>
   /** One REST call to the gateway with its native ticket header. */
   http(request: EngineHttpRequest): Promise<unknown>
-  /** One CLI command of the attached engine, as its default profile. */
-  cli(args: string[]): Promise<CliResult>
+  /** One CLI command of the attached engine, as `profile` (the default one when not given). */
+  cli(args: string[], profile?: string): Promise<CliResult>
   /** The attached engine's home folder, as `gateway ensure` reports it. */
   home(): Promise<string>
 }
@@ -233,9 +233,9 @@ export function createEngine(deps: EngineDeps): Engine {
 
     mint,
 
-    async cli(args) {
+    async cli(args, profile = 'default') {
       const { command } = await attach()
-      return run(command, ['--profile', 'default', ...args])
+      return run(command, ['--profile', profile, ...args])
     },
 
     async home() {

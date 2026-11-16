@@ -1,5 +1,6 @@
 import type { EngineApiRequest, EngineHttp } from '../../../src/renderer/src/shared/engine/http'
 import { providersDouble } from '../../unit/providers/providersDouble'
+import type { EndpointModelConfig } from '../../../src/renderer/src/app/engine/providers'
 
 const POLL_DELAY_MS = 1500
 /** Every bot's provider and model. */
@@ -11,9 +12,12 @@ export const COSTLY_MODEL = 'claude-opus-4-1'
 /**
  * The Providers page's engine REST: the unit tests' in-memory double, with every bot on one endpoint
  * and a device-code sign-in the "browser" approves on the second poll. A pasted code `good` is
- * accepted.
+ * accepted. `config` takes a model off an endpoint, as main's config unset does.
  */
-export function fixtureProviders(profiles: string[]): EngineHttp {
+export function fixtureProviders(profiles: string[]): {
+  http: EngineHttp
+  config: EndpointModelConfig
+} {
   const engine = providersDouble(profiles)
   for (const config of Object.values(engine.profiles)) {
     config.endpoints[0] = {
@@ -27,7 +31,7 @@ export function fixtureProviders(profiles: string[]): EngineHttp {
     config.model = { provider: PROVIDER, model: DEFAULT_MODEL }
   }
   let polls = 0
-  return async <T>(request: EngineApiRequest): Promise<T> => {
+  const http = async <T>(request: EngineApiRequest): Promise<T> => {
     if (request.path.includes('/poll/')) {
       await new Promise((resolve) => setTimeout(resolve, POLL_DELAY_MS))
       polls += 1
@@ -47,4 +51,5 @@ export function fixtureProviders(profiles: string[]): EngineHttp {
       } as T
     return engine.http<T>(request)
   }
+  return { http, config: engine.config }
 }

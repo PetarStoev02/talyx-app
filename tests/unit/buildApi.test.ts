@@ -95,6 +95,7 @@ describe('buildApi', () => {
       'onUpdateState',
       'openEngineSocket',
       'pickEnginePath',
+      'removeEndpointModel',
       'runInstall',
       'sendEngineSocket',
       'setNativeTheme',

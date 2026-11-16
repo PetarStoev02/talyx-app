@@ -25,12 +25,24 @@ export function reportSpread(
 ): void {
   const { done, partial } = SPREAD[change]
   if (failed.length === 0) return void (done && toast.success(t(done)))
+  toast.error(t(partial).replace('{bots}', titlesOf(failed)), { duration: Infinity })
+}
+
+/** Bots still on a model their endpoint no longer lists: they keep it until someone picks. */
+export function reportFlagged(t: Translate, model: string, profiles: string[]): void {
+  if (profiles.length === 0) return
+  const text = t('providers.modelStillUsed').replace('{model}', model)
+  toast.warning(text.replace('{bots}', titlesOf(profiles)), { duration: Infinity })
+}
+
+function titlesOf(profiles: string[]): string {
   const bots = useRoster.getState().snapshot.bots
-  const titles = failed.map((profile) => {
-    const bot = bots.find((item) => item.name === profile)
-    return bot ? botTitle(bot) : profile
-  })
-  toast.error(t(partial).replace('{bots}', listOf(titles)), { duration: Infinity })
+  return listOf(
+    profiles.map((profile) => {
+      const bot = bots.find((item) => item.name === profile)
+      return bot ? botTitle(bot) : profile
+    })
+  )
 }
 
 /** Reports a move of the bots on "Uses default": the ones left behind, or why none were reached. */

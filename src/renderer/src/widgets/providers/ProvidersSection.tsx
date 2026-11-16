@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage } from '@app/providers/useLanguage'
 import {
@@ -6,6 +7,7 @@ import {
   disconnectAccount,
   loadProviders,
   removeEndpoint,
+  removeEndpointModel,
   removeKey,
   revealKey
 } from '@features/providers/providers'
@@ -28,7 +30,7 @@ import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { useArrival } from '@shared/hooks/useStayMounted'
 import { reportError } from '@shared/lib/report'
 import { cn } from '@shared/lib/utils'
-import { reportSpread } from '@features/bots/spread'
+import { reportFlagged, reportSpread } from '@features/bots/spread'
 import { failureText } from './feedback'
 
 const linkClass =
@@ -37,12 +39,14 @@ const linkClass =
 // Each confirm button names what it removes.
 const CONFIRM: Record<Removal['kind'], TranslationKey> = {
   endpoint: 'providers.removeEndpoint',
+  model: 'providers.removeModel',
   key: 'providers.removeKey',
   account: 'providers.disconnect'
 }
 
 type Removal =
   | { kind: 'endpoint'; endpoint: CustomEndpoint }
+  | { kind: 'model'; endpoint: CustomEndpoint; model: string }
   | { kind: 'key'; slot: KeySlot }
   | { kind: 'account'; account: Account }
 
@@ -138,6 +142,10 @@ export function ProvidersSection({
       if (removal.kind === 'account') {
         await disconnectAccount(backend, removal.account.id)
         toast.success(t('providers.signedOut'))
+      } else if (removal.kind === 'model') {
+        const { failed, flagged } = await removeEndpointModel(backend, removal)
+        reportSpread(t, failed, 'removed')
+        reportFlagged(t, removal.model, flagged)
       } else {
         const failed =
           removal.kind === 'endpoint'
@@ -202,10 +210,18 @@ export function ProvidersSection({
                 key={`endpoint:${endpoint.id}`}
                 title={endpoint.name}
                 badge={endpoint.is_current ? t('providers.active') : null}
-                lines={[
-                  endpoint.base_url,
-                  t('providers.models').replace('{models}', endpoint.models.join(', '))
-                ]}
+                lines={[endpoint.base_url]}
+                models={
+                  <EndpointModels
+                    models={endpoint.models}
+                    // An endpoint keeps one model; the last one goes with the endpoint.
+                    onRemove={
+                      canRemoveEndpoint(endpoint) && endpoint.models.length > 1
+                        ? (model) => setRemoving({ kind: 'model', endpoint, model })
+                        : null
+                    }
+                  />
+                }
               >
                 <button className={linkClass} onClick={() => setTesting(endpoint)}>
                   {t('providers.testChat')}
@@ -311,12 +327,14 @@ function Row({
   title,
   badge = null,
   lines,
+  models = null,
   secret = false,
   children
 }: {
   title: string
   badge?: string | null
   lines: string[]
+  models?: React.ReactNode
   secret?: boolean
   children: React.ReactNode
 }): React.JSX.Element {
@@ -344,14 +362,64 @@ function Row({
             {line}
           </p>
         ))}
+        {models}
       </div>
       <div className="flex shrink-0 gap-3">{children}</div>
     </li>
   )
 }
 
+/** The endpoint's saved models, each with its own remove button when it can go. */
+function EndpointModels({
+  models,
+  onRemove
+}: {
+  models: string[]
+  onRemove: ((model: string) => void) | null
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+      <span>{t('providers.modelsLabel')}</span>
+      <ul className="contents" aria-label={t('providers.modelsLabel')}>
+        {models.map((model) => (
+          <li
+            key={model}
+            className="inline-flex items-center gap-1 rounded-full bg-background py-0.5 pr-1 pl-2 text-foreground"
+          >
+            <span className="break-all">{model}</span>
+            {onRemove ? (
+              <button
+                aria-label={t('providers.removeModelNamed').replace('{model}', model)}
+                title={t('providers.removeModelNamed').replace('{model}', model)}
+                onClick={() => onRemove(model)}
+                className="inline-flex size-5 items-center justify-center rounded-full hover:bg-foreground/10"
+              >
+                <X size={12} />
+              </button>
+            ) : (
+              <span className="w-1" />
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function RemovalCopy({ removal }: { removal: Removal }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
+  if (removal.kind === 'model')
+    return (
+      <>
+        <DialogTitle>
+          {t('providers.removeModelTitle')
+            .replace('{model}', removal.model)
+            .replace('{name}', removal.endpoint.name)}
+        </DialogTitle>
+        <DialogDescription>{t('providers.removeModelWarning')}</DialogDescription>
+      </>
+    )
   const [title, warning, name] =
     removal.kind === 'endpoint'
       ? ([

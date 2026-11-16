@@ -112,7 +112,7 @@ function parseAnswer(stdout: string): PluginAnswer | null {
   }
 }
 
-function lastLine(result: { stdout: string; stderr: string }): string {
+export function lastLine(result: { stdout: string; stderr: string }): string {
   return (result.stderr.trim() || result.stdout.trim()).split('\n').at(-1) ?? ''
 }
 
