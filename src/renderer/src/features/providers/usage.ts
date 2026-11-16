@@ -99,15 +99,20 @@ export function daysOf(days: ProviderDay[], providerId: string | null): DayUsage
  */
 export function dailySeries(daily: DayUsage[], period: { days: number; today: Date }): DayUsage[] {
   const byDay = new Map(daily.map((point) => [point.day, point]))
-  return Array.from({ length: period.days + 1 }, (_, index) => {
-    const date = new Date(period.today)
-    date.setDate(date.getDate() - (period.days - index))
-    const day = localDay(date)
-    return byDay.get(day) ?? { day, ...ZERO }
-  })
+  // The engine's cutoff, in real time; its date can be one more or fewer calendar steps back
+  // than `days` when the clocks changed in between.
+  const date = new Date(period.today.getTime() - period.days * DAY_MS)
+  const last = localDay(period.today)
+  const series: DayUsage[] = []
+  for (let day = localDay(date); ; day = localDay(date)) {
+    series.push(byDay.get(day) ?? { day, ...ZERO })
+    if (day >= last) return series
+    date.setDate(date.getDate() + 1)
+  }
 }
 
 const ZERO: Counts = { tokens: 0, requests: 0 }
+const DAY_MS = 86_400_000
 
 // A bot whose totals cannot be read is left out; one whose days alone cannot be read keeps its
 // totals and is left out of the days. When no day can be read at all, the totals stand alone.

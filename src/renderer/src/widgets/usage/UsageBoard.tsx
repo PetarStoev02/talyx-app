@@ -119,7 +119,10 @@ function ProviderView({
           </p>
         )}
       </div>
-      <DailySection report={report} providerId={provider.id} days={days} t={t} />
+      {/* With nothing reported, the line above already says so; an empty chart would repeat it. */}
+      {provider.usage && (
+        <DailySection report={report} providerId={provider.id} days={days} t={t} />
+      )}
       {models.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-xl font-semibold text-foreground">{t('usage.breakdown')}</h2>
@@ -158,7 +161,7 @@ function DailySection({
             problemText(t, problemOf(report.daysProblem))
           )}
         </p>
-      ) : picked.every((point) => !point.tokens && !point.requests) ? (
+      ) : picked.every((point) => !point.tokens) ? (
         // A flat line on an empty scale says less than a sentence.
         <p className="text-base">{t('usage.dailyNone').replace('{days}', String(days))}</p>
       ) : (

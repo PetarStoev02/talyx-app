@@ -433,6 +433,23 @@ describe('provider usage', () => {
       expect(series.map((point) => point.day)).toEqual(['2026-11-29', '2026-11-30', '2026-12-01'])
     })
 
+    it('should start on the date the period does when the clocks went forward in it', () => {
+      const zone = process.env.TZ
+      process.env.TZ = 'Europe/Sofia'
+      try {
+        // Spring forward on March 29: seven 24-hour days back from 00:30 is March 22 23:30.
+        const series = dailySeries([{ day: '2026-03-22', tokens: 123, requests: 1 }], {
+          days: 7,
+          today: new Date(2026, 2, 30, 0, 30)
+        })
+
+        expect(series[0]).toEqual({ day: '2026-03-22', tokens: 123, requests: 1 })
+        expect(series.at(-1)?.day).toBe('2026-03-30')
+      } finally {
+        process.env.TZ = zone
+      }
+    })
+
     it('should count calendar dates across a clock change, not 24-hour steps', () => {
       // Late October: most of Europe falls back an hour, a 25-hour day.
       const series = dailySeries([], { days: 7, today: new Date(2026, 10, 1, 0, 30) })
