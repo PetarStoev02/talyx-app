@@ -50,7 +50,7 @@ type Poll = OAuthPollResponse['status'] | 'timeout'
 /** How the model behind a test chat answers: its reply, its failure, or never. */
 export type ModelTurn =
   | { reply: string }
-  | { failure: string; reason: string }
+  | { failure: string; reason: string; logged?: string }
   | { stopped: true }
   | 'silent'
 
@@ -89,6 +89,8 @@ export interface ProvidersDouble {
   refusing: Set<string>
   /** Every socket call, as `<profile> <method>`, in order. */
   calls: string[]
+  /** The engine's agent log, oldest line first. */
+  log: string[]
   /** The last params each socket method took. */
   params: Record<string, Record<string, unknown>>
 }
@@ -154,6 +156,7 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
   const calls: string[] = []
   const params: Record<string, Record<string, unknown>> = {}
   const listeners = new Set<(event: GatewayEvent) => void>()
+  const log: string[] = ['2026-11-16 18:00:00,000 INFO gateway.run: started']
   let nextId = 0
   const revisions = new Map<string, number>()
 
@@ -209,13 +212,22 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
     if ('reply' in turn) {
       emit(session.id, 'message.delta', { text: turn.reply })
       emit(session.id, 'message.complete', { text: turn.reply, status: 'complete' })
-    } else if ('failure' in turn)
+    } else if ('failure' in turn) {
+      // A failure the engine does not word for people is only in its log, as a traceback.
+      if (turn.logged)
+        log.push(
+          `2026-11-16 18:16:02,530 ERROR gateway.run: Agent error in session agent:main:local:dm:${session.id}`,
+          'Traceback (most recent call last):',
+          '  File "run.py", line 1, in run',
+          turn.logged,
+          `2026-11-16 18:16:02,596 INFO gateway.platforms.base: Sending response to ${session.id}`
+        )
       emit(session.id, 'message.complete', {
         text: turn.failure,
         status: 'error',
         failure_reason: turn.reason
       })
-    else emit(session.id, 'message.complete', { text: '', status: 'interrupted' })
+    } else emit(session.id, 'message.complete', { text: '', status: 'interrupted' })
   }
 
   // Deleting a session is fenced: read its revision, then delete naming that revision.
@@ -331,6 +343,8 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
       return { ok: true }
     }
     if (path.startsWith('/api/sessions/')) return sessionRest(profile, method, path, query)
+    if (path === '/api/logs')
+      return { file: query.get('file'), lines: log.slice(-Number(query.get('lines') ?? 100)) }
     if (path === '/api/providers/oauth') return { providers: accounts }
     if (path.endsWith('/start'))
       return path.includes('xai')
@@ -414,7 +428,8 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
     turns,
     refusing,
     calls,
-    params
+    params,
+    log
   }
   return double
 }

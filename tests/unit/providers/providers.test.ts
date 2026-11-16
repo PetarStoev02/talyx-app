@@ -346,6 +346,19 @@ describe('providers', () => {
       })
     })
 
+    it('should show the error the engine logged for a failure it names no provider error for', async () => {
+      engine.turns['9-route-provider'] = {
+        failure: 'Something went wrong and I could not finish this reply.',
+        reason: '',
+        logged: 'ValueError: Model m-small has a context window of 8,192 tokens.'
+      }
+
+      expect(await testChat(engine.backend, router)).toEqual({
+        ok: false,
+        error: 'ValueError: Model m-small has a context window of 8,192 tokens.'
+      })
+    })
+
     it('should show the failure reason when the failure has no text', async () => {
       engine.turns['9-route-provider'] = { failure: '', reason: 'empty_response' }
 

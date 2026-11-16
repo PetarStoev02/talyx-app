@@ -34,6 +34,11 @@ const REDACTED = /^«redacted:(.+)»$/
 const TEST_CHAT_TIMEOUT_MS = 120_000
 // The engine words a provider failure for people and quotes the provider's own message here.
 const PROVIDER_SAID = /^Provider said: (.+)$/m
+// Any other failure the engine words only as "something went wrong": the cause is in its agent
+// log, as the last line of the traceback under the session's error line.
+const LOG_TAIL_LINES = 400
+const LOG_STAMP = /^\d{4}-\d{2}-\d{2} /
+const SESSION_ERROR = 'Agent error in session'
 
 /** Providers, keys, endpoints, sign-ins and Talyx's model over the engine's REST. */
 export function engineProvidersBackend(
@@ -42,9 +47,25 @@ export function engineProvidersBackend(
   const rest = <T>(
     profile: string,
     path: string,
-    request: { method?: string; body?: unknown; timeoutMs?: number } = {}
-  ): Promise<T> => engine.http<T>({ path: scoped(path, profile), profile, ...request })
+    {
+      query = {},
+      ...request
+    }: { method?: string; body?: unknown; timeoutMs?: number; query?: Record<string, string> } = {}
+  ): Promise<T> => engine.http<T>({ path: scoped(path, profile, query), profile, ...request })
   const env = (profile: string): Promise<Record<string, EnvVarInfo>> => rest(profile, '/api/env')
+
+  // ponytail: reads the last lines of a log every session writes to; a busy engine can push the
+  // chat's error out of them, and the engine's own words show instead.
+  async function loggedError(chatId: string): Promise<string | null> {
+    const { lines } = await rest<{ lines: string[] }>(HOME_PROFILE, '/api/logs', {
+      query: { file: 'agent', lines: String(LOG_TAIL_LINES) }
+    })
+    const start = lines.findIndex((line) => line.includes(SESSION_ERROR) && line.includes(chatId))
+    if (start < 0) return null
+    const end = lines.findIndex((line, index) => index > start && LOG_STAMP.test(line))
+    const trace = lines.slice(start + 1, end < 0 ? undefined : end)
+    return trace.map((line) => line.trim()).findLast(Boolean) ?? null
+  }
 
   return {
     home: HOME_PROFILE,
@@ -118,7 +139,12 @@ export function engineProvidersBackend(
       )
       return chatId
     },
-    askTestChat: (chatId, text) => askOnce(engine, chatId, text),
+    askTestChat: async (chatId, text) => {
+      const result = await askOnce(engine, chatId, text)
+      if (result.ok || result.provider) return result.turn
+      const logged = await loggedError(chatId)
+      return logged ? { ok: false, error: logged } : result.turn
+    },
     closeTestChat: async (chatId) => {
       const path = `/api/sessions/${encodeURIComponent(chatId)}`
       const now = await rest<SessionMutationSnapshot>(HOME_PROFILE, `${path}/mutation-snapshot`)
@@ -217,8 +243,8 @@ function askOnce(
   engine: Pick<EngineAccess, 'request' | 'onEvent'>,
   chatId: string,
   text: string
-): Promise<TestChatResult> {
-  return new Promise<TestChatResult>((resolve, reject) => {
+): Promise<TurnEnd> {
+  return new Promise<TurnEnd>((resolve, reject) => {
     const stop = engine.onEvent((event) => {
       if (event.session_id !== chatId || event.type !== 'message.complete') return
       finish(() => resolve(turnResult(event)))
@@ -243,7 +269,14 @@ function askOnce(
   })
 }
 
-function turnResult(event: GatewayEvent): TestChatResult {
+/** How the turn ended; `provider` says the failure quotes the provider's own message. */
+interface TurnEnd {
+  ok: boolean
+  provider: boolean
+  turn: TestChatResult
+}
+
+function turnResult(event: GatewayEvent): TurnEnd {
   const payload = (event.payload ?? {}) as {
     text?: unknown
     status?: unknown
@@ -251,10 +284,11 @@ function turnResult(event: GatewayEvent): TestChatResult {
   }
   const text = typeof payload.text === 'string' ? payload.text.trim() : ''
   if (payload.status !== 'error' && payload.status !== 'interrupted' && text)
-    return { ok: true, reply: text }
+    return { ok: true, provider: false, turn: { ok: true, reply: text } }
+  const said = PROVIDER_SAID.exec(text)?.[1]?.trim()
   const reason = typeof payload.failure_reason === 'string' ? payload.failure_reason : ''
-  const error = PROVIDER_SAID.exec(text)?.[1]?.trim() || text || reason
-  return { ok: false, error: error || String(payload.status ?? '') }
+  const error = said || text || reason || String(payload.status ?? '')
+  return { ok: false, provider: !!said, turn: { ok: false, error } }
 }
 
 /** Builds the provider key list from the engine's env catalog, one slot per provider. */
