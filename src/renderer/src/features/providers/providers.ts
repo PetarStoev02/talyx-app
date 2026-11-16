@@ -2,6 +2,7 @@ import { CONFIG_YAML_SOURCE, namedTwinOfBare } from '@shared/engine/endpoints'
 import type { CustomEndpoint, OAuthProvider, OAuthStartResponse } from '@shared/engine/types'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { AppError, isTimeout } from '@shared/lib/problem'
+import { reportError } from '@shared/lib/report'
 
 export type { CustomEndpoint, OAuthStartResponse }
 
@@ -23,6 +24,12 @@ export interface ProvidersBackend {
   revealKey: (key: string) => Promise<string>
   checkKey: (slot: { key: string; value: string }) => Promise<KeyCheck>
   checkEndpoint: (draft: EndpointDraft) => Promise<EndpointCheck>
+  /** Opens a chat on the home profile that no bot shows; returns its id. */
+  openTestChat: (pick: ModelPick) => Promise<string>
+  /** Sends one message and waits for the whole answer; stops the turn when none comes in time. */
+  askTestChat: (chatId: string, text: string) => Promise<TestChatResult>
+  /** Lets go of the chat and deletes it with everything in it. */
+  closeTestChat: (chatId: string) => Promise<void>
   /** `draft.models` are trimmed, unique and not empty. */
   saveEndpoint: (profile: string, draft: EndpointDraft) => Promise<void>
   removeEndpoint: (profile: string, id: string) => Promise<void>
@@ -56,6 +63,18 @@ export interface EndpointCheck {
   ok: boolean
   message: string
   models: string[]
+}
+
+/** The model's reply, or the error the chat failed with (empty when the model sent nothing). */
+export type TestChatResult = { ok: true; reply: string } | { ok: false; error: string }
+
+/**
+ * What a test chat came to: the turn's result, or `cause` when no turn ended (it timed out or the
+ * message was not sent). `closed` is false when the engine kept the test chat; it stays hidden,
+ * so no bot shows it.
+ */
+export type TestChatOutcome = (TestChatResult | { ok: false; cause: unknown }) & {
+  closed: boolean
 }
 
 export type SignInPoll =
@@ -185,6 +204,33 @@ export function checkEndpoint(
   draft: EndpointDraft
 ): Promise<EndpointCheck> {
   return backend.checkEndpoint(draft)
+}
+
+// Short, and asks for no tools, so a working model answers at once and nothing waits on an approval.
+const TEST_CHAT_MESSAGE = 'Say hello in one short sentence. Do not use any tools.'
+
+/**
+ * Sends one real message on the model, as a bot's chat would (the same tools and instructions),
+ * so it fails where a real chat would. The chat it uses is deleted afterwards whatever happened:
+ * no bot ever shows it.
+ */
+export async function testChat(
+  backend: Pick<ProvidersBackend, 'openTestChat' | 'askTestChat' | 'closeTestChat'>,
+  pick: ModelPick
+): Promise<TestChatOutcome> {
+  const chatId = await backend.openTestChat(pick)
+  const asked = await settle(backend.askTestChat(chatId, TEST_CHAT_MESSAGE))
+  const closing = await settle(backend.closeTestChat(chatId))
+  // A chat the engine kept must not hide what the model said: the reply or error still shows.
+  if (closing.status === 'rejected') reportError('providers', closing.reason)
+  const closed = closing.status === 'fulfilled'
+  return asked.status === 'fulfilled'
+    ? { ...asked.value, closed }
+    : { ok: false, cause: asked.reason, closed }
+}
+
+function settle<T>(promise: Promise<T>): Promise<PromiseSettledResult<T>> {
+  return Promise.allSettled([promise]).then(([result]) => result)
 }
 
 /**

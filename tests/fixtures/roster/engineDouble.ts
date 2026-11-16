@@ -359,7 +359,13 @@ async function deleteProfile(profile: string): Promise<void> {
 
 const GROUPS_META_KEY = `${BOT_META_KEY}-groups`
 
-const engine: EngineAccess = { request: request as EngineAccess['request'], http }
+// The fixture sends no engine events: its chats answer through the chat fixture instead.
+const noEvents: EngineAccess['onEvent'] = () => () => undefined
+export const engine: EngineAccess = {
+  request: request as EngineAccess['request'],
+  http,
+  onEvent: noEvents
+}
 
 export const rosterBackend = {
   ...engineRosterBackend(engine, {
@@ -374,7 +380,7 @@ export const rosterBackend = {
   room: engineRoomBackend(engine)
 }
 export const providersRest = fixtureProviders(profiles.map((bot) => bot.name))
-export const providers = engineProvidersBackend({ http: providersRest })
+export const providers = engineProvidersBackend({ ...engine, http: providersRest })
 export const chat = fixtureChat(providersRest)
 
 /** An attached engine as the fixture's pages need it. */

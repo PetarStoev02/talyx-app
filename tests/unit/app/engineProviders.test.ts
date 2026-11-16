@@ -7,6 +7,8 @@ import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/h
 function engineRecording(answer: unknown): {
   sent: EngineApiRequest[]
   http: <T>(request: EngineApiRequest) => Promise<T>
+  request: <T>() => Promise<T>
+  onEvent: () => () => void
 } {
   const sent: EngineApiRequest[] = []
   return {
@@ -14,7 +16,11 @@ function engineRecording(answer: unknown): {
     http: async <T>(request: EngineApiRequest) => {
       sent.push(request)
       return answer as T
-    }
+    },
+    request: async () => {
+      throw new Error('no socket in this test')
+    },
+    onEvent: () => () => undefined
   }
 }
 

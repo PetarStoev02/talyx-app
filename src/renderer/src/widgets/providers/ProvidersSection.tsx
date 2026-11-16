@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/u
 import type { ModelLists } from '@features/chat/chat'
 import type { RosterBackend } from '@features/bots/data'
 import { AddProviderDialog } from './AddProviderDialog'
+import { TestChatDialog } from './TestChatDialog'
 import { DefaultModelSection } from './DefaultModelSection'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { useArrival } from '@shared/hooks/useStayMounted'
@@ -65,6 +66,7 @@ export function ProvidersSection({
   const [overview, setOverview] = useState<ProvidersOverview | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [editing, setEditing] = useState<CustomEndpoint | 'new' | null>(null)
+  const [testing, setTesting] = useState<CustomEndpoint | null>(null)
   const [removing, setRemoving] = useState<Removal | null>(null)
   // A failed removal shows in its dialog: a toast would sit under the dialog, out of reach.
   const [removeProblem, setRemoveProblem] = useState<string | null>(null)
@@ -205,6 +207,9 @@ export function ProvidersSection({
                   t('providers.models').replace('{models}', endpoint.models.join(', '))
                 ]}
               >
+                <button className={linkClass} onClick={() => setTesting(endpoint)}>
+                  {t('providers.testChat')}
+                </button>
                 <button className={linkClass} onClick={() => setEditing(endpoint)}>
                   {t('providers.edit')}
                 </button>
@@ -265,6 +270,9 @@ export function ProvidersSection({
             onClose={() => setEditing(null)}
           />
         )}
+        {testing && (
+          <TestChatDialog backend={backend} endpoint={testing} onClose={() => setTesting(null)} />
+        )}
         <Dialog open={!!removing} onOpenChange={(open) => !open && closeRemoval()}>
           <DialogContent>
             {removing && <RemovalCopy removal={removing} />}
@@ -313,8 +321,9 @@ function Row({
   children: React.ReactNode
 }): React.JSX.Element {
   return (
-    <li className="flex items-center gap-4 rounded-xl bg-secondary p-3">
-      <div className="min-w-0 flex-1">
+    // A narrow pane puts the actions under the text instead of squeezing the text.
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-secondary p-3">
+      <div className="min-w-48 flex-1">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base font-medium">
           <span className="min-w-0 wrap-break-word">{title}</span>
           {badge && (

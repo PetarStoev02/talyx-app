@@ -9,6 +9,8 @@ export function reportError(scope: string, error: unknown): void {
   console.error(`[${scope}]`, error)
   const message =
     error instanceof Error ? `${error.name}: ${error.message}\n${error.stack ?? ''}` : String(error)
-  // A failed log write must not report itself again.
-  window.api?.logError({ scope, message: message.slice(0, MAX_REPORT) }).catch(() => undefined)
+  // A failed log write must not report itself again. No window (a test, a worker): console only.
+  globalThis.window?.api
+    ?.logError({ scope, message: message.slice(0, MAX_REPORT) })
+    .catch(() => undefined)
 }

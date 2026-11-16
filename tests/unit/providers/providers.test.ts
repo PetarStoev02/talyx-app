@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ProvidersError,
   canRemoveEndpoint,
@@ -16,6 +16,7 @@ import {
   setDefaultModel,
   startSignIn,
   submitSignInCode,
+  testChat,
   waitForSignIn
 } from '../../../src/renderer/src/features/providers/providers'
 import type {
@@ -280,6 +281,194 @@ describe('providers', () => {
       ['listed', 'providers', true]
     ] as const)('should say whether a %s endpoint can be removed', (_case, source, removable) => {
       expect(canRemoveEndpoint({ ...ROUTER, source })).toBe(removable)
+    })
+  })
+
+  describe('test chat', () => {
+    const router = { provider: 'custom', model: '9-route-provider' }
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    // Every bot's sessions, so a leftover in any of them shows.
+    function leftovers(): string[] {
+      return Object.values(engine.sessions).flatMap((own) => own.map((session) => session.id))
+    }
+
+    it('should show the model reply from one real message on the chosen model', async () => {
+      engine.turns['9-route-provider'] = { reply: 'Hello from the router.' }
+
+      const result = await testChat(engine.backend, router)
+
+      expect(result).toEqual({ ok: true, reply: 'Hello from the router.', closed: true })
+      expect(engine.calls.slice(0, 2)).toEqual([`${HOME} session.create`, `${HOME} prompt.submit`])
+    })
+
+    it('should send the message in a hidden chat on the endpoint and model picked', async () => {
+      await testChat(engine.backend, router)
+
+      expect(engine.params['session.create']).toMatchObject({
+        hidden: true,
+        provider: 'custom',
+        model: '9-route-provider'
+      })
+    })
+
+    it('should leave no chat in any bot after a reply', async () => {
+      await testChat(engine.backend, router)
+
+      expect(leftovers()).toEqual([])
+    })
+
+    it('should show the provider error when the model fails', async () => {
+      engine.turns['missing-model'] = {
+        failure:
+          "Model 'missing-model' isn't available on custom.\n\nProvider said: HTTP 404: No active credentials for provider: openai\n\nYour request was not processed.",
+        reason: 'model_not_found'
+      }
+
+      const result = await testChat(engine.backend, { provider: 'custom', model: 'missing-model' })
+
+      expect(result).toEqual({
+        ok: false,
+        error: 'HTTP 404: No active credentials for provider: openai',
+        closed: true
+      })
+      expect(leftovers()).toEqual([])
+    })
+
+    it('should show the engine account of a failure that names no provider error', async () => {
+      engine.turns['9-route-provider'] = { failure: 'Connection refused.', reason: 'network' }
+
+      expect(await testChat(engine.backend, router)).toMatchObject({
+        ok: false,
+        error: 'Connection refused.'
+      })
+    })
+
+    it('should show the error the engine logged for a failure it names no provider error for', async () => {
+      engine.turns['9-route-provider'] = {
+        failure: 'Something went wrong and I could not finish this reply.',
+        reason: '',
+        logged: 'ValueError: Model m-small has a context window of 8,192 tokens.'
+      }
+
+      expect(await testChat(engine.backend, router)).toMatchObject({
+        ok: false,
+        error: 'ValueError: Model m-small has a context window of 8,192 tokens.'
+      })
+    })
+
+    it('should show the failure reason when the failure has no text', async () => {
+      engine.turns['9-route-provider'] = { failure: '', reason: 'empty_response' }
+
+      expect(await testChat(engine.backend, router)).toMatchObject({
+        ok: false,
+        error: 'empty_response'
+      })
+    })
+
+    it('should report a turn stopped before it answered as a failure', async () => {
+      engine.turns['9-route-provider'] = { stopped: true }
+
+      expect(await testChat(engine.backend, router)).toMatchObject({ ok: false })
+      expect(leftovers()).toEqual([])
+    })
+
+    it('should stop and remove the chat when no reply comes in time', async () => {
+      vi.useFakeTimers()
+      engine.turns['9-route-provider'] = 'silent'
+
+      const testing = testChat(engine.backend, router)
+      await vi.runAllTimersAsync()
+
+      expect(await testing).toMatchObject({
+        ok: false,
+        cause: { key: 'providers.errorTestChatTimeout' },
+        closed: true
+      })
+      expect(engine.calls).toContain(`${HOME} session.interrupt`)
+      expect(leftovers()).toEqual([])
+    })
+
+    it('should still say no reply came when the engine cannot stop the turn', async () => {
+      vi.useFakeTimers()
+      engine.turns['9-route-provider'] = 'silent'
+      engine.refusing.add('session.interrupt')
+
+      const testing = testChat(engine.backend, router)
+      await vi.runAllTimersAsync()
+
+      expect(await testing).toMatchObject({ cause: { key: 'providers.errorTestChatTimeout' } })
+    })
+
+    it('should say the chat stayed when neither the message nor the cleanup went through', async () => {
+      vi.useFakeTimers()
+      engine.refusing.add('prompt.submit')
+      engine.busyDeletes.left = 99
+
+      const testing = testChat(engine.backend, router)
+      await vi.runAllTimersAsync()
+
+      expect(await testing).toMatchObject({ ok: false, closed: false })
+    })
+
+    it('should remove the chat when the engine is still busy with it at first', async () => {
+      vi.useFakeTimers()
+      engine.busyDeletes.left = 2
+
+      const testing = testChat(engine.backend, router)
+      await vi.runAllTimersAsync()
+
+      expect(await testing).toMatchObject({ ok: true, closed: true })
+      expect(leftovers()).toEqual([])
+    })
+
+    it('should keep the reply and say the chat stayed when the engine never removes it', async () => {
+      vi.useFakeTimers()
+      engine.busyDeletes.left = 99
+
+      const testing = testChat(engine.backend, router)
+      await vi.runAllTimersAsync()
+
+      expect(await testing).toEqual({ ok: true, reply: 'pong', closed: false })
+    })
+
+    it('should not leave the chat to be resumed after a reconnect', async () => {
+      await testChat(engine.backend, router)
+
+      expect(engine.subscribed.size).toBe(0)
+    })
+
+    it("should show the engine's own words when its log cannot be read", async () => {
+      engine.turns['9-route-provider'] = { failure: 'Something went wrong.', reason: '' }
+      engine.refusing.add('/api/logs')
+
+      expect(await testChat(engine.backend, router)).toMatchObject({
+        ok: false,
+        error: 'Something went wrong.'
+      })
+    })
+
+    it('should report a reply with no text as a failure with no message', async () => {
+      engine.turns['9-route-provider'] = { reply: '' }
+
+      expect(await testChat(engine.backend, router)).toEqual({
+        ok: false,
+        error: '',
+        closed: true
+      })
+    })
+
+    it('should remove the chat when the message cannot be sent', async () => {
+      engine.refusing.add('prompt.submit')
+
+      const result = await testChat(engine.backend, router)
+
+      expect(result).toMatchObject({ ok: false, closed: true })
+      expect(String('cause' in result && result.cause)).toContain('prompt.submit refused')
+      expect(leftovers()).toEqual([])
     })
   })
 

@@ -136,6 +136,7 @@ const en = {
   'chat.loading': 'Loading the conversation…',
   'action.tryAgain': 'Try again',
   'action.dismiss': 'Dismiss',
+  'action.close': 'Close',
   'chat.errorLoad': 'Talyx could not load this chat.',
   'chat.errorSend': 'Your message was not sent. It is back in the box; send it again.',
   'chat.errorStop': 'The reply did not stop. Press Stop again.',
@@ -684,6 +685,19 @@ const en = {
     'This endpoint is written in config.yaml. Enter its key again: saving moves it, with the key, into the engine’s endpoint list.',
   'providers.docs': 'Where to get a key',
   'providers.check': 'Check',
+  'providers.testChat': 'Test chat',
+  'providers.testChatTitle': 'Test chat with {name}',
+  'providers.testChatHint':
+    'Sends one short message to the model the way a bot does, with its tools, then deletes that chat. No bot shows it.',
+  'providers.testChatModel': 'Model',
+  'providers.testChatSend': 'Send test message',
+  'providers.testChatAgain': 'Send again',
+  'providers.testChatWaiting': 'Waiting for the reply…',
+  'providers.testChatReply': '{model} replied:',
+  'providers.testChatFailed': 'The chat failed with this error:',
+  'providers.testChatEmpty': 'The model sent back an empty reply.',
+  'providers.testChatKept':
+    'The engine did not delete the test chat. It stays hidden: no bot shows it.',
   'providers.checking': 'Checking…',
   'providers.checkOk': 'Works.',
   'providers.checkModel': 'Reachable, lists 1 model.',
@@ -730,6 +744,8 @@ const en = {
   'providers.errorEndpointKeyInConfig':
     'Talyx’s custom endpoint keeps its key inside its settings file, so switching would lose it. Edit the endpoint under Providers and type its key again, then switch.',
   'providers.errorModelNotSet': 'The engine did not change the model. Pick it again.',
+  'providers.errorTestChatTimeout':
+    'No reply came in two minutes, so the test chat was stopped. Check the endpoint and try again.',
   'providers.errorNotSignedOut': 'There was no sign-in to remove.',
   'providers.defaultTitle': 'Talyx’s model',
   'providers.defaultHint':
