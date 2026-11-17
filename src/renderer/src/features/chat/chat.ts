@@ -7,7 +7,7 @@ import { useChat } from './store'
 import type { ChatInfo, ChatState } from './store'
 import { applyEvent, fromHistory, settlePrompt, withFailedTurns, withoutTurn } from './transcript'
 import { SENDING_ID } from './turns'
-import type { ApprovalChoice, ChatItem, Transcript } from './types'
+import type { ApprovalChoice, ChatItem, ChatPrompt, Transcript } from './types'
 
 const HISTORY_LIMIT = 120
 
@@ -128,6 +128,8 @@ export type ModelLists = Pick<ChatActions, 'models' | 'forgetModels'>
 
 export interface ResumeSnapshot {
   info?: SessionLiveInfo | null
+  // The cards still open, when the engine lists them.
+  open_requests?: { id: string }[]
   replay_epoch?: string
   running?: boolean
   last_sequence?: number
@@ -172,6 +174,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
     loads.set(profile, token)
     // Events that land while the history is on its way are kept and replayed over it.
     update(profile, { pending: [] })
+    const shownCards = new Set(chatOf(profile)?.transcript?.prompts.map((card) => card.id))
     const [messages, resume] = await Promise.all([
       backend.history(profile, sessionId, chatOf(profile)?.whole ? null : HISTORY_LIMIT),
       backend.resume(profile, sessionId)
@@ -182,7 +185,10 @@ export function chatActions(backend: ChatBackend): ChatActions {
     })
     if (loads.get(profile) !== token) return
     const current = chatOf(profile)
-    const fresh = rebuilt(current?.transcript ?? null, sessionId, messages, resume)
+    const previous = current?.transcript
+      ? { ...current.transcript, prompts: stillOpen(current.transcript, shownCards, resume) }
+      : null
+    const fresh = rebuilt(previous, sessionId, messages, resume)
     update(profile, {
       sessionId,
       transcript: (current?.pending ?? []).reduce(applyEvent, fresh),
@@ -463,6 +469,23 @@ export function chatActions(backend: ChatBackend): ChatActions {
 
     mediaUrl: backend.mediaUrl
   }
+}
+
+/**
+ * The cards to keep over a reload: those delivered since it began, and of those shown before it,
+ * the ones the engine's snapshot still lists. A card the window missed the end of (a replay gap)
+ * is not among them, so it goes instead of waiting for an answer the engine no longer takes. An
+ * engine whose snapshot lists no cards keeps them all.
+ */
+function stillOpen(
+  transcript: Transcript,
+  shownBefore: Set<string>,
+  resume: ResumeSnapshot
+): ChatPrompt[] {
+  const open = resume.open_requests
+  if (!open) return transcript.prompts
+  const listed = new Set(open.map((request) => request.id))
+  return transcript.prompts.filter((card) => !shownBefore.has(card.id) || listed.has(card.id))
 }
 
 // A rebuild of the same session keeps its open cards; the stored history plus the turn still in
