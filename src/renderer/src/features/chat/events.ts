@@ -28,7 +28,7 @@ export function handleEvent(actions: ChatActions, event: GatewayEvent): ChatUpda
   // A gap or rewind may have swallowed the end of a turn: treated as one, so a waiting message
   // never stays stuck behind an answer this window did not see end.
   if (needsRebuild(event)) {
-    void (event.type === 'session.replay_gap' ? actions.turnEnded : actions.rewound)(profile)
+    void (event.type === 'session.replay_gap' ? actions.missed : actions.rewound)(profile)
     return { profile, completed: false, activity: activityOf(transcript) }
   }
   const next = applyEvent(transcript, event)

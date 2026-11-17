@@ -101,6 +101,12 @@ export interface ChatActions {
   /** The bot's answer ended: reloads the chat, then the oldest waiting message goes. */
   turnEnded: (profile: string) => Promise<void>
   /**
+   * The window missed events (a replay gap, a reconnect). Ends the turn like turnEnded, except
+   * that a reload already under way read the engine before the miss, so this one follows it
+   * instead of joining it.
+   */
+  missed: (profile: string) => Promise<void>
+  /**
    * The engine cut the chat back (another client, or this one asking for an answer again). Ends
    * the turn like turnEnded, except while this window asks again: the new turn's end reloads then.
    */
@@ -302,19 +308,41 @@ export function chatActions(backend: ChatBackend): ChatActions {
   // A reconnect and a replayed reply can both end the same turn: they share this one reload, and
   // it is over before the next message goes, so that message's own end is never folded into it.
   function reloadEnded(profile: string): Promise<void> {
-    const reload =
-      ending.get(profile) ??
-      rebuild(profile)
-        .then(() => void out.delete(profile))
-        .finally(() => ending.delete(profile))
+    return ending.get(profile) ?? startReload(profile, Promise.resolve())
+  }
+
+  // A reload under way read the engine before the miss: a new one follows it, registered now so
+  // that no waiting message goes between the two.
+  function reloadAfterMiss(profile: string): Promise<void> {
+    return startReload(profile, ending.get(profile) ?? Promise.resolve())
+  }
+
+  function startReload(profile: string, after: Promise<void>): Promise<void> {
+    // The message stays out until the last reload of a chain, so nothing goes between two.
+    const last = (): boolean => ending.get(profile) === reload
+    const reload: Promise<void> = after
+      .then(() => rebuild(profile))
+      .then(() => void (last() && out.delete(profile)))
+      .finally(() => void (last() && ending.delete(profile)))
     ending.set(profile, reload)
     return reload
   }
 
   async function turnEnded(profile: string): Promise<void> {
     await reloadEnded(profile)
-    // The next message goes after the reload, so the reload neither drops its bubble nor its
-    // error. A second end of the same turn finds it out already (submit marks it at once).
+    await sendAfterReloads(profile)
+  }
+
+  async function missed(profile: string): Promise<void> {
+    await reloadAfterMiss(profile)
+    await sendAfterReloads(profile)
+  }
+
+  // The next message goes after the reload, so the reload neither drops its bubble nor its
+  // error; after every reload, when a miss asked for one more meanwhile. A second end of the
+  // same turn finds it out already (submit marks it at once).
+  async function sendAfterReloads(profile: string): Promise<void> {
+    while (ending.has(profile)) await ending.get(profile)
     await sendWaiting(profile)
   }
 
@@ -411,6 +439,8 @@ export function chatActions(backend: ChatBackend): ChatActions {
     },
 
     turnEnded,
+
+    missed,
 
     rewound: async (profile) => {
       if (!rewinding.has(profile)) await turnEnded(profile)
