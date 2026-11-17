@@ -25,7 +25,8 @@ function resolveRendererDepsFromWebsite(): Plugin {
     async resolveId(source, importer, options) {
       if (!borrowedSegments.some((segment) => importer?.includes(segment))) return null
       if (source.startsWith('.') || path.isAbsolute(source)) return null
-      if (/^@(app|pages|widgets|features|entities|shared|renderer)(\/|$)/.test(source)) return null
+      if (/^@(app|pages|widgets|features|entities|shared|renderer|contract)(\/|$)/.test(source))
+        return null
       if (source.startsWith('@/')) return null
       return this.resolve(source, websitePkg, { skipSelf: true, ...options })
     }
@@ -62,7 +63,8 @@ export default defineConfig(({ isSsrBuild }) => ({
       { find: '@widgets', replacement: path.join(renderer, 'widgets') },
       { find: '@features', replacement: path.join(renderer, 'features') },
       { find: '@entities', replacement: path.join(renderer, 'entities') },
-      { find: '@shared', replacement: path.join(renderer, 'shared') }
+      { find: '@shared', replacement: path.join(renderer, 'shared') },
+      { find: '@contract', replacement: path.resolve(__dirname, '../src/shared') }
     ],
     // The renderer resolves React from the repo root, the site from website/.
     dedupe: ['react', 'react-dom']
