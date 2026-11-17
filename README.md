@@ -1,14 +1,53 @@
-# Talyx
+<p align="center">
+  <a href="https://talyx.app">
+    <img src="website/public/talyx-icon-512.png" width="80" height="80" alt="Talyx logo">
+  </a>
+</p>
 
-Talyx is a desktop app to tally your AI agents: a roster of bots on the left, one chat on the right, and a manager bot that hands work to the other bots and briefs you. The bots run on an agent engine that Talyx's first-run setup installs for you; Talyx is the window onto them. It runs on macOS and Linux.
+<h1 align="center">Talyx</h1>
 
-## Status
+<p align="center">
+  <b>Tally your AI agents.</b><br>
+  A roster of bots, one chat, and a manager bot that briefs you. macOS and Linux.
+</p>
 
-Talyx 1.0 is the first build meant for daily use. It runs on macOS and Linux and attaches to the engine on the same computer, which its first-run setup installs. You get a roster of bots with pins, folders and unread marks; a chat with each bot, with approval and question cards, images and dictation; bot details with routines and a look of its own; group rooms the engine hosts; and Settings for model providers, the engine, launch at login and the theme. Not in 1.0: Windows, remote engines, the model's reasoning in the transcript, voice mode and other languages. The [release notes](docs/release-notes/1.0.0.md) have the details.
+<p align="center">
+  <a href="https://github.com/PetarStoev02/talyx-app/releases/latest"><strong>Download</strong></a> ·
+  <a href="https://talyx.app">Website</a> ·
+  <a href="docs/release-notes">Release notes</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
 
-## Before the pivot
+<p align="center">
+  <a href="https://github.com/PetarStoev02/talyx-app/releases/latest"><img src="https://img.shields.io/github/v/release/PetarStoev02/talyx-app?label=release" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey" alt="macOS and Linux">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="AGPL-3.0 license"></a>
+  <img src="https://img.shields.io/badge/telemetry-none-brightgreen" alt="No telemetry">
+</p>
 
-Until version 0.11.0 Talyx was a file organizer and a hotkey assistant for macOS. That app is kept, unchanged, on the branch [`legacy/file-organizer`](https://github.com/PetarStoev02/talyx-app/tree/legacy/file-organizer) and the tag [`v0.11.0-legacy`](https://github.com/PetarStoev02/talyx-app/tree/v0.11.0-legacy). Build it from there if you want it; it gets no further changes.
+<p align="center">
+  <a href="https://talyx.app">
+    <img src=".github/readme/chat.jpg" width="100%" alt="Talyx with its roster of bots on the left and Talyx, the manager bot, briefing on the 2.4 release and starting Developer, QA Tester and Writer">
+  </a>
+</p>
+
+Talyx is a desktop app for a team of AI bots. Each bot has its own job, model and look. Talyx, the manager bot, hands work to the right one and briefs you when it is done. The bots run on an agent engine that the first-run setup installs for you.
+
+If Talyx is useful to you, a ⭐ helps others find it.
+
+## What you get
+
+- **A roster, not a chat list.** Every bot is a block in the sidebar, with pins, folders, unread marks and what it is doing right now.
+- **A manager bot.** Ask Talyx. It asks the right bots and comes back with one brief.
+- **Rooms.** Put several bots in one room. Each answers in turn, and `@` addresses one.
+- **You stay in charge.** A bot asks before it runs a command, and asks you when it needs a decision. Routines run on a schedule.
+- **Your providers.** API keys, account sign-ins or your own endpoint. Pick a model per bot.
+- **Agents can drive it.** Claude Code, Cursor and others operate Talyx over [MCP](#agents-operate-talyx-mcp).
+- **Local and open.** No account, no server, no telemetry. AGPL-3.0.
+
+<p align="center">
+  <img src=".github/readme/room.jpg" width="100%" alt="A Talyx room where Release Notes drafts, Code Reviewer finds a benchmark number that CI does not match, and Writer applies the fix">
+</p>
 
 ## Install
 
@@ -18,7 +57,7 @@ Builds come from the [GitHub releases](https://github.com/PetarStoev02/talyx-app
 - **Linux (x64).** Download `Talyx-x86_64.AppImage`, make it executable (`chmod +x`) and run it, or install `Talyx-amd64.deb` with `sudo apt install ./Talyx-amd64.deb`. There is no Windows build yet: it comes once the engine runs there.
 - **Arch Linux: coming soon.** The AUR package `talyx-bin` is written ([packaging/aur](packaging/aur/README.md)) but not published yet; until it is, use the AppImage. It repackages the release's deb, pinned by its sha256. Like the deb, it does not update itself: update it with your AUR helper. There is no Flatpak: the engine runs from your home folder, which the Flatpak sandbox blocks (see [packaging/aur](packaging/aur/README.md#flathub-not-now)).
 
-Talyx checks GitHub for a newer release shortly after it starts, every hour, when the computer wakes and when you come back to its window; Settings → About has **Check for updates**. Each check reads the version from the release's update feed and asks the GitHub API for the notes only when a newer release exists. A new release shows in the footer update button with its highlights, **Download** and **Later**: nothing downloads until you click. On macOS and in the AppImage it updates itself: it downloads the update, checks it against the sha512 in the release's `latest-mac.yml` or `latest-linux.yml`, and the footer update button then offers **Restart to update**. Talyx never restarts by itself; if you do not click, the update installs when you quit. On macOS the update installs only when the new app carries the same Developer ID signature as the one running. The deb cannot update itself: the update button opens the release page, and you install the new deb the same way as the first.
+A new release shows in the footer update button. Nothing downloads until you click **Download**, and Talyx never restarts by itself. The deb updates from the release page. [Updates](docs/updates.md) has how the check works and how each download is verified.
 
 ## Engine
 
@@ -90,6 +129,14 @@ Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for
 ```bash
 cd website && npm ci && npm run build
 ```
+
+## Status
+
+Talyx 1.1 is for daily use on macOS and Linux. It attaches to the engine on the same computer, which its first-run setup installs. You get a roster of bots with pins, folders and unread marks; a chat with each bot, with approval and question cards, images, files and dictation; bot details with routines, memories, skills and a look of its own; group rooms the engine hosts; search across a bot's chat and rooms; Usage, with what each bot and provider spent; keyboard shortcuts; and Settings for model providers, the engine, launch at login and the theme. Not yet: Windows, remote engines, the model's reasoning in the transcript, voice mode and other languages. The [release notes](docs/release-notes/1.1.0.md) have the details.
+
+## Before the pivot
+
+Until version 0.11.0 Talyx was a file organizer and a hotkey assistant for macOS. That app is kept, unchanged, on the branch [`legacy/file-organizer`](https://github.com/PetarStoev02/talyx-app/tree/legacy/file-organizer) and the tag [`v0.11.0-legacy`](https://github.com/PetarStoev02/talyx-app/tree/v0.11.0-legacy). Build it from there if you want it; it gets no further changes.
 
 ## License
 
