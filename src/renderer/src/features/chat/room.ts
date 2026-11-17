@@ -78,7 +78,7 @@ export interface RoomActions {
   image: (roomId: string, file: { eventId: string; attachmentId: string }) => Promise<string>
   /** Read which model the members' room sessions run on. */
   readModel: (roomId: string, members: RoomMember[]) => Promise<void>
-  /** Switch every idle member's room session to one model; the rest keep theirs for now. */
+  /** Switch each idle member's room session to one model; the others keep theirs. */
   setModel: (roomId: string, members: RoomMember[], choice: ModelPick) => Promise<ModelSwitch>
 }
 
