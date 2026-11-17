@@ -26,6 +26,10 @@ const OPENING_METHODS = new Set(['session.create', 'session.resume', 'session.ac
 gateway.onState((state) => {
   if (state === 'open') {
     openedAt = Date.now()
+    // A redial still scheduled from before this socket opened is moot; left in place it would
+    // keep the next drop from scheduling its own, and that one resumes nothing.
+    clearTimeout(retry)
+    retry = undefined
     if (redialed) resumeOpenSessions()
     redialed = false
   }

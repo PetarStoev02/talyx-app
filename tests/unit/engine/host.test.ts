@@ -10,6 +10,7 @@ describe('engine host', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.resetModules()
+    vi.doUnmock('@shared/engine/reconnect-backoff')
   })
 
   it('should route a request to the profile it names over the one shared socket', async () => {
@@ -76,6 +77,39 @@ describe('engine host', () => {
       })
     )
     expect(sent.filter((frame) => frame.method === 'session.resume')).toHaveLength(2)
+    host.disconnect()
+  })
+
+  it('should resume its sessions after a drop even when an older redial was still scheduled', async () => {
+    // A long backoff keeps the first failure's redial scheduled through the whole test.
+    vi.doMock('@shared/engine/reconnect-backoff', async (importOriginal) => ({
+      ...(await importOriginal<typeof import('@shared/engine/reconnect-backoff')>()),
+      reconnectBackoffDelayMs: () => 60_000
+    }))
+    const { sent, opened, dropAll } = installFakeEngineApi((frame) =>
+      frame.method === 'session.resume'
+        ? { session_id: 's', stored_session_id: 's', revision: 1, execution_generation: 1 }
+        : {}
+    )
+    const api = (window as unknown as { api: Record<string, unknown> }).api
+    const open = api.openEngineSocket
+    // The first dial fails (the gateway not accepting yet): a redial is scheduled.
+    api.openEngineSocket = async () => {
+      throw new Error('refused')
+    }
+    const { host } = await import('@shared/engine/host')
+    await expect(host.connect()).rejects.toThrow()
+    api.openEngineSocket = open
+    // The engine reports attached: useEngine connects itself, ahead of that redial.
+    await host.connect()
+    await host.request('default', 'session.resume', { session_id: 's' })
+
+    dropAll()
+    await host.connect()
+    expect(opened).toHaveLength(2)
+    await vi.waitFor(() =>
+      expect(sent.filter((frame) => frame.method === 'session.resume')).toHaveLength(2)
+    )
     host.disconnect()
   })
 
