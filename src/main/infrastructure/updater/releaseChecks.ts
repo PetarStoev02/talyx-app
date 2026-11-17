@@ -1,4 +1,4 @@
-import type { UpdateCheck } from '../../../shared/updater'
+import type { UpdateCheck } from '@contract/updater'
 import type { ReleaseCheck, FoundRelease } from './releaseCheck'
 
 export interface ReleaseChecksDeps {

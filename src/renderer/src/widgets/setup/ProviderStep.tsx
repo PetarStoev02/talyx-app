@@ -1,4 +1,4 @@
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import type { ProvidersOverview } from '@features/providers/providers'
 import { ScreenTitle } from '@features/setup/ScreenParts'
 import { linkClass, panelClass, rowClass } from '@features/setup/screenStyles'

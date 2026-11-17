@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { rosterActions, runRosterMutation } from '@features/bots/actions'
 import type { RosterBackend } from '@features/bots/data'
 import { ProblemMessage } from '@features/bots/ProblemMessage'

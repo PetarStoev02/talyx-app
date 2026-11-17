@@ -1,9 +1,5 @@
-import {
-  EXPECTED_ENGINE_VERSION,
-  isEngineCurrent,
-  type EngineStatus
-} from '../../../../shared/engine'
-import type { UpdateState } from '../../../../shared/updater'
+import { EXPECTED_ENGINE_VERSION, isEngineCurrent, type EngineStatus } from '@contract/engine'
+import type { UpdateState } from '@contract/updater'
 
 /** One pending update the footer button offers. */
 export type UpdateItem =

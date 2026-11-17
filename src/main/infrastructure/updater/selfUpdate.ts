@@ -1,7 +1,7 @@
 import { autoUpdater as squirrel } from 'electron'
 import log from 'electron-log'
 import { autoUpdater, CancellationToken, type ProgressInfo } from 'electron-updater'
-import type { UpdateFailure } from '../../../shared/updater'
+import type { UpdateFailure } from '@contract/updater'
 import type { KeyObject } from 'node:crypto'
 import { FEED_SIGNATURE_SUFFIX, feedVouchesFor, type OfferedUpdate } from './feedSignature'
 import { RELEASE_ASSET_PREFIX, UPDATE_FEED_NAME } from './releaseCheck'

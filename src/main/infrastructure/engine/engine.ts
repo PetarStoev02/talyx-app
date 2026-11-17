@@ -9,7 +9,7 @@ import {
   type EngineStatus,
   type EngineVersion,
   type EngineWire
-} from '../../../shared/engine'
+} from '@contract/engine'
 import {
   EngineProtocolError,
   isStaleLocalGatewayError,

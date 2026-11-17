@@ -9,7 +9,7 @@ import { useRoster } from '@features/bots/store'
 import { mcpApi } from '@shared/api/ipc'
 import { t } from '@shared/lib/i18n'
 import { reportError } from '@shared/lib/report'
-import type { McpAnswer } from '../../../../shared/mcp'
+import type { McpAnswer } from '@contract/mcp'
 
 /**
  * Runs the tool calls agents send Talyx's MCP server, and adds the server to every bot's profile,

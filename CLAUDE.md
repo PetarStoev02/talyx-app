@@ -256,19 +256,21 @@ Always use aliases for cross-layer imports, never relative paths across layers:
 
 ```typescript
 import { Button } from '@shared/ui/button'
-import { useNavigation } from '@app/providers/useNavigation'
+import { useNavigation } from '@features/modules/useNavigation'
+import type { EngineStatus } from '@contract/engine'
 import { AppShell } from '@widgets/app-shell'
 ```
 
-| Alias         | Path                          |
-| ------------- | ----------------------------- |
-| `@renderer/*` | `src/renderer/src/*`          |
-| `@/*`         | `src/renderer/src/*`          |
-| `@app/*`      | `src/renderer/src/app/*`      |
-| `@pages/*`    | `src/renderer/src/pages/*`    |
-| `@widgets/*`  | `src/renderer/src/widgets/*`  |
-| `@features/*` | `src/renderer/src/features/*` |
-| `@shared/*`   | `src/renderer/src/shared/*`   |
+| Alias         | Path                                                          |
+| ------------- | ------------------------------------------------------------- |
+| `@renderer/*` | `src/renderer/src/*`                                          |
+| `@/*`         | `src/renderer/src/*`                                          |
+| `@app/*`      | `src/renderer/src/app/*`                                      |
+| `@pages/*`    | `src/renderer/src/pages/*`                                    |
+| `@widgets/*`  | `src/renderer/src/widgets/*`                                  |
+| `@features/*` | `src/renderer/src/features/*`                                 |
+| `@shared/*`   | `src/renderer/src/shared/*`                                   |
+| `@contract/*` | `src/shared/*` (main, preload and renderer: the IPC contract) |
 
 ## Code Style
 

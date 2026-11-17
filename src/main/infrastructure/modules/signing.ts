@@ -1,6 +1,6 @@
 import { createPublicKey, verify, type KeyObject } from 'node:crypto'
 import { z } from 'zod/v4'
-import type { LicenseSummary } from '../../../shared/modules'
+import type { LicenseSummary } from '@contract/modules'
 
 /**
  * Two keypairs guard two different things. The license key says "may use these modules"; its

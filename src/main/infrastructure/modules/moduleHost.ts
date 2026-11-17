@@ -9,7 +9,7 @@ import {
   type ModuleStatus,
   type ModulesState,
   unlocksModule
-} from '../../../shared/modules'
+} from '@contract/modules'
 import { ModuleActionSchema } from '../ipc/validation'
 import { fetchBundleBytes, fetchCatalog } from './catalog'
 import {

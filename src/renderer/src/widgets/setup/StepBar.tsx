@@ -1,7 +1,6 @@
 import { Check } from 'lucide-react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import type { SetupStep } from '@features/setup/steps'
-import type { TranslationKey } from '@shared/lib/i18n'
 import { cn } from '@shared/lib/utils'
 
 const STEPS: Array<{ step: SetupStep; label: TranslationKey }> = [

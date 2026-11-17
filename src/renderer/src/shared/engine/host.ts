@@ -1,4 +1,4 @@
-import type { EngineStatus } from '../../../../shared/engine'
+import type { EngineStatus } from '@contract/engine'
 import { engineDialUrl, EngineGateway } from './client'
 import { deleteProfile } from './profiles'
 import { isStableOpen, reconnectBackoffDelayMs } from './reconnect-backoff'

@@ -1,5 +1,5 @@
 import log from 'electron-log'
-import type { ReleaseSummary, UpdateFailure, UpdateState } from '../../../shared/updater'
+import type { ReleaseSummary, UpdateFailure, UpdateState } from '@contract/updater'
 import type { FoundRelease } from './releaseCheck'
 
 export type UpdateEvent =

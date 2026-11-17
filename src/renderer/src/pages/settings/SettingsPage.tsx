@@ -6,8 +6,8 @@ import { cn } from '@shared/lib/utils'
 import { reportError } from '@shared/lib/report'
 import { useTheme } from '@shared/hooks/useTheme'
 import { useEscape } from '@shared/hooks/useEscape'
-import { useLanguage } from '@app/providers/useLanguage'
-import { useNavigation } from '@app/providers/useNavigation'
+import { useLanguage } from '@shared/lib/i18n'
+import { useNavigation } from '@features/modules/useNavigation'
 import type { ProvidersBackend } from '@features/providers/providers'
 import type { ModelLists } from '@features/chat/chat'
 import type { RosterBackend } from '@features/bots/data'
@@ -26,6 +26,7 @@ import {
   useSettingsSection
 } from '@features/settings/sections'
 import { useModules } from '@features/modules/store'
+import type { SetupBackend } from '@features/setup/install'
 
 // One column for the header and the page: wide enough to use a big window, narrow enough to read.
 const COLUMN = 'mx-auto w-full max-w-4xl px-8'
@@ -33,11 +34,13 @@ const COLUMN = 'mx-auto w-full max-w-4xl px-8'
 export function SettingsPage({
   providers,
   roster,
-  chat
+  chat,
+  setup
 }: {
   providers: ProvidersBackend | null
   roster: RosterBackend | null
   chat: ModelLists | null
+  setup: SetupBackend
 }): React.JSX.Element {
   const { theme, setTheme } = useTheme()
   const t = useLanguage((s) => s.t)
@@ -117,7 +120,7 @@ export function SettingsPage({
     ),
     // Providers live in the engine: without it attached, say why and how to fix it.
     providers: (
-      <EngineGate>
+      <EngineGate setup={setup}>
         {providers && (
           <ProvidersSection
             backend={providers}
@@ -131,7 +134,7 @@ export function SettingsPage({
     engine: (
       <EngineSection
         debugConsole={
-          <EngineGate>
+          <EngineGate setup={setup}>
             <DebugConsole />
           </EngineGate>
         }

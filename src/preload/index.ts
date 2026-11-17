@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { buildApi, type ApiTransport } from '../shared/api'
+import { buildApi, type ApiTransport } from '@contract/api'
 
 const windowControls = {
   platform: process.platform,

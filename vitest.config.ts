@@ -12,7 +12,8 @@ export default defineConfig({
       '@shared': resolve('src/renderer/src/shared'),
       '@app': resolve('src/renderer/src/app'),
       '@features': resolve('src/renderer/src/features'),
-      '@widgets': resolve('src/renderer/src/widgets')
+      '@widgets': resolve('src/renderer/src/widgets'),
+      '@contract': resolve('src/shared')
     }
   }
 })

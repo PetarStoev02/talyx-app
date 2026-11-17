@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Check, ChevronRight, Copy } from 'lucide-react'
 import { toast } from 'sonner'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import { summarizeStatus } from '@features/chat/workflowLines'
 import type { FixedStep, WorkflowBrief, WorkflowStatus } from '@features/chat/workflowLines'
-import type { TranslationKey } from '@shared/lib/i18n'
 import { cn } from '@shared/lib/utils'
 
 const COPIED_MS = 1500

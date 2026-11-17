@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, type WebContents } from 'electron'
 import log from 'electron-log'
-import type { UpdateCheck, UpdateState } from '../../../shared/updater'
+import type { UpdateCheck, UpdateState } from '@contract/updater'
 import { UPDATE_FEED_KEY } from '../updater/feedSignature'
 import { fetchLatestRelease } from '../updater/releaseCheck'
 import { createReleaseChecks } from '../updater/releaseChecks'

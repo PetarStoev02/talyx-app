@@ -1,4 +1,4 @@
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { CreateBotForm } from '@features/bots/CreateBotForm'
 import type { RosterBackend } from '@features/bots/data'
 import { useRoster } from '@features/bots/store'

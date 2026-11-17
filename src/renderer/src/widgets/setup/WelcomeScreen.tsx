@@ -1,4 +1,4 @@
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { ScreenTitle } from '@features/setup/ScreenParts'
 import { centeredPanelClass } from '@features/setup/screenStyles'
 import { Button } from '@shared/ui/button'

@@ -20,7 +20,7 @@ import {
   serveModuleFiles
 } from './infrastructure/ipc/modules.ipc'
 import { activationRequestFrom, activationRequestIn } from './infrastructure/modules/activationLink'
-import { ACTIVATION_LINK, type ActivationRequest } from '../shared/modules'
+import { ACTIVATION_LINK, type ActivationRequest } from '@contract/modules'
 import { settingsStore } from './infrastructure/storage/SettingsStore'
 import { syncLaunchAtLogin, systemLoginItemDeps } from './infrastructure/system/loginItem'
 import { ThemeSchema, validateInput, type Theme } from './infrastructure/ipc/validation'

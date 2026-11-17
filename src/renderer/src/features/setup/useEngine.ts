@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { EngineStatus } from '../../../../shared/engine'
+import type { EngineStatus } from '@contract/engine'
 import { host } from '@shared/engine/host'
 import type { ConnectionState } from '@shared/engine/host'
 import { reportError } from '@shared/lib/report'

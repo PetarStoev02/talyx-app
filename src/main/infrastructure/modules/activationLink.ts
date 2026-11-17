@@ -1,4 +1,4 @@
-import { ACTIVATION_LINK, type ActivationRequest } from '../../../shared/modules'
+import { ACTIVATION_LINK, type ActivationRequest } from '@contract/modules'
 
 const MAX_KEY_LENGTH = 2000
 

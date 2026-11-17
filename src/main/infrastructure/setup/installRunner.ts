@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { basename } from 'node:path'
-import type { InstallExit } from '../../../shared/setup'
+import type { InstallExit } from '@contract/setup'
 
 export type InstallOutputSink = (index: number, text: string) => void
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import {
   cancelSignIn,
   loadProviders,

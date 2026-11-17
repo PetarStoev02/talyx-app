@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { runRosterMutation } from '@features/bots/actions'
 import type { RosterBackend } from '@features/bots/data'
 import { useRoster } from '@features/bots/store'

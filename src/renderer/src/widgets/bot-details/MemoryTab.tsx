@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Tabs } from 'radix-ui'
 import { Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import {
   deleteMemory,
   editMemory,
@@ -17,7 +17,6 @@ import { ProblemMessage, TryAgain } from '@features/bots/ProblemMessage'
 import type { Bot } from '@features/bots/types'
 import { AppError, ownOrFailure, problemOf, problemText } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'
-import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { IconButton } from '@shared/ui/IconButton'

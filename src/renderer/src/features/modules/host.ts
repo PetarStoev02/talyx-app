@@ -6,7 +6,7 @@ import { BLOCK_HUES, BLOCK_SHAPES } from '@shared/ui/blockGeometry'
 import type { BlockShape } from '@shared/ui/blockGeometry'
 import { setLeaveGuard } from './leaveGuard'
 import type { LeaveGuard } from './leaveGuard'
-import { MODULE_API_VERSION, MODULE_SCHEME } from '../../../../shared/modules'
+import { MODULE_API_VERSION, MODULE_SCHEME } from '@contract/modules'
 
 /**
  * A block avatar's look: one of the shapes in one of the hues, and whether its face is drawn (as

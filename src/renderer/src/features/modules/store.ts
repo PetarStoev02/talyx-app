@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { modulesApi } from '@shared/api/ipc'
-import type { ModuleSummary, ModulesState } from '../../../../shared/modules'
+import type { ModuleSummary, ModulesState } from '@contract/modules'
 
 interface ModulesStore {
   /** As main reports it; no license means no module UI anywhere. */

@@ -7,7 +7,7 @@ import { useRoster } from '@features/bots/store'
 import { engineAccess } from '@app/engine/access'
 import { engineRoomBackend } from '@app/engine/room'
 import { engineRosterBackend } from '@app/engine/roster'
-import { useEngine } from './useEngine'
+import { useEngine } from '@features/setup/useEngine'
 
 // The open room's view reads and acts on the room through `room`.
 type RosterAndRooms = RosterBackend & { room: RoomBackend }

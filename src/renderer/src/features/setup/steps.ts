@@ -1,4 +1,4 @@
-import { isEngineCurrent, type EngineStatus } from '../../../../shared/engine'
+import { isEngineCurrent, type EngineStatus } from '@contract/engine'
 
 export type SetupStep = 'engine' | 'provider' | 'bot'
 

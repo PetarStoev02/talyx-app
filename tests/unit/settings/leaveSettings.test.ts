@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { type AppView, useNavigation } from '../../../src/renderer/src/app/providers/useNavigation'
+import {
+  type AppView,
+  useNavigation
+} from '../../../src/renderer/src/features/modules/useNavigation'
 import { setLeaveGuard } from '../../../src/renderer/src/features/modules/leaveGuard'
 
 const WORKFLOWS = 'module:workflows' as const

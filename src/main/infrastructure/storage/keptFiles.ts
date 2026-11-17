@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
-import { KEPT_FILE_MAX_BYTES } from '../../../shared/keptFiles'
+import { KEPT_FILE_MAX_BYTES } from '@contract/keptFiles'
 
 const DATA_URL = /^data:[^,]*;base64,([A-Za-z0-9+/=]*)$/
 const FALLBACK_NAME = 'file'

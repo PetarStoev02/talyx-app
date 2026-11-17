@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import type { RosterBackend } from '@features/bots/data'
 import { followDefault } from '@features/bots/details'
 import { reportFollowing } from '@features/bots/spread'

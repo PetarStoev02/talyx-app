@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { app, ipcMain } from 'electron'
 import log from 'electron-log'
-import { diagnosticsReport, logTail } from '../../../shared/diagnostics'
+import { diagnosticsReport, logTail } from '@contract/diagnostics'
 import { EngineLabelSchema, validateInput } from './validation'
 
 const LOG_LINES = 50

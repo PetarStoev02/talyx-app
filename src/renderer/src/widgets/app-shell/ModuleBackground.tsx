@@ -1,9 +1,9 @@
 import { useEffect, useMemo } from 'react'
-import { ErrorBoundary } from '@app/ErrorBoundary'
+import { ErrorBoundary } from '@shared/ui/ErrorBoundary'
 import { moduleInvoker } from '@features/modules/host'
 import { useModuleAttention } from '@features/modules/store'
 import { useModuleParts } from '@features/modules/useModuleParts'
-import type { ModuleSummary } from '../../../../shared/modules'
+import type { ModuleSummary } from '@contract/modules'
 
 /**
  * A running module's Background export, mounted whatever page is open, so the module can watch

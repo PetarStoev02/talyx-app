@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useEngine } from '@app/providers/useEngine'
-import { useLanguage } from '@app/providers/useLanguage'
-import { useSetupBackend } from '@app/providers/useSetupBackend'
+import { useEngine } from '@features/setup/useEngine'
+import { useLanguage } from '@shared/lib/i18n'
+import type { SetupBackend } from '@features/setup/install'
 import { InstallEngine } from '@features/setup/InstallEngine'
 import { linkClass } from '@features/setup/screenStyles'
 import { useUpdates } from '@features/updates/store'
@@ -19,14 +19,19 @@ const FIRST_CONNECT_GRACE_MS = 8_000
 const dragRegion = { WebkitAppRegion: 'drag' } as React.CSSProperties
 
 /** Shows its children once the engine is attached; until then, why not and how to fix it. */
-export function EngineGate({ children }: { children: React.ReactNode }): React.JSX.Element {
+export function EngineGate({
+  setup,
+  children
+}: {
+  setup: SetupBackend
+  children: React.ReactNode
+}): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const status = useEngine((s) => s.status)
   const checking = useEngine((s) => s.checking)
   const check = useEngine((s) => s.check)
   const pickPath = useEngine((s) => s.pickPath)
   const everConnected = useEngine((s) => s.everConnected)
-  const setup = useSetupBackend()
   // Install the engine: the setup's engine screens, until their Continue (or Continue anyway) or a
   // cancelled install. An attach error shows them too: their error screen links the install. The
   // footer's update button asks for them when the engine is older than this Talyx needs.

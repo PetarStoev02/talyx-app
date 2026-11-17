@@ -1,4 +1,4 @@
-import type { TalyxApi } from '../shared/api'
+import type { TalyxApi } from '@contract/api'
 
 declare global {
   interface Window {

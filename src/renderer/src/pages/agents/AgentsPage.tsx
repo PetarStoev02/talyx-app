@@ -4,10 +4,10 @@ import { useRoster } from '@features/bots/store'
 import { botTitle } from '@features/bots/roster'
 import { BotAvatar } from '@widgets/roster'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
-import { ErrorBoundary } from '@app/ErrorBoundary'
+import { ErrorBoundary } from '@shared/ui/ErrorBoundary'
 import { useRefocus } from '@shared/hooks/useRefocus'
 import { cn } from '@shared/lib/utils'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { EngineGate } from '@widgets/engine-gate'
 import { ChatPane, ChatSkeleton, RoomPane } from '@widgets/chat'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
@@ -19,6 +19,7 @@ import type { ChatActions } from '@features/chat/chat'
 import { SlidePanel } from '@shared/ui/Reveal'
 import type { RosterBackend } from '@features/bots/data'
 import type { RoomBackend } from '@features/chat/room'
+import type { SetupBackend } from '@features/setup/install'
 
 // Where the details and room panels sit: see their SlidePanel. Beside the chat from a 52rem page,
 // which leaves the chat at least about 490px; narrower, a docked panel would squeeze it unusable.
@@ -37,10 +38,12 @@ const pillClass =
 
 export function AgentsPage({
   chat,
-  roster
+  roster,
+  setup
 }: {
   chat: ChatActions | null
   roster: (RosterBackend & { room: RoomBackend }) | null
+  setup: SetupBackend
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const snapshot = useRoster((s) => s.snapshot)
@@ -90,7 +93,7 @@ export function AgentsPage({
   // The panel closes with focus inside it; the pill that opened it takes it back.
   useRefocus(pill, detailsOpen)
   return (
-    <EngineGate>
+    <EngineGate setup={setup}>
       {/* A container, so the details panel can tell when the page is too narrow to sit beside it. */}
       <div ref={page} className="@container relative flex h-full min-w-0">
         <section

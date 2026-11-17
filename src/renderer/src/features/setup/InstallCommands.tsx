@@ -1,7 +1,7 @@
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { cn } from '@shared/lib/utils'
 import { Button } from '@shared/ui/button'
-import type { InstallSteps } from '../../../../shared/setup'
+import type { InstallSteps } from '@contract/setup'
 import { CopyButton, ScreenTitle } from './ScreenParts'
 import { linkClass, panelClass, rowClass, rowCopyClass } from './screenStyles'
 

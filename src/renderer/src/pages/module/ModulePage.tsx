@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { moduleInvoker, moduleStyleUrl } from '@features/modules/host'
 import { useModuleParts } from '@features/modules/useModuleParts'
-import type { ModuleSummary } from '../../../../shared/modules'
+import type { ModuleSummary } from '@contract/modules'
 
 /** A module's page: the component its renderer.js exports, which draws its own header. */
 export function ModulePage({ module }: { module: ModuleSummary }): React.JSX.Element {

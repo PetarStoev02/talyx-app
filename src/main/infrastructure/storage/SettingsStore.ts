@@ -2,7 +2,7 @@ import { app } from 'electron'
 import { isAbsolute, join } from 'path'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
 import log from 'electron-log'
-import { SIDEBAR_WIDTH, clampSidebarWidth } from '../../../shared/sidebar'
+import { SIDEBAR_WIDTH, clampSidebarWidth } from '@contract/sidebar'
 import { LastSelectionSchema } from '../ipc/validation'
 
 export interface UserSettings {

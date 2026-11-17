@@ -5,7 +5,7 @@ import {
   type ActivationRequest,
   type AvailableModule,
   type ModulesState
-} from '../../../shared/modules'
+} from '@contract/modules'
 import { createModuleHost } from '../modules/moduleHost'
 import { ModuleIdSchema, PUBLISHED_KEYS } from '../modules/signing'
 import { settingsStore } from '../storage/SettingsStore'

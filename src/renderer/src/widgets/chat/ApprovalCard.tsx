@@ -1,6 +1,5 @@
 import { useId } from 'react'
-import { useLanguage } from '@app/providers/useLanguage'
-import type { TranslationKey } from '@shared/lib/i18n'
+import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import type { ApprovalChoice, ChatPrompt } from '@features/chat/types'
 import { Button } from '@shared/ui/button'
 

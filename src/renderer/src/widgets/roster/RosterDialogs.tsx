@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import { botTitle, folderPath, itemKey } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot, Folder, Room, RosterRowRef, RosterSnapshot } from '@features/bots/types'
-import type { TranslationKey } from '@shared/lib/i18n'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
 import { Button } from '@shared/ui/button'
 import {

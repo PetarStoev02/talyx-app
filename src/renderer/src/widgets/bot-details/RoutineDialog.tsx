@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import type { RosterBackend } from '@features/bots/data'
 import { ProblemMessage, TryAgain } from '@features/bots/ProblemMessage'
 import { problemOf } from '@features/bots/roster'
@@ -22,7 +22,6 @@ import type {
   RunOutput,
   ScheduleKind
 } from '@features/bots/routines'
-import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { Input, NativeSelect, Textarea } from '@shared/ui/input'

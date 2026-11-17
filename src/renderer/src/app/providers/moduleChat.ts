@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { MANAGER } from '@features/bots/details'
 import { lookOf } from '@features/bots/look'
 import { botTitle } from '@features/bots/roster'

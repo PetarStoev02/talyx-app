@@ -1,3 +1,4 @@
+import { resolve } from 'path'
 import { defineConfig } from 'vitest/config'
 
 // The pinned engine's install downloads and builds it; the teardown waits for its gateway to exit.
@@ -11,5 +12,8 @@ export default defineConfig({
     include: ['tests/smoke/**/*.test.ts'],
     testTimeout: INSTALL_AND_CHECKS_TIMEOUT_MS,
     hookTimeout: TEARDOWN_TIMEOUT_MS
+  },
+  resolve: {
+    alias: { '@contract': resolve('src/shared') }
   }
 })

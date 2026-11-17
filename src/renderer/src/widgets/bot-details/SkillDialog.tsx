@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { deleteSkill, editSkill, loadSkillText } from '@features/bots/memory'
 import type { MemoryBackend, Skill } from '@features/bots/memory'
 import { ProblemMessage } from '@features/bots/ProblemMessage'

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { modulesApi } from '@shared/api/ipc'
 import { problemOf } from '@shared/lib/problem'
 import { reportError } from '@shared/lib/report'

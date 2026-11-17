@@ -1,5 +1,5 @@
-import { useLanguage } from '@app/providers/useLanguage'
-import { useNavigation } from '@app/providers/useNavigation'
+import { useLanguage } from '@shared/lib/i18n'
+import { useNavigation } from '@features/modules/useNavigation'
 import { useModules } from '@features/modules/store'
 import { settingsPages, shownPage, useSettingsSection } from '@features/settings/sections'
 import { cn } from '@shared/lib/utils'

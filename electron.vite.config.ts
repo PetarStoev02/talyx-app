@@ -5,6 +5,9 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   main: {
+    resolve: {
+      alias: { '@contract': resolve('src/shared') }
+    },
     build: {
       rollupOptions: {
         input: {
@@ -14,6 +17,9 @@ export default defineConfig({
     }
   },
   preload: {
+    resolve: {
+      alias: { '@contract': resolve('src/shared') }
+    },
     build: {
       rollupOptions: {
         input: {
@@ -49,7 +55,8 @@ export default defineConfig({
         '@pages': resolve('src/renderer/src/pages'),
         '@widgets': resolve('src/renderer/src/widgets'),
         '@features': resolve('src/renderer/src/features'),
-        '@shared': resolve('src/renderer/src/shared')
+        '@shared': resolve('src/renderer/src/shared'),
+        '@contract': resolve('src/shared')
       }
     },
     plugins: [react(), tailwindcss()]

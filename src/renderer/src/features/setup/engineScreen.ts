@@ -1,5 +1,5 @@
-import { engineVersionFit, isEngineCurrent, type EngineStatus } from '../../../../shared/engine'
-import type { InstallExit, InstallSteps } from '../../../../shared/setup'
+import { engineVersionFit, isEngineCurrent, type EngineStatus } from '@contract/engine'
+import type { InstallExit, InstallSteps } from '@contract/setup'
 
 /** Which engine screen of the setup shows (the spec's screens 2 to 6b). */
 export type EngineScreen =

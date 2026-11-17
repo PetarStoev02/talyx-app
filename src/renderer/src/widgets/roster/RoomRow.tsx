@@ -1,7 +1,7 @@
 import { cn } from '@shared/lib/utils'
 import { ContextMenuArea } from '@shared/ui/menu'
 import { OverflowTooltip } from '@shared/ui/tooltip'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { itemKey } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'

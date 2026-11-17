@@ -1,4 +1,4 @@
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 
 /** What a crashed part of the app shows (see ErrorBoundary): what happened and the way out. */

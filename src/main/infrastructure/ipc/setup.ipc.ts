@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import log from 'electron-log'
-import type { InstallExit, InstallSteps } from '../../../shared/setup'
+import type { InstallExit, InstallSteps } from '@contract/setup'
 import { loginShell, runInstall, type InstallRun } from '../setup/installRunner'
 import { installStepsSource, loadInstallSteps } from '../setup/installSteps'
 

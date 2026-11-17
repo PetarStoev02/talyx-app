@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
 import { Button } from '@shared/ui/button'
 import { Input, NativeSelect } from '@shared/ui/input'
