@@ -213,7 +213,7 @@ admits no Origin header and takes the ticket in a subprotocol) and relays frames
 
 ```
 src/renderer/src/
-├── app/              # Global state, browser dev bridge, the hooks that wire `host` into
+├── app/              # App-wide wiring, browser dev bridge, the hooks that wire `host` into
 │                     # features (useRosterBackend, useChatBackend, useProvidersBackend);
 │                     # engine/: each feature's backend over the engine. Only it names engine
 │                     # methods and REST paths (tests/unit/featureBackends.test.ts)
@@ -233,8 +233,10 @@ src/renderer/src/
 │                     # chat (transcript, use cases, hosted rooms polled over `groups.*`, search:
 │                     # a bot's chat and its own room messages, botSearch.ts),
 │                     # providers (keys, endpoints and sign-ins over REST; writes go to every bot),
-│                     # setup (which step comes first, the engine install and its screens),
-│                     # modules (license state, module pages; nothing shows without a key),
+│                     # setup (which step comes first, the engine install and its screens,
+│                     # useEngine: the engine's presence and gateway connection),
+│                     # modules (license state, module pages; nothing shows without a key;
+│                     # useNavigation: which page is open, asking a module page before leaving),
 │                     # settings (which Settings page is open),
 │                     # shortcuts (every shortcut, one list: bound by app/providers/useKeyboardShortcuts,
 │                     # shown by the cheat sheet)
