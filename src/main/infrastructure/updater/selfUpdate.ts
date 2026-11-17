@@ -58,7 +58,7 @@ export async function downloadSelfUpdate(
     await requireSignedFeed(source, check.updateInfo, signal)
     await autoUpdater.downloadUpdate(token)
     await staged?.done
-    return async () => autoUpdater.quitAndInstall()
+    return restart
   } catch (error) {
     throw error instanceof ReleaseDownloadError
       ? error
@@ -68,6 +68,26 @@ export async function downloadSelfUpdate(
     signal.removeEventListener('abort', cancel)
     autoUpdater.off('download-progress', progress)
   }
+}
+
+/**
+ * Restarts into the staged update. quitAndInstall never throws: on the AppImage it emits the
+ * install error instead (the file cannot be replaced, say) and returns, which would leave the
+ * button on Restart with nothing said. Listening for that emit during the call turns it into the
+ * rejection the update store expects.
+ */
+async function restart(): Promise<void> {
+  let failure: Error | null = null
+  const refused = (error: Error): void => {
+    failure = error
+  }
+  autoUpdater.once('error', refused)
+  try {
+    autoUpdater.quitAndInstall()
+  } finally {
+    autoUpdater.off('error', refused)
+  }
+  if (failure) throw new ReleaseDownloadError('other', 'The update could not be installed')
 }
 
 /**
