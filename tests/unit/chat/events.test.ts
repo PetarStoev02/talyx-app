@@ -139,6 +139,26 @@ describe('chat events', () => {
     expect(engine.calls.slice(before).map((call) => call.method)).toContain('session.resume')
   })
 
+  it('should keep over a reload only the cards the engine still lists, and any delivered meanwhile', async () => {
+    handlePrompt(clarifyRequest('manager-chat'))
+    handlePrompt({ ...clarifyRequest('manager-chat'), id: 'p2' })
+    // The engine settled p1 while this window missed events: its snapshot lists p2 only.
+    const listing = chatActions({
+      ...engine.backend,
+      resume: async (profile, chatId) => ({
+        ...(await engine.backend.resume(profile, chatId)),
+        open_requests: [{ id: 'p2' }]
+      })
+    })
+    const release = engine.holdNext('session.resume')
+    handleEvent(listing, event('manager-chat', 'session.replay_gap', 30))
+    await Promise.resolve()
+    handlePrompt({ ...clarifyRequest('manager-chat'), id: 'p3' })
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(chat(MANAGER).transcript?.prompts.map((prompt) => prompt.id)).toEqual(['p2', 'p3'])
+  })
+
   it('should hand back requests the chat cannot show, so the engine is declined at once', () => {
     const updates: ChatUpdate[] = []
     const handle = promptHandler((update) => updates.push(update))
