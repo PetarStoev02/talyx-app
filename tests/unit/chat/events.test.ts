@@ -159,6 +159,66 @@ describe('chat events', () => {
     expect(chat(MANAGER).transcript?.prompts.map((prompt) => prompt.id)).toEqual(['p2', 'p3'])
   })
 
+  it('should read the engine again after a replay gap that lands while a reload is under way', async () => {
+    const listing = chatActions({
+      ...engine.backend,
+      resume: async (profile, chatId) => ({
+        ...(await engine.backend.resume(profile, chatId)),
+        open_requests: []
+      })
+    })
+    // A turn ends: its reload reads the engine, then waits on a slow history.
+    const release = engine.holdNext('GET /api/sessions')
+    handleEvent(listing, event('manager-chat', 'message.complete', 10, { status: 'complete' }))
+    await Promise.resolve()
+    const before = engine.calls.filter((call) => call.method === 'session.resume').length
+    // The bot asks; the card settles elsewhere and the window misses that: a gap.
+    handlePrompt(clarifyRequest('manager-chat'))
+    handleEvent(listing, event('manager-chat', 'session.replay_gap', 0))
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const after = engine.calls.filter((call) => call.method === 'session.resume').length
+    // The reload under way read the engine before the miss; the gap's own reload follows it.
+    expect(after).toBe(before + 1)
+    expect(chat(MANAGER).transcript?.prompts).toEqual([])
+  })
+
+  it('should send one waiting message after a gap lands during a reload, not one per reload', async () => {
+    handleEvent(actions, event('manager-chat', 'message.start', 9))
+    await actions.queue(MANAGER, { text: 'Next', images: [] })
+    await actions.queue(MANAGER, { text: 'Third', images: [] })
+    const release = engine.holdNext('GET /api/sessions')
+    handleEvent(actions, event('manager-chat', 'message.complete', 10, { status: 'complete' }))
+    await Promise.resolve()
+    handleEvent(actions, event('manager-chat', 'session.replay_gap', 0))
+    release()
+    for (let i = 0; i < 4; i++) await new Promise((resolve) => setTimeout(resolve, 0))
+    const sent = engine.calls.filter((call) => call.method === 'prompt.submit')
+    expect(sent.map((call) => call.params.text)).toEqual(['Next'])
+    expect(chat(MANAGER).waiting.map((message) => message.draft.text)).toEqual(['Third'])
+  })
+
+  it('should hold a composer message until the reload that follows a gap is over', async () => {
+    await actions.queue(MANAGER, { text: 'First', images: [] })
+    handleEvent(actions, event('manager-chat', 'message.start', 9))
+    const release = engine.holdNext('GET /api/sessions')
+    handleEvent(actions, event('manager-chat', 'message.complete', 10, { status: 'complete' }))
+    await Promise.resolve()
+    handleEvent(actions, event('manager-chat', 'session.replay_gap', 0))
+    release()
+    const releaseFollowUp = engine.holdNext('GET /api/sessions')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await actions.queue(MANAGER, { text: 'Now', images: [] })
+    const submits = (): unknown[] =>
+      engine.calls.filter((call) => call.method === 'prompt.submit').map((c) => c.params.text)
+    expect(submits()).toEqual(['First'])
+    releaseFollowUp()
+    for (let i = 0; i < 4; i++) await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(submits()).toEqual(['First', 'Now'])
+    expect(chat(MANAGER).waiting).toEqual([])
+  })
+
   it('should hand back requests the chat cannot show, so the engine is declined at once', () => {
     const updates: ChatUpdate[] = []
     const handle = promptHandler((update) => updates.push(update))

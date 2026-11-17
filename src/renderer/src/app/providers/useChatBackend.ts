@@ -69,7 +69,7 @@ export function useChatBackend(): ChatActions | null {
 }
 
 async function reloadAfterDrop(actions: ChatActions, profile: string): Promise<void> {
-  await actions.turnEnded(profile)
+  await actions.missed(profile)
   const transcript = useChat.getState().chats[profile]?.transcript
   if (transcript) showOnRoster({ profile, completed: false, activity: activityOf(transcript) })
 }
