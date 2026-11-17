@@ -111,6 +111,23 @@ describe('downloadSelfUpdate', () => {
     expect(updater.quitAndInstall).toHaveBeenCalledOnce()
   })
 
+  it('should fail the restart that electron-updater refuses, so the button can say so', async () => {
+    const restart = await download(signedRelease())
+    // electron-updater never throws from quitAndInstall: it emits the error (the AppImage cannot
+    // be replaced, say) and returns.
+    updater.quitAndInstall.mockImplementationOnce(() => {
+      updater.emit('error', new Error('APPIMAGE env is not defined'))
+    })
+
+    expect(failureOf(await restart().catch((e) => e))).toBe('other')
+    // Only the logger's listener stays: a later error must not fail a restart that worked.
+    expect(updater.listenerCount('error')).toBe(1)
+    const refused = updater.quitAndInstall.mock.calls.length
+
+    await restart()
+    expect(updater.quitAndInstall.mock.calls.length).toBe(refused + 1)
+  })
+
   it('should download nothing when the release is not the version that was offered', async () => {
     updater.checkForUpdates.mockResolvedValueOnce({
       isUpdateAvailable: true,
