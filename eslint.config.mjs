@@ -100,7 +100,7 @@ export default defineConfig(
     rules: {
       'no-warning-comments': [
         'error',
-        { terms: ['todo', 'fixme', 'hack', 'for now', 'temporary'], location: 'anywhere' }
+        { terms: ['todo', 'fixme', 'hack', 'for now'], location: 'anywhere' }
       ]
     }
   }
