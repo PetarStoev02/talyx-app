@@ -86,7 +86,7 @@ function read(): UserSettings {
   }
 }
 
-// Written to a temporary file and renamed over the old one, so a crash mid-write never leaves
+// Written to `settings.json.tmp` and renamed over the old one, so a crash mid-write never leaves
 // half a file behind.
 function write(settings: UserSettings): void {
   mkdirSync(app.getPath('userData'), { recursive: true })

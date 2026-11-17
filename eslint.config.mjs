@@ -93,5 +93,15 @@ export default defineConfig(
     ignores: VENDORED_ENGINE_FILES,
     plugins: { local: localPlugin },
     rules: { 'local/no-em-dash': 'error' }
+  },
+  {
+    files: ['src/**/*.{js,mjs,cjs,ts,tsx}', 'tests/**/*.{js,mjs,cjs,ts,tsx}'],
+    ignores: VENDORED_ENGINE_FILES,
+    rules: {
+      'no-warning-comments': [
+        'error',
+        { terms: ['todo', 'fixme', 'hack', 'for now', 'temporary'], location: 'anywhere' }
+      ]
+    }
   }
 )

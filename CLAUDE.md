@@ -54,6 +54,7 @@ npm run test:watch       # Tests in watch mode
 npm run lint             # ESLint on src/ and tests/
 npm run typecheck        # TypeScript check (node + web)
 npm run format           # Prettier format all files
+npm run format:check     # Prettier check (CI runs it)
 npm run build            # Typecheck + production build
 npm run build:mac        # Build macOS DMG (ARM64 + x64)
 npm run build:linux      # Build Linux AppImage + deb (x64)

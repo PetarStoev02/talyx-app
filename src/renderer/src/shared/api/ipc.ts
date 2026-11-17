@@ -23,7 +23,7 @@ export const settingsApi = {
     window.api.setSettings(partial as Record<string, unknown>) as Promise<AppSettings>,
   /**
    * Saves a change the screen already shows (a theme, a sidebar width): nothing waits on it, so a
-   * failure is logged and told in a toast here. English only for now, as i18n.ts says.
+   * failure is logged and told in a toast here. The toast is English only, as i18n.ts says.
    */
   save: (partial: Partial<AppSettings>): void => {
     settingsApi.set(partial).catch((error: unknown) => {

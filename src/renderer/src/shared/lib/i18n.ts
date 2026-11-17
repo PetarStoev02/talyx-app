@@ -1,4 +1,4 @@
-// English only for now (pivot decision 11). Another language is one more table here.
+// English only (pivot decision 11). Another language is one more table here.
 import { create } from 'zustand'
 
 const en = {
