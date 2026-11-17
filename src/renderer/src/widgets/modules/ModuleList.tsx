@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import { modulesApi } from '@shared/api/ipc'
-import type { TranslationKey } from '@shared/lib/i18n'
 import { problemOf } from '@shared/lib/problem'
 import { reportError } from '@shared/lib/report'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { useModules } from '@features/modules/store'
 import { moduleRows, type ModuleRow } from '@features/modules/rows'
-import type { AvailableModule } from '../../../../shared/modules'
+import type { AvailableModule } from '@contract/modules'
 
 /**
  * The modules the license unlocks, each with Install or Update; Settings adds Uninstall. Reading

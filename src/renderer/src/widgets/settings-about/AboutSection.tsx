@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { useLanguage } from '@app/providers/useLanguage'
-import { useEngine } from '@app/providers/useEngine'
+import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
+import { useEngine } from '@features/setup/useEngine'
 import { useUpdates } from '@features/updates/store'
 import { appApi, updaterApi } from '@shared/api/ipc'
-import type { TranslationKey } from '@shared/lib/i18n'
 import { reportError } from '@shared/lib/report'
 import { Button } from '@shared/ui/button'
 import { engineLabel, engineSummary } from '@features/setup/engineSummary'
-import type { UpdateCheck } from '../../../../shared/updater'
+import type { UpdateCheck } from '@contract/updater'
 
 const COPIED_MS = 1500
 

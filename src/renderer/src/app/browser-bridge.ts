@@ -1,7 +1,7 @@
 // Dev-only: makes the renderer work in a plain browser tab by forwarding
 // window.api to the Electron main process over the /bridge HTTP+SSE endpoints
 // (the browser transport behind the dev-only /bridge endpoints in DevBridge).
-import { buildApi, type ApiTransport } from '../../../shared/api'
+import { buildApi, type ApiTransport } from '@contract/api'
 
 interface BrowserTransportDeps {
   fetchFn: typeof fetch

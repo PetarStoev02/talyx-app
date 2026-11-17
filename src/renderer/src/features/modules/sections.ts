@@ -1,4 +1,4 @@
-import type { ModuleSummary } from '../../../../shared/modules'
+import type { ModuleSummary } from '@contract/modules'
 import { moduleView } from './store'
 
 /** One button in the footer's dock: the agents, or one running module. */

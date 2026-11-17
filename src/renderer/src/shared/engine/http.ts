@@ -1,4 +1,4 @@
-import type { EngineHttpRequest } from '../../../../shared/engine'
+import type { EngineHttpRequest } from '@contract/engine'
 
 /** The request shape the vendored REST wrappers pass. Talyx is local only: `connectionId` and the
  *  pool hints (`priority`, `passive`) of the old desktop's backend pool are accepted and ignored. */

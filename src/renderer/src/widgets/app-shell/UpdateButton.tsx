@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Check, Download, ExternalLink, LoaderCircle } from 'lucide-react'
-import { useLanguage } from '@app/providers/useLanguage'
-import { useNavigation } from '@app/providers/useNavigation'
+import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
+import { useNavigation } from '@features/modules/useNavigation'
 import { useInstall } from '@features/setup/install'
 import { releaseAge, type UpdateItem } from '@features/updates/items'
 import { useUpdates } from '@features/updates/store'
 import { updaterApi } from '@shared/api/ipc'
-import type { TranslationKey } from '@shared/lib/i18n'
 import { reportError } from '@shared/lib/report'
 import { Button } from '@shared/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@shared/ui/popover'
-import type { UpdateFailure } from '../../../../shared/updater'
+import type { UpdateFailure } from '@contract/updater'
 
 // A pointer resting on the button opens the popover; leaving it (or the popover) closes it.
 const HOVER_OPEN_MS = 150

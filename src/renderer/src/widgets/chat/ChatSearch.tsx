@@ -8,7 +8,7 @@ import {
   useSyncExternalStore
 } from 'react'
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { useRoster } from '@features/bots/store'
 import { cutShort, MOST_PER_PLACE, samePlace } from '@features/chat/botSearch'
 import type { MessageHit, SearchPlace } from '@features/chat/botSearch'

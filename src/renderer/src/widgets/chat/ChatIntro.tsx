@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import type { RosterBackend } from '@features/bots/data'
 import { loadDetails, useDetailsRevision } from '@features/bots/details'
@@ -8,7 +8,6 @@ import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot } from '@features/bots/types'
 import { reportError } from '@shared/lib/report'
-import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 
 /** A starter prompt: a whole question is sent at once; an open one fills the box to finish. */

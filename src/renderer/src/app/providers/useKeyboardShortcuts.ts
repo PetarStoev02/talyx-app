@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigation } from '@app/providers/useNavigation'
+import { useNavigation } from '@features/modules/useNavigation'
 import { useRoster } from '@features/bots/store'
 import { dialogOpen, platformOf, shortcutOf, type ShortcutId } from '@features/shortcuts/shortcuts'
 import { focusComposer } from '@widgets/chat'

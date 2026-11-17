@@ -1,7 +1,7 @@
 import { isAbsolute } from 'path'
 import { z } from 'zod/v4'
-import { KEPT_FILE_MAX_BYTES } from '../../../shared/keptFiles'
-import { SIDEBAR_WIDTH } from '../../../shared/sidebar'
+import { KEPT_FILE_MAX_BYTES } from '@contract/keptFiles'
+import { SIDEBAR_WIDTH } from '@contract/sidebar'
 
 /** A bot (profile name) or room (room id) to open again on launch. */
 export const LastSelectionSchema = z.object({

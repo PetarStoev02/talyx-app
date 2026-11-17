@@ -1,7 +1,7 @@
 import { net, protocol } from 'electron'
 import { isAbsolute, join, relative } from 'path'
 import { pathToFileURL } from 'url'
-import { MODULE_SCHEME } from '../../../shared/modules'
+import { MODULE_SCHEME } from '@contract/modules'
 
 const SCHEME = 'app'
 const HOST = 'talyx'

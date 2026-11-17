@@ -26,7 +26,8 @@
       "@widgets/*": ["../src/renderer/src/widgets/*"],
       "@features/*": ["../src/renderer/src/features/*"],
       "@entities/*": ["../src/renderer/src/entities/*"],
-      "@shared/*": ["../src/renderer/src/shared/*"]
+      "@shared/*": ["../src/renderer/src/shared/*"],
+      "@contract/*": ["../src/shared/*"]
     }
   },
   "include": ["src/**/*", "../src/preload/index.d.ts", "../src/renderer/src/**/*"]

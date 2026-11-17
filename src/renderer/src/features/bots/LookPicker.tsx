@@ -1,4 +1,4 @@
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { cn } from '@shared/lib/utils'
 import { BlockAvatar } from '@shared/ui/BlockAvatar'
 import { BLOCK_HUES, BLOCK_SHAPES, blockTones } from '@shared/ui/blockGeometry'

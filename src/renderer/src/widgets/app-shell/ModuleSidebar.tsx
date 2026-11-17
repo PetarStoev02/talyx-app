@@ -1,9 +1,9 @@
-import { ErrorBoundary } from '@app/ErrorBoundary'
-import { useLanguage } from '@app/providers/useLanguage'
+import { ErrorBoundary } from '@shared/ui/ErrorBoundary'
+import { useLanguage } from '@shared/lib/i18n'
 import { moduleInvoker } from '@features/modules/host'
 import { useModuleParts } from '@features/modules/useModuleParts'
 import { Loading, SkeletonRows } from '@shared/ui/skeleton'
-import type { ModuleSummary } from '../../../../shared/modules'
+import type { ModuleSummary } from '@contract/modules'
 
 /**
  * The module's own sidebar while its page is open, or nothing for a module without one. It is

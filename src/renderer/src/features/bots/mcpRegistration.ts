@@ -1,5 +1,5 @@
-import { MCP_SERVER_NAME } from '../../../../shared/mcp'
-import type { McpConnection } from '../../../../shared/mcp'
+import { MCP_SERVER_NAME } from '@contract/mcp'
+import type { McpConnection } from '@contract/mcp'
 
 /** A profile's MCP servers in its config, and the live ones its chats use. */
 export interface McpServersBackend {

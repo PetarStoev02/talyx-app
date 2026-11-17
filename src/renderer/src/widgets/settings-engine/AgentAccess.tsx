@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { CopyButton } from '@features/setup/ScreenParts'
 import { mcpApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
-import { mcpAddCommand } from '../../../../shared/mcp'
-import type { McpConnection } from '../../../../shared/mcp'
+import { mcpAddCommand } from '@contract/mcp'
+import type { McpConnection } from '@contract/mcp'
 
 /** How an outside agent reaches Talyx: the address, and a copy of the add line with its token. */
 export function AgentAccess(): React.JSX.Element | null {

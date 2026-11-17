@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import {
   checkEndpoint,
   checkKey,
@@ -14,7 +14,6 @@ import type {
   ProvidersOverview
 } from '@features/providers/providers'
 import { cn } from '@shared/lib/utils'
-import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { Input, NativeSelect, Textarea } from '@shared/ui/input'

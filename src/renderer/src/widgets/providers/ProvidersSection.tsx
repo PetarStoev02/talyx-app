@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import {
   canRemoveEndpoint,
   disconnectAccount,
@@ -18,7 +18,6 @@ import type {
   ProvidersBackend,
   ProvidersOverview
 } from '@features/providers/providers'
-import type { TranslationKey } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import type { ModelLists } from '@features/chat/chat'

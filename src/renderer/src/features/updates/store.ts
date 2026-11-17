@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { updaterApi } from '@shared/api/ipc'
-import type { UpdateState } from '../../../../shared/updater'
+import type { UpdateState } from '@contract/updater'
 
 interface UpdatesState {
   /** The Talyx release, as main reports it. */

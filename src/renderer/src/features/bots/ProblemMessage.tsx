@@ -1,5 +1,5 @@
 import { CircleAlert } from 'lucide-react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import type { RosterProblem } from './roster'
 
 /** A failure in the error colour with an alert icon, announced to screen readers when it shows. */

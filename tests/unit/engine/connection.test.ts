@@ -9,14 +9,14 @@ describe('engine connection state', () => {
 
   it('should not count a socket that never opened as lost', async () => {
     installFakeEngineApi(() => ({}))
-    const { useEngine } = await import('@app/providers/useEngine')
+    const { useEngine } = await import('@features/setup/useEngine')
     expect(useEngine.getState()).toMatchObject({ everConnected: false, lostAt: null })
   })
 
   it('should date a lost socket from the drop and clear it when the redial opens', async () => {
     const { dropAll } = installFakeEngineApi(() => ({}))
     const { host } = await import('@shared/engine/host')
-    const { useEngine } = await import('@app/providers/useEngine')
+    const { useEngine } = await import('@features/setup/useEngine')
     await host.connect()
     expect(useEngine.getState()).toMatchObject({ everConnected: true, lostAt: null })
 

@@ -3,7 +3,7 @@ import {
   type AvailableModule,
   type ModuleStatus,
   type ModulesState
-} from '../../../../shared/modules'
+} from '@contract/modules'
 
 export interface ModuleRow {
   id: string

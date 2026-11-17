@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { botTitle } from '@features/bots/roster'

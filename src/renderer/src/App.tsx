@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Toaster } from 'sonner'
-import { ErrorBoundary } from '@app/ErrorBoundary'
+import { ErrorBoundary } from '@shared/ui/ErrorBoundary'
 import { AppShell, ModuleSidebar } from '@widgets/app-shell'
-import { useNavigation } from '@app/providers/useNavigation'
+import { useNavigation } from '@features/modules/useNavigation'
 import { useRosterBackend } from '@app/providers/useRosterBackend'
 import { useChatBackend } from '@app/providers/useChatBackend'
 import { useProvidersBackend } from '@app/providers/useProvidersBackend'
@@ -28,7 +28,7 @@ import { MANAGER } from '@features/bots/details'
 import { useRoster } from '@features/bots/store'
 import { setupVisibility } from '@features/setup/steps'
 import { useSetup } from '@features/setup/store'
-import { useEngine } from '@app/providers/useEngine'
+import { useEngine } from '@features/setup/useEngine'
 import { moduleIdOf, runningModules, useModules } from '@features/modules/store'
 import { setLeaveGuard } from '@features/modules/leaveGuard'
 import { useModuleChat } from '@app/providers/moduleChat'
@@ -61,14 +61,14 @@ function App(): React.JSX.Element {
   const openModule = modules.find((module) => module.id === moduleIdOf(currentView))
   const page =
     currentView === 'settings' ? (
-      <SettingsPage providers={providers} roster={rosterBackend} chat={chat} />
+      <SettingsPage providers={providers} roster={rosterBackend} chat={chat} setup={setup} />
     ) : currentView === 'usage' ? (
-      <UsagePage providers={providers} />
+      <UsagePage providers={providers} setup={setup} />
     ) : openModule ? (
       <ModulePage module={openModule} />
     ) : (
       // Also a module page whose module stopped or was removed: back to the agents.
-      <AgentsPage chat={chat} roster={rosterBackend} />
+      <AgentsPage chat={chat} roster={rosterBackend} setup={setup} />
     )
 
   // A module page whose module stopped, expired or was removed hands back to the agents, so a

@@ -1,4 +1,4 @@
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { botTitles } from '@features/bots/spread'
 import { dailySeries, daysOf } from '@features/providers/usage'
 import type { ProviderUsage, UsageReport } from '@features/providers/usage'

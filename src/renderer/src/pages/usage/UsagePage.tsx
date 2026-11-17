@@ -1,11 +1,12 @@
 import { useCallback, useEffect } from 'react'
 import { RotateCw } from 'lucide-react'
 import { useEscape } from '@shared/hooks/useEscape'
-import { useLanguage } from '@app/providers/useLanguage'
-import { useNavigation } from '@app/providers/useNavigation'
+import { useLanguage } from '@shared/lib/i18n'
+import { useNavigation } from '@features/modules/useNavigation'
 import type { ProvidersBackend } from '@features/providers/providers'
 import { USAGE_PERIODS } from '@features/providers/usage'
 import { useUsageView } from '@features/providers/usageView'
+import type { SetupBackend } from '@features/setup/install'
 import { reportError } from '@shared/lib/report'
 import { cn } from '@shared/lib/utils'
 import { IconButton } from '@shared/ui/IconButton'
@@ -17,9 +18,11 @@ const COLUMN = 'mx-auto w-full max-w-4xl px-8'
 
 /** What every bot used over a recent period; its sidebar picks all providers or one. */
 export function UsagePage({
-  providers
+  providers,
+  setup
 }: {
   providers: ProvidersBackend | null
+  setup: SetupBackend
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const goBack = useNavigation((s) => s.goBack)
@@ -85,7 +88,7 @@ export function UsagePage({
       </header>
       <div className="scroll-y-stable min-h-0 flex-1">
         <div className={cn(COLUMN, 'py-6')}>
-          <EngineGate>{providers && <UsageBoard onRetry={load} />}</EngineGate>
+          <EngineGate setup={setup}>{providers && <UsageBoard onRetry={load} />}</EngineGate>
         </div>
       </div>
     </div>

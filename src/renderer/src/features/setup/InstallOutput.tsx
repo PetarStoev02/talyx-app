@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { displayOutput, downloadFailed, hideEngineName } from './install'
 import { CopyButton, ScreenTitle, Spinner } from './ScreenParts'

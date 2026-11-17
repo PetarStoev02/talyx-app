@@ -1,5 +1,5 @@
 import { toast } from 'sonner'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { useCompletionSound } from '@features/chat/completionSound'
 import { reportError } from '@shared/lib/report'
 import { Switch } from '@shared/ui/switch'

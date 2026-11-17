@@ -1,4 +1,4 @@
-import { engineVersionFit, type EngineStatus } from '../../../../shared/engine'
+import { engineVersionFit, type EngineStatus } from '@contract/engine'
 
 export interface EngineSummary {
   state: 'checking' | 'attached' | 'missing' | 'error' | 'protocol'

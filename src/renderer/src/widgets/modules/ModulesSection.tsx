@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { modulesApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
 import { Button } from '@shared/ui/button'

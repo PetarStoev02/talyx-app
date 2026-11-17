@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { ENGINE_COMMAND } from '../../../../shared/engine'
-import type { InstallExit, InstallSteps } from '../../../../shared/setup'
+import { ENGINE_COMMAND } from '@contract/engine'
+import type { InstallExit, InstallSteps } from '@contract/setup'
 
 export interface SetupBackend {
   installSteps: () => Promise<InstallSteps>

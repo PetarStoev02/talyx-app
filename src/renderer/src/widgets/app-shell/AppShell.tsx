@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { settingsApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
-import { SIDEBAR_WIDTH, clampSidebarWidth } from '../../../../shared/sidebar'
+import { SIDEBAR_WIDTH, clampSidebarWidth } from '@contract/sidebar'
 import { SidebarFooter } from './SidebarFooter'
 
 const isMac = (window.electron?.platform ?? 'darwin') === 'darwin'

@@ -1,8 +1,8 @@
 import { randomUUID, timingSafeEqual } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import log from 'electron-log'
-import { MCP_CALL_TIMEOUT_MS, MCP_PATH, isMcpTool, mcpToolList } from '../../../shared/mcp'
-import type { McpAnswer, McpCall } from '../../../shared/mcp'
+import { MCP_CALL_TIMEOUT_MS, MCP_PATH, isMcpTool, mcpToolList } from '@contract/mcp'
+import type { McpAnswer, McpCall } from '@contract/mcp'
 
 // The MCP revision this server speaks; a client asking for another gets this one back.
 const PROTOCOL_VERSION = '2025-06-18'

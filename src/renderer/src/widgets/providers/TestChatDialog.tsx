@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { testChat } from '@features/providers/providers'
 import type {
   CustomEndpoint,

@@ -9,7 +9,10 @@ export default defineConfig({
     alias: Object.fromEntries(
       ['app', 'features', 'pages', 'widgets', 'shared']
         .map((name) => [`@${name}`, resolve(`src/renderer/src/${name}`)])
-        .concat([['@', resolve('src/renderer/src')]])
+        .concat([
+          ['@', resolve('src/renderer/src')],
+          ['@contract', resolve('src/shared')]
+        ])
     )
   },
   server: { host: '127.0.0.1', port: 5183, strictPort: true }

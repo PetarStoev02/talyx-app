@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown } from 'lucide-react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import type { MessageItem } from '@features/chat/types'
 import { briefsByRef, isQuietReply } from '@features/chat/workflowLines'
 import { MessageBubble } from './MessageBubble'

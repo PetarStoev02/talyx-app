@@ -1,4 +1,6 @@
 // English only for now (pivot decision 11). Another language is one more table here.
+import { create } from 'zustand'
+
 const en = {
   'nav.agents': 'Agents',
   'nav.settings': 'Settings',
@@ -867,3 +869,13 @@ const translations: Record<string, Record<TranslationKey, string>> = { en }
 export function t(key: TranslationKey, language: string): string {
   return translations[language]?.[key] ?? en[key]
 }
+
+interface LanguageState {
+  language: string
+  t: (key: TranslationKey) => string
+}
+
+export const useLanguage = create<LanguageState>((_set, get) => ({
+  language: 'en',
+  t: (key) => t(key, get().language)
+}))

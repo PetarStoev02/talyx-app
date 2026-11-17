@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { reportError } from '@shared/lib/report'
 import { importModule, type ModuleParts } from './host'
-import type { ModuleSummary } from '../../../../shared/modules'
+import type { ModuleSummary } from '@contract/modules'
 
 /**
  * A running module's page, sidebar and icon; undefined while loading, null when its renderer.js

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { DropdownMenu } from 'radix-ui'
 import { Ellipsis, MessageSquare, Pencil, Plus, Trash2, UserMinus, X } from 'lucide-react'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useLanguage } from '@shared/lib/i18n'
 import { runRosterMutation } from '@features/bots/actions'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import type { RosterBackend } from '@features/bots/data'

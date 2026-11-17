@@ -1,4 +1,4 @@
-import { KEPT_FILE_MAX_BYTES } from '../../../../shared/keptFiles'
+import { KEPT_FILE_MAX_BYTES } from '@contract/keptFiles'
 import { sendMentions, type Mention } from './mentions'
 
 // ponytail: a path only works while the engine runs on this computer; a remote engine (PR 12)

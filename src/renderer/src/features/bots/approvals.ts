@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { MCP_APPROVAL_TIMEOUT_MS } from '../../../../shared/mcp'
+import { MCP_APPROVAL_TIMEOUT_MS } from '@contract/mcp'
 import type { ApprovalRequest } from './mcp'
 
 interface Pending extends ApprovalRequest {

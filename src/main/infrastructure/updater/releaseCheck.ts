@@ -1,5 +1,5 @@
 import log from 'electron-log'
-import type { Highlight, ReleaseSummary } from '../../../shared/updater'
+import type { Highlight, ReleaseSummary } from '@contract/updater'
 import { FEED_SIGNATURE_SUFFIX } from './feedSignature'
 
 const LATEST_RELEASE_API = 'https://api.github.com/repos/PetarStoev02/talyx-app/releases/latest'

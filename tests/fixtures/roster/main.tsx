@@ -11,8 +11,9 @@ import { SetupFlow } from '../../../src/renderer/src/widgets/setup'
 import { MANAGER } from '../../../src/renderer/src/features/bots/details'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { reportProvider, useSetup } from '../../../src/renderer/src/features/setup/store'
-import { useNavigation } from '../../../src/renderer/src/app/providers/useNavigation'
+import { useNavigation } from '../../../src/renderer/src/features/modules/useNavigation'
 import { engineProvidersBackend } from '../../../src/renderer/src/app/engine/providers'
+import { useSetupBackend } from '../../../src/renderer/src/app/providers/useSetupBackend'
 import { fixturePlugins } from './fixtureProviders'
 import {
   assets,
@@ -131,6 +132,8 @@ export function Fixture(): React.JSX.Element {
   // The app's navigation store, so the chat's "Open Settings" works here too.
   const page = useNavigation((state) => state.currentView)
   const navigate = useNavigation((state) => state.navigate)
+  // The app's install over `window.api`, which `old-after` scripts above.
+  const setupBackend = useSetupBackend()
   const online = useRoster((state) => state.online)
   return (
     <div className="flex h-screen bg-background">
@@ -173,7 +176,7 @@ export function Fixture(): React.JSX.Element {
             />
           </div>
         ) : (
-          <AgentsPage chat={chat} roster={rosterBackend} />
+          <AgentsPage chat={chat} roster={rosterBackend} setup={setupBackend} />
         )}
       </main>
     </div>

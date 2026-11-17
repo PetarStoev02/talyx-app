@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { useEngine } from '@app/providers/useEngine'
-import { useLanguage } from '@app/providers/useLanguage'
+import { useEngine } from '@features/setup/useEngine'
+import { useLanguage } from '@shared/lib/i18n'
 import { reportError } from '@shared/lib/report'
 import { engineScreen, watchRun } from './engineScreen'
 import {
