@@ -33,7 +33,8 @@ Thumbs.db
 .env.*
 
 # Claude Code
-.claude/
+.claude/*
+!.claude/skills/
 
 # Brainstorming mockups
 .superpowers/

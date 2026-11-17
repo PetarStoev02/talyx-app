@@ -73,6 +73,11 @@ const appConfigs = [
       ]
     }
   },
+  {
+    // Plain JavaScript has no return type annotations to require.
+    files: ['**/*.{js,mjs,cjs}'],
+    rules: { '@typescript-eslint/explicit-function-return-type': 'off' }
+  },
   eslintConfigPrettier
 ].flat()
 
