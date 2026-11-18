@@ -81,8 +81,9 @@ async function launch() {
 
 // An engine installed by setup in a --no-engine run lives in the run's HOME, and its gateway
 // outlives Talyx (Talyx never owns the gateway). Stop what runs from inside the run directory, by
-// that path (also by its real path, for a TALYX_VERIFY_ROOT behind a symlink). Not `gateway stop`: the engine looks for its
-// launchd service under the account's real home, so it could stop the user's own gateway.
+// that path (also by its real path, for a TALYX_VERIFY_ROOT behind a symlink). Not `gateway stop`:
+// the engine looks for its launchd service under the account's real home, so it could stop the
+// user's own gateway.
 async function stopRunProcesses() {
   const signal = (name) =>
     pathsOf(RUN).forEach((path) => spawnSync('pkill', [`-${name}`, '-U', uid(), '-f', `${path}/`]))
