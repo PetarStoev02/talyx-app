@@ -20,6 +20,7 @@ const ROOT = resolve(process.env.TALYX_VERIFY_ROOT ?? '/tmp/talyx-verify')
 const RUN = join(ROOT, 'run')
 const EVIDENCE = join(ROOT, 'evidence')
 const PID_FILE = join(RUN, 'pid')
+const MODE_FILE = join(RUN, 'mode')
 const LOG_FILE = join(RUN, 'talyx.log')
 const USER_DATA = join(RUN, 'userData')
 const HOME = join(RUN, 'home')
@@ -40,7 +41,8 @@ const commands = {
   doctor,
   stop,
   settings: showSettings,
-  browser: browserCommand
+  browser: browserCommand,
+  fuzz
 }
 
 async function launch() {
@@ -68,6 +70,7 @@ async function launch() {
   )
   child.unref()
   writeFileSync(PID_FILE, String(child.pid))
+  writeFileSync(MODE_FILE, flags['no-engine'] ? 'no-engine' : 'engine')
   let page = await waitForWindow(READY_TIMEOUT_MS)
   await page.context().browser().close()
   // The first dev build can reload the renderer once more; wait it out so a drive does not race it.
@@ -160,6 +163,189 @@ async function browserCommand() {
     await act(page, options)
   } finally {
     await page.context().browser().close()
+  }
+}
+
+// fuzz: a seeded random walk over the controls the ARIA snapshot shows, with four invariants
+// checked after every step (F3 in #188). App-specific knowledge is FUZZ_SKIP, FUZZ_KEYS,
+// FUZZ_CRASH, `atHome` and the settings file; the rest copies as is into another app's driver.
+// Links are left out: in Talyx they open the system browser.
+const FUZZ_ROLES = new Set([
+  'button',
+  'menuitem',
+  'menuitemcheckbox',
+  'menuitemradio',
+  'tab',
+  'checkbox',
+  'switch',
+  'radio',
+  'option',
+  'combobox',
+  'textbox'
+])
+// Escape is listed three times so the walk often tests the Escape invariant.
+const FUZZ_KEYS = [
+  ...['Escape', 'Escape', 'Escape', 'Tab', 'Shift+Tab', 'Enter', 'Space', 'ArrowDown', 'ArrowUp'],
+  ...['Alt+ArrowUp', 'Alt+ArrowDown', 'ControlOrMeta+Slash', 'ControlOrMeta+Comma'],
+  ...['ControlOrMeta+f', 'ControlOrMeta+n', 'ControlOrMeta+l', 'ControlOrMeta+1', 'ControlOrMeta+2']
+]
+// Controls that leave the sandbox (native panels, the microphone, the browser, the clipboard,
+// login items, installs, updates), enter the setup flow (no Escape exit by design), or approve a
+// bot's tool call, which runs on the real machine even when the engine lives in the run's home.
+const FUZZ_SKIP =
+  /^(Choose file|Install|Install the engine|Get started|Run setup again|Open release page|Get the latest Talyx|Download|Restart to update|Launch at login|Add images or files|Dictate|Update the engine|Allow|Allow once|Allow in this chat|Always allow)$|^Copy|^Open (the|ChatGPT)|^Update to |Sign in/
+const FUZZ_CRASH = /^(This part of )?Talyx stopped working\.$/
+const FUZZ_TEXT = ['', 'a', 'Fuzz 😀 ünï', '<b>x</b>', 'x'.repeat(300)]
+const FUZZ_STEPS = 200
+// Set up in a --no-engine run, the engine and its gateway live in the run's home.
+const SANDBOX_ENGINE = join(HOME, '.local/bin', ENGINE_COMMAND)
+
+// The Agents page: the footer's Settings button shows (not Close Settings, not the setup flow),
+// with no Back (Settings, Usage) and no dialog over it.
+async function atHome(page) {
+  const button = (name) => page.getByRole('button', { name, exact: true })
+  return (
+    (await button('Settings').count()) > 0 &&
+    !(await button('Back').count()) &&
+    !(await page.getByRole('dialog').count())
+  )
+}
+
+async function fuzz() {
+  if (!existsSync(MODE_FILE) || readFileSync(MODE_FILE, 'utf8') !== 'no-engine')
+    throw new Error('fuzz needs a run started with launch --no-engine; it would click real bots')
+  const seed = integerFlag('seed', null)
+  const steps = integerFlag('steps', FUZZ_STEPS)
+  const random = mulberry32(seed)
+  const pick = (list) => list[Math.floor(random() * list.length)]
+  const engine = existsSync(SANDBOX_ENGINE)
+  if (engine && gatewayGone()) throw new Error(`no gateway runs from ${HOME}`)
+  const page = await mainPage()
+  const errors = []
+  page.on('console', (message) => message.type() === 'error' && errors.push(message.text()))
+  page.on('pageerror', (error) => errors.push(error.message))
+  const log = []
+  const fail = async (step, why) => {
+    const dir = join(EVIDENCE, `fuzz-${seed}`)
+    save(join(dir, 'steps.log'), log.join('\n'))
+    save(join(dir, 'after.aria.txt'), await page.locator('body').ariaSnapshot())
+    await page.screenshot({ path: join(dir, 'after.png') })
+    throw new Error(`fuzz seed ${seed} failed at step ${step}: ${why}\n${log.join('\n')}`)
+  }
+  const check = async (step) => {
+    const broken = (await brokenInvariant(page, errors)) ?? (engine && gatewayGone())
+    if (broken) await fail(step, broken)
+  }
+  try {
+    for (let step = 1; step <= steps; step++) {
+      const controls = parseControls(await page.locator('body').ariaSnapshot())
+      const action = random() < 0.7 && controls.length ? pick(controls) : { key: pick(FUZZ_KEYS) }
+      log.push(`${step} ${await fuzzAct(page, action, () => pick(FUZZ_TEXT))}`)
+      await sleep(150)
+      await check(step)
+      if (action.key === 'Escape' && !(await atHome(page))) {
+        await page.keyboard.press('Escape')
+        await sleep(150)
+        log.push(`${step} press Escape (second)`)
+        await check(step)
+        if (!(await atHome(page))) await fail(step, 'two Escapes did not return to the Agents page')
+      }
+    }
+    save(join(EVIDENCE, `fuzz-${seed}`, 'steps.log'), log.join('\n'))
+    console.log(
+      `fuzz seed ${seed}: ${steps} steps, invariants held${engine ? ', sandbox engine' : ''}`
+    )
+  } finally {
+    await page.context().browser().close()
+  }
+}
+
+// Nothing the fuzz may click stops the run's gateway. Its command starts with a program in the
+// run's home; a shell or tail that only names the path does not count. Talyx restarts a gateway
+// that dies, so this sees a stop only while it lasts.
+function gatewayGone() {
+  const running = pathsOf(HOME).some(
+    (path) => spawnSync('pgrep', ['-U', uid(), '-f', `^${escapeRegExp(path)}/`]).status === 0
+  )
+  return running ? null : `the gateway in ${HOME} stopped`
+}
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+// A whole-number flag, so a typo cannot pass as a run (`--seed` alone parses as true).
+function integerFlag(name, fallback) {
+  const raw = flags[name] ?? fallback
+  if (raw === null || !/^\d+$/.test(String(raw)))
+    throw new Error(`fuzz needs --${name} <integer>, so a run replays`)
+  return Number(raw)
+}
+
+// The first broken invariant (crash notice, console error, settings.json), or null.
+async function brokenInvariant(page, errors) {
+  if (await page.getByText(FUZZ_CRASH).count()) return 'crash notice shown'
+  if (errors.length) return `console.error: ${errors.join(' | ')}`
+  try {
+    JSON.parse(readFileSync(join(USER_DATA, 'settings.json'), 'utf8'))
+    return null
+  } catch (error) {
+    return `settings.json does not parse: ${error.message}`
+  }
+}
+
+// The interactive controls in an ARIA snapshot, as role and exact name, minus FUZZ_SKIP.
+function parseControls(aria) {
+  const controls = []
+  for (const [, role, raw] of aria.matchAll(/^\s*- '?(\w+) "((?:[^"\\]|\\.)*)"/gm)) {
+    const name = JSON.parse(`"${raw}"`)
+    if (FUZZ_ROLES.has(role) && !FUZZ_SKIP.test(name)) controls.push({ role, name })
+  }
+  return controls
+}
+
+async function fuzzAct(page, action, text) {
+  if (action.key) {
+    // Enter and Space press the focused control, so they honour FUZZ_SKIP like clicks do, and
+    // never follow a link (it opens the system browser).
+    if (action.key === 'Enter' || action.key === 'Space') {
+      const focused = await page.evaluate(() => {
+        // The control that holds focus (or contains it); nothing when focus is on the page.
+        const control = document.activeElement?.closest('button, a, input, select, [role]')
+        if (!control) return { link: false, name: '' }
+        return {
+          link: control.closest('a[href]') !== null,
+          name: (control.getAttribute('aria-label') ?? control.textContent ?? '')
+            .trim()
+            .slice(0, 80)
+        }
+      })
+      if (focused.link || FUZZ_SKIP.test(focused.name))
+        return `skip ${action.key} on "${focused.name}"`
+    }
+    await page.keyboard.press(action.key)
+    return `press ${action.key}`
+  }
+  const target = page.getByRole(action.role, { name: action.name, exact: true }).first()
+  const value = action.role === 'textbox' || action.role === 'combobox' ? text() : null
+  try {
+    if (value !== null) await target.fill(value, { timeout: 2000 })
+    else await target.click({ timeout: 2000 })
+    return `${value !== null ? 'fill' : 'click'} ${action.role} "${action.name}"${value !== null ? ` with ${JSON.stringify(value.slice(0, 20))}` : ''}`
+  } catch (error) {
+    // A disabled, covered or vanished control is part of the walk, not a failure.
+    return `skip ${action.role} "${action.name}": ${error.message.split('\n')[0]}`
+  }
+}
+
+// A small seeded generator, so a seed replays the same walk.
+function mulberry32(seed) {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
 

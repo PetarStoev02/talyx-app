@@ -43,7 +43,8 @@ control-talyx launch                                       # attaches to this ma
 control-talyx doctor
 ```
 
-Read-only. Checks the pid is alive, CDP answers at `http://127.0.0.1:9333`, the run directory
+Read-only. Checks the pid is alive, CDP answers at `http://127.0.0.1:9333` (or
+`TALYX_VERIFY_CDP_PORT`), the run directory
 exists, and names the window. Run it first whenever a step looks wrong.
 
 ## Drive
@@ -66,6 +67,35 @@ control-talyx settings                                   # the run's settings.js
 - Every command reconnects over CDP, so state must live in the app, not in the driver.
 - Keyboard shortcuts work through `press` (`Meta+Comma` opens Settings, `Meta+Slash` the cheat
   sheet) but the clickable path is the one to prove.
+
+## Fuzz
+
+```sh
+control-talyx launch --no-engine --seed /tmp/talyx-verify/seed.json
+control-talyx fuzz --steps 200 --seed <n>
+control-talyx stop
+```
+
+- A seeded random walk: each step clicks a control the ARIA snapshot shows (a textbox or combobox
+  gets a random text) or presses a key (Escape, Tab, arrows, the app's shortcuts).
+- After every step it checks: no crash notice (`Talyx stopped working.`), no renderer
+  `console.error` or page error, `settings.json` still parses. When the step was Escape and the
+  app is not on the Agents page, it presses Escape once more and then requires the Agents page.
+- It refuses a launch without `--no-engine`, and skips controls that leave the sandbox (native
+  panels, the microphone, the browser, the clipboard, login items, installs, updates), enter the
+  setup flow (no Escape exit by design) or approve a bot's tool call.
+- **The whole app.** A `--no-engine` run reaches only the first screens. To fuzz the roster, chat,
+  details, rooms and Usage, first run setup in that run as in `features/first-run-setup.md`:
+  install the engine into the run's home, add a provider (a local router as `Custom endpoint`),
+  pick it as `Talyx’s model`, make a bot. Then run `fuzz`: it sees the engine in the run's home and
+  also checks that its gateway still runs after every step. Bots answer through the provider, so a
+  step that sends costs one call. Replies differ between runs, so a replay starts from a fresh
+  setup and may still drift. The run's home keeps your own engine and bots apart, but it is not a
+  sandbox for the bots: they run tools as you, and only the approval buttons are skipped.
+- A failure prints the seed, the failed check and the step log, and saves `steps.log`,
+  `after.aria.txt` and `after.png` under `evidence/fuzz-<seed>/`. Rerun the same seed on a fresh
+  launch to replay it; a pass also saves `steps.log`.
+- To port it to another app's driver, change `FUZZ_SKIP`, `FUZZ_KEYS`, `FUZZ_CRASH`, `atHome` and the settings file it parses.
 
 ## Evidence
 
