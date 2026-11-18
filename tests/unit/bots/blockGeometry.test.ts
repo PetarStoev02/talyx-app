@@ -89,7 +89,9 @@ describe('block geometry', () => {
         fc.double({ min: -30, max: 30, noNaN: true }),
         (shape, size, yaw) => {
           const still = blockGeometry(shape, size).scale
-          for (const edge of uprightEdges(shape, size, yaw)) expect(edge).toBeCloseTo(still, 9)
+          const edges = uprightEdges(shape, size, yaw)
+          expect(edges.length).toBeGreaterThan(0)
+          for (const edge of edges) expect(edge).toBeCloseTo(still, 9)
         }
       )
     )
