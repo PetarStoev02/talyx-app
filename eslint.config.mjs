@@ -70,7 +70,7 @@ const localPlugin = {
   }
 }
 
-// Layer boundaries (FSD Layer Rules in CLAUDE.md). Each message names the move.
+// Layer boundaries (CLAUDE.md → Enforced by checks). Each message names the move.
 const ROOT = import.meta.dirname
 const RENDERER = 'src/renderer/src'
 const LAYERS = ['app', 'pages', 'widgets', 'features', 'shared']

@@ -1,48 +1,29 @@
 # CLAUDE.md: Talyx Project Guidelines
 
 > This file is automatically loaded by AI assistants working on this codebase.
-> Keep it accurate and up to date.
+> Keep it accurate and up to date. State each rule once; when a check enforces it, the line here
+> only points at the check.
 
 ## Project Overview
 
 **Talyx** is a desktop app to tally your AI agents: a roster of bots on the left, one chat on
 the right, and a manager bot (called Talyx) that delegates to the other bots and briefs you.
 The bots run on **the engine**, a separate agent backend the user installs; Talyx is a client
-of it and holds no orchestration logic of its own.
+of it and holds no orchestration logic of its own. The screens and their user-facing names are
+in the feature map, `.claude/skills/verify-talyx/features/README.md`.
 
-Talyx 1.0 is that app; the file organizer it used to be is gone. It attaches to the engine: a roster of bots in
-the sidebar (pins, folders, unread and activity marks, each bot an isometric block avatar), the Agents page with the selected bot's
-chat (transcript, clarify and approval cards, a composer with model, reasoning, images and
-dictation), the details panel from the name pill (title, description, model, routines, look, SOUL),
-the create-bot dialog from the roster's `+`, group rooms hosted by the engine (history, send, who
-is answering, approvals, create, pin, delete), "Talyx needs its engine" when the engine is
-missing, a first-run setup (install the engine, a provider, a first bot), a footer update button
-(Talyx releases and engine updates), and Settings (providers: API keys, account sign-ins and
-custom endpoints, Talyx's default model; the engine: where it is, check again, choose its file, a
-debug console that sends "ping" and prints raw session events; launch at login; appearance).
-
-- **Version:** 1.1.0
-- **Stack:** Electron 44 + React 19 + TypeScript 5.9 + TailwindCSS 4
-- **State:** Zustand | **UI:** shadcn/ui (New York) | **Settings:** JSON file
-- **Build:** electron-vite + electron-builder | **Tests:** Vitest
+Version 1.1.0. Electron 44, React 19, TypeScript 5.9, TailwindCSS 4, Zustand, shadcn/ui (New
+York), electron-vite + electron-builder, Vitest.
 
 ### History and plans
 
 - Design (decisions 1–20): `docs/superpowers/specs/2026-11-04-talyx-agents-pivot-design.md`.
 - Plan (twelve PRs): `docs/superpowers/specs/2026-11-04-talyx-pivot-plan.html`.
 - `docs/superpowers/` is gitignored: specs and plans are local working notes, not in the repo.
-- The pivot was built as a stack of PRs on a `pivot` branch, squash-merged into `main` at 1.0.
-  Work now lands as PRs against `main`. The plan's PR 11 (website) and PR 12 (remote machines)
-  are still to come.
+- The pivot was squash-merged into `main` at 1.0; work lands as PRs against `main`. The plan's
+  PR 12 (remote machines) is still to come.
 - The file organizer (0.11.0) is preserved on branch `legacy/file-organizer` and tag
   `v0.11.0-legacy`. Never modify them.
-- The engine's upstream project is named in one place only: the small credit line at the end of the README, which
-  credits it. Everywhere else (code, other docs, specs, commits, PR text) it is never named. It
-  is "the engine" (`shared/engine/`, `infrastructure/engine/`, `EngineStatus`, `talyx-engine`); its CLI, paths and data keys are written as `talyx`.
-  Strings the engine's wire protocol needs with the name in them (socket subprotocols, the
-  ticket header, the `ui_meta` bot keys) are built at runtime by `engineWire()` in
-  `src/shared/engine.ts` from the first word of `talyx-engine --version`. Never write them as
-  literals; tests use a fake name. `tests/unit/engineName.test.ts` fails on any hit.
 
 ## Commands
 
@@ -63,352 +44,126 @@ npm run sign-release     # Sign the update feeds of the workflow's draft release
 npm run reset            # Delete local app data (settings.json)
 ```
 
-### Builds
-
-Talyx 1.0 ships for macOS and Linux (no Windows build yet). The macOS releases are signed with
-Developer ID, run with the hardened runtime (`build/entitlements.mac.plist` lists and justifies
-each exception) and are notarized: the .app and the DMG are both stapled, so Gatekeeper opens them
-with no warning. Linux builds are not signed. Talyx updates itself on macOS and in the AppImage with
-electron-updater (GitHub provider, `publish` in `electron-builder.yml`). The release check runs
-15 seconds after start, hourly, on wake and on window focus (at most every 15 minutes), one at a
-time; Settings → About has Check for updates. It reads the version from the latest release's
-`latest-mac.yml` / `latest-linux.yml` (CDN, no API rate limit) and calls the GitHub API only for a
-newer release. The update button then offers the release with Download and Later: nothing
-downloads until the click, then it offers Restart to update, and quitting installs it. It never
-downloads or restarts unasked. The download is checked three ways: the feed must carry Talyx's
-Ed25519 signature (`latest-*.yml.sig`, checked against `UPDATE_FEED_KEY` in
-`updater/feedSignature.ts`) and list each offered file by name, sha512 and size; each file must
-match that sha512; and on macOS Squirrel.Mac requires the same code signature. The signing key is
-never on GitHub, so a release someone else publishes on the repository cannot update an installed
-Talyx. A deb, or a release without the signed feed,
-gets the release page and no in-app download.
-
-Electron 44 needs macOS 13 or newer; every macOS version Talyx runs on requires a Developer ID
-app to be notarized, so a release is never shipped signed but not notarized.
-
-`npm run build:mac` needs no credentials: with no Developer ID available it builds unsigned DMGs
-(the fuses' ad-hoc signature keeps them runnable on Apple Silicon) for local testing only. Both
-release paths pass `forceCodeSigning`, notarize and staple the DMGs, and check them with
-`verify_mac_release` (`codesign --verify --deep --strict`, `spctl -a -vv`, `xcrun stapler validate`).
-
-Releases come from the Release workflow (`.github/workflows/release.yml`, Actions → Release → Run
-workflow): macOS DMGs, Linux AppImage + deb, the real-engine smoke test on Linux, then a draft
-release `v<version>` with the update feed (`latest-*.yml`, the mac zips and their blockmaps),
-`engine-install.json` and `SHA256SUMS` (for checking a download by hand). Drafts are invisible to installed apps until published. The run also keeps an `aur` artifact: `packaging/aur/PKGBUILD` and
-`.SRCINFO` bumped to the release's deb by `packaging/aur/bump.sh`; the owner pushes it to the AUR
-by hand (`packaging/aur/README.md`, which also records why there is no Flatpak). Its body is the optional
-`highlights` input under `## Highlights`, then `docs/release-notes/<version>.md` (write it before
-releasing; no engine name), then GitHub's generated notes. It needs the secret
-`ENGINE_INSTALL_JSON` (base64 of `engine-install.json`), set once per file change with
-`gh secret set ENGINE_INSTALL_JSON < <(base64 -i engine-install.json)`; each job checks it with
-`scripts/release-lib.sh`, which `release.sh` shares. The mac job also needs the five signing
-secrets below and fails before the build when one is missing.
-
-The workflow does not sign the update feeds. After it, run `npm run sign-release`
-(`scripts/sign-release.sh`) on the owner's machine, then publish the draft. It signs the feeds
-the workflow run itself kept (its `feeds` artifact, which nothing outside that run can change),
-for a run of `release.yml` on `main` at the draft's commit, and only when the draft's feeds are
-those same bytes and every file in the draft was uploaded by a workflow. It lists the commits
-since the last release and asks before it signs: that is the one human look at what reaches
-every installed Talyx. Then it adds `latest-*.yml.sig` to the draft. A release published without it still shows in the update button, with its
-release page instead of Download.
-
-`npm run release` (`scripts/release.sh`) is the local path, macOS DMGs only. Before it, write the
-gitignored `release-highlights.md` at the repo root: 1-3 lines `- **Lead.** Text.`. The script puts
-them under `## Highlights`, then `docs/release-notes/<version>.md`, then GitHub's generated
-notes, the same body as the workflow; the update button shows the highlights. Without the file
-the script warns and the release has no highlights.
-
-`npm run release` needs `engine-install.json` (the engine install steps the app fetches from the
-release) at the repo root. It is gitignored, and its SHA-256 must equal `ENGINE_INSTALL_SHA256` in
-`src/main/infrastructure/setup/installPin.ts`; the script also requires the file's `engineVersion` to equal
-`EXPECTED_ENGINE_VERSION` and exactly one commit hash in it, and refuses to release otherwise. Changing
-the commands means updating that pin in the same commit. It also needs the five signing
-variables below in the environment and the update signing key, and refuses without them; it signs
-`latest-mac.yml` itself.
-
-#### Signing secrets
-
-The account owner creates these once; never commit them or paste them anywhere else. Set each
-as an Actions secret on `PetarStoev02/talyx-app`:
-
-- `CSC_LINK`: the Developer ID Application certificate as base64 of a `.p12`. In Xcode →
-  Settings → Accounts → Manage Certificates, add a Developer ID Application certificate (or create
-  it at developer.apple.com → Certificates). In Keychain Access, export the certificate with its
-  private key as a `.p12`. Then `gh secret set CSC_LINK < <(base64 -i DeveloperID.p12)`.
-- `CSC_KEY_PASSWORD`: the password chosen for that `.p12` export. `gh secret set CSC_KEY_PASSWORD`.
-- `APPLE_ID`: the Apple Account email of the developer account. `gh secret set APPLE_ID`.
-- `APPLE_APP_SPECIFIC_PASSWORD`: an app-specific password for that account, from
-  account.apple.com → Sign-In and Security → App-Specific Passwords (shown only once).
-  `gh secret set APPLE_APP_SPECIFIC_PASSWORD`. Check it first with
-  `xcrun notarytool history --apple-id <email> --team-id <team> --password <password>`.
-- `APPLE_TEAM_ID`: the team ID in the Developer ID certificate's name (`3Z52YUB6CN`).
-  `gh secret set APPLE_TEAM_ID`.
-
-The update signing key is not a secret on GitHub and must never become one: a key there could be
-taken by whoever gets into the repository, which is the case it guards against. It is the Ed25519
-private key `~/.config/talyx/keys/update.private.pem` on the owner's machine (keep a
-passphrase-protected copy somewhere outside it); its public half is `UPDATE_FEED_KEY` in `updater/feedSignature.ts`. Every installed
-Talyx refuses a feed signed with another key, so a lost key means users update once by hand from
-the release page, to a build that ships a new public key.
-
-For `npm run release` on your own Mac, keep the Apple password out of the process list: store it
-once with `xcrun notarytool store-credentials talyx --apple-id <email> --team-id <team>` (it asks
-for the app-specific password), then set `APPLE_KEYCHAIN_PROFILE=talyx` in place of `APPLE_ID`,
-`APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID`. The workflow keeps the three secrets.
-
-The certificate expires after five years and the membership yearly; renew both before a release.
+Builds, signing, updates and releases: `docs/releasing.md`; the steps are the `talyx-release`
+skill.
 
 During `npm run dev` the renderer is also usable in a plain browser at
 `http://localhost:5173` (dev bridge → real main process).
 
 ## Architecture
 
-### Main Process (Electron Backend)
+Main (`src/main/`) runs the engine CLI (`talyx-engine`: the `enginePath` setting, then PATH, then
+`~/.local/bin`), attaches with `gateway ensure --json` and mints one-use tickets through the
+profile's control socket. Main opens the gateway websocket itself (the gateway admits no Origin
+header and takes the ticket in a subprotocol) and relays frames over `engine:socket-*` IPC; REST
+goes through `engine:http`. Main never owns or kills the gateway.
 
-```
-src/main/
-├── index.ts                    # Entry point: splash, main window, IPC, release check
-├── lib/electronUtils.ts        # is.dev, window shortcuts
-├── lib/appMenu.ts              # the packaged app's menu (no dev tools)
-└── infrastructure/
-    ├── bridge/DevBridge.ts     # Dev-only HTTP+SSE bridge for the browser renderer
-    ├── engine/                 # engine.ts (Engine: CLI, attach, tickets, REST),
-    │                           # roomMembers.ts (installs and runs the talyx-rooms engine plugin:
-    │                           # a room's bots change in place; resources/engine-plugin/),
-    │                           # gateway.ts (vendored attach + ticket mint), engineSockets.ts
-    ├── ipc/                    # settings.ipc.ts, engine.ipc.ts, setup.ipc.ts (the engine install),
-    │                           # updater.ipc.ts (update download and open), handle.ts (typed registration),
-    │                           # validation.ts (zod at the boundary),
-    │                           # modules.ipc.ts (modules: license, install, talyx-module:// files),
-    │                           # files.ipc.ts (files:keep, a copy of a dropped file with no path)
-    ├── mcp/                    # mcpServer.ts (Talyx's MCP server: loopback HTTP, bearer key, no
-    │                           # browser Origin; tool calls go to the page, which runs them),
-    │                           # see ipc/mcp.ipc.ts (start, key in userData/mcp-token, mcp:* IPC)
-    ├── modules/                # signing.ts (license keys and signed module bundles, Ed25519),
-    │                           # a key that names the module id `all` unlocks every module (shared/modules.ts),
-    │                           # catalog.ts (the published module list), moduleHost.ts (install, load, run),
-    │                           # activationLink.ts (talyx://activate links)
-    ├── security/               # webContentsGuard (no new windows, no navigation away),
-    │                           # appProtocol.ts (serves the packaged renderer over app://)
-    ├── setup/                  # installPin.ts (the hash pin), installSteps.ts (loads the install file), installRunner.ts (runs it)
-    ├── storage/                # SettingsStore.ts (settings.json in userData), keptFiles.ts
-    │                           # (copies of dropped files under userData/attachments, 50 MB cap)
-    ├── system/loginItem.ts     # launch at login: macOS login item, Linux autostart .desktop
-    └── updater/                # releaseCheck.ts (GitHub latest-release check), releaseChecks.ts
-                                # (one check at a time, the staleness limits), selfUpdate.ts
-                                # (electron-updater: download on click, restart to update),
-                                # feedSignature.ts (the update feed must be signed by Talyx),
-                                # updateState.ts (the update state machine)
-```
+`src/shared/` is the contract between main, preload and renderer: `api.ts` is the single
+definition of `window.api` (the preload builds it over `ipcRenderer`, the browser dev bridge over
+HTTP), `channels.ts` types every channel, and `moduleHost.ts` is the module host contract
+(`npm run module-host` writes it to `contract/module-host.d.ts` for the modules repo).
 
-`src/shared/api.ts` is the single definition of `window.api`; the preload builds it over
-`ipcRenderer`, the browser dev bridge over HTTP. `src/shared/channels.ts` types every channel.
+The renderer (`src/renderer/src/`) uses Feature-Sliced Design: `app/` (wiring), `pages/`,
+`widgets/`, `features/`, `shared/` (ui, hooks, api, lib, the vendored engine client). Features
+speak Talyx's terms; their wiring to engine methods and REST paths is `app/engine/`.
 
-`src/shared/moduleHost.ts` is the module host contract; `npm run module-host` writes it to
-`contract/module-host.d.ts` for the modules repo, which also imports
-`infrastructure/modules/signing.ts` from plain Node (so it imports no Electron and no alias value).
+## Enforced by checks
 
-`infrastructure/engine/` runs the engine CLI (`talyx-engine`: the `enginePath` setting, then
-PATH, then `~/.local/bin`), attaches with `gateway ensure --json` and mints one-use tickets
-through the profile's control socket. Main opens the gateway websocket itself (the gateway
-admits no Origin header and takes the ticket in a subprotocol) and relays frames over
-`engine:socket-*` IPC; REST goes through `engine:http`. Main never owns or kills the gateway.
+Each line is the rule; the check's message names the fix.
 
-### Renderer Process (React Frontend: Feature-Sliced Design)
+- Layers: each imports only the layers below it, never a sibling slice; the renderer never
+  imports `electron` or Node; main, preload, splash and `src/shared` never import the renderer.
+  `npm run lint` (`eslint.config.mjs`, cases in `tests/unit/layerBoundaries.test.ts`).
+- Imports across layers use the aliases (`@app/*`, `@pages/*`, `@widgets/*`, `@features/*`,
+  `@shared/*`, `@renderer/*`, `@contract/*` for `src/shared`), never a relative path.
+  `npm run lint`.
+- Features name no engine method or REST path (that wiring is `app/engine/`):
+  `tests/unit/featureBackends.test.ts`.
+- TypeScript strict, no `any`, explicit return types: `npm run lint` and `npm run typecheck`.
+- `infrastructure/modules/signing.ts` imports no Electron and no alias value (the modules repo runs
+  it in plain Node): `tests/unit/modules/moduleHostContract.test.ts`.
+- Effects and timers only in the renderer kernel (`shared/hooks`, `app/providers`,
+  `shared/engine`). The ratchet allowlists only shrink: an entry that leaves never returns, and a
+  new file is never on one. `npm run lint` (`eslint.kernel.mjs`, `eslint.ratchet.mjs`) and
+  `tests/unit/ratchet.test.ts`.
+- `ipcMain.handle` only inside `handle()`, and channel types only from `src/shared/channels.ts`:
+  `npm run lint` and `npm run typecheck`.
+- No em dash (U+2014) outside the vendored engine files: `npm run lint` and
+  `tests/unit/noEmDash.test.ts`.
+- The engine's upstream name appears only in the README (its credit line):
+  `tests/unit/engineName.test.ts`, which runs only where the engine is installed (not in CI).
+- No `TODO`, `FIXME`, `HACK` or "for now" in comments in `src/` and `tests/`: `npm run lint`.
+- Formatting (single quotes, no semicolons, 100 columns, no trailing commas): `npm run format:check`.
+- Semantic color tokens, never raw Tailwind palette classes: `tests/unit/designTokens.test.ts`.
+- Feature-map names match the app's copy: `tests/unit/featureMap.test.ts`.
 
-```
-src/renderer/src/
-├── app/              # App-wide wiring, browser dev bridge, the hooks that wire `host` into
-│                     # features (useRosterBackend, useChatBackend, useProvidersBackend);
-│                     # engine/: each feature's backend over the engine. Only it names engine
-│                     # methods and REST paths (tests/unit/featureBackends.test.ts)
-├── pages/            # AgentsPage (the selected bot's chat or room, and details), SettingsPage
-├── widgets/          # AppShell, Roster (sidebar bots and rooms, create dialogs), Chat (transcript,
-│                     # cards, composer, RoomPane, the ⌘F search: ChatSearch on the pill's line
-│                     # with its SearchResults list), BotDetails (the details panel, routines, memory and skills),
-│                     # Providers (the settings sections, add-provider dialog, sign-in),
-│                     # settings-nav (Settings' sidebar: one page per row),
-│                     # settings-engine (Settings: the engine's state and path, the debug console),
-│                     # settings-startup (Settings: launch at login),
-│                     # Setup (the first-run flow: welcome, engine, provider, bot steps),
-│                     # shortcuts (the ⌘/ cheat sheet)
-├── features/         # bots (roster data, folders, pins, unread, details, routines, create, rooms,
-│                     # memory: a bot's memories and skills),
-│                     # bots/mcp.ts (the MCP tools over those use cases; deletes ask first),
-│                     # chat (transcript, use cases, hosted rooms polled over `groups.*`, search:
-│                     # a bot's chat and its own room messages, botSearch.ts),
-│                     # providers (keys, endpoints and sign-ins over REST; writes go to every bot),
-│                     # setup (which step comes first, the engine install and its screens,
-│                     # useEngine: the engine's presence and gateway connection),
-│                     # modules (license state, module pages; nothing shows without a key;
-│                     # useNavigation: which page is open, asking a module page before leaving),
-│                     # settings (which Settings page is open),
-│                     # shortcuts (every shortcut, one list: bound by app/providers/useKeyboardShortcuts,
-│                     # shown by the cheat sheet)
-└── shared/           # Reusable: ui/ (shadcn), hooks/, api/ (IPC wrappers), lib/,
-                      # engine/ (vendored engine client; host.ts is the facade features use)
-```
+## Rules that need judgment
 
-**FSD layer rules** (each layer imports only the layers below it, never a sibling slice; the renderer never imports `electron` or Node; main, preload, splash and `src/shared` never import the renderer): enforced by `npm run lint`.
-
-### Import Aliases
-
-Cross-layer imports use these aliases, never relative paths (enforced by `npm run lint`):
-
-```typescript
-import { Button } from '@shared/ui/button'
-import { useNavigation } from '@features/modules/useNavigation'
-import type { EngineStatus } from '@contract/engine'
-import { AppShell } from '@widgets/app-shell'
-```
-
-| Alias         | Path                                                          |
-| ------------- | ------------------------------------------------------------- |
-| `@renderer/*` | `src/renderer/src/*`                                          |
-| `@/*`         | `src/renderer/src/*`                                          |
-| `@app/*`      | `src/renderer/src/app/*`                                      |
-| `@pages/*`    | `src/renderer/src/pages/*`                                    |
-| `@widgets/*`  | `src/renderer/src/widgets/*`                                  |
-| `@features/*` | `src/renderer/src/features/*`                                 |
-| `@shared/*`   | `src/renderer/src/shared/*`                                   |
-| `@contract/*` | `src/shared/*` (main, preload and renderer: the IPC contract) |
+- **The engine is stock and never patched.** Talyx is a client of its gateway; bot-to-bot
+  delivery, group rooms and routines run in the engine. A gap becomes a Talyx-owned engine plugin
+  (`resources/engine-plugin/`), MCP tool or skill, never an engine change.
+- **Never write the engine's upstream name.** It is "the engine" (`shared/engine/`,
+  `infrastructure/engine/`, `EngineStatus`, `talyx-engine`); its CLI, paths and data keys are
+  written as `talyx`. Wire strings that need the name come from `engineWire()` in
+  `src/shared/engine.ts`, never a literal. The test above only sees the working tree, so commits,
+  PR text and issues are on you.
+- **Vendored engine files** (`eslint.vendored.mjs`) keep upstream's code as written, so re-syncs
+  stay clean diffs (README → Engine → Re-syncing the vendored client).
+- **One feature shape.** A feature exports `xActions(backend)`: use cases over an injected
+  backend, with the store behind them. Example: `features/chat/chat.ts` (`chatActions`), its
+  backend `app/engine/chat.ts`, wired in `app/providers/useChatBackend.ts`. New state goes under
+  a feature's actions, not in a bare store.
+- **Comments explain why.** A comment that states a rule ("never X") is a lint rule waiting to be
+  written: write the check instead.
+- **Tests drive use cases**, never the transport (IPC, websocket) or the DOM.
+- **Use the feature map's names** (the words the app shows) in prompts and PR text.
+- **Corrections become checks.** When an agent is corrected, the fix is a lint rule, a type or a
+  test in the same PR (or a line in #184 to #188), not a new line here.
+- **Screens carry evidence.** A PR that touches a screen carries `control-talyx` evidence (a
+  screenshot and the stored side effect): the `talyx-ui-change` skill.
+- **No unattended runs** (overnight, autopilot, cloud agents, auto-merge) until #185's rules are at
+  zero violations and #187's map covers the app. Until then every PR gets one human read.
 
 ## Code Style
 
-### Formatting (Prettier)
-
-- Single quotes, no semicolons, 100 char print width, no trailing commas
-- 2-space indentation, LF line endings
-- No em dash (U+2014) in any file outside the vendored engine files: use a comma, colon, period or
-  parentheses. `tests/unit/noEmDash.test.ts` and `npm run lint` enforce it.
-
-### TypeScript
-
-- **Strict mode** enabled
-- Never use `any`; prefer `unknown` with type guards
-- IPC types come from the channel table (IPC Patterns), never a cast
-- Use `string | null` not optional for nullable values
-- Exception: the vendored engine files (listed in `eslint.vendored.mjs`) keep upstream's code as
-  written so re-syncs stay clean diffs; see README → Engine → Re-syncing the vendored client
-
-### React Components
-
-```typescript
-// Named exports, explicit return type
-export function AgentsPage(): React.JSX.Element {
-  // 1. Zustand stores
-  const t = useLanguage((s) => s.t)
-  // 2. Local state
-  // 3. Named hooks: effects and timers live in shared/hooks, enforced by `npm run lint`
-  // 4. Handlers (async functions with explicit Promise<void>)
-  // 5. JSX
-  return <div>...</div>
-}
-```
-
-### Zustand Stores
-
-```typescript
-interface StoreState {
-  value: string | null // State
-  setValue: (v: string) => void // Actions
-  reset: () => void
-}
-
-export const useStore = create<StoreState>((set) => ({
-  value: null,
-  setValue: (v) => set({ value: v }),
-  reset: () => set({ value: null })
-}))
-```
-
-### IPC Patterns
-
-A new channel (`namespace:action`) is one row in `src/shared/channels.ts`: its input from the zod
-schema main validates with, its output declared once. Events go in `EventChannels`. Then:
-
-```typescript
-// main: handle() rejects an answer that is not the channel's output; lint bans ipcMain.handle
-handle('settings:set', (_event, raw: unknown) => {
-  settingsStore.set(validateInput(UserSettingsPartialSchema, raw))
-  return forPage(settingsStore.store)
-})
-// src/shared/api.ts, inside buildApi: input and reply typed by the table, no casts
-setSettings: (change: SettingsChange) => invoke('settings:set', change),
-```
-
-The renderer calls it through a wrapper in `src/renderer/src/shared/api/ipc.ts`.
-
-### Copy
-
-English only for now (`shared/lib/i18n.ts`, via `useLanguage((s) => s.t)`). Another language is
-one more table in that file.
+- `unknown` with type guards; `string | null`, not optional, for nullable values.
+- React components: named exports; inside, stores first, then local state, named hooks, handlers
+  (`async (): Promise<void>`), JSX.
+- Zustand stores declare state and actions in one interface and include `reset`.
+- A new IPC channel (`namespace:action`) is one row in `src/shared/channels.ts` (input from the
+  zod schema main validates with, output declared once; events in `EventChannels`), a `handle()`
+  in main, a line in `buildApi` and a wrapper in `src/renderer/src/shared/api/ipc.ts`.
+- Copy is English only, in `shared/lib/i18n.ts` via `useLanguage((s) => s.t)`; another language
+  is one more table there.
+- Toasts with sonner (`toast.success`, `toast.error`); conditional classes with `cn()`. An IPC
+  call's catch shows `toast.error(err instanceof Error ? err.message : '<specific message>')`.
 
 ## Naming Conventions
 
-| Thing            | Convention          | Example                                                             |
-| ---------------- | ------------------- | ------------------------------------------------------------------- |
-| React components | `PascalCase.tsx`    | `AgentsPage.tsx`, `AppShell.tsx`                                    |
-| Hooks            | `useCamelCase.ts`   | `useTheme.ts`, `useNavigation.ts`                                   |
-| Services/Classes | `PascalCase.ts`     | `SettingsStore.ts`, `DevBridge.ts`                                  |
-| IPC handlers     | `kebab-case.ipc.ts` | `settings.ipc.ts`                                                   |
-| Utilities        | `camelCase.ts`      | `utils.ts`                                                          |
-| IPC channels     | `namespace:action`  | `settings:get`, `settings:set`, `theme:set-native`, `updater:state` |
-| Branches         | `type/kebab-case`   | `feat/roster`                                                       |
+Components `PascalCase.tsx`, hooks `useCamelCase.ts`, services and classes `PascalCase.ts`, IPC
+handlers `kebab-case.ipc.ts`, utilities `camelCase.ts`, IPC channels `namespace:action`
+(`settings:get`, `theme:set-native`), branches `type/kebab-case` (`feat/roster`).
 
-## Git Conventions
+## Git and Tests
 
-**Commit format:** `type: imperative description`
-
-Types: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `ci:`, `test:`
-
-- Keep subject under 72 characters, no period at end
-- Use imperative mood ("add" not "added")
-- Reference PRs with `(#123)`
-
-## Testing
-
-**Framework:** Vitest | **Location:** `tests/unit/` | **Pattern:** `*.test.ts`
-
-- Group with nested `describe` blocks
-- Name tests: "should [expected behavior]"
-- Test success path + edge cases
-- Drive behavior through use cases, not the transport (IPC, websocket) or the DOM
-- Use factory functions for test data
-- `tests/smoke/` holds the opt-in real-engine smoke test; run it before merging an engine bump
-
-## Key Patterns
-
-**Toast notifications:** `toast.success('Done')` / `toast.error('Failed')` (via sonner)
-
-**Conditional classes:** `cn('base', condition && 'active')` (clsx + tailwind-merge)
-
-**Error handling in IPC calls:**
-
-```typescript
-try {
-  await settingsApi.set({ theme })
-} catch (err) {
-  toast.error(err instanceof Error ? err.message : 'Operation failed')
-}
-```
+- Commits: `type: imperative description` (`feat`, `fix`, `docs`, `refactor`, `chore`, `ci`,
+  `test`), under 72 characters, no period, `(#123)` for PRs.
+- Tests: Vitest in `tests/unit/*.test.ts`, nested `describe`, names "should [expected behavior]",
+  factory functions for test data. `tests/smoke/` is the opt-in real-engine smoke test; run it
+  before merging an engine bump.
 
 ## Key Decisions
 
 - One app, one purpose: tally agents, chat with them, configure them.
-- The engine is stock and never patched; Talyx is a client of its gateway. Bot-to-bot
-  delivery, group rooms and routines run in the engine, not in the app.
 - Settings are a JSON file (`settings.json` in userData). No local database.
 - Old features are deleted, not kept dormant; git history and `legacy/file-organizer` keep them.
-- Builds for macOS (Developer ID signed, notarized) and Linux (unsigned). Automatic updates on
-  macOS and the AppImage (electron-updater; download and restart only on the user's click, else
-  install on quit; only through an update feed Talyx signed); the
-  deb updates from the release page.
+- Builds for macOS (Developer ID signed, notarized) and Linux (unsigned). Updates download and
+  restart only on the user's click, and only through an update feed Talyx signed
+  (`docs/releasing.md`).
 - Free and open source (AGPL-3.0-only after 1.0.5; MIT up to 1.0.5). Outside contributions need the
   contributor agreement (`CLA.md`), so paid modules can ship beside the open code. The Talyx name
   and logo and the website's text and images are not under the licence (README, License). No
   account, no server, no telemetry.
 - Website (`website/`) on Vercel: it describes 1.0 and runs cookieless PostHog page analytics
-  and Vercel Speed Insights (the app itself stays no-telemetry). Releases: GitHub Releases on `PetarStoev02/talyx-app`
-  (the Release workflow creates a draft).
+  and Vercel Speed Insights (the app itself stays no-telemetry). Releases: GitHub Releases on
+  `PetarStoev02/talyx-app` (the Release workflow creates a draft).
