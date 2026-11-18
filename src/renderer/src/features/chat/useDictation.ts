@@ -2,6 +2,20 @@ import { useEffect, useRef, useState } from 'react'
 import { problemOf, type Problem } from '@shared/lib/problem'
 
 export type DictationState = 'idle' | 'starting' | 'recording' | 'transcribing'
+/** What moves dictation on: the first toggle, the microphone, the recorder, the transcription. */
+export type DictationEvent = 'start' | 'opened' | 'failed' | 'stopped' | 'settled'
+
+/** Where each event takes dictation; an event a state does not list leaves it where it is. */
+export const DICTATION_TRANSITIONS: Record<
+  DictationState,
+  Partial<Record<DictationEvent, DictationState>>
+> = {
+  idle: { start: 'starting' },
+  starting: { opened: 'recording', failed: 'idle' },
+  // The second toggle asks the recorder to stop; `stopped` is the recorder saying it has.
+  recording: { stopped: 'transcribing' },
+  transcribing: { settled: 'idle' }
+}
 
 // The first format this platform records; the engine accepts any of them.
 const RECORDING_TYPES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
@@ -18,6 +32,8 @@ export function useDictation(
   const [state, setState] = useState<DictationState>('idle')
   const recorder = useRef<MediaRecorder | null>(null)
   const closed = useRef(false)
+  const move = (event: DictationEvent): void =>
+    setState((current) => DICTATION_TRANSITIONS[current][event] ?? current)
 
   // Leaving the chat mid-recording releases the microphone and drops the recording.
   useEffect(() => {
@@ -29,7 +45,7 @@ export function useDictation(
   }, [])
 
   async function start(): Promise<void> {
-    setState('starting')
+    move('start')
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     if (closed.current) return stream.getTracks().forEach((track) => track.stop())
     const mimeType = RECORDING_TYPES.find((type) => MediaRecorder.isTypeSupported(type))
@@ -40,23 +56,23 @@ export function useDictation(
       stream.getTracks().forEach((track) => track.stop())
       if (closed.current) return
       const blob = new Blob(chunks, { type: media.mimeType })
-      setState('transcribing')
+      move('stopped')
       void dataUrlOf(blob)
         .then((dataUrl) => transcribe({ dataUrl, mime: media.mimeType }))
         .then((text) => text.trim() && onText(text.trim()))
         .catch(onError)
-        .finally(() => setState('idle'))
+        .finally(() => move('settled'))
     }
     recorder.current = media
     media.start()
-    setState('recording')
+    move('opened')
   }
 
   function toggle(): void {
     if (state === 'recording') return recorder.current?.stop()
     if (state === 'idle')
       start().catch((error: unknown) => {
-        setState('idle')
+        move('failed')
         onError(error)
       })
   }
