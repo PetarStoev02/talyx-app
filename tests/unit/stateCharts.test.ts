@@ -299,7 +299,7 @@ interface Line {
   hush: () => void
 }
 
-// Timers fired before "the engine goes quiet" gives up on a state change.
+// Timers fired before "time passes in silence" gives up on a state change.
 const QUIET_TIMERS = 10
 // Event-loop turns an event gets to settle; one more must change nothing.
 const SETTLE_TURNS = 10
@@ -312,9 +312,9 @@ const CONNECTION_EVENTS: Record<string, (line: Line) => Promise<unknown> | void>
   'socket opens': (line) => line.dials.shift()?.open(),
   'open fails': (line) => line.dials.shift()?.refuse(),
   'socket closes': (line) => line.dropAll(),
-  // Time runs, timer by timer, until the state changes: a redial's backoff, the dial timeout, or
-  // the heartbeat deadline of a socket whose engine went silent.
-  'engine goes quiet': async (line) => {
+  // The engine answers nothing while time runs, timer by timer, until the state changes: a
+  // redial's backoff, the dial timeout, or the heartbeat deadline of an open socket.
+  'time passes in silence': async (line) => {
     line.hush()
     const before = line.states.length
     for (let fired = 0; fired < QUIET_TIMERS && line.states.length === before; fired += 1) {
@@ -332,7 +332,7 @@ const REACH: Record<ConnectionState, Array<{ when: string; path: string[] }>> = 
   idle: [{ when: 'never dialled', path: [] }],
   connecting: [
     { when: 'first dial', path: ['connect'] },
-    { when: 'redial', path: ['connect', 'socket opens', 'socket closes', 'engine goes quiet'] }
+    { when: 'redial', path: ['connect', 'socket opens', 'socket closes', 'time passes in silence'] }
   ],
   open: [{ when: 'open', path: ['connect', 'socket opens'] }],
   closed: [
@@ -340,8 +340,8 @@ const REACH: Record<ConnectionState, Array<{ when: string; path: string[] }>> = 
     { when: 'disconnected', path: ['connect', 'socket opens', 'disconnect'] }
   ],
   error: [
-    { when: 'redial waiting', path: ['connect', 'engine goes quiet'] },
-    { when: 'disconnected', path: ['connect', 'engine goes quiet', 'disconnect'] }
+    { when: 'redial waiting', path: ['connect', 'time passes in silence'] },
+    { when: 'disconnected', path: ['connect', 'time passes in silence', 'disconnect'] }
   ]
 }
 
@@ -404,7 +404,7 @@ async function act(line: Line, event: string): Promise<string> {
   const settled = line.states.length
   await vi.advanceTimersByTimeAsync(0)
   expect(line.states.length, `"${event}" was still changing state`).toBe(settled)
-  if (event !== 'engine goes quiet') return event
+  if (event !== 'time passes in silence') return event
   const waited = Date.now() - before
   return waited === BACKOFF_MS ? 'backoff elapses' : `no answer in ${waited / 1000} s`
 }
