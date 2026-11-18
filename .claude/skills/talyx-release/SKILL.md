@@ -14,7 +14,8 @@ installed Talyx, so the owner runs the signing and publishing steps. Do not run 
 2. Write `docs/release-notes/<version>.md` and merge it. No engine name.
 3. Check the signing certificate and the Apple membership have not expired.
 4. If `engine-install.json` changed: its SHA-256 equals `ENGINE_INSTALL_SHA256` in
-   `src/main/infrastructure/setup/installPin.ts`, and
+   `src/main/infrastructure/setup/installPin.ts` (pin updated in the same commit as the
+   commands), its `engineVersion` equals `EXPECTED_ENGINE_VERSION`, and
    `gh secret set ENGINE_INSTALL_JSON < <(base64 -i engine-install.json)` ran.
 
 ## Build the draft
@@ -26,7 +27,8 @@ installed Talyx, so the owner runs the signing and publishing steps. Do not run 
 
 ## Sign and publish (owner's machine)
 
-7. `npm run sign-release`. It checks the draft's feeds against the workflow run's own `feeds`
+7. On an up-to-date `main` checkout (it reads the version from `package.json`),
+   `npm run sign-release`. It checks the draft's feeds against the workflow run's own `feeds`
    artifact, lists the commits since the last release and asks before it signs. Read that list.
 8. Read the draft on GitHub, then publish:
    `gh release edit v<version> --repo PetarStoev02/talyx-app --draft=false`.

@@ -12,10 +12,8 @@ The bots run on **the engine**, a separate agent backend the user installs; Taly
 of it and holds no orchestration logic of its own. The screens and their user-facing names are
 in the feature map, `.claude/skills/verify-talyx/features/README.md`.
 
-- **Version:** 1.1.0
-- **Stack:** Electron 44 + React 19 + TypeScript 5.9 + TailwindCSS 4
-- **State:** Zustand | **UI:** shadcn/ui (New York) | **Settings:** JSON file
-- **Build:** electron-vite + electron-builder | **Tests:** Vitest
+Version 1.1.0. Electron 44, React 19, TypeScript 5.9, TailwindCSS 4, Zustand, shadcn/ui (New
+York), electron-vite + electron-builder, Vitest.
 
 ### History and plans
 
@@ -66,8 +64,8 @@ HTTP), `channels.ts` types every channel, and `moduleHost.ts` is the module host
 (`npm run module-host` writes it to `contract/module-host.d.ts` for the modules repo).
 
 The renderer (`src/renderer/src/`) uses Feature-Sliced Design: `app/` (wiring), `pages/`,
-`widgets/`, `features/`, `shared/` (ui, hooks, api, lib, the vendored engine client). Only
-`app/engine/` names engine methods and REST paths; features speak Talyx's terms.
+`widgets/`, `features/`, `shared/` (ui, hooks, api, lib, the vendored engine client). Features
+speak Talyx's terms; their wiring to engine methods and REST paths is `app/engine/`.
 
 ## Enforced by checks
 
@@ -79,24 +77,25 @@ Each line is the rule; the check's message names the fix.
 - Imports across layers use the aliases (`@app/*`, `@pages/*`, `@widgets/*`, `@features/*`,
   `@shared/*`, `@renderer/*`, `@contract/*` for `src/shared`), never a relative path.
   `npm run lint`.
-- Engine method names and REST paths only under `app/engine/`: `tests/unit/featureBackends.test.ts`.
+- Features name no engine method or REST path (that wiring is `app/engine/`):
+  `tests/unit/featureBackends.test.ts`.
+- TypeScript strict, no `any`, explicit return types: `npm run lint` and `npm run typecheck`.
+- `infrastructure/modules/signing.ts` imports no Electron and no alias value (the modules repo runs
+  it in plain Node): `tests/unit/modules/moduleHostContract.test.ts`.
 - Effects and timers only in the renderer kernel (`shared/hooks`, `app/providers`,
   `shared/engine`). The ratchet allowlists only shrink: an entry that leaves never returns, and a
   new file is never on one. `npm run lint` (`eslint.kernel.mjs`, `eslint.ratchet.mjs`) and
   `tests/unit/ratchet.test.ts`.
-- IPC handlers register through `handle()` after a row in `src/shared/channels.ts`: `npm run lint`
-  and `npm run typecheck`.
+- `ipcMain.handle` only inside `handle()`, and channel types only from `src/shared/channels.ts`:
+  `npm run lint` and `npm run typecheck`.
 - No em dash (U+2014) outside the vendored engine files: `npm run lint` and
   `tests/unit/noEmDash.test.ts`.
 - The engine's upstream name appears only in the README's credit line:
-  `tests/unit/engineName.test.ts`. Wire strings that need it come from `engineWire()` in
-  `src/shared/engine.ts`.
-- No `TODO`, `FIXME`, `HACK` or "for now" in comments: `npm run lint` (`no-warning-comments`).
+  `tests/unit/engineName.test.ts`, which runs only where the engine is installed (not in CI).
+- No `TODO`, `FIXME`, `HACK` or "for now" in comments in `src/` and `tests/`: `npm run lint`.
 - Formatting (single quotes, no semicolons, 100 columns, no trailing commas): `npm run format:check`.
 - Semantic color tokens, never raw Tailwind palette classes: `tests/unit/designTokens.test.ts`.
 - Feature-map names match the app's copy: `tests/unit/featureMap.test.ts`.
-- The vendored engine files (`eslint.vendored.mjs`) keep upstream's code as written, so re-syncs
-  stay clean diffs (README → Engine → Re-syncing the vendored client).
 
 ## Rules that need judgment
 
@@ -105,8 +104,11 @@ Each line is the rule; the check's message names the fix.
   (`resources/engine-plugin/`), MCP tool or skill, never an engine change.
 - **Never write the engine's upstream name.** It is "the engine" (`shared/engine/`,
   `infrastructure/engine/`, `EngineStatus`, `talyx-engine`); its CLI, paths and data keys are
-  written as `talyx`. The test above only sees the working tree, so commits, PR text and issues are
-  on you.
+  written as `talyx`. Wire strings that need the name come from `engineWire()` in
+  `src/shared/engine.ts`, never a literal. The test above only sees the working tree, so commits,
+  PR text and issues are on you.
+- **Vendored engine files** (`eslint.vendored.mjs`) keep upstream's code as written, so re-syncs
+  stay clean diffs (README → Engine → Re-syncing the vendored client).
 - **One feature shape.** A feature exports `xActions(backend)`: use cases over an injected
   backend, with the store behind them. Example: `features/chat/chat.ts` (`chatActions`), its
   backend `app/engine/chat.ts`, wired in `app/providers/useChatBackend.ts`. New state goes under
@@ -124,10 +126,9 @@ Each line is the rule; the check's message names the fix.
 
 ## Code Style
 
-- TypeScript strict; `unknown` with type guards, never `any`. Use `string | null`, not optional,
-  for nullable values.
-- React components: named exports with an explicit return type; inside, stores first, then local
-  state, named hooks, handlers (`async (): Promise<void>`), JSX.
+- `unknown` with type guards; `string | null`, not optional, for nullable values.
+- React components: named exports; inside, stores first, then local state, named hooks, handlers
+  (`async (): Promise<void>`), JSX.
 - Zustand stores declare state and actions in one interface and include `reset`.
 - A new IPC channel (`namespace:action`) is one row in `src/shared/channels.ts` (input from the
   zod schema main validates with, output declared once; events in `EventChannels`), a `handle()`
