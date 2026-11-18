@@ -2,7 +2,15 @@
 // control-talyx: starts a throwaway dev Talyx and drives its real Electron window over the
 // Chrome DevTools Protocol. Usage is in SKILL.md next to this file.
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
@@ -73,10 +81,27 @@ async function launch() {
 
 // An engine installed by setup in a --no-engine run lives in the run's HOME, and its gateway
 // outlives Talyx (Talyx never owns the gateway). Stop what runs from inside the run directory, by
-// that path. Not `gateway stop`: the engine looks for its launchd service under the account's real
-// home, so it could stop the user's own gateway.
-function stopRunProcesses() {
-  spawnSync('pkill', ['-U', String(process.getuid()), '-f', `${RUN}/`])
+// that path (as written and with /tmp resolved). Not `gateway stop`: the engine looks for its
+// launchd service under the account's real home, so it could stop the user's own gateway.
+async function stopRunProcesses() {
+  const paths = [...new Set([RUN, existsSync(RUN) ? realpathSync(RUN) : RUN])]
+  const signal = (name) =>
+    paths.forEach((path) => spawnSync('pkill', [`-${name}`, '-U', uid(), '-f', `${path}/`]))
+  const left = () =>
+    paths.some((path) => spawnSync('pgrep', ['-U', uid(), '-f', `${path}/`]).status === 0)
+  const gone = async () => {
+    for (const deadline = Date.now() + STOP_TIMEOUT_MS; Date.now() < deadline; await sleep(200))
+      if (!left()) return true
+    return !left()
+  }
+  signal('TERM')
+  if (await gone()) return
+  signal('KILL')
+  if (!(await gone())) throw new Error(`processes from ${RUN} survived SIGKILL; ${RUN} kept`)
+}
+
+function uid() {
+  return String(process.getuid())
 }
 
 async function doctor() {
@@ -108,7 +133,7 @@ async function stop() {
         throw new Error(`process group ${pid} survived SIGKILL; ${RUN} kept`)
     }
   }
-  stopRunProcesses()
+  await stopRunProcesses()
   rmSync(RUN, { recursive: true, force: true })
   console.log(`stopped${pid ? ` pid ${pid}` : ''}; evidence kept in ${EVIDENCE}`)
 }
