@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // control-talyx: starts a throwaway dev Talyx and drives its real Electron window over the
 // Chrome DevTools Protocol. Usage is in SKILL.md next to this file.
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,8 +17,8 @@ const USER_DATA = join(RUN, 'userData')
 const HOME = join(RUN, 'home')
 const CDP_PORT = Number(process.env.TALYX_VERIFY_CDP_PORT ?? 9333)
 const CDP_URL = `http://127.0.0.1:${CDP_PORT}`
-const BRIDGE_PORT = 5195
-const MCP_PORT = 47899
+const BRIDGE_PORT = Number(process.env.TALYX_VERIFY_BRIDGE_PORT ?? 5195)
+const MCP_PORT = Number(process.env.TALYX_VERIFY_MCP_PORT ?? 47899)
 const READY_TIMEOUT_MS = 90_000
 const STEP_TIMEOUT_MS = 10_000
 const STOP_TIMEOUT_MS = 10_000
@@ -71,6 +71,20 @@ async function launch() {
   await page.context().browser().close()
 }
 
+// An engine installed by setup in a --no-engine run lives in the run's HOME, and its gateway
+// outlives Talyx (Talyx never owns the gateway), so stop it before the run directory goes.
+function stopSandboxEngine() {
+  const engine = join(HOME, '.local/bin', ENGINE_COMMAND)
+  if (!existsSync(engine)) return
+  spawnSync(engine, ['gateway', 'stop'], {
+    env: { ...process.env, HOME, PATH: '/usr/bin:/bin' },
+    stdio: 'ignore',
+    timeout: STOP_TIMEOUT_MS
+  })
+  // Anything still running from inside the run directory is this run's; stop it by that path.
+  spawnSync('pkill', ['-f', RUN])
+}
+
 async function doctor() {
   const problems = []
   if (!pidAlive()) problems.push(`no live pid in ${PID_FILE}`)
@@ -100,6 +114,7 @@ async function stop() {
         throw new Error(`process group ${pid} survived SIGKILL; ${RUN} kept`)
     }
   }
+  stopSandboxEngine()
   rmSync(RUN, { recursive: true, force: true })
   console.log(`stopped${pid ? ` pid ${pid}` : ''}; evidence kept in ${EVIDENCE}`)
 }

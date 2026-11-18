@@ -32,7 +32,10 @@ control-talyx launch                                       # attaches to this ma
 - Ready means the main window answers over CDP and shows its first heading or the roster. The
   command then waits 3 s for the dev build's one-time reload and checks again. It prints the pid,
   window title and user data path, or fails with the log path (`/tmp/talyx-verify/run/talyx.log`).
-- One run at a time: `launch` refuses while a pid is alive. Run `stop` first.
+- One run at a time per root: `launch` refuses while a pid is alive. Run `stop` first. Another
+  session's run is not yours to stop: give yours its own root and ports with
+  `TALYX_VERIFY_ROOT`, `TALYX_VERIFY_CDP_PORT`, `TALYX_VERIFY_BRIDGE_PORT` and
+  `TALYX_VERIFY_MCP_PORT`.
 
 ## Doctor
 
@@ -86,7 +89,8 @@ control-talyx stop
 ```
 
 Kills the process group it started (from `/tmp/talyx-verify/run/pid`, never by name), waits until
-every process in it has exited (Electron quits after electron-vite), and removes
+every process in it has exited (Electron quits after electron-vite), stops the gateway of an engine
+setup installed into the run's home (and anything else still running from the run directory), and removes
 `/tmp/talyx-verify/run/`. Evidence stays. Run it after every attempt, including failed ones; a
 later `launch` refuses while any process in that group is alive.
 
