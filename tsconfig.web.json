@@ -10,6 +10,7 @@
   ],
   "compilerOptions": {
     "composite": true,
+    "exactOptionalPropertyTypes": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
