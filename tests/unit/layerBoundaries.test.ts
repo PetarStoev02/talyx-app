@@ -1,0 +1,161 @@
+import { ESLint } from 'eslint'
+import { describe, expect, it } from 'vitest'
+
+// The layer rules live in eslint.config.mjs; these cases prove each block matches real paths.
+const eslint = new ESLint()
+const R = 'src/renderer/src'
+
+async function errorsFor(filePath: string, source: string): Promise<string[]> {
+  const [result] = await eslint.lintText(`${source}\n`, { filePath })
+  return result.messages
+    .filter((message) => /restricted-imports|cross-layer/.test(message.ruleId ?? ''))
+    .map((message) => message.message)
+}
+
+describe('layer boundaries', () => {
+  it.each([
+    [
+      'a feature imports app',
+      `${R}/features/bots/x.ts`,
+      '@app/providers/x',
+      'features/ imports only shared/'
+    ],
+    [
+      'a feature imports a page',
+      `${R}/features/bots/x.ts`,
+      '@pages/agents',
+      'features/ imports only shared/'
+    ],
+    [
+      'a feature imports a widget',
+      `${R}/features/bots/x.ts`,
+      '@widgets/chat',
+      'features/ imports only shared/'
+    ],
+    [
+      'a feature imports app by the root alias',
+      `${R}/features/bots/x.ts`,
+      '@/app/x',
+      'features/ imports only shared/'
+    ],
+    [
+      'a feature imports another feature',
+      `${R}/features/bots/x.ts`,
+      '@features/chat/x',
+      'features/bots imports no other feature'
+    ],
+    [
+      'a widget imports app',
+      `${R}/widgets/chat/x.tsx`,
+      '@app/x',
+      'widgets/ imports only features/ and shared/'
+    ],
+    [
+      'a widget imports a page',
+      `${R}/widgets/chat/x.tsx`,
+      '@renderer/pages/agents',
+      'widgets/ imports only features/ and shared/'
+    ],
+    [
+      'a widget imports another widget',
+      `${R}/widgets/chat/x.tsx`,
+      '@widgets/roster',
+      'widgets/chat imports no other widget'
+    ],
+    [
+      'a page imports app',
+      `${R}/pages/agents/x.tsx`,
+      '@app/x',
+      'pages/ imports only widgets/, features/ and shared/'
+    ],
+    [
+      'a page imports another page',
+      `${R}/pages/agents/x.tsx`,
+      '@pages/settings',
+      'pages/agents imports no other page'
+    ],
+    [
+      'shared imports a feature',
+      `${R}/shared/lib/x.ts`,
+      '@features/bots/x',
+      'shared/ imports nothing above it'
+    ],
+    ['shared imports app', `${R}/shared/ui/x.tsx`, '@app/x', 'shared/ imports nothing above it'],
+    ['main imports the renderer', 'src/main/x.ts', '@shared/lib/x', 'never import the renderer'],
+    [
+      'preload imports the renderer by path',
+      'src/preload/x.ts',
+      '../renderer/src/shared/x',
+      'never import the renderer'
+    ],
+    [
+      'the renderer imports electron',
+      `${R}/app/x.ts`,
+      'electron',
+      'reach Electron and Node through window.api'
+    ],
+    [
+      'the renderer imports a node: module',
+      `${R}/features/bots/x.ts`,
+      'node:fs',
+      'reach Node through window.api'
+    ],
+    [
+      'the renderer imports a bare Node module',
+      `${R}/App.tsx`,
+      'path',
+      'reach Electron and Node through window.api'
+    ],
+    [
+      'a relative import into another feature',
+      `${R}/features/bots/x.ts`,
+      '../chat/store',
+      "import it as '@features/chat/store'"
+    ],
+    [
+      'a relative import from root into a layer',
+      `${R}/main.tsx`,
+      './app/browser-bridge',
+      "import it as '@app/browser-bridge'"
+    ],
+    [
+      'a relative import into the contract from the renderer',
+      `${R}/features/bots/x.ts`,
+      '../../../../shared/api',
+      "import it as '@contract/api'"
+    ],
+    [
+      'a relative import into the contract from main',
+      'src/main/x.ts',
+      '../shared/api',
+      "import it as '@contract/api'"
+    ]
+  ])('should reject %s', async (_case, filePath, specifier, message) => {
+    const errors = await errorsFor(filePath, `import '${specifier}'`)
+    expect(errors).toEqual([expect.stringContaining(message)])
+  })
+
+  it.each([
+    ['a feature importing shared', `${R}/features/bots/x.ts`, '@shared/lib/utils'],
+    ['a feature importing the contract', `${R}/features/bots/x.ts`, '@contract/engine'],
+    [
+      'a feature importing its own slice by alias',
+      `${R}/features/bots/x.ts`,
+      '@features/bots/store'
+    ],
+    ['a relative import inside a slice', `${R}/features/bots/memory/x.ts`, '../store'],
+    ['a widget importing a feature', `${R}/widgets/chat/x.tsx`, '@features/chat/x'],
+    ['a page importing a widget', `${R}/pages/agents/x.tsx`, '@widgets/chat'],
+    ['app importing a page', `${R}/app/providers/x.ts`, '@pages/agents'],
+    ['shared importing another segment', `${R}/shared/ui/x.tsx`, '@/shared/lib/utils'],
+    ['main importing a sibling folder', 'src/main/infrastructure/ipc/x.ts', '../engine/engine'],
+    ['main importing electron', 'src/main/x.ts', 'electron'],
+    [
+      'main importing resources',
+      'src/main/infrastructure/engine/x.ts',
+      '../../../../resources/a?raw'
+    ]
+  ])('should allow %s', async (_case, filePath, specifier) => {
+    expect(await errorsFor(filePath, `import '${specifier}'`)).toEqual([])
+  })
+})

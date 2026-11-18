@@ -4,8 +4,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { ErrorBoundary } from '@shared/ui/ErrorBoundary'
-import { installBrowserBridge } from './app/browser-bridge'
-import { reportError } from './shared/lib/report'
+import { installBrowserBridge } from '@app/browser-bridge'
+import { reportError } from '@shared/lib/report'
 
 installBrowserBridge()
 

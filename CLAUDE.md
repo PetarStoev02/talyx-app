@@ -245,17 +245,11 @@ src/renderer/src/
                       # engine/ (vendored engine client; host.ts is the facade features use)
 ```
 
-**FSD Layer Rules** (strict top-down dependency):
-
-- `app/` → can import from any layer
-- `pages/` → `widgets/`, `features/`, `shared/`
-- `widgets/` → `features/`, `shared/`
-- `features/` → `shared/`
-- `shared/` → no upward imports
+**FSD layer rules** (each layer imports only the layers below it, never a sibling slice; the renderer never imports `electron` or Node; main and preload never import the renderer): enforced by `npm run lint`.
 
 ### Import Aliases
 
-Always use aliases for cross-layer imports, never relative paths across layers:
+Cross-layer imports use these aliases, never relative paths (enforced by `npm run lint`):
 
 ```typescript
 import { Button } from '@shared/ui/button'
