@@ -55,7 +55,8 @@ const localPlugin = {
           ImportDeclaration: check,
           ImportExpression: check,
           ExportNamedDeclaration: check,
-          ExportAllDeclaration: check
+          ExportAllDeclaration: check,
+          TSImportType: check
         }
       }
     }
@@ -114,31 +115,30 @@ function aliasOf(folders) {
 }
 
 const RENDERER_RUNTIME = {
-  paths: ['electron', ...builtinModules].map((name) => ({
-    name,
-    message:
-      'The renderer runs as a web page: reach Electron and Node through window.api (src/shared/api.ts) and an IPC handler in main.'
-  })),
-  patterns: [
-    {
-      regex: '^node:',
-      message:
-        'The renderer runs as a web page: reach Node through window.api (src/shared/api.ts) and an IPC handler in main.'
-    }
-  ]
+  regex: `^(node:.*|${['electron', ...builtinModules].join('|')})(/.*)?$`,
+  message:
+    'The renderer runs as a web page: reach Electron and Node through window.api (src/shared/api.ts) and an IPC handler in main.'
+}
+
+/**
+ * Bans the patterns in static imports and re-exports, and in `import('x')` calls and types,
+ * which no-restricted-imports does not read. esquery regexes cannot hold a slash, hence `\x2F`.
+ */
+function restrictImports(patterns) {
+  return {
+    'no-restricted-imports': ['error', { patterns }],
+    'no-restricted-syntax': [
+      'error',
+      ...patterns.map(({ regex, message }) => ({
+        selector: `:matches(ImportExpression, TSImportType) > Literal.source[value=/${regex.replaceAll('/', '\\x2F')}/]`,
+        message
+      }))
+    ]
+  }
 }
 
 function rendererImportBlock(files, patterns) {
-  return {
-    files: [files],
-    ignores: VENDORED_ENGINE_FILES,
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        { paths: RENDERER_RUNTIME.paths, patterns: [...RENDERER_RUNTIME.patterns, ...patterns] }
-      ]
-    }
-  }
+  return { files: [files], rules: restrictImports([RENDERER_RUNTIME, ...patterns]) }
 }
 
 function sliceBlocks(layer, upward) {
@@ -166,24 +166,16 @@ const layerBoundaries = [
   }),
   {
     files: ['src/main/**', 'src/preload/**', 'src/splash/**', 'src/shared/**'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              regex: `${aliasOf(['renderer', ...LAYERS]).replace('(renderer/|/)?', '')}|^@/|^\\.\\.?/(.*/)?renderer(/|$)`,
-              message:
-                'main, preload and the contract never import the renderer: move the shared code to src/shared and import it as @contract/.'
-            }
-          ]
-        }
-      ]
-    }
+    rules: restrictImports([
+      {
+        regex: `${aliasOf(['renderer', ...LAYERS]).replace('(renderer/|/)?', '')}|^@/|^\\.\\.?/(.*/)?renderer(/|$)`,
+        message:
+          'main, preload and the contract never import the renderer: move the shared code to src/shared and import it as @contract/.'
+      }
+    ])
   },
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: VENDORED_ENGINE_FILES,
     plugins: { local: localPlugin },
     rules: { 'local/no-relative-cross-layer': 'error' }
   }

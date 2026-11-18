@@ -8,7 +8,7 @@ const R = 'src/renderer/src'
 async function errorsFor(filePath: string, source: string): Promise<string[]> {
   const [result] = await eslint.lintText(`${source}\n`, { filePath })
   return result.messages
-    .filter((message) => /restricted-imports|cross-layer/.test(message.ruleId ?? ''))
+    .filter((message) => /restricted-(imports|syntax)|cross-layer/.test(message.ruleId ?? ''))
     .map((message) => message.message)
 }
 
@@ -98,7 +98,7 @@ describe('layer boundaries', () => {
       'the renderer imports a node: module',
       `${R}/features/bots/x.ts`,
       'node:fs',
-      'reach Node through window.api'
+      'reach Electron and Node through window.api'
     ],
     [
       'the renderer imports a bare Node module',
@@ -157,5 +157,46 @@ describe('layer boundaries', () => {
     ]
   ])('should allow %s', async (_case, filePath, specifier) => {
     expect(await errorsFor(filePath, `import '${specifier}'`)).toEqual([])
+  })
+
+  it.each([
+    [
+      'an import() call',
+      `${R}/features/bots/x.ts`,
+      "void import('@widgets/chat')",
+      'features/ imports only shared/'
+    ],
+    [
+      'an import() type',
+      `${R}/features/bots/x.ts`,
+      "type T = import('@widgets/chat').T",
+      'features/ imports only shared/'
+    ],
+    [
+      'an import() call from preload',
+      'src/preload/x.ts',
+      "void import('../renderer/src/App')",
+      'never import the renderer'
+    ],
+    [
+      'an import() type into the contract',
+      `${R}/features/bots/x.ts`,
+      "type T = import('../../../../shared/api').Api",
+      "import it as '@contract/api'"
+    ],
+    [
+      'a re-export',
+      `${R}/features/bots/x.ts`,
+      "export * from '@app/x'",
+      'features/ imports only shared/'
+    ],
+    [
+      'a vendored engine file',
+      `${R}/shared/engine/client.ts`,
+      "import 'electron'",
+      'reach Electron and Node through window.api'
+    ]
+  ])('should reject %s', async (_case, filePath, source, message) => {
+    expect(await errorsFor(filePath, source)).toEqual([expect.stringContaining(message)])
   })
 })
