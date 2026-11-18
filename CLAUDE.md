@@ -79,6 +79,8 @@ Each line is the rule; the check's message names the fix.
   `npm run lint`.
 - Features name no engine method or REST path (that wiring is `app/engine/`):
   `tests/unit/featureBackends.test.ts`.
+- A feature that exports `xActions(backend)` has its tests in `tests/unit/<feature>/`:
+  `tests/unit/featureTests.test.ts`.
 - TypeScript strict with `exactOptionalPropertyTypes`, no `any`, explicit return types:
   `npm run lint` and `npm run typecheck`.
 - `infrastructure/modules/signing.ts` imports no Electron and no alias value (the modules repo runs
