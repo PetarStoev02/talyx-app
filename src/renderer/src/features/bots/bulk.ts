@@ -132,8 +132,9 @@ export async function hideRows(
 /**
  * Deletes the bots and rooms, then the folders in one layout save: what was in a deleted folder
  * and is not deleted itself moves up to the nearest folder that stays, or to Unassigned, after
- * that folder's own rows. A failure part way never hides a bot: one whose folder is gone shows
- * in Unassigned until it moves.
+ * that folder's own rows. The bots move before the layout save, so a retry of a delete that
+ * failed part way still finds its folders. A failure part way never hides a bot: one whose
+ * folder is gone shows in Unassigned.
  */
 export async function deleteRows(
   backend: Pick<RosterStore, 'deleteRoom' | 'deleteProfile' | 'updateLayout' | 'saveBotMeta'>,
@@ -155,6 +156,13 @@ export async function deleteRows(
       cursor = snapshot.folders.find((folder) => folder.id === cursor)?.parentId ?? null
     return cursor
   }
+  for (const bot of snapshot.bots) {
+    const from = bot.meta.sectionId ?? null
+    if (bots.includes(bot.name) || !from || !folders.includes(from)) continue
+    const to = landing(from)
+    const sectionName = snapshot.folders.find((folder) => folder.id === to)?.name ?? null
+    await saveBotMeta(backend, bot.name, { sectionId: to, sectionName })
+  }
   await saveLayout(backend, snapshot, (layout) => ({
     ...(folders.length && {
       folders: folders.reduce(removeFolder, layout.folders),
@@ -167,13 +175,6 @@ export async function deleteRows(
     ),
     ...(rooms.length && { roomPins: layout.roomPins.filter((id) => !rooms.includes(id)) })
   }))
-  for (const bot of snapshot.bots) {
-    const from = bot.meta.sectionId ?? null
-    if (bots.includes(bot.name) || !from || !folders.includes(from)) continue
-    const to = landing(from)
-    const sectionName = snapshot.folders.find((folder) => folder.id === to)?.name ?? null
-    await saveBotMeta(backend, bot.name, { sectionId: to, sectionName })
-  }
 }
 
 // Each deleted folder's rows that stay go after the rows of the folder they land in, as they showed.

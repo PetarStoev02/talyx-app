@@ -12,6 +12,7 @@ import {
   ROOM_PINS_KEY,
   folderBots,
   folderItems,
+  folderPath,
   itemKey,
   itemRef,
   pinnedBots,
@@ -90,6 +91,25 @@ const shownBots = (): string[] =>
     ...pinnedBots(roster().bots),
     ...[null, ...roster().folders.map((item) => item.id)].flatMap((id) => folderBots(roster(), id))
   ].map((item) => item.name)
+// Where each row shows: the pins, Unassigned and each folder by its path, as sets.
+const placement = (): Record<string, string[]> => {
+  const snapshot = roster()
+  const keys = (items: RosterRowRef[]): string[] => items.map(itemKey).sort()
+  return Object.fromEntries([
+    [
+      'pins',
+      keys([
+        ...pinnedBots(snapshot.bots).map((item) => bot(item.name)),
+        ...pinnedRooms(snapshot).map((item) => room(item.room_id))
+      ])
+    ],
+    ['', keys(folderItems(snapshot, null).map(itemRef))],
+    ...snapshot.folders.map((item) => [
+      folderPath(snapshot.folders, item),
+      keys(folderItems(snapshot, item.id).map(itemRef))
+    ])
+  ])
+}
 const layoutSaves = (): string[] =>
   engine.configureCalls.filter((call) => call.startsWith('default:'))
 
@@ -253,24 +273,30 @@ describe('deleting several picked rows', () => {
     expect(roster().folders.map((item) => item.id)).not.toContain('clients')
     expect(rowKeys(null)).toEqual(['bot:default', 'bot:support', 'room:clients-room'])
   })
-  it('should never hide a bot that stays when the delete fails part way, and finish on a retry', async () => {
+  it('should never hide a bot that stays when the delete fails part way, and finish it on a retry', async () => {
     const rows = fc.shuffledSubarray(
       ['bot:writer', 'bot:planner', 'bot:support', 'bot:analyst', 'room:team-room']
         .concat(['room:clients-room', 'folder:team', 'folder:clients', 'folder:archive'])
         .map((key) => ({ kind: key.split(':')[0], id: key.split(':')[1] }) as RosterRowRef),
       { minLength: 1 }
     )
+    // A fresh roster, Team and Clients nested under Archive or not; the picked rows by their ids.
+    async function prepare(picked: RosterRowRef[], nested: boolean): Promise<RosterRowRef[]> {
+      await setUp()
+      const archive = folderId('Archive')
+      if (nested) {
+        await act(() => actions().placeFolder({ id: 'team', parentId: archive, beforeId: null }))
+        await act(() => actions().placeFolder({ id: 'clients', parentId: 'team', beforeId: null }))
+      }
+      return picked.map((row) => (row.id === 'archive' ? folder(archive) : row))
+    }
     await fc.assert(
       fc.asyncProperty(rows, fc.boolean(), fc.nat({ max: 12 }), async (picked, nested, failAt) => {
-        await setUp()
-        const archive = folderId('Archive')
-        if (nested) {
-          await act(() => actions().placeFolder({ id: 'team', parentId: archive, beforeId: null }))
-          await act(() =>
-            actions().placeFolder({ id: 'clients', parentId: 'team', beforeId: null })
-          )
-        }
-        const doomed = picked.map((row) => (row.id === 'archive' ? folder(archive) : row))
+        const clean = await prepare(picked, nested)
+        await act(() => actions().deleteRows(clean))
+        const deleted = placement()
+
+        const doomed = await prepare(picked, nested)
         const staying = shownBots().filter((name) => !doomed.some((row) => row.id === name))
         let writes = 0
         const failing =
@@ -286,17 +312,10 @@ describe('deleting several picked rows', () => {
         }
         await runRosterMutation(flaky, () => rosterActions(flaky).deleteRows(doomed))
         expect(shownBots()).toEqual(expect.arrayContaining(staying))
-        // The user can retry only the rows still on the roster: a deleted one is no longer picked.
-        const left = doomed.filter((row) =>
-          row.kind === 'bot'
-            ? roster().bots.some((item) => item.name === row.id)
-            : row.kind === 'room'
-              ? roster().rooms.some((item) => item.room_id === row.id)
-              : roster().folders.some((item) => item.id === row.id)
-        )
-        await act(() => actions().deleteRows(left))
+        // The delete dialog stays open on a failure, so its retry sends the same rows again.
+        if (useRoster.getState().actionError) await act(() => actions().deleteRows(doomed))
         expect(useRoster.getState().actionError).toBeNull()
-        expect(shownBots().sort()).toEqual(staying.sort())
+        expect(placement()).toEqual(deleted)
       })
     )
   })
