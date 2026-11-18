@@ -56,6 +56,11 @@ describe('finding text in a chat', () => {
     )
   })
 
+  it('should never find a phrase that runs across two texts', () => {
+    expect(findMatches(texts, 'failed nothing')).toEqual([])
+    expect(findMatches(texts, 'failednothing')).toEqual([])
+  })
+
   it('should find characters that mean something in a pattern as plain text', () => {
     expect(findMatches(['cost (net) is $5.00?'], '(net) is $5.00?')).toEqual([
       { text: 0, start: 5, end: 20 }

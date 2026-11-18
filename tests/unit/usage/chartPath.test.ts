@@ -78,4 +78,20 @@ describe('smoothPath, for any counts', () => {
       })
     )
   })
+
+  it('should never overshoot between two points', () => {
+    fc.assert(
+      fc.property(series, (points) => {
+        // After the move, each segment names two control points and its end.
+        const [, ...segments] = coordinates(smoothPath(points))
+        points.slice(1).forEach((end, i) => {
+          const [low, high] = [points[i].y, end.y].sort((a, b) => a - b)
+          for (const [, y] of segments.slice(i * 3, i * 3 + 2)) {
+            expect(y).toBeGreaterThanOrEqual(low)
+            expect(y).toBeLessThanOrEqual(high)
+          }
+        })
+      })
+    )
+  })
 })

@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import { BLOCK_SHAPES } from '../../../src/shared/moduleHost'
 import {
@@ -7,6 +8,7 @@ import {
   frontPoint
 } from '../../../src/renderer/src/shared/ui/blockGeometry'
 import type { Point } from '../../../src/renderer/src/shared/ui/blockGeometry'
+import type { BlockShape } from '../../../src/shared/moduleHost'
 
 // Three faces per cube, less the ones two cubes share.
 const SEEN_FACES = { cube: 3, tall: 5, slab: 5, stair: 7, twin: 5, tower: 7 }
@@ -72,6 +74,25 @@ describe('block geometry', () => {
         }
       }
     })
+  })
+
+  it('should never change its size when it turns', () => {
+    // A cube's upright edges stay upright at any turn, so their length is the block's size.
+    const uprightEdges = (shape: BlockShape, size: number, yaw: number): number[] =>
+      blockGeometry(shape, size, yaw)
+        .faces.filter((face) => face.tone !== 'top')
+        .map(({ points: [, [x1, y1], [x2, y2]] }) => Math.hypot(x2 - x1, y2 - y1))
+    fc.assert(
+      fc.property(
+        fc.constantFrom(...BLOCK_SHAPES),
+        fc.integer({ min: 8, max: 1024 }),
+        fc.double({ min: -30, max: 30, noNaN: true }),
+        (shape, size, yaw) => {
+          const still = blockGeometry(shape, size).scale
+          for (const edge of uprightEdges(shape, size, yaw)) expect(edge).toBeCloseTo(still, 9)
+        }
+      )
+    )
   })
 
   describe('blockTones', () => {

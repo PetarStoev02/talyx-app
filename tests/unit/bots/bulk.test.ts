@@ -150,13 +150,16 @@ describe('moving several picked rows', () => {
     expect(rowKeys(archive)).toEqual(['bot:writer'])
     expect(layoutSaves()).toEqual(['default:talyx-folders+talyx-item-order'])
   })
-  it('should refuse a drop into a picked folder’s own child and save nothing', async () => {
+  it('should never land picked rows inside a picked folder, its own child included, and save nothing', async () => {
     await act(() =>
       actions().placeFolder({ id: folderId('Archive'), parentId: 'team', beforeId: null })
     )
     engine.configureCalls.length = 0
-    await act(() => actions().moveRows([folder('team'), bot('support')], folderId('Archive')))
-    expect(useRoster.getState().actionError?.key).toBe('roster.errorFolderCycle')
+    for (const target of ['team', folderId('Archive')]) {
+      useRoster.setState({ actionError: null })
+      await act(() => actions().moveRows([folder('team'), bot('support')], target))
+      expect(useRoster.getState().actionError?.key).toBe('roster.errorFolderCycle')
+    }
     expect(engine.configureCalls).toEqual([])
     expect(roster().folders.find((item) => item.id === 'team')?.parentId).toBeUndefined()
   })
