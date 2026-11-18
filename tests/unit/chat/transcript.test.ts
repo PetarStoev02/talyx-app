@@ -1,6 +1,7 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import {
+  LIVE_ID,
   addPrompt,
   applyEvent,
   fromHistory,
@@ -613,6 +614,30 @@ describe('chat transcript, for any delivery of a turn sequence', () => {
     fc.assert(
       fc.property(withDelivery, ([clean, delivered]) => {
         expect(replay(empty(), ...delivered)).toEqual(replay(empty(), ...clean))
+      })
+    )
+  })
+
+  // The engine (0.22.7 on) re-sends a turn's frames under new seqs on some roads (types.ts): part of
+  // a turn arrives, then the turn again from its start, renumbered, and on from there.
+  const resentTurn = turnFrames(SESSION).chain((clean) =>
+    fc.nat({ max: clean.length - 1 }).map((upTo) => {
+      const turnStart = clean.findLastIndex(
+        (frame, index) => index <= upTo && frame.type === 'message.start'
+      )
+      const again = [...clean.slice(turnStart, upTo + 1), ...clean.slice(upTo + 1)]
+      const renumbered = again.map((frame, index) => ({ ...frame, seq: upTo + 2 + index }))
+      return { clean, delivered: [...clean.slice(0, upTo + 1), ...renumbered] }
+    })
+  )
+  // A streamed reply's id names the seq it started at, which a re-send renumbers.
+  const shown = (transcript: Transcript): unknown[] =>
+    transcript.items.map((item) => (item.id.startsWith(LIVE_ID) ? { ...item, id: LIVE_ID } : item))
+
+  it('should give the same transcript when the engine re-sends a turn under new seqs', () => {
+    fc.assert(
+      fc.property(resentTurn, ({ clean, delivered }) => {
+        expect(shown(replay(empty(), ...delivered))).toEqual(shown(replay(empty(), ...clean)))
       })
     )
   })

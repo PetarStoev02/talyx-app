@@ -522,8 +522,11 @@ function endReply(transcript: Transcript): Transcript {
     : updateReply(transcript, (reply) => ({ ...reply, streaming: false }))
 }
 
+// A tool's id is stable: a re-stamped re-send of its start (a reconnect replay) is the same tool.
 function startTool(transcript: Transcript, payload: Payload): Transcript {
   if (typeof payload.tool_id !== 'string') return transcript
+  if (transcript.items.some((item) => item.kind === 'tool' && item.id === payload.tool_id))
+    return transcript
   const args = (payload.args as Payload | null | undefined) ?? {}
   const tool = toolItem(payload.tool_id, String(payload.name ?? 'tool'), args, payload.labels)
   const ended = endReply(transcript)
