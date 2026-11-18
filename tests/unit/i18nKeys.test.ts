@@ -7,10 +7,16 @@ import { BLOCK_SHAPES } from '../../src/shared/moduleHost'
 const SRC = 'src'
 const I18N = join(SRC, 'renderer/src/shared/lib/i18n.ts')
 
-// Keys a source builds at runtime, by template head, with the typed list its one placeholder takes:
-// LookPicker labels each shape with t(`look.shape.${shape}`) over BLOCK_SHAPES. A new family goes
-// here with its list, or its keys read as unused.
-const FAMILIES = new Map<string, readonly string[]>([['look.shape.', BLOCK_SHAPES]])
+// Keys a source builds at runtime: the exact call, the map whose callback holds it, and the keys
+// that map's typed list gives. LookPicker labels each shape this way. A new family goes here, or its
+// keys read as unused.
+const FAMILIES = [
+  {
+    call: 't(`look.shape.${shape}`)',
+    map: 'BLOCK_SHAPES.map((shape) =>',
+    keys: BLOCK_SHAPES.map((shape) => `look.shape.${shape}`)
+  }
+]
 
 const parse = (path: string, source: string): ts.SourceFile =>
   ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
@@ -32,23 +38,25 @@ const KEYS = tableKeys()
 
 /**
  * The keys a source uses: string literals (a `t` call, a table value, an error's key) and the
- * family a `head${value}` template builds. Comments are not code.
+ * keys a declared family's call builds. Comments are not code.
  */
 function keysUsedIn(source: string, fileName = 'source.tsx'): string[] {
   const used = new Set<string>()
   const visit = (node: ts.Node): void => {
     if (ts.isStringLiteralLike(node)) used.add(node.text)
-    else if (ts.isTemplateExpression(node) && isHeadAndValue(node))
-      for (const value of FAMILIES.get(node.head.text) ?? []) used.add(node.head.text + value)
+    else if (ts.isCallExpression(node)) familyKeys(node).forEach((key) => used.add(key))
     ts.forEachChild(node, visit)
   }
   visit(parse(fileName, source))
   return KEYS.filter((key) => used.has(key))
 }
 
-// `head${value}` and nothing more: one placeholder, no text after it.
-const isHeadAndValue = (node: ts.TemplateExpression): boolean =>
-  node.templateSpans.length === 1 && node.templateSpans[0]?.literal.text === ''
+/** A declared family's keys, when this is its call in a callback of its map. */
+function familyKeys(call: ts.CallExpression): string[] {
+  const family = FAMILIES.find((candidate) => candidate.call === call.getText())
+  const map = ts.findAncestor(call, ts.isFunctionLike)?.parent
+  return family && map?.getText().startsWith(family.map) ? family.keys : []
+}
 
 function sourceFiles(): string[] {
   return readdirSync(SRC, { withFileTypes: true, recursive: true })
@@ -73,8 +81,8 @@ describe('i18n keys', () => {
       ['a table value', "const KIND = { bot: 'roster.kindBot' }", ['roster.kindBot']],
       ['an error key', "throw new RosterError('roster.errorConflict')", ['roster.errorConflict']],
       [
-        'a template over a declared family',
-        't(`look.shape.${shape}`)',
+        'a declared family in its map',
+        'BLOCK_SHAPES.map((shape) => <b title={t(`look.shape.${shape}`)} />)',
         BLOCK_SHAPES.map((shape) => `look.shape.${shape}`)
       ]
     ])('should find %s', (_name, source, keys) => {
@@ -84,8 +92,13 @@ describe('i18n keys', () => {
     it.each([
       ['a key in a comment', "// t('nav.agents')\nconst x = 1"],
       ['a template with no declared family', 't(`nav.${page}`)'],
-      ['a family template with text after the placeholder', 't(`look.shape.${shape}.alt`)'],
-      ['a family template with two placeholders', 't(`look.shape.${shape}${size}`)']
+      ['a family call outside its map', 't(`look.shape.${shape}`)'],
+      [
+        'a family call over another list',
+        "(['cube'] as const).map((shape) => t(`look.shape.${shape}`))"
+      ],
+      ['a family template outside a t call', 'BLOCK_SHAPES.map((shape) => `look.shape.${shape}`)'],
+      ['a family call over one shape', "BLOCK_SHAPES.map((shape) => t(`look.shape.${'cube'}`))"]
     ])('should ignore %s', (_name, source) => {
       expect(keysUsedIn(source)).toEqual([])
     })
