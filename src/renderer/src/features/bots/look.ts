@@ -66,7 +66,8 @@ function hueOf(value: number | string | undefined): number | undefined {
   if (typeof value === 'number')
     return Number.isInteger(value) && value >= 0 && value < BLOCK_HUES.length ? value : undefined
   const angle = value === undefined ? undefined : oklchHue(value)
-  if (angle === undefined) return undefined
+  // An unreadable stored colour (NaN) falls back like a missing one.
+  if (angle === undefined || Number.isNaN(angle)) return undefined
   const distance = (hue: number): number => {
     const turn = Math.abs(hue - angle) % 360
     return Math.min(turn, 360 - turn)
