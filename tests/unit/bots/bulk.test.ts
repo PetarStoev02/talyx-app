@@ -10,7 +10,9 @@ import type { RosterBackend } from '../../../src/renderer/src/features/bots/data
 import {
   ROOM_FOLDERS_KEY,
   ROOM_PINS_KEY,
+  folderBots,
   folderItems,
+  folderPath,
   itemKey,
   itemRef,
   pinnedBots,
@@ -31,7 +33,9 @@ const member = (
 let engine: EngineDouble
 let backend: RosterBackend
 
-beforeEach(async () => {
+beforeEach(setUp)
+
+async function setUp(): Promise<void> {
   useRoster.setState({
     snapshot: { bots: [], folders: [], rooms: [], roomFolders: {}, roomPins: [], itemOrder: {} },
     selection: null,
@@ -68,7 +72,7 @@ beforeEach(async () => {
   // Archive holds nothing yet; Clients sits at the top level beside Team.
   await act(() => actions().addFolder('Archive', null))
   engine.configureCalls.length = 0
-})
+}
 
 const actions = (): ReturnType<typeof rosterActions> => rosterActions(backend)
 const act = (operation: () => Promise<void>): Promise<void> => runRosterMutation(backend, operation)
@@ -81,6 +85,31 @@ const rowKeys = (folder: string | null): string[] =>
 const bot = (id: string): RosterRowRef => ({ kind: 'bot', id })
 const room = (id: string): RosterRowRef => ({ kind: 'room', id })
 const folder = (id: string): RosterRowRef => ({ kind: 'folder', id })
+// Every bot the roster shows: the pins, then each folder's bots and Unassigned's.
+const shownBots = (): string[] =>
+  [
+    ...pinnedBots(roster().bots),
+    ...[null, ...roster().folders.map((item) => item.id)].flatMap((id) => folderBots(roster(), id))
+  ].map((item) => item.name)
+// Where each row shows: the pins, Unassigned and each folder by its path, as sets.
+const placement = (): Record<string, string[]> => {
+  const snapshot = roster()
+  const keys = (items: RosterRowRef[]): string[] => items.map(itemKey).sort()
+  return Object.fromEntries([
+    [
+      'pins',
+      keys([
+        ...pinnedBots(snapshot.bots).map((item) => bot(item.name)),
+        ...pinnedRooms(snapshot).map((item) => room(item.room_id))
+      ])
+    ],
+    ['', keys(folderItems(snapshot, null).map(itemRef))],
+    ...snapshot.folders.map((item) => [
+      folderPath(snapshot.folders, item),
+      keys(folderItems(snapshot, item.id).map(itemRef))
+    ])
+  ])
+}
 const layoutSaves = (): string[] =>
   engine.configureCalls.filter((call) => call.startsWith('default:'))
 
@@ -243,6 +272,60 @@ describe('deleting several picked rows', () => {
     expect(engine.deleted).toEqual(['writer'])
     expect(roster().folders.map((item) => item.id)).not.toContain('clients')
     expect(rowKeys(null)).toEqual(['bot:default', 'bot:support', 'room:clients-room'])
+  })
+  it('should never hide a bot that stays when the delete fails part way, and finish it on a retry', async () => {
+    const rows = fc.shuffledSubarray(
+      ['bot:writer', 'bot:planner', 'bot:support', 'bot:analyst', 'room:team-room']
+        .concat(['room:clients-room', 'folder:team', 'folder:clients', 'folder:archive'])
+        .map((key) => ({ kind: key.split(':')[0], id: key.split(':')[1] }) as RosterRowRef),
+      { minLength: 1 }
+    )
+    // A fresh roster, Team and Clients nested under Archive or not; the picked rows by their ids.
+    async function prepare(picked: RosterRowRef[], nested: boolean): Promise<RosterRowRef[]> {
+      await setUp()
+      const archive = folderId('Archive')
+      if (nested) {
+        await act(() => actions().placeFolder({ id: 'team', parentId: archive, beforeId: null }))
+        await act(() => actions().placeFolder({ id: 'clients', parentId: 'team', beforeId: null }))
+      }
+      return picked.map((row) => (row.id === 'archive' ? folder(archive) : row))
+    }
+    await fc.assert(
+      fc.asyncProperty(
+        rows,
+        fc.boolean(),
+        fc.nat({ max: 12 }),
+        fc.boolean(),
+        async (picked, nested, failAt, landed) => {
+          const clean = await prepare(picked, nested)
+          await act(() => actions().deleteRows(clean))
+          const deleted = placement()
+
+          const doomed = await prepare(picked, nested)
+          const staying = shownBots().filter((name) => !doomed.some((row) => row.id === name))
+          let writes = 0
+          const lost = (): Promise<void> => Promise.reject(new Error('socket closed'))
+          // The failing write is refused, or it lands and only its reply is lost.
+          const failing =
+            <A extends unknown[]>(write: (...args: A) => Promise<void>) =>
+            (...args: A): Promise<void> =>
+              writes++ !== failAt ? write(...args) : landed ? write(...args).then(lost) : lost()
+          const flaky: RosterBackend = {
+            ...backend,
+            deleteRoom: failing(backend.deleteRoom),
+            deleteProfile: failing(backend.deleteProfile),
+            updateLayout: failing(backend.updateLayout),
+            saveBotMeta: failing(backend.saveBotMeta)
+          }
+          await runRosterMutation(flaky, () => rosterActions(flaky).deleteRows(doomed))
+          expect(shownBots()).toEqual(expect.arrayContaining(staying))
+          // The delete dialog stays open on a failure, so its retry sends the same rows again.
+          if (useRoster.getState().actionError) await act(() => actions().deleteRows(doomed))
+          expect(useRoster.getState().actionError).toBeNull()
+          expect(placement()).toEqual(deleted)
+        }
+      )
+    )
   })
   it('should refuse to delete Talyx’s own bot along with others', async () => {
     await act(() => actions().deleteRows([bot('default'), bot('writer')]))
