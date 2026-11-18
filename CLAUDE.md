@@ -90,7 +90,7 @@ Each line is the rule; the check's message names the fix.
   `npm run lint` and `npm run typecheck`.
 - No em dash (U+2014) outside the vendored engine files: `npm run lint` and
   `tests/unit/noEmDash.test.ts`.
-- The engine's upstream name appears only in the README's credit line:
+- The engine's upstream name appears only in the README (its credit line):
   `tests/unit/engineName.test.ts`, which runs only where the engine is installed (not in CI).
 - No `TODO`, `FIXME`, `HACK` or "for now" in comments in `src/` and `tests/`: `npm run lint`.
 - Formatting (single quotes, no semicolons, 100 columns, no trailing commas): `npm run format:check`.

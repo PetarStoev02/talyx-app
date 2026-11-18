@@ -15,7 +15,7 @@ installed Talyx, so the owner runs the signing and publishing steps. Do not run 
 3. Check the signing certificate and the Apple membership have not expired.
 4. If `engine-install.json` changed: its SHA-256 equals `ENGINE_INSTALL_SHA256` in
    `src/main/infrastructure/setup/installPin.ts` (pin updated in the same commit as the
-   commands), its `engineVersion` equals `EXPECTED_ENGINE_VERSION`, and
+   commands), its `engineVersion` equals `EXPECTED_ENGINE_VERSION` in `src/shared/engine.ts`, and
    `gh secret set ENGINE_INSTALL_JSON < <(base64 -i engine-install.json)` ran.
 
 ## Build the draft
