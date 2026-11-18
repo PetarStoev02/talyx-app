@@ -319,7 +319,7 @@ describe('update store, for any order of checks and clicks', () => {
             clicks.restart += 1
             await updates.install().catch(() => undefined)
           }
-          if (next.kind === 'download-ends') running.shift()?.end(next.ok)
+          if (next.kind === 'download-ends') running[0]?.end(next.ok)
           if (next.kind === 'restart-fails') restartFails = true
           await settle()
 
