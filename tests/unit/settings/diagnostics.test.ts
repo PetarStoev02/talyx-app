@@ -46,11 +46,14 @@ describe('diagnostics', () => {
 
     it('should not shorten another folder that starts with the home folder name, in any script', () => {
       const name = fc.stringMatching(/^[a-z][a-z0-9]{0,8}$/)
-      // What can carry a folder name on, in any script: a letter, a digit, _ or -, or a dot
-      // followed by one of those (a file extension).
-      const nameChar = fc
-        .string({ unit: 'grapheme', minLength: 1, maxLength: 1 })
-        .filter((char) => /^[\p{L}\p{N}_-]/u.test(char))
+      // What can carry a folder name on, in any script: a letter, a digit, _ or -, a mark (a
+      // macOS name decomposes é into e and a combining accent), or a dot followed by one of those.
+      const nameChar = fc.oneof(
+        fc
+          .string({ unit: 'grapheme', minLength: 1, maxLength: 1 })
+          .filter((char) => /^[\p{L}\p{N}_-]/u.test(char)),
+        fc.constantFrom('\u0301', '\u093F')
+      )
       const more = fc.oneof(
         nameChar,
         nameChar.map((char) => `.${char}`)
