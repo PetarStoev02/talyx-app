@@ -678,6 +678,10 @@ describe('chat transcript, for any delivery of a turn sequence', () => {
         const frame = raw as unknown as GatewayEvent
         const copy = structuredClone(frame)
         const first = needsRebuild(frame)
+        expect(first).toBe(
+          raw.type === 'session.replay_gap' ||
+            (raw.type === 'session.updated' && raw.payload?.operation === 'rewind')
+        )
         expect(needsRebuild(frame)).toBe(first)
         expect(frame).toEqual(copy)
       })

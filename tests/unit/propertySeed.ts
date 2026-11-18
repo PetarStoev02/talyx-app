@@ -4,5 +4,5 @@ import fc from 'fast-check'
 // replays the seed a failure printed. Local runs draw a fresh seed each time to explore more.
 const CI_SEED = 20261118
 
-const seed = Number(process.env.FC_SEED) || (process.env.CI ? CI_SEED : null)
+const seed = process.env.FC_SEED ? Number(process.env.FC_SEED) : process.env.CI ? CI_SEED : null
 if (seed !== null) fc.configureGlobal({ seed })

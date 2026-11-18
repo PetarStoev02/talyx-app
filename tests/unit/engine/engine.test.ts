@@ -1,4 +1,12 @@
-import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'fs'
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync
+} from 'fs'
 import { createServer, type Server } from 'net'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -348,6 +356,19 @@ describe('the gateway Talyx attaches to', () => {
       .filter((args) => args.includes('gateway'))
       .map((args) => args[args.indexOf('gateway') + 1])
     expect(new Set(gatewayCommands)).toEqual(new Set(['ensure']))
+  })
+
+  // The quit handler cannot load without Electron, so no main-process file may name the command.
+  it('should leave no main-process code that stops or restarts the gateway', () => {
+    const stop = /['"`]gateway['"`]\s*,\s*['"`](stop|restart)['"`]/
+    const files = ['src/main', 'src/preload'].flatMap((dir) =>
+      readdirSync(dir, { recursive: true, encoding: 'utf8' }).map((file) => join(dir, file))
+    )
+    const hits = files.filter(
+      (file) => file.endsWith('.ts') && stop.test(readFileSync(file, 'utf8'))
+    )
+    expect(files.length).toBeGreaterThan(0)
+    expect(hits).toEqual([])
   })
 })
 

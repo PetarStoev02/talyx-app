@@ -288,15 +288,22 @@ describe('update store, for any order of checks and clicks', () => {
           download: (_version, _progress, signal) => {
             ran.downloads += 1
             return new Promise<Install>((resolve, reject) => {
-              const end = (ok: boolean): void =>
-                ok
-                  ? resolve(async () => {
+              // A download ends once, by its outcome or a cancel, and leaves the running list then.
+              const entry = {
+                end: (ok: boolean): void => {
+                  const at = running.indexOf(entry)
+                  if (at < 0) return
+                  running.splice(at, 1)
+                  if (ok)
+                    resolve(async () => {
                       ran.restarts += 1
                       if (restartFails) throw new ReleaseDownloadError('other', 'refused')
                     })
-                  : reject(new ReleaseDownloadError('checksum', 'mismatch'))
-              running.push({ end })
-              signal.addEventListener('abort', () => end(false))
+                  else reject(new ReleaseDownloadError('checksum', 'mismatch'))
+                }
+              }
+              running.push(entry)
+              signal.addEventListener('abort', () => entry.end(false))
             })
           }
         })
