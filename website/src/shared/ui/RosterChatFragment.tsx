@@ -1,5 +1,6 @@
 import { ArrowUp, CornerDownRight } from 'lucide-react'
-import { BlockAvatar, type BlockState } from '@renderer/shared/ui/BlockAvatar'
+import type { BlockState } from '@contract/moduleHost'
+import { BlockAvatar } from '@renderer/shared/ui/BlockAvatar'
 import { lookOf } from '@features/bots/look'
 import type { BotMeta } from '@features/bots/types'
 

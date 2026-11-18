@@ -27,6 +27,7 @@
     "dev": "install-electron && electron-vite dev",
     "dev:reset": "node scripts/reset-app-data.mjs && install-electron && electron-vite dev",
     "reset": "node scripts/reset-app-data.mjs",
+    "module-host": "node scripts/module-host.mjs",
     "build": "npm run typecheck && electron-vite build",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:mac": "electron-vite build && electron-builder --mac --publish never",

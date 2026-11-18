@@ -3,24 +3,8 @@ import { isAbsolute, join } from 'path'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
 import log from 'electron-log'
 import { SIDEBAR_WIDTH, clampSidebarWidth } from '@contract/sidebar'
-import { LastSelectionSchema } from '../ipc/validation'
-
-export interface UserSettings {
-  theme: 'light' | 'dark' | 'system'
-  sidebarWidth: number
-  /** Absolute path to the engine's command, picked by the user; null means look it up. */
-  enginePath: string | null
-  /** The bot or room open when Talyx last ran, opened again on launch; null on a first run. */
-  lastSelection: { kind: 'bot' | 'room'; id: string } | null
-  /** True once the first-run setup has finished or been skipped; false shows it again. */
-  setupDone: boolean
-  /** Whether the OS starts Talyx at login; main keeps it true to the OS (see index.ts). */
-  launchAtLogin: boolean
-  /** Play a short sound when a bot finishes a reply. */
-  completionSound: boolean
-  /** The module license key; set only through `modules:activate`, which checks it first. */
-  licenseKey: string | null
-}
+import { LastSelectionSchema } from '@contract/channels'
+import type { UserSettings } from '@contract/settings'
 
 const defaults: UserSettings = {
   theme: 'system',

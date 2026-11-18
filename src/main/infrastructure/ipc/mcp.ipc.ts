@@ -2,17 +2,15 @@ import { randomBytes } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { join } from 'node:path'
-import { app, ipcMain } from 'electron'
+import { app } from 'electron'
 import log from 'electron-log'
-import { z } from 'zod/v4'
 import { MCP_DEFAULT_PORT, MCP_PATH, mcpToolsVersion } from '@contract/mcp'
 import type { McpConnection } from '@contract/mcp'
 import { McpCalls, mcpHandler } from '../mcp/mcpServer'
 import type { McpPage } from '../mcp/mcpServer'
+import { McpAnswerSchema, McpCallIdSchema } from '@contract/channels'
+import { handle } from './handle'
 import { validateInput } from './validation'
-
-const McpAnswerSchema = z.object({ ok: z.boolean(), text: z.string().max(1024 * 1024) })
-const McpCallIdSchema = z.string().uuid()
 
 const calls = new McpCalls()
 // Pages already watched for a close or reload, so a reload does not add listeners again.
@@ -31,7 +29,7 @@ export function startMcpServer(): void {
 }
 
 export function registerMcpIpc(): void {
-  ipcMain.handle('mcp:attach', (event) => {
+  handle('mcp:attach', (event) => {
     const page = event.sender as McpPage & {
       on?: (event: 'destroyed' | 'did-navigate', listener: () => void) => void
     }
@@ -42,10 +40,10 @@ export function registerMcpIpc(): void {
     page.on?.('destroyed', leave)
     page.on?.('did-navigate', leave)
   })
-  ipcMain.handle('mcp:answer', (_event, rawId: unknown, rawAnswer: unknown) =>
+  handle('mcp:answer', (_event, rawId: unknown, rawAnswer: unknown) =>
     calls.settle(validateInput(McpCallIdSchema, rawId), validateInput(McpAnswerSchema, rawAnswer))
   )
-  ipcMain.handle(
+  handle(
     'mcp:connection',
     (): McpConnection => ({
       url: `http://127.0.0.1:${port}${MCP_PATH}?tools=${mcpToolsVersion()}`,

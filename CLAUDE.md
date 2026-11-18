@@ -178,7 +178,8 @@ src/main/
     │                           # a room's bots change in place; resources/engine-plugin/),
     │                           # gateway.ts (vendored attach + ticket mint), engineSockets.ts
     ├── ipc/                    # settings.ipc.ts, engine.ipc.ts, setup.ipc.ts (the engine install),
-    │                           # updater.ipc.ts (update download and open), validation.ts (zod at the boundary),
+    │                           # updater.ipc.ts (update download and open), handle.ts (typed registration),
+    │                           # validation.ts (zod at the boundary),
     │                           # modules.ipc.ts (modules: license, install, talyx-module:// files),
     │                           # files.ipc.ts (files:keep, a copy of a dropped file with no path)
     ├── mcp/                    # mcpServer.ts (Talyx's MCP server: loopback HTTP, bearer key, no
@@ -202,7 +203,11 @@ src/main/
 ```
 
 `src/shared/api.ts` is the single definition of `window.api`; the preload builds it over
-`ipcRenderer`, the browser dev bridge over HTTP.
+`ipcRenderer`, the browser dev bridge over HTTP. `src/shared/channels.ts` types every channel.
+
+`src/shared/moduleHost.ts` is the module host contract; `npm run module-host` writes it to
+`contract/module-host.d.ts` for the modules repo, which also imports
+`infrastructure/modules/signing.ts` from plain Node (so it imports no Electron and no alias value).
 
 `infrastructure/engine/` runs the engine CLI (`talyx-engine`: the `enginePath` setting, then
 PATH, then `~/.local/bin`), attaches with `gateway ensure --json` and mints one-use tickets
@@ -282,7 +287,7 @@ import { AppShell } from '@widgets/app-shell'
 
 - **Strict mode** enabled
 - Never use `any`; prefer `unknown` with type guards
-- Always type IPC return values explicitly
+- IPC types come from the channel table (IPC Patterns), never a cast
 - Use `string | null` not optional for nullable values
 - Exception: the vendored engine files (listed in `eslint.vendored.mjs`) keep upstream's code as
   written so re-syncs stay clean diffs; see README → Engine → Re-syncing the vendored client
@@ -320,27 +325,20 @@ export const useStore = create<StoreState>((set) => ({
 
 ### IPC Patterns
 
-**Channels:** `namespace:action` (e.g., `settings:get`, `settings:set`, `theme:set-native`)
-
-**Handler registration** (validate input with zod at the boundary):
-
-```typescript
-export function registerSettingsIpc(): void {
-  ipcMain.handle('settings:set', (_event, rawPartial: unknown) => {
-    settingsStore.set(validateInput(UserSettingsPartialSchema, rawPartial))
-    return settingsStore.store
-  })
-}
-```
-
-**API surface:** add the call to `buildApi` in `src/shared/api.ts`, then a typed wrapper in
-`src/renderer/src/shared/api/ipc.ts`:
+A new channel (`namespace:action`) is one row in `src/shared/channels.ts`: its input from the zod
+schema main validates with, its output declared once. Events go in `EventChannels`. Then:
 
 ```typescript
-export const settingsApi = {
-  get: (): Promise<AppSettings> => window.api.getSettings() as Promise<AppSettings>
-}
+// main: handle() rejects an answer that is not the channel's output; lint bans ipcMain.handle
+handle('settings:set', (_event, raw: unknown) => {
+  settingsStore.set(validateInput(UserSettingsPartialSchema, raw))
+  return forPage(settingsStore.store)
+})
+// src/shared/api.ts, inside buildApi: input and reply typed by the table, no casts
+setSettings: (change: SettingsChange) => invoke('settings:set', change),
 ```
+
+The renderer calls it through a wrapper in `src/renderer/src/shared/api/ipc.ts`.
 
 ### Copy
 

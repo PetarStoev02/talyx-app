@@ -276,5 +276,21 @@ export default defineConfig(
       ]
     }
   },
-  layerBoundaries
+  layerBoundaries,
+  {
+    // Every handler goes through handle(), which checks its answer against the channel table.
+    files: ['src/main/**/*.ts'],
+    ignores: ['src/main/infrastructure/ipc/handle.ts'],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'ipcMain',
+          property: 'handle',
+          message:
+            'Register the handler with handle() from ipc/handle.ts, after adding its channel to src/shared/channels.ts.'
+        }
+      ]
+    }
+  }
 )

@@ -1,7 +1,8 @@
 import { CalendarPlus, FilePlus, FolderPlus, ListPlus, Plus, Workflow } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { createItemsOf } from '@features/modules/host'
-import type { ModuleCreate, ModuleCreateIcon } from '@features/modules/host'
+import type { ModuleCreateIcon } from '@contract/moduleHost'
+import type { ModuleCreate } from '@features/modules/host'
 import type { MenuAction } from '@shared/ui/menu'
 
 // What each icon a module may name draws, from the app's own icon set.

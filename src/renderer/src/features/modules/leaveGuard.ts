@@ -1,9 +1,4 @@
-/**
- * A module page with unsaved work asks before Talyx navigates away from it: the module answers
- * false to keep the user on the page, anything else lets them leave. The answer must settle; an
- * answer that never does keeps the user on the page.
- */
-export type LeaveGuard = () => boolean | Promise<boolean>
+import type { LeaveGuard } from '@contract/moduleHost'
 
 let guard: LeaveGuard | null = null
 

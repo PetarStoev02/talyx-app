@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { removeEndpointModel } from '../../../src/main/infrastructure/engine/endpointModels'
-import { EndpointModelRemovalSchema } from '../../../src/main/infrastructure/ipc/validation'
+import { EndpointModelRemovalSchema } from '../../../src/shared/channels'
 
 function engineAnswering(answer: { code: number; stdout: string; stderr: string }): {
   calls: Array<{ args: string[]; profile: string | undefined }>

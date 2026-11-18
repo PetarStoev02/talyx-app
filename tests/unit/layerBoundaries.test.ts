@@ -291,3 +291,24 @@ describe('layer boundaries', () => {
     expect(await errorsFor(filePath, source)).toEqual([expect.stringContaining(message)])
   })
 })
+
+describe('IPC registration', () => {
+  const source = "import { ipcMain } from 'electron'\nipcMain.handle('app:version', () => '1')"
+
+  async function ruleErrors(filePath: string): Promise<string[]> {
+    const [result] = await eslint.lintText(`${source}\n`, { filePath })
+    return result.messages
+      .filter((message) => message.ruleId === 'no-restricted-properties')
+      .map((message) => message.message)
+  }
+
+  it('should reject ipcMain.handle in main outside the typed handle()', async () => {
+    expect(await ruleErrors('src/main/infrastructure/ipc/x.ipc.ts')).toEqual([
+      expect.stringContaining('src/shared/channels.ts')
+    ])
+  })
+
+  it('should allow ipcMain.handle inside handle() itself', async () => {
+    expect(await ruleErrors('src/main/infrastructure/ipc/handle.ts')).toEqual([])
+  })
+})

@@ -1,17 +1,19 @@
 import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { app, ipcMain } from 'electron'
+import { app } from 'electron'
 import log from 'electron-log'
 import { diagnosticsReport, logTail } from '@contract/diagnostics'
-import { EngineLabelSchema, validateInput } from './validation'
+import { EngineLabelSchema } from '@contract/channels'
+import { handle } from './handle'
+import { validateInput } from './validation'
 
 const LOG_LINES = 50
 
 /** Talyx's own version, and the redacted report "Copy diagnostics" puts on the clipboard. */
 export function registerAppIpc(): void {
-  ipcMain.handle('app:version', (): string => app.getVersion())
+  handle('app:version', (): string => app.getVersion())
   // The page passes the engine state it already shows; main adds what only it can read.
-  ipcMain.handle(
+  handle(
     'app:diagnostics',
     async (_event, rawEngine: unknown): Promise<string> =>
       diagnosticsReport({

@@ -2,7 +2,8 @@ import { randomUUID, timingSafeEqual } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import log from 'electron-log'
 import { MCP_CALL_TIMEOUT_MS, MCP_PATH, isMcpTool, mcpToolList } from '@contract/mcp'
-import type { McpAnswer, McpCall } from '@contract/mcp'
+import type { McpAnswer } from '@contract/mcp'
+import type { EventChannels } from '@contract/channels'
 
 // The MCP revision this server speaks; a client asking for another gets this one back.
 const PROTOCOL_VERSION = '2025-06-18'
@@ -10,7 +11,7 @@ const MAX_BODY_BYTES = 1024 * 1024
 
 /** The page that runs tool calls: the Talyx window, or the dev bridge's browser tab. */
 export interface McpPage {
-  send: (channel: 'mcp:call', call: McpCall) => void
+  send: (channel: 'mcp:call', ...args: EventChannels['mcp:call']) => void
   isDestroyed: () => boolean
 }
 

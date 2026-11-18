@@ -1,5 +1,5 @@
-import { BLOCK_HUES, BLOCK_SHAPES } from '@shared/ui/blockGeometry'
-import type { BlockShape } from '@shared/ui/blockGeometry'
+import { BLOCK_SHAPES, type BlockShape } from '@contract/moduleHost'
+import { BLOCK_HUES } from '@shared/ui/blockGeometry'
 import type { Bot, BotMeta } from './types'
 
 export interface AvatarBackend {

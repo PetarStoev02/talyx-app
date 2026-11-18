@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import pluginInit from '../../../../resources/engine-plugin/talyx-rooms/__init__.py?raw'
 import pluginManifest from '../../../../resources/engine-plugin/talyx-rooms/plugin.yaml?raw'
+import type { MembersChange } from '@contract/engine'
 import { enginePlugin, type EnginePluginDeps, type PluginAnswer } from './enginePlugin'
 
 /** The engine plugin's name, as its manifest and its CLI command spell it. */
@@ -20,12 +21,6 @@ export interface RoomMemberRecord {
   handle: string
   display_name: string
   target: { kind: 'local'; profile: string }
-}
-
-export interface MembersChange {
-  added: string[]
-  removed: string[]
-  changed: boolean
 }
 
 /**

@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { BrowserWindow, dialog, ipcMain } from 'electron'
+import { BrowserWindow, dialog } from 'electron'
 import log from 'electron-log'
 import type { EngineHttpRequest, EngineStatus } from '@contract/engine'
 import { EngineHttpError, createEngine, userBinEngine } from '../engine/engine'
@@ -13,14 +13,14 @@ import { settingsStore } from '../storage/SettingsStore'
 import {
   EndpointModelRemovalSchema,
   EngineHttpRequestSchema,
-  EnginePathSchema,
   EngineSocketIdSchema,
   EngineSocketTextSchema,
   ProfileNameSchema,
   RoomMembersSchema,
-  UsageDaysSchema,
-  validateInput
-} from './validation'
+  UsageDaysSchema
+} from '@contract/channels'
+import { handle, type EventSender } from './handle'
+import { EnginePathSchema, validateInput } from './validation'
 
 const MEDIA_PATH = '/api/media'
 
@@ -30,8 +30,7 @@ const rooms = roomMembers({ engine, ...nodeFileDeps() })
 const usage = usageDays({ engine, ...nodeFileDeps() })
 
 /** The IPC sender, or the dev bridge's stand-in (which broadcasts and has no lifecycle). */
-interface Sender {
-  send: (channel: string, ...args: unknown[]) => void
+interface Sender extends EventSender {
   isDestroyed: () => boolean
   on?: (event: 'destroyed' | 'did-navigate', listener: () => void) => void
 }
@@ -48,9 +47,9 @@ async function loggedStatus(): Promise<EngineStatus> {
 }
 
 export function registerEngineIpc(): void {
-  ipcMain.handle('engine:status', () => loggedStatus())
+  handle('engine:status', () => loggedStatus())
 
-  ipcMain.handle('engine:pick-path', async (event): Promise<EngineStatus> => {
+  handle('engine:pick-path', async (event): Promise<EngineStatus> => {
     const window = BrowserWindow.fromWebContents(event.sender)
     const options = { title: 'Choose the engine command', properties: ['openFile' as const] }
     const picked = window
@@ -64,7 +63,7 @@ export function registerEngineIpc(): void {
 
   // The file the install steps link, chosen explicitly: an older copy earlier on PATH must not win.
   // It takes no argument, so a page can only point Talyx at this one file.
-  ipcMain.handle('engine:use-installed', async (): Promise<EngineStatus> => {
+  handle('engine:use-installed', async (): Promise<EngineStatus> => {
     const installed = userBinEngine(process.platform, homedir())
     if (!existsSync(installed)) throw new Error('No installed engine found')
     settingsStore.set({ enginePath: installed })
@@ -72,27 +71,27 @@ export function registerEngineIpc(): void {
   })
 
   // The engine has no call for this; Talyx's engine plugin changes the room in place.
-  ipcMain.handle('engine:room-members', (_event, raw: unknown) => {
+  handle('engine:room-members', (_event, raw: unknown) => {
     const { roomId, members } = validateInput(RoomMembersSchema, raw)
     return rooms.set(roomId, members)
   })
 
   // The engine's REST only adds models to an endpoint; removing one is a config unset.
-  ipcMain.handle('engine:endpoint-model-remove', (_event, raw: unknown) =>
+  handle('engine:endpoint-model-remove', (_event, raw: unknown) =>
     removeEndpointModel(engine, validateInput(EndpointModelRemovalSchema, raw))
   )
 
   // The engine's REST has days and providers, not the two together; Talyx's plugin reads them.
-  ipcMain.handle('engine:usage-days', (_event, raw: unknown) => {
+  handle('engine:usage-days', (_event, raw: unknown) => {
     const { profiles, days } = validateInput(UsageDaysSchema, raw)
     return usage.read(profiles, days)
   })
 
-  ipcMain.handle('engine:http', (_event, raw: unknown) =>
+  handle('engine:http', (_event, raw: unknown) =>
     engineHttp(validateInput(EngineHttpRequestSchema, raw))
   )
 
-  ipcMain.handle(
+  handle(
     'engine:socket-open',
     async (event, rawId: unknown, rawProfile: unknown): Promise<void> => {
       const id = validateInput(EngineSocketIdSchema, rawId)
@@ -110,7 +109,7 @@ export function registerEngineIpc(): void {
     }
   )
 
-  ipcMain.handle('engine:socket-send', (event, rawId: unknown, rawText: unknown) =>
+  handle('engine:socket-send', (event, rawId: unknown, rawText: unknown) =>
     sockets.send(
       ownSocket(event.sender as Sender, rawId),
       validateInput(EngineSocketTextSchema, rawText)
@@ -118,7 +117,7 @@ export function registerEngineIpc(): void {
   )
 
   // Closing a socket that already closed (or was never this page's) is a no-op, as before.
-  ipcMain.handle('engine:socket-close', (event, rawId: unknown) => {
+  handle('engine:socket-close', (event, rawId: unknown) => {
     const id = validateInput(EngineSocketIdSchema, rawId)
     if (owns(event.sender as Sender, id)) sockets.close(id)
   })
@@ -159,8 +158,9 @@ function ownedBy(sender: Sender): Set<string> {
 }
 
 function senderSink(sender: Sender): SocketEventSink {
-  return (channel, ...args) => {
-    if (channel === 'engine:socket-closed') ownedSockets.get(sender)?.delete(args[0] as string)
+  return (...event) => {
+    if (event[0] === 'engine:socket-closed') ownedSockets.get(sender)?.delete(event[1])
+    const [channel, ...args] = event
     if (!sender.isDestroyed()) sender.send(channel, ...args)
   }
 }
