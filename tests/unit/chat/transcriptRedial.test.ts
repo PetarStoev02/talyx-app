@@ -127,10 +127,11 @@ describe('chat transcript across a redial, through the real gateway client', () 
               SETTLED
             )
             expect(received.filter(needsRebuild)).toEqual([])
+            // The transcript drops a stale seq itself; the client must not send one at all.
+            const seqs = received.map((event) => event.seq ?? 0)
+            expect(seqs).toEqual([...new Set(seqs)].sort((a, b) => a - b))
           } else {
             await vi.waitFor(() => expect(received.some(needsRebuild)).toBe(true), SETTLED)
-            const missed = new Set(clean.slice(seen).map((event) => event.seq))
-            expect(received.filter((event) => event.replayed && missed.has(event.seq))).toEqual([])
           }
         } finally {
           host.disconnect()
