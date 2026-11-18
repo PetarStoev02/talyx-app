@@ -84,20 +84,28 @@ async function launch() {
 // that path (also by its real path, for a TALYX_VERIFY_ROOT behind a symlink). Not `gateway stop`: the engine looks for its
 // launchd service under the account's real home, so it could stop the user's own gateway.
 async function stopRunProcesses() {
-  const paths = [...new Set([RUN, existsSync(RUN) ? realpathSync(RUN) : RUN])]
   const signal = (name) =>
-    paths.forEach((path) => spawnSync('pkill', [`-${name}`, '-U', uid(), '-f', `${path}/`]))
-  const left = () =>
-    paths.some((path) => spawnSync('pgrep', ['-U', uid(), '-f', `${path}/`]).status === 0)
+    pathsOf(RUN).forEach((path) => spawnSync('pkill', [`-${name}`, '-U', uid(), '-f', `${path}/`]))
   const gone = async () => {
     for (const deadline = Date.now() + STOP_TIMEOUT_MS; Date.now() < deadline; await sleep(200))
-      if (!left()) return true
-    return !left()
+      if (!runsFrom(RUN)) return true
+    return !runsFrom(RUN)
   }
   signal('TERM')
   if (await gone()) return
   signal('KILL')
   if (!(await gone())) throw new Error(`processes from ${RUN} survived SIGKILL; ${RUN} kept`)
+}
+
+function pathsOf(dir) {
+  return [...new Set([dir, existsSync(dir) ? realpathSync(dir) : dir])]
+}
+
+// Whether a process of this user has dir in its command line.
+function runsFrom(dir) {
+  return pathsOf(dir).some(
+    (path) => spawnSync('pgrep', ['-U', uid(), '-f', `${path}/`]).status === 0
+  )
 }
 
 function uid() {
