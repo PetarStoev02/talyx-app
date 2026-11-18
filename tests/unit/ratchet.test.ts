@@ -194,13 +194,24 @@ describe('style rules', () => {
     ['a props interface', 'export interface AvatarProps {\n  size?: number\n}'],
     ['a props type alias', 'export type AvatarProps = { size?: number }'],
     [
-      'an inline parameter type',
-      'export function f({ size }: { size?: number }): number {\n  return size ?? 0\n}'
+      'an inline props type on a component',
+      'export function Avatar({ size }: { size?: number }): number {\n  return size ?? 0\n}'
+    ],
+    [
+      'an inline props type on an arrow component',
+      'export const Avatar = ({ size }: { size?: number }): number => size ?? 0'
     ],
     ['a zod-inferred type', 'import { z } from "zod"\nexport type X = z.infer<typeof X>'],
     ['a nullable property', 'export interface Bot {\n  title: string | null\n}']
   ])('should allow %s', async (_name, source) => {
     expect(await styleErrors(`${R}/features/bots/x.tsx`, source)).toEqual([])
+  })
+
+  it('should refuse an optional property in an inline parameter type of a plain function', async () => {
+    const source = 'export function save(change: { title?: string }): void {\n  void change\n}'
+    expect(await styleErrors(`${R}/features/bots/x.ts`, source)).toEqual([
+      OPTIONAL_PROPERTY_MESSAGE
+    ])
   })
 
   it('should leave optional properties alone outside the contract and the features', async () => {

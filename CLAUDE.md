@@ -89,10 +89,11 @@ Each line is the rule; the check's message names the fix.
   `shared/engine`). The ratchet allowlists only shrink: an entry that leaves never returns, and a
   new file is never on one. `npm run lint` (`eslint.kernel.mjs`, `eslint.ratchet.mjs`) and
   `tests/unit/ratchet.test.ts`.
-- `string | null`, not optional properties, in `src/shared` and `features/` (props types exempt);
-  no default exports outside config files; no magic numbers in `src/main` and `features/`. The
-  ratchet lists in `eslint.ratchet.mjs` only shrink, as above. `npm run lint` (`eslint.style.mjs`)
-  and `tests/unit/ratchet.test.ts`.
+- `string | null`, not optional properties, in `src/shared` and `features/` (React props exempt):
+  `npm run lint` (`eslint.style.mjs`, ratchet as above).
+- No default exports outside config files: `npm run lint` (`eslint.style.mjs`).
+- No magic numbers in `src/main` and `features/`: `npm run lint` (`eslint.style.mjs`, ratchet as
+  above).
 - `ipcMain.handle` only inside `handle()`, and channel types only from `src/shared/channels.ts`:
   `npm run lint` and `npm run typecheck`.
 - No em dash (U+2014) outside the vendored engine files: `npm run lint` and

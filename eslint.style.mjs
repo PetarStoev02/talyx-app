@@ -32,7 +32,7 @@ const baseMagicNumbers = tseslint.plugin.rules['no-magic-numbers']
 
 /**
  * Props are optional by React's convention: a type named `*Props`, or a type literal written on a
- * parameter (`function X({ a }: { a?: string })`), is exempt.
+ * component's parameter (`function Avatar({ a }: { a?: string })`), is exempt.
  */
 function isPropsType(property) {
   const literal = property.parent
@@ -42,7 +42,11 @@ function isPropsType(property) {
   if (owner.type === 'TSTypeAliasDeclaration') return owner.id.name.endsWith('Props')
   if (owner.type !== 'TSTypeAnnotation') return false
   const parameter = owner.parent
-  return parameter.parent?.params?.includes(parameter) ?? false
+  const fn = parameter.parent
+  if (!fn?.params?.includes(parameter)) return false
+  // A component is a PascalCase function: `function Avatar` or `const Avatar = (...) =>`.
+  const name = fn.id?.name ?? (fn.parent.type === 'VariableDeclarator' ? fn.parent.id.name : '')
+  return /^[A-Z]/.test(name)
 }
 
 export const stylePlugin = {
