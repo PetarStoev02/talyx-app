@@ -8,11 +8,15 @@ const I18N = join(__dirname, '../../src/renderer/src/shared/lib/i18n.ts')
 
 const read = (file: string): string => readFileSync(join(FEATURES, file), 'utf-8')
 const recipes = readdirSync(FEATURES).filter((file) => file.endsWith('.md') && file !== 'README.md')
-const quoted = (text: string, flag: string): string[] =>
-  [...text.matchAll(new RegExp(`${flag} "([^"]+)"`, 'g'))].map((match) => match[1])
+// A flag's quoted values; any other spelling of the flag fails, so none goes unchecked.
+function quoted(text: string, flag: string): string[] {
+  const values = [...text.matchAll(new RegExp(`${flag} "([^"]+)"`, 'g'))].map((match) => match[1])
+  expect(values).toHaveLength(text.match(new RegExp(`${flag}\\b`, 'g'))?.length ?? 0)
+  return values
+}
 
 // Every English string the app shows; keys read from the table, values from `t` itself.
-const copy = [...readFileSync(I18N, 'utf-8').matchAll(/^\s*'([\w.]+)':/gm)].map(([, key]) =>
+const copy = [...readFileSync(I18N, 'utf-8').matchAll(/^\s*'([^']+)':/gm)].map(([, key]) =>
   t(key as TranslationKey, 'en')
 )
 
@@ -38,7 +42,7 @@ describe('verification feature map', () => {
     expect(unknown).toEqual([])
   })
 
-  it('should list only feature files that exist and keep the four sections in order', () => {
+  it('should list every feature file, each with the four sections in order', () => {
     const index = read('README.md')
     const contract = index.split('## Feature entry contract')[1].split('\n## ')[0]
     const sections = [...contract.matchAll(/`([^`]+)`/g)].map(([, heading]) => heading)
@@ -46,8 +50,8 @@ describe('verification feature map', () => {
 
     expect(sections).toHaveLength(4)
     expect(listed.length).toBeGreaterThan(0)
+    expect([...listed].sort()).toEqual([...recipes].sort())
     for (const file of listed) {
-      expect(recipes).toContain(file)
       const h2s = [...read(file).matchAll(/^## (.+)$/gm)].map(([, heading]) => heading.trim())
       expect({ file, h2s }).toEqual({ file, h2s: sections })
     }
