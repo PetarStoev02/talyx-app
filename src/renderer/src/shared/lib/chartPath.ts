@@ -10,15 +10,13 @@ export interface Point {
  * Fritsch-Carlson), so a curve over counts never dips below zero or above its peak.
  */
 export function smoothPath(points: Point[]): string {
-  if (points.length === 0) return ''
+  const [first] = points
+  if (!first) return ''
   const at = (point: Point): string => `${round(point.x)},${round(point.y)}`
-  if (points.length === 1) return `M${at(points[0])}`
-  const tangents = monotoneTangents(points)
-  let path = `M${at(points[0])}`
-  for (let i = 0; i < points.length - 1; i++) {
-    const [a, b] = [points[i], points[i + 1]]
+  let path = `M${at(first)}`
+  for (const [a, b] of pairs(monotoneTangents(points))) {
     const third = (b.x - a.x) / 3
-    path += ` C${at({ x: a.x + third, y: a.y + tangents[i] * third })} ${at({ x: b.x - third, y: b.y - tangents[i + 1] * third })} ${at(b)}`
+    path += ` C${at({ x: a.x + third, y: a.y + a.tangent * third })} ${at({ x: b.x - third, y: b.y - b.tangent * third })} ${at(b)}`
   }
   return path
 }
@@ -37,17 +35,24 @@ export function niceCeiling(peak: number): number {
   return step * power
 }
 
-function monotoneTangents(points: Point[]): number[] {
-  const slopes = points
-    .slice(1)
-    .map((point, i) => (point.y - points[i].y) / (point.x - points[i].x))
-  return points.map((_, i) => {
-    if (i === 0) return slopes[0]
-    if (i === points.length - 1) return slopes[i - 1]
+function monotoneTangents(points: Point[]): Array<Point & { tangent: number }> {
+  const slopes = pairs(points).map(([a, b]) => (b.y - a.y) / (b.x - a.x))
+  return points.map((point, i) => {
     const [before, after] = [slopes[i - 1], slopes[i]]
+    // An end has one side: the curve leaves it along that slope.
+    if (before === undefined || after === undefined)
+      return { ...point, tangent: before ?? after ?? 0 }
     // A peak, a trough or a flat side: the curve is level there, so it cannot overshoot.
-    if (before * after <= 0) return 0
-    return (2 * before * after) / (before + after)
+    if (before * after <= 0) return { ...point, tangent: 0 }
+    return { ...point, tangent: (2 * before * after) / (before + after) }
+  })
+}
+
+// Each item with the one after it.
+function pairs<T>(items: T[]): Array<[T, T]> {
+  return items.flatMap((item, i): Array<[T, T]> => {
+    const next = items[i + 1]
+    return next === undefined ? [] : [[item, next]]
   })
 }
 

@@ -30,19 +30,22 @@ export function fixtureMemory(bots: string[]): MemoryDouble {
   const minds = Object.fromEntries(
     bots.map((bot) => [bot, { memories: [], skills: builtIn() }])
   ) as Parameters<typeof memoryDouble>[0]
-  minds.analyst.memories = [
+  const { analyst, researcher } = minds
+  if (!analyst || !researcher)
+    throw new Error('fixtureMemory needs the analyst and researcher bots')
+  analyst.memories = [
     { text: 'The weekly report goes out on Monday at 09:00.', about: 'bot' },
     { text: 'Revenue is reported in euros, rounded to thousands.', about: 'bot' },
     { text: 'The user is the head of finance and reads on their phone.', about: 'user' }
   ]
   const cash = 'Weekly cash position from the bank exports.'
-  minds.analyst.skills.push({
+  analyst.skills.push({
     name: 'cash-report',
     description: cash,
     enabled: true,
     removable: true,
     text: instructions('cash-report', cash)
   })
-  minds.researcher.otherStore = 'vector-db'
+  researcher.otherStore = 'vector-db'
   return memoryDouble(minds)
 }

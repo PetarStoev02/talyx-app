@@ -5,9 +5,11 @@ export const BLOCK_HUES = [20, 50, 80, 110, 140, 170, 200, 230, 260, 285, 310, 3
 
 export type Point = [number, number]
 export type Tone = 'top' | 'left' | 'right'
+// A face's four corners.
+export type Quad = [Point, Point, Point, Point]
 
 export interface BlockFace {
-  points: Point[]
+  points: Quad
   tone: Tone
   // Draw order: a face with a higher depth is nearer and paints over lower ones.
   depth: number
@@ -71,16 +73,19 @@ export function blockGeometry(shape: BlockShape, size: number, yaw = 0): BlockGe
   const [minX, minY, width, height] = yaw ? bounds(turned) : [stillX, stillY, stillW, stillH]
   const dx = (size - width * scale) / 2 - minX * scale
   const dy = (size - height * scale) / 2 - minY * scale
-  const faces = turned.map((face) => ({
-    ...face,
-    points: face.points.map(([x, y]): Point => [x * scale + dx, y * scale + dy])
-  }))
+  const place = ([x, y]: Point): Point => [x * scale + dx, y * scale + dy]
+  const faces = turned.map(
+    ({ points: [a, b, c, d], ...face }): BlockFace => ({
+      ...face,
+      points: [place(a), place(b), place(c), place(d)]
+    })
+  )
   const frontIndex = faces.findIndex((face) => face.tone === 'left' && face.voxel === front)
   return { faces, frontIndex, scale }
 }
 
 /** A point on the front face: `u` runs left to right, `v` bottom to top, both 0..1. */
-export function frontPoint(front: Point[], u: number, v: number): Point {
+export function frontPoint(front: Quad, u: number, v: number): Point {
   const [a, b, c, d] = front
   const low = lerp(a, b, u)
   const high = lerp(d, c, u)
@@ -107,7 +112,7 @@ export function blockTones(
 function cubeFaces(voxel: Voxel, project: (point: Voxel) => Point, voxels: Voxel[]): BlockFace[] {
   const [x, y, z] = voxel
   const at = (dx: number, dy: number, dz: number): Point => project([x + dx, y + dy, z + dz])
-  const sides: Array<[Tone, Voxel, Point[]]> = [
+  const sides: Array<[Tone, Voxel, Quad]> = [
     ['top', [0, 0, 1], [at(0, 0, 1), at(1, 0, 1), at(1, 1, 1), at(0, 1, 1)]],
     ['left', [0, 1, 0], [at(0, 1, 0), at(1, 1, 0), at(1, 1, 1), at(0, 1, 1)]],
     ['right', [1, 0, 0], [at(1, 0, 0), at(1, 1, 0), at(1, 1, 1), at(1, 0, 1)]]
@@ -130,8 +135,8 @@ function projection(yaw: number, [cx, cy]: Point): (point: Voxel) => Point {
   }
 }
 
-// The face goes on the nearest column's top cube; of two, the one further left.
-function frontVoxel(voxels: Voxel[]): Voxel {
+// The face goes on the nearest column's top cube; of two, the one further left. No cubes, no face.
+function frontVoxel(voxels: Voxel[]): Voxel | undefined {
   const nearest = Math.max(...voxels.map(([, y]) => y))
   return voxels.filter(([, y]) => y === nearest).sort((a, b) => b[2] - a[2] || a[0] - b[0])[0]
 }

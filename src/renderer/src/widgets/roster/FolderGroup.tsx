@@ -41,18 +41,19 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
   const saving = useRoster((state) => state.saving)
   const id = folder?.id ?? null
   const items = folderItems(snapshot, id)
-  const keys = items.map((item) => itemKey(itemRef(item)))
+  const keyed = items.map((item) => ({ item, key: itemKey(itemRef(item)) }))
+  const keys = keyed.map(({ key }) => key)
   const children = snapshot.folders.filter((item) => item.parentId === id)
   // A row takes bots and rooms, or several picked rows; `after` is in front of the next row, or
   // last. Picked rows never land inside a picked folder.
   const refused = (rows: RosterDragItem[]): boolean =>
-    refusesFolder(snapshot, rows, id) || (rows.length === 1 && rows[0].kind === 'folder')
+    refusesFolder(snapshot, rows, id) || (rows.length === 1 && rows[0]?.kind === 'folder')
   const rowEdges = (rows: RosterDragItem[]): DropEdge[] | null =>
     refused(rows) ? null : ['before', 'after']
   const dropOnRow = (index: number) => (rows: RosterDragItem[], edge: DropEdge) =>
     drops.items(rows, {
       folderId: id,
-      before: edge === 'before' ? keys[index] : (keys[index + 1] ?? null)
+      before: keys[edge === 'before' ? index : index + 1] ?? null
     })
   return (
     <section
@@ -69,12 +70,13 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
       }}
       onDrop={(event) => {
         const rows = draggedRows()
+        const [first] = rows
         event.preventDefault()
         event.stopPropagation()
         endRosterDrag()
-        if (!rows.length || refusesFolder(snapshot, rows, id)) return
-        if (rows.length === 1 && rows[0].kind === 'folder')
-          drops.folder(rows[0].id, { parentId: id, beforeId: null })
+        if (!first || refusesFolder(snapshot, rows, id)) return
+        if (rows.length === 1 && first.kind === 'folder')
+          drops.folder(first.id, { parentId: id, beforeId: null })
         else drops.items(rows, { folderId: id, before: null })
       }}
     >
@@ -92,13 +94,8 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
         {() => (
           // Indented so a row's avatar lines up under the folder's name, past its chevron.
           <div className="mt-1 space-y-1 pl-6">
-            {items.map((item, index) => (
-              <DropSlot
-                key={keys[index]}
-                flip={keys[index]}
-                edges={rowEdges}
-                onDrop={dropOnRow(index)}
-              >
+            {keyed.map(({ item, key }, index) => (
+              <DropSlot key={key} flip={key} edges={rowEdges} onDrop={dropOnRow(index)}>
                 {item.kind === 'bot' ? (
                   <BotRow
                     bot={item.bot}
@@ -177,13 +174,13 @@ function FolderHeader({
     if (rows.length > 1)
       return refusesFolder(snapshot, rows, folder?.id ?? null) ? null : ['inside']
     const [item] = rows
-    if (item.kind !== 'folder' || !folder) return ['inside']
+    if (!item || item.kind !== 'folder' || !folder) return ['inside']
     if (item.id === folder.id || isWithin(snapshot.folders, folder.id, item.id)) return null
     return ['before', 'inside']
   }
   const onDrop = (rows: RosterDragItem[], edge: DropEdge): void => {
     const [item] = rows
-    if (rows.length > 1 || item.kind !== 'folder')
+    if (!item || rows.length > 1 || item.kind !== 'folder')
       return drops.items(rows, { folderId: folder?.id ?? null, before: null })
     if (!folder) return drops.folder(item.id, { parentId: null, beforeId: null })
     drops.folder(

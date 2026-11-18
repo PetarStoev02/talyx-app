@@ -225,10 +225,10 @@ export function rosterActions(backend: RosterWriter): RosterActions {
       const folderId = itemFolder(current, item)
       const keys = folderItems(current, folderId).map((row) => itemKey(itemRef(row)))
       const index = keys.indexOf(itemKey(item))
-      const target = index + direction
-      if (index < 0 || target < 0 || target >= keys.length) return Promise.resolve()
+      const target = keys[index + direction]
+      if (index < 0 || target === undefined) return Promise.resolve()
       // Stepping down is going in front of the item after the next one (or last).
-      const before = direction < 0 ? keys[target] : (keys[target + 1] ?? null)
+      const before = direction < 0 ? target : (keys[index + direction + 1] ?? null)
       return saveFolderOrder(backend, folderId, placeKey(keys, itemKey(item), before))
     },
     orderPin: (from, to) => orderPin(backend, snapshot().bots, { from, to }),

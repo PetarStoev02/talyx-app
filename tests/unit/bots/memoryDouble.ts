@@ -40,7 +40,8 @@ export function memoryDouble(bots: Record<string, BotMind>): MemoryDouble {
       otherStore: mind(bot).otherStore ?? null
     }),
     editMemory: async (bot, { id, text }) => {
-      mind(bot).memories[at(bot, id)].text = text
+      // at() throws unless the index holds a memory.
+      mind(bot).memories[at(bot, id)]!.text = text
     },
     deleteMemory: async (bot, id) => {
       mind(bot).memories.splice(at(bot, id), 1)

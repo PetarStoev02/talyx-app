@@ -15,7 +15,12 @@ export function makeTempHome(): string {
 }
 
 /** The whole environment an isolated engine sees: nothing is inherited from this process. */
-export function isolatedEnv(home: string): Record<string, string> {
+export function isolatedEnv(home: string): {
+  HOME: string
+  PATH: string
+  TMPDIR: string
+  LANG: string
+} {
   return {
     HOME: home,
     PATH: `${home}/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin`,

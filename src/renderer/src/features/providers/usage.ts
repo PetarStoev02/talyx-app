@@ -128,17 +128,24 @@ async function readBots(
 }> {
   const profiles = await backend.profiles()
   const [models, perDay] = await Promise.all([
-    Promise.allSettled(profiles.map((profile) => backend.usage(profile, days))),
+    Promise.all(
+      profiles.map((profile) =>
+        backend.usage(profile, days).then(
+          (rows) => ({ profile, rows }),
+          () => ({ profile, rows: null })
+        )
+      )
+    ),
     backend.dailyUsage(profiles, days).then(
       (read) => ({ read, problem: null }),
       (problem: unknown) => ({ read: null, problem })
     )
   ])
-  const unread = profiles.filter((_, index) => models[index].status === 'rejected')
+  const unread = models.flatMap((model) => (model.rows ? [] : [model.profile]))
   const read = profiles.filter((profile) => !unread.includes(profile))
   const dayless = perDay.read ? read.filter((profile) => !perDay.read?.[profile]) : []
   return {
-    rows: models.flatMap((result) => (result.status === 'fulfilled' ? result.value : [])),
+    rows: models.flatMap((model) => model.rows ?? []),
     days: perDay.read && read.flatMap((profile) => perDay.read?.[profile] ?? []),
     daysProblem: perDay.problem,
     daysUnread: dayless,
