@@ -124,11 +124,11 @@ async function browserCommand() {
 }
 
 // fuzz: a seeded random walk over the controls the ARIA snapshot shows, with four invariants
-// checked after every step (F3 in #188). App-specific knowledge is the three constants and
-// `atHome`; the rest is meant to be copied as is into another app's driver.
+// checked after every step (F3 in #188). App-specific knowledge is FUZZ_SKIP, FUZZ_KEYS,
+// FUZZ_CRASH, `atHome` and the settings file; the rest copies as is into another app's driver.
+// Links are left out: in Talyx they open the system browser.
 const FUZZ_ROLES = new Set([
   'button',
-  'link',
   'menuitem',
   'menuitemcheckbox',
   'menuitemradio',
@@ -150,6 +150,7 @@ const FUZZ_KEYS = [
 // installs, updates) or enter the setup flow, which has no Escape exit by design.
 const FUZZ_SKIP =
   /^(Choose file|Install|Install the engine|Get started|Run setup again|Open release page|Get the latest Talyx|Download|Restart to update|Launch at login)$|^Copy|Sign in/
+const FUZZ_CRASH = /^(This part of )?Talyx stopped working\.$/
 const FUZZ_TEXT = ['', 'a', 'Fuzz 😀 ünï', '<b>x</b>', 'x'.repeat(300)]
 const FUZZ_STEPS = 200
 
@@ -165,9 +166,10 @@ async function atHome(page) {
 }
 
 async function fuzz() {
-  if (readFileSync(MODE_FILE, 'utf8') !== 'no-engine')
-    throw new Error('fuzz runs only on a launch --no-engine; it would click real bots')
-  const seed = Number(flags.seed ?? Date.now() % 1_000_000)
+  if (!existsSync(MODE_FILE) || readFileSync(MODE_FILE, 'utf8') !== 'no-engine')
+    throw new Error('fuzz needs a run started with launch --no-engine; it would click real bots')
+  const seed = Number(flags.seed)
+  if (!Number.isInteger(seed)) throw new Error('fuzz needs --seed <integer>, so a run replays')
   const steps = Number(flags.steps ?? FUZZ_STEPS)
   const random = mulberry32(seed)
   const pick = (list) => list[Math.floor(random() * list.length)]
@@ -176,12 +178,16 @@ async function fuzz() {
   page.on('console', (message) => message.type() === 'error' && errors.push(message.text()))
   page.on('pageerror', (error) => errors.push(error.message))
   const log = []
-  const fail = async (why) => {
+  const fail = async (step, why) => {
     const dir = join(EVIDENCE, `fuzz-${seed}`)
     save(join(dir, 'steps.log'), log.join('\n'))
     save(join(dir, 'after.aria.txt'), await page.locator('body').ariaSnapshot())
     await page.screenshot({ path: join(dir, 'after.png') })
-    throw new Error(`fuzz seed ${seed} failed at step ${log.length}: ${why}\n${log.join('\n')}`)
+    throw new Error(`fuzz seed ${seed} failed at step ${step}: ${why}\n${log.join('\n')}`)
+  }
+  const check = async (step) => {
+    const broken = await brokenInvariant(page, errors)
+    if (broken) await fail(step, broken)
   }
   try {
     for (let step = 1; step <= steps; step++) {
@@ -189,25 +195,31 @@ async function fuzz() {
       const action = random() < 0.7 && controls.length ? pick(controls) : { key: pick(FUZZ_KEYS) }
       log.push(`${step} ${await fuzzAct(page, action, () => pick(FUZZ_TEXT))}`)
       await sleep(150)
+      await check(step)
       if (action.key === 'Escape' && !(await atHome(page))) {
         await page.keyboard.press('Escape')
         await sleep(150)
         log.push(`${step} press Escape (second)`)
-        if (!(await atHome(page))) await fail('two Escapes did not return to the Agents page')
-      }
-      if (await page.getByText(/^(This part of )?Talyx stopped working\.$/).count())
-        await fail('crash notice shown')
-      if (errors.length) await fail(`console.error: ${errors.join(' | ')}`)
-      try {
-        JSON.parse(readFileSync(join(USER_DATA, 'settings.json'), 'utf8'))
-      } catch (error) {
-        await fail(`settings.json does not parse: ${error.message}`)
+        await check(step)
+        if (!(await atHome(page))) await fail(step, 'two Escapes did not return to the Agents page')
       }
     }
     save(join(EVIDENCE, `fuzz-${seed}`, 'steps.log'), log.join('\n'))
     console.log(`fuzz seed ${seed}: ${steps} steps, invariants held`)
   } finally {
     await page.context().browser().close()
+  }
+}
+
+// The first broken invariant (crash notice, console error, settings.json), or null.
+async function brokenInvariant(page, errors) {
+  if (await page.getByText(FUZZ_CRASH).count()) return 'crash notice shown'
+  if (errors.length) return `console.error: ${errors.join(' | ')}`
+  try {
+    JSON.parse(readFileSync(join(USER_DATA, 'settings.json'), 'utf8'))
+    return null
+  } catch (error) {
+    return `settings.json does not parse: ${error.message}`
   }
 }
 
@@ -223,6 +235,14 @@ function parseControls(aria) {
 
 async function fuzzAct(page, action, text) {
   if (action.key) {
+    // Enter and Space press the focused control, so they honour FUZZ_SKIP like clicks do.
+    if (action.key === 'Enter' || action.key === 'Space') {
+      const focused = await page.evaluate(() => {
+        const element = document.activeElement
+        return (element?.getAttribute('aria-label') ?? element?.textContent ?? '').trim()
+      })
+      if (FUZZ_SKIP.test(focused)) return `skip ${action.key} on "${focused}"`
+    }
     await page.keyboard.press(action.key)
     return `press ${action.key}`
   }

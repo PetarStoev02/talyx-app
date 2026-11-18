@@ -82,7 +82,7 @@ control-talyx stop
 - A failure prints the seed, the failed check and the step log, and saves `steps.log`,
   `after.aria.txt` and `after.png` under `evidence/fuzz-<seed>/`. Rerun the same seed on a fresh
   launch to replay it; a pass also saves `steps.log`.
-- To port it to another app's driver, change `FUZZ_SKIP`, `FUZZ_KEYS` and `atHome`.
+- To port it to another app's driver, change `FUZZ_SKIP`, `FUZZ_KEYS`, `FUZZ_CRASH`, `atHome` and the settings file it parses.
 
 ## Evidence
 
