@@ -267,22 +267,20 @@ function SkillsSection({
   const t = useLanguage((s) => s.t)
   const [skills, setSkills] = useState<Skill[] | null>(null)
   const [problem, setProblem] = useState<Problem | null>(null)
-  const [attempt, setAttempt] = useState(0)
   const [opened, setOpened] = useState<Skill | null>(null)
   // Skills whose change the engine has not answered yet.
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set())
 
-  const read = useCallback(() => {
-    void attempt // each attempt (Try again) is a new load, so it reads the skills again
-    return loadSkills(backend, bot.name)
-  }, [backend, bot.name, attempt])
-  useLoad(read, {
-    loaded: (loaded) => {
-      setSkills(loaded)
-      setProblem(null)
-    },
-    failed: (error) => setProblem(problemOf(error))
-  })
+  const readAgain = useLoad(
+    useCallback(() => loadSkills(backend, bot.name), [backend, bot.name]),
+    {
+      loaded: (loaded) => {
+        setSkills(loaded)
+        setProblem(null)
+      },
+      failed: (error) => setProblem(problemOf(error))
+    }
+  )
 
   // The switch moves at once and moves back if the engine refuses; it waits for the engine's
   // answer before it moves again, so two changes never cross.
@@ -326,7 +324,7 @@ function SkillsSection({
           problem={problem}
           onRetry={() => {
             setProblem(null)
-            setAttempt((n) => n + 1)
+            readAgain()
           }}
         />
       ) : !shown ? (
@@ -380,7 +378,7 @@ function SkillsSection({
           onChanged={() => {
             setOpened(null)
             // The list behind the dialog is read again, as after Try again.
-            setAttempt((n) => n + 1)
+            readAgain()
           }}
         />
       )}

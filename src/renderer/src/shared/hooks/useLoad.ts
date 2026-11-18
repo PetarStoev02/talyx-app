@@ -1,14 +1,16 @@
-import { useEffect, useEffectEvent } from 'react'
+import { useCallback, useEffect, useEffectEvent, useState } from 'react'
 
 /**
- * Runs `load` after the first render and each time it changes (a new bot, a retry), and hands
- * its result to `loaded` or its error to `failed`. A run that a newer one or an unmount
- * overtook hands nothing, so a slow answer for the last bot never shows for this one.
+ * Runs `load` after the first render and each time it changes (a new bot), and hands its result
+ * to `loaded` or its error to `failed`. A run that a newer one or an unmount overtook hands
+ * nothing, so a slow answer for the last bot never shows for this one. The returned function
+ * runs it again (Try again).
  */
 export function useLoad<T>(
   load: () => Promise<T>,
   settle: { loaded: (value: T) => void; failed: (error: unknown) => void }
-): void {
+): () => void {
+  const [attempt, setAttempt] = useState(0)
   const loaded = useEffectEvent(settle.loaded)
   const failed = useEffectEvent(settle.failed)
   useEffect(() => {
@@ -20,5 +22,6 @@ export function useLoad<T>(
     return () => {
       current = false
     }
-  }, [load])
+  }, [load, attempt])
+  return useCallback(() => setAttempt((n) => n + 1), [])
 }

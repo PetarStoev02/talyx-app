@@ -9,6 +9,12 @@ export function useSubscription(subscribe: () => () => void): void {
   useEffect(() => start(), [])
 }
 
+/** Calls `run` once, when the part leaves the screen. */
+export function useOnUnmount(run: () => void): void {
+  const leave = useEffectEvent(run)
+  useEffect(() => () => leave(), [])
+}
+
 /** Listens for `type` on the window while mounted; `listener` always sees the latest props. */
 export function useWindowEvent<K extends keyof WindowEventMap>(
   type: K,

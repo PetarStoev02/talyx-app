@@ -16,7 +16,7 @@ const TIMERS = new Set([
   'requestAnimationFrame',
   'requestIdleCallback'
 ])
-const GLOBAL_OBJECTS = new Set(['window', 'globalThis', 'self'])
+const GLOBAL_OBJECTS = new Set(['window', 'globalThis', 'self', 'global'])
 
 export const EFFECT_MESSAGE =
   'Effects live in a named hook under shared/hooks. Name what this one does, put it there, and import it.'
@@ -40,10 +40,53 @@ function isGlobalObject(node) {
   return node.type === 'MemberExpression' && GLOBAL_OBJECTS.has(propertyName(node))
 }
 
+/** Whether `node` names React itself: `React` or `R` from `import React`, `import * as R`. */
+function isReact(node, context) {
+  if (node.type !== 'Identifier') return false
+  for (let scope = context.sourceCode.getScope(node); scope; scope = scope.upper) {
+    const variable = scope.set.get(node.name)
+    if (variable) {
+      return variable.defs.some(
+        (def) => def.type === 'ImportBinding' && def.parent.source.value === 'react'
+      )
+    }
+  }
+  return false
+}
+
+/**
+ * Each destructuring and the object it takes apart: `const { a } = x`, `({ a } = x)`, and a
+ * parameter's default `({ a } = x) => ...`.
+ */
+const DESTRUCTURING = {
+  VariableDeclarator: (node) => [node.id, node.init],
+  AssignmentExpression: (node) => [node.left, node.right],
+  AssignmentPattern: (node) => [node.left, node.right]
+}
+
+/** Calls `report` for each property named in `names` that a destructuring takes out of `source`. */
+function destructuring(names, fromSource, report) {
+  return Object.fromEntries(
+    Object.entries(DESTRUCTURING).map(([type, parts]) => [
+      type,
+      (node) => {
+        const [pattern, source] = parts(node)
+        if (pattern.type !== 'ObjectPattern' || !source || !fromSource(source)) return
+        for (const property of pattern.properties) {
+          if (names.has(keyName(property))) report(property)
+        }
+      }
+    ])
+  )
+}
+
 const noEffect = {
   meta: { type: 'problem', schema: [] },
   create(context) {
+    const report = (node) => context.report({ node, message: EFFECT_MESSAGE })
     return {
+      // `const { useEffect } = React`, and its other destructuring forms.
+      ...destructuring(EFFECTS, (source) => isReact(source, context), report),
       // `import { useEffect } from 'react'`, aliased or not.
       ImportSpecifier(node) {
         if (node.parent.source.value !== 'react') return
@@ -58,13 +101,13 @@ const noEffect = {
           context.report({ node, message: EFFECT_MESSAGE })
         }
       },
-      // `React.useEffect(...)` and any other namespace spelling.
-      MemberExpression(node) {
-        if (EFFECTS.has(propertyName(node))) context.report({ node, message: EFFECT_MESSAGE })
+      // `export * from 'react'` passes the effects on too.
+      ExportAllDeclaration(node) {
+        if (node.source.value === 'react') report(node)
       },
-      // `const { useEffect } = React`.
-      'VariableDeclarator > ObjectPattern > Property'(node) {
-        if (EFFECTS.has(keyName(node))) context.report({ node, message: EFFECT_MESSAGE })
+      // `React.useEffect(...)`, `R.useLayoutEffect(...)` for any name React is imported as.
+      MemberExpression(node) {
+        if (EFFECTS.has(propertyName(node)) && isReact(node.object, context)) report(node)
       }
     }
   }
@@ -94,15 +137,10 @@ const noTimer = {
         if (!isGlobalObject(node.object)) return
         if (TIMERS.has(propertyName(node))) context.report({ node, message: TIMER_MESSAGE })
       },
-      // `const { setTimeout: later } = window`.
-      VariableDeclarator(node) {
-        if (node.id.type !== 'ObjectPattern' || !node.init || !isGlobalObject(node.init)) return
-        for (const property of node.id.properties) {
-          if (TIMERS.has(keyName(property))) {
-            context.report({ node: property, message: TIMER_MESSAGE })
-          }
-        }
-      }
+      // `const { setTimeout: later } = window`, and its other destructuring forms.
+      ...destructuring(TIMERS, isGlobalObject, (node) =>
+        context.report({ node, message: TIMER_MESSAGE })
+      )
     }
   }
 }

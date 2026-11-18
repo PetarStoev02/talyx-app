@@ -7,7 +7,7 @@ import { TalyxLogo } from '@shared/ui/TalyxLogo'
 import { ErrorBoundary } from '@shared/ui/ErrorBoundary'
 import { useOnChange } from '@shared/hooks/useOnChange'
 import { useRefocus } from '@shared/hooks/useRefocus'
-import { useSubscription } from '@shared/hooks/useSubscription'
+import { useOnUnmount, useSubscription } from '@shared/hooks/useSubscription'
 import { cn } from '@shared/lib/utils'
 import { useLanguage } from '@shared/lib/i18n'
 import { EngineGate } from '@widgets/engine-gate'
@@ -69,7 +69,7 @@ export function AgentsPage({
     if (request && !(selected && findIn(request, selected))) clear()
   })
   // Leaving the Agents page (Settings, a module) ends the find too.
-  useSubscription(() => () => useFind.getState().clear())
+  useOnUnmount(() => useFind.getState().clear())
   const pill = useRef<HTMLButtonElement>(null)
   const page = useRef<HTMLDivElement>(null)
   // The header's right side, where a bot's chat puts its search.

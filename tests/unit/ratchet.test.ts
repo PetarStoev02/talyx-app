@@ -58,12 +58,18 @@ function git(...args: string[]): string {
 /**
  * The lists as they are where this branch left main; on main itself, as they were one commit
  * before. Null when the base has no ratchet yet (the change that adds it). A missing main ref
- * fails: a skipped check would pass any growth. A depth-1 clone of main (the release workflow)
- * has no commit before, so it also gets null there: CI's test job, with full history, is the gate.
+ * or base commit fails (a shallow clone): a skipped check would pass any growth.
  */
 async function baseRatchet(): Promise<typeof RATCHET | null> {
   const forkPoint = git('merge-base', 'HEAD', 'origin/main')
   const base = forkPoint === git('rev-parse', 'HEAD') ? `${forkPoint}~1` : forkPoint
+  try {
+    git('rev-parse', '--verify', '--quiet', `${base}^{commit}`)
+  } catch {
+    throw new Error(
+      `No commit ${base} in this clone: check out with full history (fetch-depth: 0).`
+    )
+  }
   try {
     git('cat-file', '-e', `${base}:${RATCHET_FILE}`)
   } catch {
@@ -82,7 +88,12 @@ describe('kernel rules', () => {
     ['a layout effect by namespace', `import * as R from 'react'\nR.useLayoutEffect(() => {})`],
     ['an insertion effect', `import { useInsertionEffect } from 'react'`],
     ['a re-export', `export { useEffect } from 'react'`],
-    ['a destructured namespace', `import React from 'react'\nconst { useEffect } = React`]
+    ['a destructured namespace', `import React from 'react'\nconst { useEffect } = React`],
+    ['a re-export of all of React', `export * from 'react'`],
+    [
+      'a destructuring assignment',
+      `import * as R from 'react'\nlet e: unknown\n;({ useLayoutEffect: e } = R)\nvoid e`
+    ]
   ])('should refuse an effect outside the kernel: %s', async (_name, source) => {
     expect(await kernelErrors(`${R}/widgets/chat/x.tsx`, source)).toEqual([EFFECT_MESSAGE])
   })
@@ -97,7 +108,19 @@ describe('kernel rules', () => {
     ['a timer passed on as a value', 'new Promise((resolve) => setTimeout(resolve, 1))'],
     ['a computed window form', "window['setInterval'](() => {}, 1)"],
     ['a timer reached through window twice', 'window.window.setTimeout(() => {}, 1)'],
-    ['a timer destructured from window', 'const { setTimeout: later } = window\nlater(() => {}, 1)']
+    [
+      'a timer destructured from window',
+      'const { setTimeout: later } = window\nlater(() => {}, 1)'
+    ],
+    [
+      'a timer in a destructuring assignment',
+      'let t: unknown\n;({ setInterval: t } = window)\nvoid t'
+    ],
+    [
+      'a timer in a parameter default',
+      'export function f({ requestAnimationFrame: frame } = window): void {\n  void frame\n}'
+    ],
+    ['the Node global form', 'global.setTimeout(() => {}, 1)']
   ])('should refuse a timer outside the kernel: %s', async (_name, source) => {
     expect(await kernelErrors(`${R}/features/bots/x.ts`, source)).toEqual([TIMER_MESSAGE])
   })
@@ -109,7 +132,12 @@ describe('kernel rules', () => {
       'const setTimeout = (run: () => void): void => run()\nsetTimeout(() => {})'
     ],
     ['clearing a timer', 'clearTimeout(0)'],
-    ['an effect named in a string', "const name = 'useEffect'\nvoid name"]
+    ['an effect named in a string', "const name = 'useEffect'\nvoid name"],
+    [
+      'an effect-named field of something else',
+      'const hooks = { useEffect: 1 }\nconst { useEffect } = hooks\nvoid [hooks.useEffect, useEffect]'
+    ],
+    ['other fields of window', 'const { innerWidth } = window\nvoid innerWidth']
   ])('should allow what starts no timer and no effect: %s', async (_name, source) => {
     expect(await kernelErrors(`${R}/widgets/chat/x.tsx`, source)).toEqual([])
   })
