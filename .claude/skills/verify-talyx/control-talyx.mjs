@@ -1,14 +1,22 @@
 #!/usr/bin/env node
 // control-talyx: starts a throwaway dev Talyx and drives its real Electron window over the
 // Chrome DevTools Protocol. Usage is in SKILL.md next to this file.
-import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { spawn, spawnSync } from 'node:child_process'
+import {
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
-const ROOT = process.env.TALYX_VERIFY_ROOT ?? '/tmp/talyx-verify'
+const ROOT = resolve(process.env.TALYX_VERIFY_ROOT ?? '/tmp/talyx-verify')
 const RUN = join(ROOT, 'run')
 const EVIDENCE = join(ROOT, 'evidence')
 const PID_FILE = join(RUN, 'pid')
@@ -17,8 +25,8 @@ const USER_DATA = join(RUN, 'userData')
 const HOME = join(RUN, 'home')
 const CDP_PORT = Number(process.env.TALYX_VERIFY_CDP_PORT ?? 9333)
 const CDP_URL = `http://127.0.0.1:${CDP_PORT}`
-const BRIDGE_PORT = 5195
-const MCP_PORT = 47899
+const BRIDGE_PORT = Number(process.env.TALYX_VERIFY_BRIDGE_PORT ?? 5195)
+const MCP_PORT = Number(process.env.TALYX_VERIFY_MCP_PORT ?? 47899)
 const READY_TIMEOUT_MS = 90_000
 const STEP_TIMEOUT_MS = 10_000
 const STOP_TIMEOUT_MS = 10_000
@@ -71,6 +79,40 @@ async function launch() {
   await page.context().browser().close()
 }
 
+// An engine installed by setup in a --no-engine run lives in the run's HOME, and its gateway
+// outlives Talyx (Talyx never owns the gateway). Stop what runs from inside the run directory, by
+// that path (also by its real path, for a TALYX_VERIFY_ROOT behind a symlink). Not `gateway stop`:
+// the engine looks for its launchd service under the account's real home, so it could stop the
+// user's own gateway.
+async function stopRunProcesses() {
+  const signal = (name) =>
+    pathsOf(RUN).forEach((path) => spawnSync('pkill', [`-${name}`, '-U', uid(), '-f', `${path}/`]))
+  const gone = async () => {
+    for (const deadline = Date.now() + STOP_TIMEOUT_MS; Date.now() < deadline; await sleep(200))
+      if (!runsFrom(RUN)) return true
+    return !runsFrom(RUN)
+  }
+  signal('TERM')
+  if (await gone()) return
+  signal('KILL')
+  if (!(await gone())) throw new Error(`processes from ${RUN} survived SIGKILL; ${RUN} kept`)
+}
+
+function pathsOf(dir) {
+  return [...new Set([dir, existsSync(dir) ? realpathSync(dir) : dir])]
+}
+
+// Whether a process of this user has dir in its command line.
+function runsFrom(dir) {
+  return pathsOf(dir).some(
+    (path) => spawnSync('pgrep', ['-U', uid(), '-f', `${path}/`]).status === 0
+  )
+}
+
+function uid() {
+  return String(process.getuid())
+}
+
 async function doctor() {
   const problems = []
   if (!pidAlive()) problems.push(`no live pid in ${PID_FILE}`)
@@ -100,6 +142,7 @@ async function stop() {
         throw new Error(`process group ${pid} survived SIGKILL; ${RUN} kept`)
     }
   }
+  await stopRunProcesses()
   rmSync(RUN, { recursive: true, force: true })
   console.log(`stopped${pid ? ` pid ${pid}` : ''}; evidence kept in ${EVIDENCE}`)
 }
@@ -128,6 +171,10 @@ const browserActions = {
   async fill(page, o) {
     await locate(page, o).fill(o.value ?? '', { timeout: STEP_TIMEOUT_MS })
     console.log(`filled ${o.role} "${o.name}"`)
+  },
+  async select(page, o) {
+    await locate(page, o).selectOption({ label: o.value ?? '' }, { timeout: STEP_TIMEOUT_MS })
+    console.log(`selected "${o.value}" in ${o.role} "${o.name}"`)
   },
   async press(page, o) {
     await page.keyboard.press(o.key)
