@@ -12,6 +12,7 @@ import {
 import type { ChatPrompt, Transcript } from '../../../src/renderer/src/features/chat/types'
 import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/shared'
 import type { SessionMessage } from '../../../src/renderer/src/shared/engine/types'
+import { turnFrames } from './turnFrames'
 
 const SESSION = 'chat-1'
 
@@ -565,43 +566,6 @@ describe('chat transcript', () => {
 })
 
 describe('chat transcript, for any delivery of a turn sequence', () => {
-  // One part of a reply: streamed text in chunks, or a tool the bot ran.
-  type Part = { kind: 'text'; chunks: string[] } | { kind: 'tool' }
-  const part: fc.Arbitrary<Part> = fc.oneof(
-    fc.record({
-      kind: fc.constant('text' as const),
-      chunks: fc.array(fc.string({ minLength: 1, maxLength: 6 }), { minLength: 1, maxLength: 4 })
-    }),
-    fc.constant({ kind: 'tool' as const })
-  )
-  const turns = fc.array(fc.array(part, { maxLength: 4 }), { minLength: 1, maxLength: 3 })
-
-  // The frames the gateway sends for these turns, in order, each with its sequence number.
-  function frames(replies: Part[][]): GatewayEvent[] {
-    const sent: Array<[string, Record<string, unknown>]> = []
-    replies.forEach((parts, turn) => {
-      const turnId = `turn-${turn}`
-      sent.push(['message.start', { turn_id: turnId }])
-      let segment = 0
-      parts.forEach((reply, index) => {
-        if (reply.kind === 'tool') {
-          const toolId = `tool-${turn}-${index}`
-          sent.push(['tool.start', { tool_id: toolId, name: 'search' }])
-          sent.push(['tool.complete', { tool_id: toolId, duration_s: 1 }])
-          segment += 1
-          return
-        }
-        let offset = 0
-        for (const text of reply.chunks) {
-          sent.push(['message.delta', { text, turn_id: turnId, segment, offset }])
-          offset += text.length
-        }
-      })
-      sent.push(['message.complete', { status: 'complete', turn_id: turnId }])
-    })
-    return sent.map(([type, payload], index) => event(type, payload, index + 1))
-  }
-
   // Each frame sent again any number of times, at any later point: a replay after a redial. And
   // the engine's own re-send of a turn's start or text, with no sequence number, before the next
   // turn starts: the stream cursor alone tells it apart.
@@ -641,9 +605,9 @@ describe('chat transcript, for any delivery of a turn sequence', () => {
         return delivered
       })
 
-  const withDelivery = turns
-    .map(frames)
-    .chain((clean) => fc.tuple(fc.constant(clean), delivery(clean)))
+  const withDelivery = turnFrames(SESSION).chain((clean) =>
+    fc.tuple(fc.constant(clean), delivery(clean))
+  )
 
   it('should give the same transcript for duplicated and late re-sent frames as for the clean sequence', () => {
     fc.assert(
