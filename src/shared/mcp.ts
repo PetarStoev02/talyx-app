@@ -62,11 +62,17 @@ const schedule = z
     time: z
       .string()
       .regex(/^\d{1,2}:\d{2}$/)
-      .optional()
+      .exactOptional()
       .describe('HH:MM, for daily, weekdays and weekly'),
-    weekday: z.number().int().min(0).max(6).optional().describe('0 is Sunday, for weekly'),
-    hours: z.number().int().min(1).max(24).optional().describe('Every this many hours, for hours'),
-    custom: z.string().optional().describe('A cron line, for custom')
+    weekday: z.number().int().min(0).max(6).exactOptional().describe('0 is Sunday, for weekly'),
+    hours: z
+      .number()
+      .int()
+      .min(1)
+      .max(24)
+      .exactOptional()
+      .describe('Every this many hours, for hours'),
+    custom: z.string().exactOptional().describe('A cron line, for custom')
   })
   .describe('When the routine runs')
 

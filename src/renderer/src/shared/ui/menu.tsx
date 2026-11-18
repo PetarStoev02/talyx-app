@@ -7,9 +7,9 @@ import { cn } from '@shared/lib/utils'
 /** One entry of a menu: an item, or with `submenu` a "›" row that opens one. */
 export interface MenuAction {
   label: string
-  icon?: LucideIcon
+  icon?: LucideIcon | undefined
   onSelect?: () => void
-  disabled?: boolean
+  disabled?: boolean | undefined
   /** Red: the action removes something. */
   destructive?: boolean
   /** A line above it, starting a new group. */
@@ -62,7 +62,7 @@ function Entries({
               <Menu.Label className={menuLabelClass}>{action.label}</Menu.Label>
             ) : action.submenu ? (
               <Menu.Sub>
-                <Menu.SubTrigger disabled={action.disabled} className={className}>
+                <Menu.SubTrigger disabled={action.disabled === true} className={className}>
                   {body}
                   <ChevronRight aria-hidden="true" />
                 </Menu.SubTrigger>
@@ -74,8 +74,8 @@ function Entries({
               </Menu.Sub>
             ) : (
               <Menu.Item
-                disabled={action.disabled || action.current}
-                onSelect={action.onSelect}
+                disabled={action.disabled === true || action.current === true}
+                onSelect={() => action.onSelect?.()}
                 className={cn(className, action.current && 'data-[disabled]:opacity-100')}
               >
                 {body}

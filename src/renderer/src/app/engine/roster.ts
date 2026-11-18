@@ -47,7 +47,7 @@ const preview = z
     preview: lenient(z.string())
   })
   .nullable()
-  .optional()
+  .exactOptional()
   .catch(null)
 const profileSchema = z.object({
   name: z.string().min(1),
@@ -56,8 +56,8 @@ const profileSchema = z.object({
   description: lenient(z.string()),
   canonical_session: preview,
   last_session: preview,
-  ui_meta: jsonObject.optional(),
-  ui_meta_revisions: z.record(z.string(), z.number().int().nonnegative()).optional()
+  ui_meta: jsonObject.exactOptional(),
+  ui_meta_revisions: z.record(z.string(), z.number().int().nonnegative()).exactOptional()
 })
 const metaSchema = z
   .object({
@@ -84,12 +84,12 @@ const roomsSchema = z.object({
       members: z.array(
         z.object({
           profile: z.string(),
-          member_id: z.string().optional(),
-          handle: z.string().optional(),
-          display_name: z.string().optional()
+          member_id: z.string().exactOptional(),
+          handle: z.string().exactOptional(),
+          display_name: z.string().exactOptional()
         })
       ),
-      disbanded_at: z.number().nullable().optional(),
+      disbanded_at: z.number().nullable().exactOptional(),
       latest_seq: lenient(z.number().int().nonnegative())
     })
   ),
