@@ -132,8 +132,8 @@ export async function hideRows(
 /**
  * Deletes the bots and rooms, then the folders in one layout save: what was in a deleted folder
  * and is not deleted itself moves up to the nearest folder that stays, or to Unassigned, after
- * that folder's own rows. The layout comes before the moved bots, so a failure part way never
- * hides one.
+ * that folder's own rows. A failure part way never hides a bot: one whose folder is gone shows
+ * in Unassigned until it moves.
  */
 export async function deleteRows(
   backend: Pick<RosterStore, 'deleteRoom' | 'deleteProfile' | 'updateLayout' | 'saveBotMeta'>,
