@@ -107,6 +107,7 @@ describe('i18n keys', () => {
     it.each([
       ['a key in a comment', "// t('nav.agents')\nconst x = 1"],
       ['a key only compared', "if (problem.key === 'nav.agents') show()"],
+      ['a key only compared as unequal', "if (key !== 'nav.agents') show()"],
       ['a key only in a case', "switch (key) { case 'nav.agents': break }"],
       ['a key only named in a type', "type Page = 'nav.agents'"],
       ['a template with no declared family', 't(`nav.${page}`)'],
