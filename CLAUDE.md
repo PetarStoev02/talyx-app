@@ -89,6 +89,11 @@ Each line is the rule; the check's message names the fix.
   `shared/engine`). The ratchet allowlists only shrink: an entry that leaves never returns, and a
   new file is never on one. `npm run lint` (`eslint.kernel.mjs`, `eslint.ratchet.mjs`) and
   `tests/unit/ratchet.test.ts`.
+- `string | null`, not optional properties, in `src/shared` and `features/` (React props exempt):
+  `npm run lint` (`eslint.style.mjs`, ratchet as above).
+- No default exports outside config files: `npm run lint` (`eslint.style.mjs`).
+- No magic numbers in `src/main` and `features/`: `npm run lint` (`eslint.style.mjs`, ratchet as
+  above).
 - `ipcMain.handle` only inside `handle()`, and channel types only from `src/shared/channels.ts`:
   `npm run lint` and `npm run typecheck`.
 - No em dash (U+2014) outside the vendored engine files: `npm run lint` and
@@ -134,8 +139,8 @@ Each line is the rule; the check's message names the fix.
 
 ## Code Style
 
-- `unknown` with type guards; `string | null`, not optional, for nullable values.
-- React components: named exports; inside, stores first, then local state, named hooks, handlers
+- `unknown` with type guards.
+- React components: inside, stores first, then local state, named hooks, handlers
   (`async (): Promise<void>`), JSX.
 - Zustand stores declare state and actions in one interface and include `reset`.
 - A new IPC channel (`namespace:action`) is one row in `src/shared/channels.ts` (input from the
