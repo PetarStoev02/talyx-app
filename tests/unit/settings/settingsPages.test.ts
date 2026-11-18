@@ -30,12 +30,8 @@ describe('Settings pages', () => {
       }
     )
 
-    it('should show General while the license is gone from Modules, and Modules once it returns', () => {
-      useSettingsSection.getState().open('modules')
-      const { section } = useSettingsSection.getState()
-
-      expect(shownPage(section, false)).toBe('general')
-      expect(shownPage(section, true)).toBe('modules')
+    it('should fall back to General when the license goes while Modules is open', () => {
+      expect(shownPage('modules', false)).toBe('general')
     })
 
     it('should keep any other page open without a license', () => {

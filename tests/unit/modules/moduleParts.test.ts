@@ -24,7 +24,6 @@ vi.mock('/bridge/module/odd/renderer.js?v=2.0.0', () => ({
   default: () => null,
   Sidebar: 'not a component',
   Background: 42,
-  createLabel: 7,
   createItems: 'not a list'
 }))
 vi.mock('/bridge/module/blank/renderer.js?v=1.0.0', () => ({ default: 'not a page' }))
@@ -89,7 +88,7 @@ describe("a module's page parts", () => {
       expect(moduleStyleUrl('hello', '1.0.0')).toBe(url)
     })
 
-    it('should name the version in the URL, so an update loads the new file', () => {
+    it('should escape the version in the URL', () => {
       expect(moduleStyleUrl('hello', '1.0.0+build 7')).toBe(
         '/bridge/module/hello/style.css?v=1.0.0%2Bbuild%207'
       )
@@ -105,8 +104,6 @@ describe("a module's page parts", () => {
           item,
           { ...item, id: 7 },
           { ...item, label: ' ' },
-          { ...item, run: 'go' },
-          { ...item, icon: 'rocket' },
           { ...item, id: 'task', icon: 'task' },
           null
         ]

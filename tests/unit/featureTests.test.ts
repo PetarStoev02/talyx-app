@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vitest'
 // its tests in tests/unit/<feature>/, beside the others (issue #184, S9).
 const FEATURES = 'src/renderer/src/features'
 const TESTS = 'tests/unit'
-const ACTIONS = /^export (?:(?:async )?function [a-z]\w*Actions\s*\(|const [a-z]\w*Actions\s*=)/m
+const ACTIONS =
+  /^export (?:(?:async )?function [a-z]\w*Actions\s*[(<]|const [a-z]\w*Actions\s*[:=])/m
 
 function featuresWithActions(): string[] {
   return readdirSync(FEATURES, { withFileTypes: true })
@@ -43,6 +44,8 @@ describe('feature tests', () => {
       ['a function', 'export function chatActions(backend: ChatBackend): ChatActions {'],
       ['an async function', 'export async function roomActions(backend: RoomBackend) {'],
       ['an arrow function', 'export const rosterActions = (backend: RosterWriter) => ({'],
+      ['a generic function', 'export function chatActions<T>(backend: T): ChatActions {'],
+      ['a typed constant', 'export const roomActions: (backend: RoomBackend) => RoomActions ='],
       ['one export among others', "import x from 'y'\n\nexport function chatActions(backend) {"]
     ])('should find %s', (_name, source) => {
       expect(ACTIONS.test(source)).toBe(true)
@@ -51,8 +54,8 @@ describe('feature tests', () => {
     it.each([
       ['the actions type', 'export interface ChatActions {'],
       ['a function kept inside the file', 'function chatActions(backend: ChatBackend) {'],
-      ['a call', 'const actions = chatActions(backend)'],
-      ['a type import', "import type { ChatActions } from '@features/chat/chat'"]
+      ['a type alias named like actions', 'export type chatActions = ReturnType<typeof make>'],
+      ['a constant named like a type', 'export const ChatActions = {']
     ])('should ignore %s', (_name, source) => {
       expect(ACTIONS.test(source)).toBe(false)
     })

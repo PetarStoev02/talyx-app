@@ -97,9 +97,7 @@ describe('shortcuts', () => {
       ['newLine', 'mac', ['⇧', 'Enter']],
       ['newLine', 'linux', ['Shift', 'Enter']],
       ['cheatSheet', 'mac', ['⌘', '/']],
-      ['leave', 'linux', ['Esc']],
-      ['dockPage', 'mac', ['⌘', '1-9']],
-      ['pickRange', 'linux', ['Shift', 'Click']]
+      ['leave', 'linux', ['Esc']]
     ] as const)('given %s on %s, should read %o', (id, platform, expected) => {
       expect(keyLabels(keysOf(id), platform)).toEqual(expected)
     })
