@@ -4,9 +4,13 @@ import {
   keyLabels,
   platformOf,
   shortcutOf,
-  type KeyPress
+  type KeyPress,
+  type Platform,
+  type Shortcut
 } from '../../../src/renderer/src/features/shortcuts/shortcuts'
 import { t } from '../../../src/renderer/src/shared/lib/i18n'
+
+const PLATFORMS: Platform[] = ['mac', 'linux']
 
 const press = (key: string, held: Partial<Omit<KeyPress, 'key'>> = {}): KeyPress => ({
   key,
@@ -44,6 +48,24 @@ describe('shortcuts', () => {
     ] as const)('given %s and %o, should be %s', (platform, event, expected) => {
       expect(shortcutOf(event, platform)).toBe(expected)
     })
+
+    // Pressed as the cheat sheet writes it; `Click` and `1-9` are not one key press.
+    const pressOf = ({ keys }: Shortcut, platform: Platform): KeyPress =>
+      press(keys.key, {
+        metaKey: platform === 'mac' && !!keys.mod,
+        ctrlKey: platform === 'linux' && !!keys.mod,
+        altKey: !!keys.alt,
+        shiftKey: !!keys.shift
+      })
+    const pressed = SHORTCUTS.filter(({ keys }) => !['Click', '1-9'].includes(keys.key))
+
+    it.each(pressed.flatMap((shortcut) => PLATFORMS.map((platform) => [shortcut.id, platform])))(
+      'given the keys the cheat sheet lists for %s on %s, should be that shortcut',
+      (id, platform) => {
+        const shortcut = SHORTCUTS.find((listed) => listed.id === id)!
+        expect(shortcutOf(pressOf(shortcut, platform), platform)).toBe(id)
+      }
+    )
 
     it.each([
       ['the other platform’s modifier on macOS', 'mac', press('n', { ctrlKey: true })],
