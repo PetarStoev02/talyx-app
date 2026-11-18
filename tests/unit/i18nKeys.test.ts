@@ -38,17 +38,29 @@ const KEYS = tableKeys()
 
 /**
  * The keys a source uses: string literals (a `t` call, a table value, an error's key) and the
- * keys a declared family's call builds. Comments are not code.
+ * keys a declared family's call builds. Comments are not code, and a key compared or named in a
+ * type is read, not shown.
  */
 function keysUsedIn(source: string, fileName = 'source.tsx'): string[] {
   const used = new Set<string>()
   const visit = (node: ts.Node): void => {
-    if (ts.isStringLiteralLike(node)) used.add(node.text)
+    if (ts.isStringLiteralLike(node) && !isComparedOrTyped(node)) used.add(node.text)
     else if (ts.isCallExpression(node)) familyKeys(node).forEach((key) => used.add(key))
     ts.forEachChild(node, visit)
   }
   visit(parse(fileName, source))
   return KEYS.filter((key) => used.has(key))
+}
+
+function isComparedOrTyped(node: ts.Node): boolean {
+  const parent = node.parent
+  if (ts.isCaseClause(parent) || ts.isLiteralTypeNode(parent)) return true
+  if (!ts.isBinaryExpression(parent)) return false
+  const operator = parent.operatorToken.kind
+  return (
+    operator === ts.SyntaxKind.EqualsEqualsEqualsToken ||
+    operator === ts.SyntaxKind.ExclamationEqualsEqualsToken
+  )
 }
 
 /** A declared family's keys, when this is its call in a callback of its map. */
@@ -91,6 +103,9 @@ describe('i18n keys', () => {
 
     it.each([
       ['a key in a comment', "// t('nav.agents')\nconst x = 1"],
+      ['a key only compared', "if (problem.key === 'nav.agents') show()"],
+      ['a key only in a case', "switch (key) { case 'nav.agents': break }"],
+      ['a key only named in a type', "type Page = 'nav.agents'"],
       ['a template with no declared family', 't(`nav.${page}`)'],
       ['a family call outside its map', 't(`look.shape.${shape}`)'],
       [
