@@ -58,7 +58,8 @@ function git(...args: string[]): string {
 /**
  * The lists as they are where this branch left main; on main itself, as they were one commit
  * before. Null when the base has no ratchet yet (the change that adds it). A missing main ref
- * fails: a skipped check would pass any growth.
+ * fails: a skipped check would pass any growth. A depth-1 clone of main (the release workflow)
+ * has no commit before, so it also gets null there: CI's test job, with full history, is the gate.
  */
 async function baseRatchet(): Promise<typeof RATCHET | null> {
   const forkPoint = git('merge-base', 'HEAD', 'origin/main')
