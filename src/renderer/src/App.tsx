@@ -35,7 +35,7 @@ import { useModuleChat } from '@app/providers/moduleChat'
 import { useSelectionMemory } from '@app/providers/useSelectionMemory'
 import { useMcpBridge } from '@app/providers/useMcpBridge'
 
-function App(): React.JSX.Element {
+export function App(): React.JSX.Element {
   useSelectionMemory()
   const { effectiveTheme } = useTheme()
   const currentView = useNavigation((s) => s.currentView)
@@ -198,5 +198,3 @@ function Shortcuts(): React.JSX.Element {
   useKeyboardShortcuts()
   return <CheatSheet />
 }
-
-export default App

@@ -147,6 +147,6 @@ export function BotRow({
 }
 
 function singleBot(): { id: string } | null {
-  const rows = draggedRows()
-  return rows.length === 1 && rows[0].kind === 'bot' ? rows[0] : null
+  const [row, ...others] = draggedRows()
+  return row?.kind === 'bot' && !others.length ? row : null
 }

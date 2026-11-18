@@ -89,6 +89,11 @@ function page<T>(messages: T[], query: URLSearchParams): T[] {
   const end = messages.length - offset
   return messages.slice(Math.max(0, end - limit), Math.max(0, end))
 }
+function historyOf(profile: string): Array<Record<string, unknown>> {
+  const messages = history[profile]
+  if (!messages) throw new Error(`No chat history for profile ${profile}`)
+  return messages
+}
 let seq = 100
 // Developer's cards open once per page load, with its history, so the chat opens scrolled to them.
 let developerAsked = false
@@ -146,7 +151,7 @@ export function fixtureChat(providers: EngineHttp): ChatActions {
       () => emit(profile, 'message.start'),
       ...text.split(' ').map((word) => () => emit(profile, 'message.delta', { text: `${word} ` })),
       () => {
-        history[profile].push({ id: Date.now(), role: 'assistant', content: text })
+        historyOf(profile).push({ id: Date.now(), role: 'assistant', content: text })
         emit(profile, 'message.complete')
       }
     ]
@@ -202,7 +207,7 @@ export function fixtureChat(providers: EngineHttp): ChatActions {
               args: { target: 'analyst' }
             }),
           () => {
-            history[profile].push({
+            historyOf(profile).push({
               id: Date.now(),
               role: 'tool',
               name: 'message_agent',
@@ -279,12 +284,12 @@ export function fixtureChat(providers: EngineHttp): ChatActions {
             info: { model: DEFAULT_MODEL, provider: PROVIDER, reasoning_effort: 'medium' }
           }
         case 'prompt.submit':
-          history[profile].push({ id: Date.now(), role: 'user', content: String(params.text) })
+          historyOf(profile).push({ id: Date.now(), role: 'user', content: String(params.text) })
           reply(profile, String(params.text))
           return {}
         case 'clarify.lock': {
           const clarify = clarifies[String(params.request_id)]
-          if (clarify?.last === params.question_id) {
+          if (clarify && clarify.last === params.question_id) {
             setTimeout(() => emit(profile, 'clarify.settled', { prompt_id: params.request_id }))
             play(profile, finish(profile, clarify.reply(String(params.answer))))
           }

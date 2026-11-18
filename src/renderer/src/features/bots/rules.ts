@@ -51,6 +51,13 @@ export async function writeRules(backend: RulesBackend, profile: string): Promis
 
 /** Fills the rules in on every bot; returns the bots that did not take them. */
 export async function fillInRules(backend: RulesBackend, profiles: string[]): Promise<string[]> {
-  const results = await Promise.allSettled(profiles.map((profile) => writeRules(backend, profile)))
-  return profiles.filter((_, index) => results[index].status === 'rejected')
+  const refused = await Promise.all(
+    profiles.map((profile) =>
+      writeRules(backend, profile).then(
+        () => [],
+        () => [profile]
+      )
+    )
+  )
+  return refused.flat()
 }

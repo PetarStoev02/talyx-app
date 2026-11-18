@@ -21,9 +21,9 @@ export function DailyChart({ series, t }: { series: DayUsage[]; t: Translate }):
     y: HEIGHT - (point.tokens / top) * HEIGHT
   }))
   const line = smoothPath(points)
-  const area = points.length
-    ? `${line} L${points.at(-1)!.x},${HEIGHT} L${points[0].x},${HEIGHT} Z`
-    : ''
+  const [first] = points
+  const last = points.at(-1)
+  const area = first && last ? `${line} L${last.x},${HEIGHT} L${first.x},${HEIGHT} Z` : ''
   const busiest = series.find((point) => point.tokens === peak && peak > 0)
   const summary = busiest
     ? t('usage.dailySummary')

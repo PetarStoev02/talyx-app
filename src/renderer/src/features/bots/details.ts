@@ -288,10 +288,15 @@ export async function followDefault(
     .filter((bot) => bot.meta.usesDefault === true && bot.name !== MANAGER)
     .map((bot) => bot.name)
   try {
-    const results = await Promise.allSettled(
-      followers.map((profile) => confirmBotModel(backend, profile, pick))
+    const unreached = await Promise.all(
+      followers.map((profile) =>
+        confirmBotModel(backend, profile, pick).then(
+          () => [],
+          () => [profile]
+        )
+      )
     )
-    return followers.filter((_, index) => results[index].status === 'rejected')
+    return unreached.flat()
   } finally {
     detailsChanged()
   }

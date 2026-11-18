@@ -352,12 +352,15 @@ export async function removeEndpointModel(
   )
   const profiles = await backend.profiles()
   // A bot whose model could not be read is not flagged: nothing says it is on the model.
-  const uses = await Promise.allSettled(
-    profiles.map((profile) => backend.usesEndpointModel(profile, drop))
+  const uses = await Promise.all(
+    profiles.map((profile) =>
+      backend.usesEndpointModel(profile, drop).then(
+        (onModel) => (onModel ? [profile] : []),
+        () => []
+      )
+    )
   )
-  const flagged = profiles.filter(
-    (_, index) => uses[index].status === 'fulfilled' && uses[index].value
-  )
+  const flagged = uses.flat()
   return { failed, flagged }
 }
 
@@ -464,6 +467,13 @@ async function onEveryBot(
 ): Promise<string[]> {
   await write(backend.home)
   const others = (await backend.profiles()).filter((profile) => profile !== backend.home)
-  const results = await Promise.allSettled(others.map(write))
-  return others.filter((_, index) => results[index].status === 'rejected')
+  const failed = await Promise.all(
+    others.map((profile) =>
+      write(profile).then(
+        () => [],
+        () => [profile]
+      )
+    )
+  )
+  return failed.flat()
 }

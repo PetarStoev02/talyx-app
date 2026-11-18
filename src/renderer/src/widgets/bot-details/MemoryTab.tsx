@@ -490,6 +490,7 @@ function DeleteMemoryDialog({
 
 // The start of a memory, enough to tell its row's buttons apart.
 function opening(text: string): string {
-  const line = text.split('\n', 1)[0]
+  // A split always has a first piece, empty for empty text.
+  const [line = ''] = text.split('\n', 1)
   return line.length > OPENING_LENGTH ? `${line.slice(0, OPENING_LENGTH).trimEnd()}…` : line
 }

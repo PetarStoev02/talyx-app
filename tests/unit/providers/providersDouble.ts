@@ -203,6 +203,18 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
   let nextId = 0
   const revisions = new Map<string, number>()
 
+  function sessionsOf(profile: string): EngineSession[] {
+    const own = sessions[profile]
+    if (!own) throw new Error(`No sessions for profile ${profile}`)
+    return own
+  }
+
+  function profileOf(profile: string): ProfileConfig {
+    const config = profiles[profile]
+    if (!config) throw new Error(`No profile ${profile}`)
+    return config
+  }
+
   function emit(sessionId: string, type: string, payload: Record<string, unknown>): void {
     for (const listener of listeners)
       listener({ type, session_id: sessionId, payload } as GatewayEvent)
@@ -217,7 +229,7 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
     calls.push(`${profile} ${method}`)
     params[method] = sent
     if (refusing.has(method)) throw new Error(`${method} refused`)
-    const own = sessions[profile]
+    const own = sessionsOf(profile)
     const session = own.find((item) => item.id === sent.session_id)
     if (method === 'session.create') {
       const id = `local-${++nextId}`
@@ -291,8 +303,11 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
     path: string,
     query: URLSearchParams
   ): unknown {
-    const id = decodeURIComponent(path.split('/')[3])
-    const session = sessions[profile].find((item) => item.id === id)
+    const segment = path.split('/')[3]
+    if (segment === undefined) throw new Error(`No session id in ${path}`)
+    const id = decodeURIComponent(segment)
+    const own = sessionsOf(profile)
+    const session = own.find((item) => item.id === id)
     if (path.endsWith('/mutation-snapshot'))
       return session
         ? {
@@ -312,7 +327,7 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
       busyDeletes.left -= 1
       throw new Error('session_busy')
     }
-    sessions[profile] = sessions[profile].filter((item) => item !== session)
+    sessions[profile] = own.filter((item) => item !== session)
     return { ok: true, deleted_ids: [id] }
   }
 
@@ -323,7 +338,7 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
     body: Body,
     query = new URLSearchParams()
   ): unknown {
-    const config = profiles[profile]
+    const config = profileOf(profile)
     if (method !== 'GET') {
       if (failing.has(profile)) throw new Error(`HTTP 500 on ${profile}`)
       writes.push(`${profile} ${method} ${path}`)
@@ -402,7 +417,9 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
       return { ok: true, provider: body.provider, model: body.model }
     }
     if (path === '/api/config' && method === 'PUT') {
-      const [[id, entry]] = Object.entries(body.config.providers)
+      const [first] = Object.entries(body.config.providers)
+      if (!first) throw new Error('PUT /api/config named no provider')
+      const [id, entry] = first
       const existing = config.endpoints.find((e) => e.id === id)
       // The engine deep-merges the config: an entry naming only its model keeps everything else.
       if (existing && entry.name === undefined) {
@@ -499,7 +516,7 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
   }): Promise<void> {
     if (failing.has(drop.profile)) throw new Error(`config unset failed on ${drop.profile}`)
     writes.push(`${drop.profile} unset ${drop.endpoint} ${drop.model}`)
-    const endpoint = profiles[drop.profile].endpoints.find((e) => e.id === drop.endpoint)
+    const endpoint = profileOf(drop.profile).endpoints.find((e) => e.id === drop.endpoint)
     if (!endpoint?.models.includes(drop.model)) throw new Error('Config key not set')
     endpoint.models = endpoint.models.filter((model) => model !== drop.model)
   }
@@ -520,7 +537,7 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
           if (double.daysFail) throw double.daysFail
           return Object.fromEntries(
             asked.map((name) => {
-              const config = profiles[name]
+              const config = profileOf(name)
               return [
                 name,
                 config.usage && config.daily
@@ -559,20 +576,23 @@ function savedKey(endpoint: CustomEndpoint | undefined): boolean {
 
 function envOf(config: ProfileConfig): Record<string, EnvVarInfo> {
   return Object.fromEntries(
-    Object.entries(catalog).map(([key, info]) => [
-      key,
-      {
-        advanced: false,
-        category: 'provider',
-        description: '',
-        is_password: true,
-        tools: [],
-        url: null,
-        ...info,
-        is_set: key in config.env,
-        redacted_value: key in config.env ? `«redacted:${config.env[key].slice(0, 3)}…»` : null
-      } as EnvVarInfo
-    ])
+    Object.entries(catalog).map(([key, info]) => {
+      const value = config.env[key]
+      return [
+        key,
+        {
+          advanced: false,
+          category: 'provider',
+          description: '',
+          is_password: true,
+          tools: [],
+          url: null,
+          ...info,
+          is_set: value !== undefined,
+          redacted_value: value === undefined ? null : `«redacted:${value.slice(0, 3)}…»`
+        } as EnvVarInfo
+      ]
+    })
   )
 }
 

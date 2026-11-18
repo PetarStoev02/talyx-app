@@ -295,15 +295,19 @@ const BLOCKS = 'p, li, h1, h2, h3, h4, h5, h6, pre, td, th, blockquote, div'
 function blocksOf(root: HTMLElement): Text[][] {
   const blocks: Text[][] = []
   let block: Element | null = null
+  let current: Text[] | null = null
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
   for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
     const parent = node.parentElement
     // Messages only: a control's label (Regenerate, Retry) is not part of the conversation.
     if (!parent?.checkVisibility() || parent.closest(CONTROLS)) continue
     const owner = parent.closest(BLOCKS)
-    if (owner !== block || !blocks.length) blocks.push([])
+    if (owner !== block || !current) {
+      current = []
+      blocks.push(current)
+    }
     block = owner
-    blocks[blocks.length - 1].push(node)
+    current.push(node)
   }
   return blocks
 }
@@ -312,14 +316,17 @@ function rangesOf(root: HTMLElement, query: string): Range[] {
   if (!query.trim()) return []
   const blocks = blocksOf(root)
   const texts = blocks.map((nodes) => nodes.map((node) => node.data).join(''))
-  return findMatches(texts, query).map((match) => {
+  return findMatches(texts, query).flatMap((match) => {
     const nodes = blocks[match.text]
+    if (!nodes) return []
     const lengths = nodes.map((node) => node.length)
     const start = pointIn(lengths, match.start, 'start')
     const end = pointIn(lengths, match.end, 'end')
+    const [startNode, endNode] = [nodes[start.piece], nodes[end.piece]]
+    if (!startNode || !endNode) return []
     const range = document.createRange()
-    range.setStart(nodes[start.piece], start.at)
-    range.setEnd(nodes[end.piece], end.at)
-    return range
+    range.setStart(startNode, start.at)
+    range.setEnd(endNode, end.at)
+    return [range]
   })
 }

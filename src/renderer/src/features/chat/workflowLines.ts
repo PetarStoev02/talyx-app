@@ -40,7 +40,7 @@ export interface WorkflowStatus {
   run: string
   /** The ref without the tag, as the brief names the task. */
   ref: string
-  fields: Record<string, string>
+  fields: Record<string, string> & { step: string }
   /** The line as the bot wrote it, to show and copy as it is. */
   line: string
 }
@@ -51,15 +51,15 @@ export type ReplyPart = { kind: 'text'; text: string } | { kind: 'status'; statu
 export function parseBrief(text: string): WorkflowBrief | null {
   const lines = text.split('\n').map((line) => line.trim())
   if (lines[0] !== BRIEF_MARK) return null
-  const task = TASK_LINE.exec(lines[1] ?? '')
-  if (!task) return null
+  const [, ref, title] = TASK_LINE.exec(lines[1] ?? '') ?? []
+  if (ref === undefined || title === undefined) return null
   const workflow = lines.map((line) => WORKFLOW_LINE.exec(line)).find(Boolean)
   const steps: Record<string, string> = {}
   for (const line of lines) {
-    const step = STEP_LINE.exec(line)
-    if (step) steps[step[1]] = step[2]
+    const [, id, stepTitle] = STEP_LINE.exec(line) ?? []
+    if (id !== undefined && stepTitle !== undefined) steps[id] = stepTitle
   }
-  return { ref: task[1], title: briefTitle(task[2]), workflow: workflow?.[1] ?? null, steps }
+  return { ref, title: briefTitle(title), workflow: workflow?.[1] ?? null, steps }
 }
 
 /**
@@ -79,12 +79,17 @@ function briefTitle(written: string): string {
 
 /** One status line's fields, or null when the line is not one (or is the brief's template). */
 export function parseStatusLine(line: string): WorkflowStatus | null {
-  const match = STATUS_LINE.exec(line.trim())
-  if (!match || match[2].trim().startsWith(TEMPLATE)) return null
+  const [, run, written] = STATUS_LINE.exec(line.trim()) ?? []
+  if (run === undefined || written === undefined || written.trim().startsWith(TEMPLATE)) return null
   const fields: Record<string, string> = {}
-  for (const [, key, quoted, plain] of match[2].matchAll(FIELD)) fields[key] = quoted ?? plain
-  if (!fields.step) return null
-  return { run: match[1], ref: match[1].split('@')[0], fields, line: line.trim() }
+  for (const [, key, quoted, plain] of written.matchAll(FIELD)) {
+    const value = quoted ?? plain
+    if (key !== undefined && value !== undefined) fields[key] = value
+  }
+  const { step } = fields
+  if (!step) return null
+  const [ref = run] = run.split('@')
+  return { run, ref, fields: { ...fields, step }, line: line.trim() }
 }
 
 /**

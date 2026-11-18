@@ -26,17 +26,21 @@ Preconditions:
   first bot row).
 - No bot named `Verify scratch` exists.
 
-- **Open dialog.** Choose the add button, then `New bot`. Run `control-talyx browser click --role button --name "Add a bot, a room or a folder"` and `control-talyx browser click --role menuitem --name "New bot"`. A dialog `New bot` appears with textbox `Name` focused.
-- **Fill.** Run `control-talyx browser fill --role textbox --name "Name" --value "Verify scratch"` and `control-talyx browser fill --role textbox --name "What it does" --value "Verification run; delete me"`. The `Create bot` button is enabled.
-- **Model.** Open the model control labelled `Model` and pick `claude-haiku-4-5` (the only model scratch bots run on).
-- **Submit.** Choose `Create bot`. Run `control-talyx browser click --role button --name "Create bot"`. The dialog closes and a roster row `Verify scratch` is selected; the chat shows `Message Verify scratch`.
-- **Proof.** Run `control-talyx browser snapshot --path /tmp/talyx-verify/evidence/create-bot/after.aria.txt` and `control-talyx browser screenshot --path /tmp/talyx-verify/evidence/create-bot/after.png`. Second view: `talyx-engine` lists the new profile, or the row is still there after `control-talyx browser press --key Meta+R`.
-- **Cleanup.** Open the row's menu, choose `Delete bot`, confirm in `Delete Verify scratch?`. The row is gone and the engine no longer lists it.
+- **Open dialog.** Choose the add button, then `New bot`. Run `control-talyx browser click --role button --name "Add a bot, a room or a folder"`; a `menu` with `menuitem "New bot"`, `menuitem "New room"`, `menuitem "New folder"` opens. Run `control-talyx browser click --role menuitem --name "New bot"`. A `dialog "New bot"` appears with `textbox "Name"`, `textbox "What it does"`, `combobox "Folder"`, the model button, the `Shape` and `Color` groups and `button "Create bot" [disabled]`.
+- **Folder.** The `Folder` select defaults to the selected bot's folder (`Unassigned` when none), which can be one of the user's folders; always pick `Unassigned`. Run `control-talyx browser select --role combobox --name "Folder" --value "Unassigned"`.
+- **Fill.** Run `control-talyx browser fill --role textbox --name "Name" --value "Verify scratch"` and `control-talyx browser fill --role textbox --name "What it does" --value "Verification run; delete me"`. The name field's accessible name becomes `Name ID: verify-scratch` and `Create bot` is enabled.
+- **Model.** Click the model button (named `Model: Engine default` before a pick; the name is built in `ModelPicker.tsx`, read it from the snapshot). A `menu` of `menuitemcheckbox` rows opens, one per model the engine offers. Click the row for claude-haiku-4-5 (on 2026-11-18 its name was the dated id `claude-haiku-4-5-20251001`; model names come from the engine, so read it from the snapshot). The button then reads `Model: anthropic · claude-haiku-4-5-20251001`.
+- **Submit.** Run `control-talyx browser click --role button --name "Create bot"`. The dialog closes. Under `region "Unassigned"` a row `button "Verify scratch No messages yet"` appears, and `main` has `region "Chat with Verify scratch"` with `heading "Verify scratch"`, the description, the model line and `textbox "Message Verify scratch"`.
+- **Proof.** Run `control-talyx browser snapshot --path /tmp/talyx-verify/evidence/create-bot/after.aria.txt` and `control-talyx browser screenshot --path /tmp/talyx-verify/evidence/create-bot/after.png`. Second view: `talyx-engine profile list` has a row `verify-scratch` with model `claude-haiku-4-5-20251001`; save it as `engine-profiles.txt`.
+- **Cleanup.** Focus the row (`control-talyx browser click --role button --name "Verify scratch"`), run `control-talyx browser press --key Shift+F10`; a `menu` with `Pin`, `Move up`, `Move to`, `Edit bot`, `Delete bot` opens. Run `control-talyx browser click --role menuitem --name "Delete bot"`. In `dialog "Delete Verify scratch?"` run `control-talyx browser click --role button --name "Delete bot" --exact`. The row is gone and `talyx-engine profile list` no longer lists `verify-scratch`.
 
 ## Gotchas
 
-- Unverified by this skill so far: this recipe is written from the code (2026-11-17), not from a
-  run. Confirm the role of the `New bot` entry (`menuitem` or `button`) from a snapshot first.
+- Proven 2026-11-18 against the real engine with an approved scratch bot (create, engine listing,
+  delete). The roles above are from that run's snapshot.
+- Bot rows have no menu button: their menu opens on right-click or Shift+F10 on the focused row.
+- With the real engine, the chat that opens first is the last selected one (often Talyx). Never
+  type into it.
 - The real engine is the user's. Never run this without approval, never pick a model other than
   `claude-haiku-4-5`, always delete the bot in cleanup.
 - `Create bot` stays disabled until `Name` is non-empty; `fill` with an empty value proves the

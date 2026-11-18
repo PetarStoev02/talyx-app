@@ -53,6 +53,7 @@ exists, and names the window. Run it first whenever a step looks wrong.
 control-talyx browser click --role button --name "Settings"
 control-talyx browser click --role button --name "Dark" --exact
 control-talyx browser fill --role textbox --name "Name" --value "Scratch bot"
+control-talyx browser select --role combobox --name "Folder" --value "Unassigned"   # native <select>
 control-talyx browser press --key Escape
 control-talyx browser wait --role heading --name "Settings: General" [--timeout 10000]
 control-talyx browser snapshot [--path <file>]          # ARIA tree of the window (stdout or file)

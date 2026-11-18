@@ -7,7 +7,7 @@ import type { RosterBackend } from '@features/bots/data'
 import { MANAGER } from '@features/bots/details'
 import type { Bot } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
-import { draftWithPaths } from '@features/chat/attachments'
+import { draftWith } from '@features/chat/attachments'
 import type { RoomActions } from '@features/chat/room'
 import { botHits } from '@features/chat/botSearch'
 import { useChat } from '@features/chat/store'
@@ -140,7 +140,7 @@ export function ChatPane({
     running,
     send: ({ text, files, paths }) =>
       actions.queue(bot.name, {
-        text: draftWithPaths(text, paths),
+        text: draftWith(text, paths),
         images: files.map((file) => ({ path: file.id, mime: file.mime }))
       }),
     upload: async (file, dataUrl) => {
