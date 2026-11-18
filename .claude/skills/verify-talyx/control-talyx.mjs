@@ -168,9 +168,8 @@ async function atHome(page) {
 async function fuzz() {
   if (!existsSync(MODE_FILE) || readFileSync(MODE_FILE, 'utf8') !== 'no-engine')
     throw new Error('fuzz needs a run started with launch --no-engine; it would click real bots')
-  const seed = Number(flags.seed)
-  if (!Number.isInteger(seed)) throw new Error('fuzz needs --seed <integer>, so a run replays')
-  const steps = Number(flags.steps ?? FUZZ_STEPS)
+  const seed = integerFlag('seed', null)
+  const steps = integerFlag('steps', FUZZ_STEPS)
   const random = mulberry32(seed)
   const pick = (list) => list[Math.floor(random() * list.length)]
   const page = await mainPage()
@@ -211,6 +210,14 @@ async function fuzz() {
   }
 }
 
+// A whole-number flag, so a typo cannot pass as a run (`--seed` alone parses as true).
+function integerFlag(name, fallback) {
+  const raw = flags[name] ?? fallback
+  if (raw === null || !/^\d+$/.test(String(raw)))
+    throw new Error(`fuzz needs --${name} <integer>, so a run replays`)
+  return Number(raw)
+}
+
 // The first broken invariant (crash notice, console error, settings.json), or null.
 async function brokenInvariant(page, errors) {
   if (await page.getByText(FUZZ_CRASH).count()) return 'crash notice shown'
@@ -238,8 +245,10 @@ async function fuzzAct(page, action, text) {
     // Enter and Space press the focused control, so they honour FUZZ_SKIP like clicks do.
     if (action.key === 'Enter' || action.key === 'Space') {
       const focused = await page.evaluate(() => {
-        const element = document.activeElement
-        return (element?.getAttribute('aria-label') ?? element?.textContent ?? '').trim()
+        // The control that holds focus (or contains it); nothing when focus is on the page.
+        const control = document.activeElement?.closest('button, a, input, select, [role]')
+        if (!control) return ''
+        return (control.getAttribute('aria-label') ?? control.textContent ?? '').trim().slice(0, 80)
       })
       if (FUZZ_SKIP.test(focused)) return `skip ${action.key} on "${focused}"`
     }
