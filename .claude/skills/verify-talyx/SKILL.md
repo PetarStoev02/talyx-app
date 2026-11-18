@@ -32,7 +32,10 @@ control-talyx launch                                       # attaches to this ma
 - Ready means the main window answers over CDP and shows its first heading or the roster. The
   command then waits 3 s for the dev build's one-time reload and checks again. It prints the pid,
   window title and user data path, or fails with the log path (`/tmp/talyx-verify/run/talyx.log`).
-- One run at a time: `launch` refuses while a pid is alive. Run `stop` first.
+- One run at a time per root: `launch` refuses while a pid is alive. Run `stop` first. Another
+  session's run is not yours to stop: give yours its own root and ports with
+  `TALYX_VERIFY_ROOT`, `TALYX_VERIFY_CDP_PORT`, `TALYX_VERIFY_BRIDGE_PORT` and
+  `TALYX_VERIFY_MCP_PORT`.
 
 ## Doctor
 
@@ -77,8 +80,15 @@ control-talyx stop
   `console.error` or page error, `settings.json` still parses. When the step was Escape and the
   app is not on the Agents page, it presses Escape once more and then requires the Agents page.
 - It refuses a launch without `--no-engine`, and skips controls that leave the sandbox (native
-  panels, the browser, the clipboard, login items, installs, updates) or enter the setup flow,
-  which has no Escape exit by design.
+  panels, the microphone, the browser, the clipboard, login items, installs, updates), enter the
+  setup flow (no Escape exit by design) or approve a bot's tool call.
+- **The whole app.** A `--no-engine` run reaches only the first screens. To fuzz the roster, chat,
+  details, rooms and Usage, first run setup in that run as in `features/first-run-setup.md`:
+  install the engine into the run's home, add a provider (a local router as `Custom endpoint`),
+  pick it as `Talyx’s model`, make a bot. Then run `fuzz`: it sees the engine in the run's home and
+  also checks that its gateway still runs after every step. Bots answer through the provider, so a
+  step that sends costs one call. Replies differ between runs, so a replay starts from a fresh
+  setup and may still drift.
 - A failure prints the seed, the failed check and the step log, and saves `steps.log`,
   `after.aria.txt` and `after.png` under `evidence/fuzz-<seed>/`. Rerun the same seed on a fresh
   launch to replay it; a pass also saves `steps.log`.
@@ -106,7 +116,8 @@ control-talyx stop
 ```
 
 Kills the process group it started (from `/tmp/talyx-verify/run/pid`, never by name), waits until
-every process in it has exited (Electron quits after electron-vite), and removes
+every process in it has exited (Electron quits after electron-vite), stops anything still running
+from the run directory (the gateway of an engine setup installed into the run's home), and removes
 `/tmp/talyx-verify/run/`. Evidence stays. Run it after every attempt, including failed ones; a
 later `launch` refuses while any process in that group is alive.
 

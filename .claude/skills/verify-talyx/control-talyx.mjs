@@ -1,14 +1,22 @@
 #!/usr/bin/env node
 // control-talyx: starts a throwaway dev Talyx and drives its real Electron window over the
 // Chrome DevTools Protocol. Usage is in SKILL.md next to this file.
-import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { spawn, spawnSync } from 'node:child_process'
+import {
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
-const ROOT = process.env.TALYX_VERIFY_ROOT ?? '/tmp/talyx-verify'
+const ROOT = resolve(process.env.TALYX_VERIFY_ROOT ?? '/tmp/talyx-verify')
 const RUN = join(ROOT, 'run')
 const EVIDENCE = join(ROOT, 'evidence')
 const PID_FILE = join(RUN, 'pid')
@@ -18,8 +26,8 @@ const USER_DATA = join(RUN, 'userData')
 const HOME = join(RUN, 'home')
 const CDP_PORT = Number(process.env.TALYX_VERIFY_CDP_PORT ?? 9333)
 const CDP_URL = `http://127.0.0.1:${CDP_PORT}`
-const BRIDGE_PORT = 5195
-const MCP_PORT = 47899
+const BRIDGE_PORT = Number(process.env.TALYX_VERIFY_BRIDGE_PORT ?? 5195)
+const MCP_PORT = Number(process.env.TALYX_VERIFY_MCP_PORT ?? 47899)
 const READY_TIMEOUT_MS = 90_000
 const STEP_TIMEOUT_MS = 10_000
 const STOP_TIMEOUT_MS = 10_000
@@ -74,6 +82,39 @@ async function launch() {
   await page.context().browser().close()
 }
 
+// An engine installed by setup in a --no-engine run lives in the run's HOME, and its gateway
+// outlives Talyx (Talyx never owns the gateway). Stop what runs from inside the run directory, by
+// that path (also by its real path, for a TALYX_VERIFY_ROOT behind a symlink). Not `gateway stop`: the engine looks for its
+// launchd service under the account's real home, so it could stop the user's own gateway.
+async function stopRunProcesses() {
+  const signal = (name) =>
+    pathsOf(RUN).forEach((path) => spawnSync('pkill', [`-${name}`, '-U', uid(), '-f', `${path}/`]))
+  const gone = async () => {
+    for (const deadline = Date.now() + STOP_TIMEOUT_MS; Date.now() < deadline; await sleep(200))
+      if (!runsFrom(RUN)) return true
+    return !runsFrom(RUN)
+  }
+  signal('TERM')
+  if (await gone()) return
+  signal('KILL')
+  if (!(await gone())) throw new Error(`processes from ${RUN} survived SIGKILL; ${RUN} kept`)
+}
+
+function pathsOf(dir) {
+  return [...new Set([dir, existsSync(dir) ? realpathSync(dir) : dir])]
+}
+
+// Whether a process of this user has dir in its command line.
+function runsFrom(dir) {
+  return pathsOf(dir).some(
+    (path) => spawnSync('pgrep', ['-U', uid(), '-f', `${path}/`]).status === 0
+  )
+}
+
+function uid() {
+  return String(process.getuid())
+}
+
 async function doctor() {
   const problems = []
   if (!pidAlive()) problems.push(`no live pid in ${PID_FILE}`)
@@ -103,6 +144,7 @@ async function stop() {
         throw new Error(`process group ${pid} survived SIGKILL; ${RUN} kept`)
     }
   }
+  await stopRunProcesses()
   rmSync(RUN, { recursive: true, force: true })
   console.log(`stopped${pid ? ` pid ${pid}` : ''}; evidence kept in ${EVIDENCE}`)
 }
@@ -146,13 +188,16 @@ const FUZZ_KEYS = [
   ...['Alt+ArrowUp', 'Alt+ArrowDown', 'ControlOrMeta+Slash', 'ControlOrMeta+Comma'],
   ...['ControlOrMeta+f', 'ControlOrMeta+n', 'ControlOrMeta+l', 'ControlOrMeta+1', 'ControlOrMeta+2']
 ]
-// Controls that leave the sandbox (native panels, the browser, the clipboard, login items,
-// installs, updates) or enter the setup flow, which has no Escape exit by design.
+// Controls that leave the sandbox (native panels, the microphone, the browser, the clipboard,
+// login items, installs, updates), enter the setup flow (no Escape exit by design), or approve a
+// bot's tool call, which runs on the real machine even when the engine lives in the run's home.
 const FUZZ_SKIP =
-  /^(Choose file|Install|Install the engine|Get started|Run setup again|Open release page|Get the latest Talyx|Download|Restart to update|Launch at login)$|^Copy|Sign in/
+  /^(Choose file|Install|Install the engine|Get started|Run setup again|Open release page|Get the latest Talyx|Download|Restart to update|Launch at login|Add images or files|Dictate|Update the engine|Allow|Allow once|Allow in this chat|Always allow)$|^Copy|^Open (the|ChatGPT)|^Update to |Sign in/
 const FUZZ_CRASH = /^(This part of )?Talyx stopped working\.$/
 const FUZZ_TEXT = ['', 'a', 'Fuzz 😀 ünï', '<b>x</b>', 'x'.repeat(300)]
 const FUZZ_STEPS = 200
+// Set up in a --no-engine run, the engine and its gateway live in the run's home.
+const SANDBOX_ENGINE = join(HOME, '.local/bin', ENGINE_COMMAND)
 
 // The Agents page: the footer's Settings button shows (not Close Settings, not the setup flow),
 // with no Back (Settings, Usage) and no dialog over it.
@@ -172,6 +217,8 @@ async function fuzz() {
   const steps = integerFlag('steps', FUZZ_STEPS)
   const random = mulberry32(seed)
   const pick = (list) => list[Math.floor(random() * list.length)]
+  const engine = existsSync(SANDBOX_ENGINE)
+  if (engine && !runsFrom(HOME)) throw new Error(`no gateway runs from ${HOME}`)
   const page = await mainPage()
   const errors = []
   page.on('console', (message) => message.type() === 'error' && errors.push(message.text()))
@@ -185,7 +232,7 @@ async function fuzz() {
     throw new Error(`fuzz seed ${seed} failed at step ${step}: ${why}\n${log.join('\n')}`)
   }
   const check = async (step) => {
-    const broken = await brokenInvariant(page, errors)
+    const broken = (await brokenInvariant(page, errors)) ?? (engine && gatewayGone())
     if (broken) await fail(step, broken)
   }
   try {
@@ -204,10 +251,18 @@ async function fuzz() {
       }
     }
     save(join(EVIDENCE, `fuzz-${seed}`, 'steps.log'), log.join('\n'))
-    console.log(`fuzz seed ${seed}: ${steps} steps, invariants held`)
+    console.log(
+      `fuzz seed ${seed}: ${steps} steps, invariants held${engine ? ', sandbox engine' : ''}`
+    )
   } finally {
     await page.context().browser().close()
   }
+}
+
+// The sandbox gateway runs from the run's home (Talyx itself only from userData), and nothing
+// the fuzz may click stops it.
+function gatewayGone() {
+  return runsFrom(HOME) ? null : `the gateway in ${HOME} stopped`
 }
 
 // A whole-number flag, so a typo cannot pass as a run (`--seed` alone parses as true).
