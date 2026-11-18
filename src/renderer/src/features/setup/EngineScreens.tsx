@@ -49,7 +49,7 @@ export function AttachError({
   )
 }
 
-/** Screen 4b, and the Windows note: no steps to run, so the release page and Choose file. */
+/** No install steps (none loaded, or none for this platform): the release page and Choose file. */
 export function StepsFailed({
   reason,
   releaseUrl,
@@ -171,7 +171,7 @@ export function ProtocolMismatch({
 }
 
 /**
- * Screen 6: the engine attached, where it was found, and notes for a newer engine or a gateway left
+ * The engine attached, where it was found, and notes for a newer engine or a gateway left
  * on old code (an update over a running gateway): restart it, then Try again. The last install's
  * output stays one click away, for the warnings of an install that still succeeded.
  */
@@ -219,7 +219,7 @@ export function EngineReady({
 }
 
 /**
- * Screen 6b: an engine older than the one Talyx is built for. `continueAnyway` is null when the old
+ * An engine older than the one Talyx is built for. `continueAnyway` is null when the old
  * engine cannot attach: the steps after this one need it attached.
  */
 export function EngineOlder({

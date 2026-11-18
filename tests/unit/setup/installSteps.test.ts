@@ -69,6 +69,18 @@ describe('loadInstallSteps', () => {
     expect(result).toMatchObject({ kind: 'ready', engineName: 'fakeengine' })
   })
 
+  it('should name no engine when the linked name holds more than letters and digits', async () => {
+    const commands = [
+      'ln -sf "$HOME/.local/bin/fake.engine" "$HOME/.local/bin/talyx-engine"',
+      'ln -sf "$HOME/.local/bin/fake(engine" "$HOME/.local/bin/talyx-engine"'
+    ]
+    const file = { ...FILE, platforms: { darwin: { commands } } }
+
+    const result = await loadInstallSteps(sourceFor(bytesOf(file)))
+
+    expect(result).toMatchObject({ kind: 'ready', engineName: null })
+  })
+
   it('should refuse a file whose bytes differ from the pinned hash', async () => {
     const pinned = sha256(bytesOf(FILE))
     const tampered = bytesOf(FILE)

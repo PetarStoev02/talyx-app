@@ -16,7 +16,6 @@ export function ProblemMessage({ problem }: { problem: RosterProblem }): React.J
   )
 }
 
-/** A failed load with its Try again link. */
 export function TryAgain({
   problem,
   onRetry

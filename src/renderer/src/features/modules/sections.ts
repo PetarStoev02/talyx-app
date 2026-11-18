@@ -11,7 +11,6 @@ export interface DockSection {
   unread: boolean
 }
 
-/** A dock button's name and whether it carries the dot. */
 export type DockMark = Pick<DockSection, 'label' | 'unread'>
 
 /**

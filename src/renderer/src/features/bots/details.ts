@@ -70,7 +70,6 @@ export interface DetailsBackend {
   pinAgreedModel: (profile: string, pick: ModelChoice) => Promise<void>
 }
 
-/** What saving a bot's details needs: its profile, its metadata and its avatar. */
 type SaveBackend = DetailsBackend & Pick<RosterStore, 'saveBotMeta'> & AvatarBackend
 
 /** Talyx's own profile, the manager. Its avatar is the logo, so it never gets an exported image. */

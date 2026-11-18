@@ -22,7 +22,6 @@ export const useFind = create<FindStore>((set) => ({
   clear: () => set({ request: null })
 }))
 
-/** The find open in this place, or none. */
 export function findIn(request: FindRequest | null, place: SearchPlace): FindRequest | null {
   return request && samePlace(request.place, place) ? request : null
 }

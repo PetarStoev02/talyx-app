@@ -21,7 +21,6 @@ export interface EventSender {
   send: (channel: string, ...args: unknown[]) => void
 }
 
-/** Sends one event in the table to a page, with the arguments its channel carries. */
 export function sendEvent<C extends EventChannel>(
   sender: EventSender,
   channel: C,

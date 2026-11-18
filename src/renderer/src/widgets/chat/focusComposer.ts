@@ -12,7 +12,6 @@ export function focusComposer(): void {
   document.querySelector<HTMLTextAreaElement>('textarea[data-composer]')?.focus()
 }
 
-/** Whether a message box mounting now should take focus. */
 export function composerWanted(): boolean {
   return Date.now() - wantedAt < WANTED_MS
 }

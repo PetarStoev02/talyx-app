@@ -54,10 +54,10 @@ export interface RosterSnapshot {
   folders: Folder[]
   rooms: Room[]
   roomFolders: Record<string, string | null>
-  // Rooms pinned to the top of their folder, in order.
+  // Pinned rooms, in the order pinned: they show as tiles after the pinned bots, not in a folder.
   roomPins: string[]
   // Each folder's bots and rooms in the order dragged, by folder id ('' for Unassigned); keys
-  // come from rosterItemKey. An item missing from its folder's list shows after the listed ones.
+  // come from itemKey. An item missing from its folder's list shows after the listed ones.
   itemOrder: Record<string, string[]>
 }
 

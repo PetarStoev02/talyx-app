@@ -4,7 +4,7 @@ import { centeredPanelClass } from '@features/setup/screenStyles'
 import { Button } from '@shared/ui/button'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
 
-/** Screen 1: what Talyx is, and the three steps ahead. `onStart` is null while the facts load. */
+/** What Talyx is, and the three steps ahead. `onStart` is null while the facts load. */
 export function WelcomeScreen({ onStart }: { onStart: (() => void) | null }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   return (

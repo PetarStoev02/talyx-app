@@ -5,7 +5,6 @@ interface RoomStore {
   // One view per room, keyed by room id.
   rooms: Record<string, RoomView>
   update: (roomId: string, change: Partial<RoomView>) => void
-  /** Drops the views of deleted rooms. */
   forget: (roomIds: string[]) => void
 }
 

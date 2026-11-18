@@ -251,7 +251,6 @@ export function checkKey(
   return backend.checkKey({ key: slot.key, value: slot.value.trim() })
 }
 
-/** Probes the endpoint's model list. */
 export function checkEndpoint(
   backend: Pick<ProvidersBackend, 'checkEndpoint'>,
   draft: EndpointDraft

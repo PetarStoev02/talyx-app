@@ -4,7 +4,12 @@
 // that sends another input, does not compile. The inputs are the zod schemas main validates with:
 // types never replace that check, since any page script can send anything.
 import { z } from 'zod/v4'
-import type { EngineStatus, MembersChange, UsageDays } from './engine'
+import {
+  ENGINE_SOCKET_TEXT_MAX,
+  type EngineStatus,
+  type MembersChange,
+  type UsageDays
+} from './engine'
 import { KEPT_FILE_MAX_BYTES } from './keptFiles'
 import type { McpCall, McpConnection } from './mcp'
 import type { ActivationRequest, AvailableModule, ModulesState } from './modules'
@@ -94,7 +99,7 @@ export const UsageDaysSchema = z.object({
 /** Chosen by the renderer before it opens the socket, so early frames find it. */
 export const EngineSocketIdSchema = z.string().regex(/^[A-Za-z0-9-]{8,64}$/)
 
-export const EngineSocketTextSchema = z.string().max(16 * 1024 * 1024)
+export const EngineSocketTextSchema = z.string().max(ENGINE_SOCKET_TEXT_MAX)
 
 export const EngineHttpRequestSchema = z.object({
   // A gateway API path only. engine.ts also checks the resolved path, which this regex cannot see.
