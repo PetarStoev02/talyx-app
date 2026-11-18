@@ -84,9 +84,10 @@ hides it, and the real engine is real.
 control-talyx stop
 ```
 
-Kills the process group it started (from `/tmp/talyx-verify/run/pid`, never by name) and removes
+Kills the process group it started (from `/tmp/talyx-verify/run/pid`, never by name), waits until
+every process in it has exited (Electron quits after electron-vite), and removes
 `/tmp/talyx-verify/run/`. Evidence stays. Run it after every attempt, including failed ones; a
-later `launch` refuses while the pid is alive.
+later `launch` refuses while any process in that group is alive.
 
 ## Real-engine rules
 
