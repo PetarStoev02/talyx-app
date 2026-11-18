@@ -63,6 +63,27 @@ control-talyx settings                                   # the run's settings.js
 - Keyboard shortcuts work through `press` (`Meta+Comma` opens Settings, `Meta+Slash` the cheat
   sheet) but the clickable path is the one to prove.
 
+## Fuzz
+
+```sh
+control-talyx launch --no-engine --seed /tmp/talyx-verify/seed.json
+control-talyx fuzz --steps 200 --seed <n>
+control-talyx stop
+```
+
+- A seeded random walk: each step clicks a control the ARIA snapshot shows (a textbox or combobox
+  gets a random text) or presses a key (Escape, Tab, arrows, the app's shortcuts).
+- After every step it checks: no crash notice (`Talyx stopped working.`), no renderer
+  `console.error` or page error, `settings.json` still parses. When the step was Escape and the
+  app is not on the Agents page, it presses Escape once more and then requires the Agents page.
+- It refuses a launch without `--no-engine`, and skips controls that leave the sandbox (native
+  panels, the browser, the clipboard, login items, installs, updates) or enter the setup flow,
+  which has no Escape exit by design.
+- A failure prints the seed, the failed check and the step log, and saves `steps.log`,
+  `after.aria.txt` and `after.png` under `evidence/fuzz-<seed>/`. Rerun the same seed on a fresh
+  launch to replay it; a pass also saves `steps.log`.
+- To port it to another app's driver, change `FUZZ_SKIP`, `FUZZ_KEYS` and `atHome`.
+
 ## Evidence
 
 Save under `/tmp/talyx-verify/evidence/<feature-id>/`:
