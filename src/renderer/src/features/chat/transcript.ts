@@ -470,8 +470,7 @@ function failedTurn(items: ChatItem[]): FailedTurn {
   const reply = items.at(-1)
   // withStreamingReply adds the reply before a turn can fail, so it is always there.
   if (!reply) throw new Error('A failed turn has no reply in the transcript')
-  const start =
-    items.findLastIndex((item, index) => index < items.length - 1 && !isTurnWork(item)) + 1
+  const start = items.slice(0, -1).map(isTurnWork).lastIndexOf(false) + 1
   const before = items[start - 1]
   const asked = before?.kind === 'user' ? before : null
   const first = asked ? start - 1 : start
