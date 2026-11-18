@@ -53,6 +53,10 @@ describe('UserSettingsPartialSchema', () => {
     expect(() => validateInput(UserSettingsPartialSchema, { launchAtLogin: 'yes' })).toThrow()
   })
 
+  it('should reject a setting sent as undefined instead of saving it over the stored one', () => {
+    expect(() => validateInput(UserSettingsPartialSchema, { theme: undefined })).toThrow()
+  })
+
   it('should drop settings this version does not have', () => {
     expect(validateInput(UserSettingsPartialSchema, { voiceEnabled: true })).toEqual({})
   })

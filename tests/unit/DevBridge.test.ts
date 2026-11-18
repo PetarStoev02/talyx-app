@@ -148,6 +148,34 @@ describe('DevBridge over HTTP', () => {
     })
   }
 
+  /** The OPTIONS request a browser sends before a cross-origin JSON POST. */
+  function preflight(
+    port: number,
+    origin: string
+  ): Promise<{ status: number; allowOrigin: string | string[] | undefined }> {
+    return new Promise((resolve, reject) => {
+      const headers = {
+        origin,
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'content-type'
+      }
+      const req = request(
+        { host: '127.0.0.1', port, path: '/bridge/invoke', method: 'OPTIONS', headers },
+        (res) => {
+          res.resume()
+          res.on('end', () =>
+            resolve({
+              status: res.statusCode ?? 0,
+              allowOrigin: res.headers['access-control-allow-origin']
+            })
+          )
+        }
+      )
+      req.on('error', reject)
+      req.end()
+    })
+  }
+
   let bridge: DevBridge
 
   async function withBridge(
@@ -175,6 +203,17 @@ describe('DevBridge over HTTP', () => {
       })
       expect(status).toBe(403)
       expect(handler).not.toHaveBeenCalled()
+    })
+  })
+
+  it('should never answer a CORS preflight, so a page on another origin cannot send it JSON', async () => {
+    await withBridge(async (port) => {
+      for (const origin of ['https://evil.example', 'http://localhost:5173']) {
+        const answer = await preflight(port, origin)
+        expect(answer.status).not.toBe(200)
+        expect(answer.status).not.toBe(204)
+        expect(answer.allowOrigin).toBeUndefined()
+      }
     })
   })
 

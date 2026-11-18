@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import fc from 'fast-check'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CATALOG_URL, MAX_BUNDLE_BYTES } from '../../../src/main/infrastructure/modules/catalog'
 import {
@@ -165,6 +166,18 @@ describe('module host', () => {
         type: 'text/javascript'
       })
       expect(host.file('hello', 'main.js')).toBeNull()
+    })
+
+    it('should serve a running module page from the bundle it verified, never from the disk', async () => {
+      await installHello()
+      const file = join(root, 'modules', 'hello', 'bundle.json')
+      await writeFile(
+        file,
+        (await readFile(file, 'utf8')).replace('function Hello', 'function Evil')
+      )
+      expect(await readFile(file, 'utf8')).toContain('function Evil')
+
+      expect(host.file('hello', 'renderer.js')?.body).toBe('export default function Hello() {}')
     })
 
     it('should refuse a download whose signature does not match and leave nothing installed', async () => {
@@ -407,6 +420,62 @@ describe('module host', () => {
   })
 
   describe('given changes that overlap', () => {
+    it('should never let an install interleave with Remove license, another key or a second install', async () => {
+      type Change = 'install' | 'remove license' | 'key for hello' | 'key for nothing'
+      const change = fc.constantFrom<Change>(
+        'install',
+        'remove license',
+        'key for hello',
+        'key for nothing'
+      )
+      const keys = {
+        hello: issueKey(signer),
+        nothing: issueKey(signer, { ...LICENSE, modules: [] })
+      }
+      publish(helloBundle())
+
+      await fc.assert(
+        fc.asyncProperty(fc.array(change, { minLength: 1, maxLength: 6 }), async (changes) => {
+          await rm(root, { recursive: true, force: true })
+          root = await mkdtemp(join(tmpdir(), 'talyx-modules-'))
+          savedKey = null
+          resetHelloRuns()
+          host = newHost()
+
+          const settled = await Promise.allSettled(
+            changes.map((next) =>
+              next === 'install'
+                ? host.install('hello')
+                : next === 'remove license'
+                  ? host.deactivate()
+                  : host.activate(next === 'key for hello' ? keys.hello : keys.nothing)
+            )
+          )
+
+          // The same changes one after another, in the order they were asked for.
+          let license: 'hello' | 'nothing' | null = null
+          let installed = false
+          const outcomes = changes.map((next) => {
+            if (next === 'remove license') license = null
+            if (next === 'key for hello') license = 'hello'
+            if (next === 'key for nothing') license = 'nothing'
+            if (next !== 'install') return 'fulfilled'
+            if (license !== 'hello') return 'rejected'
+            installed = true
+            return 'fulfilled'
+          })
+          const running = license === 'hello' && installed
+
+          expect(settled.map((result) => result.status)).toEqual(outcomes)
+          expect(host.state().modules.map(({ id, status }) => ({ id, status }))).toEqual(
+            running ? [{ id: 'hello', status: 'running' }] : []
+          )
+          const { started, stopped } = helloRuns()
+          expect(started - stopped).toBe(running ? 1 : 0)
+        })
+      )
+    })
+
     it('should stop a module whose install finished after the license was removed', async () => {
       publish(helloBundle())
       await host.activate(issueKey(signer))

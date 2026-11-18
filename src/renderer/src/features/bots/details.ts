@@ -27,6 +27,12 @@ export interface DetailsDraft extends ProfileDetails {
   usesDefault: boolean
 }
 
+/** A details edit: the fields as the panel opened, and as they are now. */
+export interface DetailsChange {
+  opening: DetailsDraft
+  draft: DetailsDraft
+}
+
 /** The engine wants a yes before it pins this model; nothing else is waiting on it. */
 export interface ModelConfirm {
   message: string
@@ -95,7 +101,7 @@ function detailsChanged(): void {
 export async function saveDetails(
   backend: SaveBackend,
   bot: Bot,
-  change: { opening: DetailsDraft; draft: DetailsDraft }
+  change: DetailsChange
 ): Promise<ModelConfirm | null> {
   // Even a save that fails part way may have changed some of them.
   try {
@@ -105,27 +111,28 @@ export async function saveDetails(
   }
 }
 
+/**
+ * Whether saving the change writes anything besides the model. Those fields are saved before the
+ * model's cost is asked, so a no to the model must not say nothing changed.
+ */
+export function savesBesidesModel(bot: Bot, change: DetailsChange): boolean {
+  return (
+    Object.keys(metaChange(bot, change)).length > 0 ||
+    Object.keys(sectionsChange(change)).length > 0
+  )
+}
+
 async function saveAll(
   backend: SaveBackend,
   bot: Bot,
-  change: { opening: DetailsDraft; draft: DetailsDraft }
+  change: DetailsChange
 ): Promise<ModelConfirm | null> {
-  const { opening, draft } = change
-  const descriptionChanged = draft.description.trim() !== opening.description.trim()
-  const lookChanged = !sameLook(draft.look, opening.look)
-  const manager = bot.name === MANAGER
-  if (lookChanged && !manager) await exportAvatar(backend, bot.name, draft.look)
-  const look = lookMeta(draft.look)
-  const meta: Partial<BotMeta> = !lookChanged ? {} : manager ? { faces: look.faces } : look
-  if (draft.title.trim() !== opening.title.trim()) meta.title = draft.title.trim()
-  const leaving = leavesDefault(change)
-  // Absent rather than false, as on every bot made before this choice.
-  if (draft.usesDefault !== opening.usesDefault && !leaving)
-    meta.usesDefault = draft.usesDefault || undefined
-  // An older client's description in the metadata would hide the one saved on the profile.
-  if (descriptionChanged && bot.meta.description !== undefined) meta.description = undefined
+  if (bot.name !== MANAGER && lookChanged(bot, change))
+    await exportAvatar(backend, bot.name, change.draft.look)
+  const meta = metaChange(bot, change)
   if (Object.keys(meta).length > 0) await saveBotMeta(backend, bot.name, meta)
 
+  const leaving = leavesDefault(change)
   const leave = (): Promise<void> =>
     leaving ? leaveDefaultIfPinned(backend, bot.name, leaving) : Promise.resolve()
   const confirm = await saveSections(backend, bot.name, change).catch(async (error: unknown) => {
@@ -137,15 +144,44 @@ async function saveAll(
   return confirm
 }
 
-// The model a bot on Uses default picks as its own, or null. It leaves Uses default only once
-// that model is pinned: a no to a costly one keeps it following.
-function leavesDefault({
+function lookChanged(bot: Bot, { opening, draft }: DetailsChange): boolean {
+  return bot.name === MANAGER
+    ? draft.look.faces !== opening.look.faces
+    : !sameLook(draft.look, opening.look)
+}
+
+function metaChange(bot: Bot, change: DetailsChange): Partial<BotMeta> {
+  const { opening, draft } = change
+  const look = lookMeta(draft.look)
+  const meta: Partial<BotMeta> = !lookChanged(bot, change)
+    ? {}
+    : bot.name === MANAGER
+      ? { faces: look.faces }
+      : look
+  if (draft.title.trim() !== opening.title.trim()) meta.title = draft.title.trim()
+  // Absent rather than false, as on every bot made before this choice.
+  if (draft.usesDefault !== opening.usesDefault && !leavesDefault(change))
+    meta.usesDefault = draft.usesDefault || undefined
+  // An older client's description in the metadata would hide the one saved on the profile.
+  if (draft.description.trim() !== opening.description.trim() && bot.meta.description !== undefined)
+    meta.description = undefined
+  return meta
+}
+
+function sectionsChange({
   opening,
   draft
-}: {
-  opening: DetailsDraft
-  draft: DetailsDraft
-}): ModelChoice | null {
+}: DetailsChange): Partial<Pick<ProfileDetails, 'description' | 'soul'>> {
+  const sections: Partial<Pick<ProfileDetails, 'description' | 'soul'>> = {}
+  if (draft.description.trim() !== opening.description.trim())
+    sections.description = draft.description.trim()
+  if (draft.soul !== opening.soul) sections.soul = draft.soul
+  return sections
+}
+
+// The model a bot on Uses default picks as its own, or null. It leaves Uses default only once
+// that model is pinned: a no to a costly one keeps it following.
+function leavesDefault({ opening, draft }: DetailsChange): ModelChoice | null {
   return opening.usesDefault &&
     !draft.usesDefault &&
     draft.model &&
@@ -205,12 +241,10 @@ export function confirmBotModel(
 async function saveSections(
   backend: Pick<DetailsBackend, 'saveSections' | 'pinModel' | 'pinAgreedModel'>,
   profile: string,
-  { opening, draft }: { opening: DetailsDraft; draft: DetailsDraft }
+  change: DetailsChange
 ): Promise<ModelConfirm | null> {
-  const sections: Partial<Pick<ProfileDetails, 'description' | 'soul'>> = {}
-  if (draft.description.trim() !== opening.description.trim())
-    sections.description = draft.description.trim()
-  if (draft.soul !== opening.soul) sections.soul = draft.soul
+  const { opening, draft } = change
+  const sections = sectionsChange(change)
   const model = draft.model && !sameModelChoice(draft.model, opening.model) ? draft.model : null
   const refused: string[] = []
   let reason: string | null = null
