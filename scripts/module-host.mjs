@@ -1,6 +1,6 @@
 // Usage: npm run module-host
 // Writes contract/module-host.d.ts, the module host contract the modules repo type-checks against,
-// from src/shared/moduleHost.ts. tests/unit/moduleHostContract.test.ts fails when it is stale.
+// from src/shared/moduleHost.ts. tests/unit/modules/moduleHostContract.test.ts fails when it is stale.
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'

@@ -1,6 +1,6 @@
 // Every IPC channel between the page and main, in one table: what each invoke takes and answers,
 // and what each event carries. `buildApi` (api.ts) calls through it and main registers handlers
-// through it (`handle` in ipc/validation.ts), so a handler that answers another type, or a call
+// through it (`handle` in ipc/handle.ts), so a handler that answers another type, or a call
 // that sends another input, does not compile. The inputs are the zod schemas main validates with:
 // types never replace that check, since any page script can send anything.
 import { z } from 'zod/v4'
