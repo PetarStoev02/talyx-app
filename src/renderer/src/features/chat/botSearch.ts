@@ -14,7 +14,6 @@ export interface SearchPlace {
   id: string
 }
 
-/** Whether two places are the same chat or room. */
 export function samePlace(a: SearchPlace, b: SearchPlace): boolean {
   return a.kind === b.kind && a.id === b.id
 }
@@ -40,7 +39,6 @@ export interface SearchRoom {
   disbanded_at?: number | null
 }
 
-/** A room and its whole log. */
 export interface RoomLog {
   room: SearchRoom
   events: RoomEvent[]

@@ -5,7 +5,7 @@ import type { InstallSteps } from '@contract/setup'
 import { CopyButton, ScreenTitle } from './ScreenParts'
 import { linkClass, panelClass, rowClass, rowCopyClass } from './screenStyles'
 
-/** Screen 4: the verified commands, to run here (Install) or copy into a terminal. */
+/** The verified commands, to run here (Install) or copy into a terminal. */
 export function InstallCommands({
   steps,
   onInstall,

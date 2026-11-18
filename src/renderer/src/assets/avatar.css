@@ -1,4 +1,4 @@
-/* Block avatars (pivot decision 10): transform and opacity only, all off under reduced motion. */
+/* Block avatars: transform and opacity only, all off under reduced motion. */
 @keyframes block-bob {
   0%,
   100% {

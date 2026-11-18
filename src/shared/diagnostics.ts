@@ -35,7 +35,6 @@ export function redactSecrets(text: string): string {
   )
 }
 
-/** The last `count` lines of a log file's text. */
 export function logTail(log: string, count: number): string {
   const lines = log.split('\n')
   if (lines.at(-1) === '') lines.pop()

@@ -105,7 +105,6 @@ const roomProjectionSchema = z.object({
   )
 })
 
-/** The bots feature's backend over the engine. */
 export function engineRosterBackend(engine: EngineAccess, host: RosterHost): RosterBackend {
   return {
     ...engineRosterStore(engine, host),

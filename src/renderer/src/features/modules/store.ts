@@ -39,7 +39,6 @@ export function runningModules(state: ModulesState): ModuleSummary[] {
   return state.modules.filter((module) => module.status === 'running')
 }
 
-/** The navigation view of a module's page. */
 export type ModuleView = `module:${string}`
 
 export function moduleView(id: string): ModuleView {

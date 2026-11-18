@@ -159,7 +159,6 @@ function Dock({ sections, label }: { sections: DockSection[]; label: string }): 
   )
 }
 
-// The dock's geometry: 32px buttons, 2px apart, inside 4px of padding.
 const BUTTON_PX = 32
 const GAP_PX = 2
 const PAD_PX = 4

@@ -13,7 +13,6 @@ const TITLE_TAKEN = 'already in use'
 // A stored message's id is its durable row id; a message not stored yet has a local one.
 const ROW_ID = /^\d+$/
 
-/** The chat's backend over the engine. */
 export function engineChatBackend(engine: EngineAccess): ChatBackend {
   async function findChat(profile: string): Promise<string | null> {
     const { sessions } = await engine.request<{

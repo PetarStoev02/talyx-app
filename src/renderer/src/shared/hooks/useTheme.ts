@@ -33,7 +33,6 @@ export function useTheme(): {
   const [theme, setThemeState] = useState<ThemePreference>('system')
   const [effectiveTheme, setEffectiveTheme] = useState<EffectiveTheme>(() => resolveTheme('system'))
 
-  // Load persisted preference on mount
   useEffect(() => {
     settingsApi
       .get()
@@ -49,7 +48,6 @@ export function useTheme(): {
       .catch((error: unknown) => reportError('settings', error))
   }, [])
 
-  // Listen for OS preference changes when in 'system' mode
   useEffect(() => {
     if (theme !== 'system') return
 

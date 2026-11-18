@@ -1,3 +1,4 @@
+import { ENGINE_SOCKET_TEXT_MAX } from '@contract/engine'
 import { readRoomLog, sendRoomMessage } from '@shared/engine/rooms'
 import { AppError } from '@shared/lib/problem'
 import type { RoomBackend } from '@features/chat/room'
@@ -10,11 +11,9 @@ interface DriverStatus {
   pending_actions?: Record<string, unknown>[]
 }
 
-// Main relays socket frames up to 16 MiB; the image goes as base64 inside one, with room to spare
-// for the JSON around it.
-const MAX_UPLOAD_CHARS = 15 * 1024 * 1024
+// The image goes as base64 inside one socket frame, with room to spare for the JSON around it.
+const MAX_UPLOAD_CHARS = ENGINE_SOCKET_TEXT_MAX - 1024 * 1024
 
-/** A hosted room's backend over the engine. */
 export function engineRoomBackend(engine: EngineAccess): RoomBackend {
   // Rooms live on the gateway, not in a profile; the default profile's socket reaches them.
   const call = <T>(method: string, params: Record<string, unknown>): Promise<T> =>

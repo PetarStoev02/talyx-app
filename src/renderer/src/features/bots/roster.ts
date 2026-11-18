@@ -207,7 +207,6 @@ export function itemKey(ref: RosterRowRef): string {
   return `${ref.kind}:${ref.id}`
 }
 
-/** The row an `itemKey` names. */
 export function rowOf(key: string): RosterRowRef {
   const at = key.indexOf(':')
   return { kind: key.slice(0, at) as RosterRowRef['kind'], id: key.slice(at + 1) }

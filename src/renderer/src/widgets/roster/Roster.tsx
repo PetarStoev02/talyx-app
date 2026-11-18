@@ -307,6 +307,9 @@ function ProblemBanner({
   )
 }
 
+// The gap between pinned tiles, also counted in each tile's width so a full row fits.
+const PIN_GAP = '0.5rem'
+
 // Up to three pins show as large tiles; a fourth switches to four small ones a row. Pinned bots
 // come first, then pinned rooms; a row that is not full is centered.
 function PinnedGrid({
@@ -326,12 +329,11 @@ function PinnedGrid({
   const pins = pinnedBots(snapshot.bots)
   const rooms = pinnedRooms(snapshot)
   const large = pins.length + rooms.length <= 3
-  // A full row of 3 or 4 tiles with the gap-2 (0.5rem) between them; change both together.
-  const tile = large ? 'calc((100% - 1rem) / 3)' : 'calc((100% - 1.5rem) / 4)'
+  const tile = large ? `calc((100% - 2 * ${PIN_GAP}) / 3)` : `calc((100% - 3 * ${PIN_GAP}) / 4)`
   return (
     <div
-      className="flex flex-wrap justify-center gap-2 [&>*]:w-(--tile)"
-      style={{ '--tile': tile } as React.CSSProperties}
+      className="flex flex-wrap justify-center gap-(--gap) [&>*]:w-(--tile)"
+      style={{ '--tile': tile, '--gap': PIN_GAP } as React.CSSProperties}
     >
       {pins.map((bot) => (
         <div key={bot.name} data-flip={`bot:${bot.name}`}>

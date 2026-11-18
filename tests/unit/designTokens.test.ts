@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
+import { CLOSE_MS } from '../../src/renderer/src/shared/hooks/useStayMounted'
 
 const RENDERER_SRC = join(__dirname, '../../src/renderer/src')
 const BANNED =
@@ -39,5 +40,13 @@ describe('design tokens', () => {
       const occurrences = css.split(`${token}:`).length - 1
       expect(occurrences, `${token} must be set in :root and .dark`).toBeGreaterThanOrEqual(2)
     }
+  })
+
+  it('should keep a closing part mounted exactly as long as the longest animation', () => {
+    const css = readFileSync(join(RENDERER_SRC, 'assets/theme.css'), 'utf-8')
+    const durations = [...css.matchAll(/--duration-[\w-]+:\s*(\d+)ms/g)].map(([, ms]) => Number(ms))
+
+    expect(durations.length).toBeGreaterThan(0)
+    expect(CLOSE_MS).toBe(Math.max(...durations))
   })
 })

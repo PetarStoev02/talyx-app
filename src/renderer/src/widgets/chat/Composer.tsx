@@ -350,7 +350,6 @@ interface ChipMenuProps {
   returnFocusTo: React.RefObject<HTMLTextAreaElement | null>
 }
 
-/** The bot chat's model and reasoning chips. */
 export function ChatChips(props: ChipMenuProps): React.JSX.Element {
   return (
     <>

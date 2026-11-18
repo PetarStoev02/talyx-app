@@ -6,7 +6,7 @@ import type { ModelLists } from '@features/chat/chat'
 import { ScreenTitle, Spinner } from '@features/setup/ScreenParts'
 import { linkClass, panelClass } from '@features/setup/screenStyles'
 
-/** Screen 9: the create-bot form, or straight on to Talyx. */
+/** The create-bot form, or straight on to Talyx. */
 export function BotStep({
   roster,
   chat,

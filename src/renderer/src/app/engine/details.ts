@@ -23,7 +23,6 @@ const describeSchema = z.object({
 })
 const configureSchema = z.object({ applied: z.record(z.string(), z.unknown()).catch({}) })
 
-/** A profile's details and its model pin over the engine. */
 export function engineDetailsBackend(engine: EngineAccess): DetailsBackend {
   return {
     loadDetails: async (profile) => {

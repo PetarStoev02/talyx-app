@@ -38,7 +38,6 @@ export interface EnsureResult {
   stale: boolean
 }
 
-/** Every purpose Talyx mints a gateway ticket for. */
 export type GatewayTicketPurpose =
   | 'interactive'
   | 'native-http'
