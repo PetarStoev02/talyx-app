@@ -53,7 +53,6 @@ const TABS: Array<[Tab, TranslationKey]> = [
 // The tab that holds each section's field, where its refusal shows.
 const SECTION_TABS: Record<string, Tab> = { description: 'details', model: 'details', soul: 'soul' }
 
-/** What the panel needs of the chat: the model lists, and the open chat's model switch. */
 export type ChatModels = Pick<ChatActions, 'models' | 'setModel'>
 
 /** The third column for one bot. Edits stay here until Save; Cancel drops them. */
@@ -157,8 +156,9 @@ export function DetailsPanel({
       setRefused(error.sections)
       setRefusedReason(error.reason)
       const [only, ...others] = error.sections
-      if (others.length > 0 || !SECTION_TABS[only]) throw error
-      setTab(SECTION_TABS[only])
+      const tab = only === undefined ? undefined : SECTION_TABS[only]
+      if (others.length > 0 || !tab) throw error
+      setTab(tab)
       return undefined
     }
   }

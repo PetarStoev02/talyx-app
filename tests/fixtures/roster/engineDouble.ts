@@ -94,9 +94,9 @@ const BOTS: Record<string, { description: string; preview: string; soul: string 
 export const assets: Record<string, string> = {}
 
 const titleOf = (name: string): string =>
-  name === 'default' ? 'Talyx' : name[0].toUpperCase() + name.slice(1)
+  name === 'default' ? 'Talyx' : name.charAt(0).toUpperCase() + name.slice(1)
 
-const profiles = Object.keys(BOTS).map((name, index) => ({
+const profiles = Object.entries(BOTS).map(([name, bot], index) => ({
   name,
   ui_meta: {
     [BOT_META_KEY]: {
@@ -110,7 +110,7 @@ const profiles = Object.keys(BOTS).map((name, index) => ({
   } as Record<string, unknown>,
   ui_meta_revisions: { [BOT_META_KEY]: 1 } as Record<string, number>,
   last_session: {
-    preview: BOTS[name].preview,
+    preview: bot.preview,
     last_active: Date.now() / 1000 - index * 120
   }
 }))
@@ -118,11 +118,11 @@ const details: Record<
   string,
   { description: string; soul: string; provider: string; model: string }
 > = Object.fromEntries(
-  profiles.map(({ name }) => [
+  Object.entries(BOTS).map(([name, bot]) => [
     name,
     {
-      description: BOTS[name].description,
-      soul: `# ${titleOf(name)}\n\n${BOTS[name].soul}`,
+      description: bot.description,
+      soul: `# ${titleOf(name)}\n\n${bot.soul}`,
       provider: PROVIDER,
       model: DEFAULT_MODEL
     }
@@ -194,10 +194,16 @@ const runMessages: Record<string, { role: string; content: string }[]> = {
   'cash-run-1': [{ role: 'user', content: 'Post the cash position across our accounts.' }]
 }
 
+function detailsOf(profile: string): (typeof details)[string] {
+  const state = details[profile]
+  if (!state) throw new Error(`No details for profile ${profile}`)
+  return state
+}
+
 function configure(profile: string, params: Record<string, unknown>): unknown {
   const bot = profiles.find((bot) => bot.name === profile)!
   if (!params.ui_meta) {
-    const state = details[profile]
+    const state = detailsOf(profile)
     const applied: Record<string, boolean> = {}
     if (typeof params.description === 'string') {
       state.description = params.description
@@ -271,7 +277,7 @@ async function request(
       }))
     }
   if (method === 'profiles.describe') {
-    const state = details[params.name as string]
+    const state = detailsOf(params.name as string)
     return {
       name: params.name,
       description: state.description,
@@ -353,7 +359,7 @@ async function http<T>(request: EngineApiRequest): Promise<T> {
       confirm_required: true,
       confirm_message: `${COSTLY_MODEL} costs more per turn.`
     } as T
-  Object.assign(details[request.profile!], { provider: body.provider, model: body.model })
+  Object.assign(detailsOf(request.profile!), { provider: body.provider, model: body.model })
   return { ok: true } as T
 }
 

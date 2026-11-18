@@ -81,14 +81,19 @@ Each line is the rule; the check's message names the fix.
   `tests/unit/featureBackends.test.ts`.
 - A feature that exports `xActions(backend)` has its tests in `tests/unit/<feature>/`:
   `tests/unit/featureTests.test.ts`.
-- TypeScript strict with `exactOptionalPropertyTypes`, no `any`, explicit return types:
-  `npm run lint` and `npm run typecheck`.
+- TypeScript strict with `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess`, no `any`,
+  explicit return types: `npm run lint` and `npm run typecheck`.
 - `infrastructure/modules/signing.ts` imports no Electron and no alias value (the modules repo runs
   it in plain Node): `tests/unit/modules/moduleHostContract.test.ts`.
 - Effects and timers only in the renderer kernel (`shared/hooks`, `app/providers`,
   `shared/engine`). The ratchet allowlists only shrink: an entry that leaves never returns, and a
   new file is never on one. `npm run lint` (`eslint.kernel.mjs`, `eslint.ratchet.mjs`) and
   `tests/unit/ratchet.test.ts`.
+- `string | null`, not optional properties, in `src/shared` and `features/` (React props exempt):
+  `npm run lint` (`eslint.style.mjs`, ratchet as above).
+- No default exports outside config files: `npm run lint` (`eslint.style.mjs`).
+- No magic numbers in `src/main` and `features/`: `npm run lint` (`eslint.style.mjs`, ratchet as
+  above).
 - `ipcMain.handle` only inside `handle()`, and channel types only from `src/shared/channels.ts`:
   `npm run lint` and `npm run typecheck`.
 - No em dash (U+2014) outside the vendored engine files: `npm run lint` and
@@ -101,6 +106,9 @@ Each line is the rule; the check's message names the fix.
 - Feature-map names match the app's copy: `tests/unit/featureMap.test.ts`.
 - Every key in `shared/lib/i18n.ts` is used in `src/`; a key built at runtime belongs to a family
   declared in the test: `tests/unit/i18nKeys.test.ts`.
+- `docs/state/` holds the small state machines' charts, drawn from their code; a machine change
+  regenerates them (`UPDATE_STATE_CHARTS=1 npx vitest run tests/unit/stateCharts.test.ts`):
+  `tests/unit/stateCharts.test.ts`.
 
 ## Rules that need judgment
 
@@ -131,8 +139,8 @@ Each line is the rule; the check's message names the fix.
 
 ## Code Style
 
-- `unknown` with type guards; `string | null`, not optional, for nullable values.
-- React components: named exports; inside, stores first, then local state, named hooks, handlers
+- `unknown` with type guards.
+- React components: inside, stores first, then local state, named hooks, handlers
   (`async (): Promise<void>`), JSX.
 - Zustand stores declare state and actions in one interface and include `reset`.
 - A new IPC channel (`namespace:action`) is one row in `src/shared/channels.ts` (input from the

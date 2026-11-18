@@ -268,8 +268,12 @@ function toolsFor(
           const pins = pinnedBots(snapshot.bots).map((bot) => bot.name)
           const from = pins.indexOf(id)
           const to = pins.indexOf(beforeBot)
+          const previous = pins[to - 1]
           // Pins the bot too, when it was not pinned yet.
-          await actions.orderPin(id, from >= 0 && from < to ? pins[to - 1] : beforeBot)
+          await actions.orderPin(
+            id,
+            from >= 0 && from < to && previous !== undefined ? previous : beforeBot
+          )
         } else if (kind === 'bot') {
           const bot = botOf(snapshot, id)
           if (!!bot.meta.pinned !== pinned) await actions.pin(bot)

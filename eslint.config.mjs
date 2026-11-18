@@ -10,6 +10,13 @@ import path from 'node:path'
 import { VENDORED_ENGINE_FILES } from './eslint.vendored.mjs'
 import { KERNEL, PRODUCT, kernelPlugin } from './eslint.kernel.mjs'
 import { RATCHET } from './eslint.ratchet.mjs'
+import {
+  DEFAULT_EXPORT_IGNORES,
+  MAGIC_NUMBER_FILES,
+  OPTIONAL_PROPERTY_FILES,
+  STYLE_RULES,
+  stylePlugin
+} from './eslint.style.mjs'
 
 const NO_EM_DASH_MESSAGE = 'Em dashes are banned. Rewrite the sentence.'
 // Built from parts so this file does not contain the characters it bans.
@@ -291,6 +298,25 @@ export default defineConfig(
     ignores: [...KERNEL, ...RATCHET.timers],
     plugins: { kernel: kernelPlugin },
     rules: { 'kernel/no-timer': 'error' }
+  },
+  // CLAUDE.md style rules; listed files wait their turn (tests/unit/ratchet.test.ts).
+  {
+    files: OPTIONAL_PROPERTY_FILES,
+    ignores: RATCHET.optionalProperties,
+    plugins: { style: stylePlugin },
+    rules: { [STYLE_RULES.optionalProperties[0]]: STYLE_RULES.optionalProperties[1] }
+  },
+  {
+    files: MAGIC_NUMBER_FILES,
+    ignores: RATCHET.magicNumbers,
+    plugins: { style: stylePlugin },
+    rules: { [STYLE_RULES.magicNumbers[0]]: STYLE_RULES.magicNumbers[1] }
+  },
+  {
+    files: ['**/*.{js,mjs,cjs,ts,tsx}'],
+    ignores: [...DEFAULT_EXPORT_IGNORES, ...VENDORED_ENGINE_FILES, 'website/**'],
+    plugins: { style: stylePlugin },
+    rules: { 'style/no-default-export': 'error' }
   },
   {
     // Every handler goes through handle(), which checks its answer against the channel table.

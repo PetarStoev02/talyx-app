@@ -149,9 +149,9 @@ export function fixtureSetup(
       if (timer) throw new Error('An install is already running')
       const lines = script(mode)
       const next = (at: number): void => {
-        if (at === lines.length)
-          return exit(mode === 'fail' || mode === 'ssl' ? failed() : { kind: 'ok' })
-        const [index, text] = lines[at]
+        const line = lines[at]
+        if (!line) return exit(mode === 'fail' || mode === 'ssl' ? failed() : { kind: 'ok' })
+        const [index, text] = line
         for (const cb of outputs) cb(index, `${text}\n`)
         timer = setTimeout(() => next(at + 1), LINE_MS)
       }

@@ -21,9 +21,9 @@ import { InstallRunning, InstallStopped } from './InstallOutput'
 import { Waiting } from './ScreenParts'
 
 /**
- * Finding, installing and checking the engine (the setup's screens 2 to 6b), in the setup flow
- * and in the engine gate. `onReady` is Continue once an engine is found; `onCancel`, when given,
- * runs once an install started here is cancelled (the gate then shows what it showed before).
+ * Finding, installing and checking the engine, in the setup flow and in the engine gate. `onReady`
+ * is Continue once an engine is found; `onCancel`, when given, runs once an install started here
+ * is cancelled (the gate then shows what it showed before).
  */
 export function InstallEngine({
   backend,
@@ -42,7 +42,7 @@ export function InstallEngine({
   const running = useInstall((s) => s.running)
   const exit = useInstall((s) => s.exit)
   const [wantsInstall, setWantsInstall] = useState(false)
-  // Update (screen 6b) runs the install as soon as the steps are there.
+  // Update (an older engine's offer) runs the install as soon as the steps are there.
   const installWhenReady = useRef(false)
   const sawRun = useRef(false)
   const screen = engineScreen({ status, checking, wantsInstall, steps, running, exit })

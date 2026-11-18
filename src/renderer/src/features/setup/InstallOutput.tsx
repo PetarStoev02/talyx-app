@@ -5,7 +5,7 @@ import { displayOutput, downloadFailed, hideEngineName } from './install'
 import { CopyButton, ScreenTitle, Spinner } from './ScreenParts'
 import { linkClass, panelClass, rowClass, rowCopyClass } from './screenStyles'
 
-/** Screen 5: the install running, its output streaming in. */
+/** The install running, its output streaming in. */
 export function InstallRunning({
   output,
   engineName,
@@ -36,7 +36,7 @@ export function InstallRunning({
 }
 
 /**
- * Screen 5b: the install stopped at a failed command (`failed`), or finished without leaving an
+ * The install stopped at a failed command (`failed`), or finished without leaving an
  * engine Talyx can find (`failed` null). The output stays on screen.
  */
 export function InstallStopped({

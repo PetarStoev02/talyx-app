@@ -45,10 +45,8 @@ export interface ChatBackend {
     promptId: string,
     question: { id: string; answer: string | string[] }
   ) => Promise<void>
-  /** The models a profile can pick. */
   models: (profile: string) => Promise<ModelOptionProvider[]>
   uploadImage: (profile: string, image: { dataUrl: string; name: string }) => Promise<ChatImage>
-  /** The words in a voice recording. */
   transcribe: (profile: string, audio: { dataUrl: string; mime: string }) => Promise<string>
   /** An image of the transcript as a data URL; MediaGoneError when the engine no longer has it. */
   mediaUrl: (profile: string, path: string) => Promise<string>

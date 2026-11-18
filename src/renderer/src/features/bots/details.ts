@@ -70,7 +70,6 @@ export interface DetailsBackend {
   pinAgreedModel: (profile: string, pick: ModelChoice) => Promise<void>
 }
 
-/** What saving a bot's details needs: its profile, its metadata and its avatar. */
 type SaveBackend = DetailsBackend & Pick<RosterStore, 'saveBotMeta'> & AvatarBackend
 
 /** Talyx's own profile, the manager. Its avatar is the logo, so it never gets an exported image. */
@@ -289,10 +288,15 @@ export async function followDefault(
     .filter((bot) => bot.meta.usesDefault === true && bot.name !== MANAGER)
     .map((bot) => bot.name)
   try {
-    const results = await Promise.allSettled(
-      followers.map((profile) => confirmBotModel(backend, profile, pick))
+    const unreached = await Promise.all(
+      followers.map((profile) =>
+        confirmBotModel(backend, profile, pick).then(
+          () => [],
+          () => [profile]
+        )
+      )
     )
-    return followers.filter((_, index) => results[index].status === 'rejected')
+    return unreached.flat()
   } finally {
     detailsChanged()
   }

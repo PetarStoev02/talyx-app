@@ -7,7 +7,7 @@ import {
   type BlockState
 } from '@contract/moduleHost'
 import { blockGeometry, blockTones, frontPoint } from './blockGeometry'
-import type { Point } from './blockGeometry'
+import type { Point, Quad } from './blockGeometry'
 import { TALYX_CUTS, TALYX_SILHOUETTE } from './talyxMark'
 
 // The face is drawn from this size up; a 24px row shows the plain block.
@@ -52,7 +52,7 @@ const TALYX = {
     [113, 125.5],
     [24.42, 74.36]
   ]
-} satisfies Record<string, Point[]>
+} satisfies Record<string, Quad>
 const TALYX_TONES = { top: '#e9e9ee', left: '#2a2a30', right: '#141418', stripe: '#7a7a84' }
 const TALYX_INK = '#ffffff'
 const TALYX_BOX = 251
@@ -110,6 +110,7 @@ function blockDrawing(
 ): { viewBox: string; body: React.JSX.Element } {
   const { faces, frontIndex, scale } = blockGeometry(block.shape, block.size, block.yaw)
   const tones = blockTones(block.hue, block.offline)
+  const front = faces[frontIndex]
   return {
     viewBox: `0 0 ${block.size} ${block.size}`,
     body: (
@@ -117,9 +118,9 @@ function blockDrawing(
         {faces.map((item, index) => (
           <polygon key={index} points={pointList(item.points)} fill={tones[item.tone]} />
         ))}
-        {face && (
+        {face && front && (
           <Face
-            front={faces[frontIndex].points}
+            front={front.points}
             pen={{ ink: tones.ink, tick: scale * 0.16, width: Math.max(1.2, scale * 0.05) }}
             options={face}
           />
@@ -168,7 +169,7 @@ function Face({
   pen,
   options
 }: {
-  front: Point[]
+  front: Quad
   pen: Pen
   options: FaceOptions
 }): React.JSX.Element {

@@ -46,7 +46,8 @@ describe('bot looks', () => {
       ['a grey colour, which has no hue', { color: 'hsl(0 0% 50%)' }, named],
       ['a hue index out of range', { color: 12 }, named],
       ['a fractional hue index', { color: 2.5 }, named],
-      ['an unreadable colour', { color: 'tomato' }, named]
+      ['an unreadable colour', { color: 'tomato' }, named],
+      ['an hsl colour whose angle is not a number', { color: 'hsl(1.2.3, 80%, 50%)' }, named]
     ])('should draw a bot with %s', (_, meta, expected) => {
       expect(lookOf({ name: NAME, meta })).toEqual({ ...expected, faces: true })
     })

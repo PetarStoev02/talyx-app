@@ -1,7 +1,8 @@
+import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import {
   baseName,
-  draftWithPaths,
+  draftWith,
   roomText,
   sortAttachments
 } from '../../../src/renderer/src/features/chat/attachments'
@@ -74,18 +75,27 @@ describe('sortAttachments', () => {
   })
 })
 
-describe('draftWithPaths', () => {
+describe('draftWith', () => {
   it('should leave the draft as it is when there is no path', () => {
-    expect(draftWithPaths('Summarise this', [])).toBe('Summarise this')
+    expect(draftWith('Summarise this', [])).toBe('Summarise this')
   })
 
   it('should put the path alone in an empty draft', () => {
-    expect(draftWithPaths('', ['/Users/me/a.pdf'])).toBe('/Users/me/a.pdf')
+    expect(draftWith('', ['/Users/me/a.pdf'])).toBe('/Users/me/a.pdf')
   })
 
   it('should add each path on its own line under the typed text', () => {
-    expect(draftWithPaths('Compare these', ['/Users/me/a.pdf', '/Users/me/Q3 report.pdf'])).toBe(
+    expect(draftWith('Compare these', ['/Users/me/a.pdf', '/Users/me/Q3 report.pdf'])).toBe(
       'Compare these\n/Users/me/a.pdf\n/Users/me/Q3 report.pdf'
+    )
+  })
+
+  it('should add under a draft already typed, never over it', () => {
+    const typed = fc.string().filter((draft) => draft.trim() !== '')
+    fc.assert(
+      fc.property(typed, fc.array(fc.string(), { minLength: 1 }), (draft, lines) => {
+        expect(draftWith(draft, lines)).toBe(`${draft}\n${lines.join('\n')}`)
+      })
     )
   })
 })

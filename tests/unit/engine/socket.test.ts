@@ -35,9 +35,9 @@ describe('engine IPC socket', () => {
     const api = {
       openEngineSocket: vi.fn(async () => undefined),
       closeEngineSocket: vi.fn(async () => undefined),
-      sendEngineSocket: vi.fn(async () => {
-        throw new Error('Engine socket is not open')
-      }),
+      // A plain function, not vi.fn: a mock handles the promises it returns, which would hide an
+      // unhandled rejection.
+      sendEngineSocket: (): Promise<void> => Promise.reject(new Error('Engine socket is not open')),
       onEngineSocketFrame: () => () => undefined,
       onEngineSocketClosed: () => () => undefined
     }

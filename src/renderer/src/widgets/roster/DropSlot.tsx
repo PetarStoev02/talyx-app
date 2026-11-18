@@ -29,7 +29,8 @@ export function DropSlot({
   function edgeAt(event: React.DragEvent, allowed: DropEdge[]): DropEdge {
     const box = event.currentTarget.getBoundingClientRect()
     const share = (event.clientY - box.top) / box.height
-    if (allowed.length === 1) return allowed[0]
+    const [only, ...others] = allowed
+    if (only && !others.length) return only
     if (allowed.includes('inside')) return share < BEFORE_SHARE ? 'before' : 'inside'
     return share < 0.5 ? 'before' : 'after'
   }

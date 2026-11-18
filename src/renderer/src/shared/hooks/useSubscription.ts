@@ -11,7 +11,6 @@ export function useSubscription(subscribe: () => () => void): void {
   }, [])
 }
 
-/** Calls `run` once, when the part leaves the screen. */
 export function useOnUnmount(run: () => void): void {
   const leave = useEffectEvent(run)
   useEffect(() => () => leave(), [])

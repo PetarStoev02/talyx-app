@@ -53,6 +53,9 @@ export const EXPECTED_ENGINE_VERSION = '0.22.7'
 /** The command Talyx runs; the engine's own installer never names it this, so the user links it. */
 export const ENGINE_COMMAND = 'talyx-engine'
 
+/** The longest text frame main relays on an engine socket, in characters (string length). */
+export const ENGINE_SOCKET_TEXT_MAX = 16 * 1024 * 1024
+
 export type EngineVersionFit = 'older' | 'same' | 'newer' | 'unknown'
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/
@@ -94,9 +97,9 @@ const VERSION_LINE =
 /** `<Name> Agent v0.22.5 (…) · stable · local bf0203a794a0` → name, version, short commit. */
 export function parseEngineVersion(output: string): EngineVersion {
   const line = output.trim().split(/\r?\n/, 1)[0] ?? ''
-  const match = VERSION_LINE.exec(line)
-  if (!match) throw new UnrecognizedEngineError(line)
-  return { name: match[1].toLowerCase(), version: match[2], commit: match[3]?.slice(0, 7) ?? null }
+  const [, name, version, commit] = VERSION_LINE.exec(line) ?? []
+  if (name === undefined || version === undefined) throw new UnrecognizedEngineError(line)
+  return { name: name.toLowerCase(), version, commit: commit?.slice(0, 7) ?? null }
 }
 
 export function engineWire(name: string): EngineWire {

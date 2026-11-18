@@ -63,8 +63,8 @@ export async function loadInstallSteps(source: InstallStepsSource): Promise<Inst
 
 function linkedEngineName(commands: string[]): string | null {
   for (const command of commands) {
-    const match = LINKED_COMMAND.exec(command)
-    if (match) return match[1].toLowerCase()
+    const [, name] = LINKED_COMMAND.exec(command) ?? []
+    if (name !== undefined) return name.toLowerCase()
   }
   return null
 }
