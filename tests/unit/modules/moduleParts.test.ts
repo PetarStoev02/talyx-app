@@ -104,6 +104,7 @@ describe("a module's page parts", () => {
           item,
           { ...item, id: 7 },
           { ...item, label: ' ' },
+          { ...item, run: 'go' },
           { ...item, id: 'task', icon: 'task' },
           null
         ]
