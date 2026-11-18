@@ -45,6 +45,10 @@ const localPlugin = {
           if (node.source?.expressions?.length) return
           if (typeof source !== 'string' || !source.startsWith('.')) return
           const to = unitOf(path.resolve(path.dirname(context.filename), source))
+          if (from.renderer && MAIN_SIDE.includes(to.unit)) {
+            context.report({ node: node.source, message: RENDERER_RUNTIME.message })
+            return
+          }
           const crosses = to.unit === 'contract' || (from.renderer && to.renderer)
           if (!crosses || to.unit === from.unit) return
           context.report({
@@ -91,6 +95,7 @@ const UPWARD = {
 }
 // One slice never imports another slice of its own layer; shared/ has segments, not slices.
 const SLICED_LAYERS = ['pages', 'widgets', 'features']
+const MAIN_SIDE = ['src/main', 'src/preload', 'src/splash']
 
 /** Where a source file sits: the slice for the renderer's layers, else the process folder. */
 function unitOf(file) {
@@ -175,7 +180,7 @@ const layerBoundaries = [
     return [rendererImportBlock(`${RENDERER}/${layer}/**`, [upward]), ...sliceBlocks(layer, upward)]
   }),
   {
-    files: ['src/main/**', 'src/preload/**', 'src/splash/**', 'src/shared/**'],
+    files: [...MAIN_SIDE.map((folder) => `${folder}/**`), 'src/shared/**'],
     rules: restrictImports([
       {
         regex: `${aliasOf(['renderer', ...LAYERS]).replace('(renderer/|/)?', '')}|^@/|^\\.\\.?/(.*/)?renderer(/|$)`,

@@ -209,6 +209,18 @@ describe('layer boundaries', () => {
       'never import the renderer'
     ],
     [
+      'a relative import of main from the renderer',
+      `${R}/features/bots/x.ts`,
+      "import '../../../../main/x'",
+      'reach Electron and Node through window.api'
+    ],
+    [
+      'an import of the renderer from splash',
+      'src/splash/preload.ts',
+      "import '@renderer/App'",
+      'never import the renderer'
+    ],
+    [
       'a re-export',
       `${R}/features/bots/x.ts`,
       "export * from '@app/x'",

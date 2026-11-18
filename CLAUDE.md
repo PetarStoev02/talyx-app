@@ -245,7 +245,7 @@ src/renderer/src/
                       # engine/ (vendored engine client; host.ts is the facade features use)
 ```
 
-**FSD layer rules** (each layer imports only the layers below it, never a sibling slice; the renderer never imports `electron` or Node; main and preload never import the renderer): enforced by `npm run lint`.
+**FSD layer rules** (each layer imports only the layers below it, never a sibling slice; the renderer never imports `electron` or Node; main, preload, splash and `src/shared` never import the renderer): enforced by `npm run lint`.
 
 ### Import Aliases
 
