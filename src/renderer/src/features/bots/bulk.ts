@@ -156,6 +156,8 @@ export async function deleteRows(
       cursor = snapshot.folders.find((folder) => folder.id === cursor)?.parentId ?? null
     return cursor
   }
+  // ponytail: a retry after some bots moved puts them before the deleted folder's other rows in
+  // their new folder; carry the first attempt's order across retries if that order matters.
   for (const bot of snapshot.bots) {
     const from = bot.meta.sectionId ?? null
     if (bots.includes(bot.name) || !from || !folders.includes(from)) continue
