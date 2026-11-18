@@ -239,10 +239,17 @@ describe('MCP tools', () => {
             }[fields.look],
             model: { provider: 'custom', model: 'paid-model' }
           }
+          const model = engine.profiles[name].model
+          // Everything the save can write besides the model.
           const stored = (): string =>
-            JSON.stringify([engine.metadata[name], engine.profiles[name], engine.assets])
+            JSON.stringify([
+              engine.metadata[name],
+              { ...engine.profiles[name], model: null },
+              engine.assets
+            ])
           const before = stored()
           const answer = await call('update_bot', args)
+          expect(engine.profiles[name].model).toEqual(model)
           expect(answer).toEqual({
             ok: false,
             text: stored() === before ? REFUSED : t('mcp.refusedModel', 'en')
