@@ -102,7 +102,7 @@ check_mac_signing_env() {
   done
   [ ${#missing[@]} -eq 0 ] && return 0
   echo "✗ The macOS release must be signed and notarized. Missing: ${missing[*]}." >&2
-  echo "  CLAUDE.md → Builds → Signing secrets says how to create each one." >&2
+  echo "  docs/releasing.md → Signing secrets says how to create each one." >&2
   return 1
 }
 
@@ -113,7 +113,7 @@ UPDATE_KEY_FILE="$HOME/.config/talyx/keys/update.private.pem"
 check_update_signing_key() {
   [ -f "$UPDATE_KEY_FILE" ] && return 0
   echo "✗ The update feed must be signed. Missing: $UPDATE_KEY_FILE." >&2
-  echo "  CLAUDE.md → Builds → Signing secrets says where it comes from." >&2
+  echo "  docs/releasing.md → The update signing key says where it comes from." >&2
   return 1
 }
 
