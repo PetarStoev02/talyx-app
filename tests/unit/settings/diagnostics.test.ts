@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import { diagnosticsReport, logTail, redactSecrets } from '../../../src/shared/diagnostics'
 
@@ -41,6 +42,28 @@ describe('diagnostics', () => {
       const text = report(`${HOME}2/notes '${HOME}'`)
       expect(text).toContain(`${HOME}2/notes`)
       expect(text).toContain("'~'")
+    })
+
+    it('should not shorten another folder that starts with the home folder name, in any script', () => {
+      const name = fc.stringMatching(/^[a-z][a-z0-9]{0,8}$/)
+      // What can carry a folder name on, in any script: a letter, a digit, _ or -, or a dot
+      // followed by one of those (a file extension).
+      const nameChar = fc
+        .string({ unit: 'grapheme', minLength: 1, maxLength: 1 })
+        .filter((char) => /^[\p{L}\p{N}_-]/u.test(char))
+      const more = fc.oneof(
+        nameChar,
+        nameChar.map((char) => `.${char}`)
+      )
+      fc.assert(
+        fc.property(name, more, (user, rest) => {
+          const home = `/home/${user}`
+          const other = `${home}${rest}`
+          expect(
+            diagnosticsReport({ talyx: '1', engine: '1', os: 'linux', log: other, home })
+          ).toContain(other)
+        })
+      )
     })
 
     it('should shorten the home folder at the end of a sentence', () => {
