@@ -91,6 +91,7 @@ async function readMemories(http: EngineHttp, bot: string): Promise<Memory[]> {
   return Promise.all(
     graph.memory.map(async (card, index) => {
       const id = ids[index]
+      if (id === undefined) throw new RosterError(UNEXPECTED, 'a memory card without its node')
       const text =
         card.body.length < LISTED_TEXT_LIMIT ? card.body : await readMemory(http, bot, id)
       return { id, text: text.trim(), about: card.source === USER_SOURCE ? 'user' : 'bot' }

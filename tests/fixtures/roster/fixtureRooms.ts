@@ -58,19 +58,21 @@ const rooms: FixtureRoom[] = [
     actions: []
   }
 ]
-append(rooms[0], 'message.user', 'desktop', { text: 'Should we offer monthly billing?' })
-append(rooms[0], 'message.member', 'analyst', {
+const [team, , archive] = rooms
+if (!team || !archive) throw new Error('The fixture needs the team-room and archive-room rooms')
+append(team, 'message.user', 'desktop', { text: 'Should we offer monthly billing?' })
+append(team, 'message.member', 'analyst', {
   text: '**Upside:** more sign-ups from small teams.\n\n**Downside:** we lose the cash a yearly plan pays up front, about 18% of next quarter.'
 })
-append(rooms[0], 'turn.settled', 'gateway', { member_id: 'analyst' })
-append(rooms[0], 'message.member', 'writer', {
+append(team, 'turn.settled', 'gateway', { member_id: 'analyst' })
+append(team, 'message.member', 'writer', {
   text: 'Customers asked for it in nine support threads since spring. I can draft the announcement.'
 })
-append(rooms[0], 'message.member', 'default', {
+append(team, 'message.member', 'default', {
   text: 'Summary: offer monthly billing and keep the 15% discount on yearly. Writer drafts the announcement for Friday.'
 })
-append(rooms[2], 'message.user', 'desktop', { text: 'Plan the Q1 launch.' })
-append(rooms[2], 'message.member', 'planner', {
+append(archive, 'message.user', 'desktop', { text: 'Plan the Q1 launch.' })
+append(archive, 'message.member', 'planner', {
   text: 'Four milestones, the first on January 12. The dates are in the shared sheet.'
 })
 
@@ -145,7 +147,7 @@ export function roomRequest(method: string, params: Record<string, unknown>): un
     case 'groups.retry':
       room.actions = []
       room.activity = []
-      reply(room, room.members[0], 'Done, it ran cleanly.')
+      reply(room, firstMember(room), 'Done, it ran cleanly.')
       return { task: {} }
     case 'groups.discard':
       room.actions = []
@@ -178,7 +180,7 @@ export function roomRequest(method: string, params: Record<string, unknown>): un
 }
 
 function answer(room: FixtureRoom, text: string): void {
-  const [first] = room.members
+  const first = firstMember(room)
   if (/approve/i.test(text)) {
     room.activity = [{ member_id: first.member_id, status: 'running' }]
     room.actions = [
@@ -212,7 +214,8 @@ function answer(room: FixtureRoom, text: string): void {
             member_id: item.member_id,
             error: 'Provider down'
           })
-        else reply(room, item, REPLIES[index % REPLIES.length])
+        // The modulo keeps the index inside REPLIES.
+        else reply(room, item, REPLIES[index % REPLIES.length]!)
         room.activity = room.activity
           .filter((entry) => entry.member_id !== item.member_id)
           .map((entry, next) => (next === 0 ? { ...entry, status: 'running' } : entry))
@@ -247,12 +250,19 @@ export function roomSessionRequest(
   if (method === 'session.resume')
     return { session_id: id, revision: session.revision, subscription_id: `sub-${id}` }
   if (method === 'config.set' && params.key === 'model') {
-    session.model = String(params.value).split(' --provider ')[0]
+    // split always returns at least one part.
+    session.model = String(params.value).split(' --provider ')[0]!
     session.revision++
     return { key: 'model', value: session.model }
   }
   if (method === 'session.detach') return { detached: true }
   return null
+}
+
+function firstMember(room: FixtureRoom): Member {
+  const [first] = room.members
+  if (!first) throw new Error(`Room ${room.room_id} has no members`)
+  return first
 }
 
 function reply(room: FixtureRoom, from: Member, text: string): void {

@@ -218,9 +218,8 @@ function historyItem(
   const id = String(message.row_id ?? message.id ?? '')
   const text = messageText(message.display_content ?? message.content)
   if (message.role === 'user') {
-    const delivery = DELIVERY.exec(text)
-    if (delivery) {
-      const [, name, profile, body] = delivery
+    const [, name, profile, body] = DELIVERY.exec(text) ?? []
+    if (name !== undefined && profile !== undefined && body !== undefined) {
       return [
         {
           kind: 'bot',
@@ -268,9 +267,10 @@ function historyItem(
 
 function noticeText(message: SessionMessage, text: string): string {
   const metadata = parseArgs(message.display_metadata)
+  const [firstLine = ''] = text.split('\n')
   return typeof metadata.display_text === 'string' && metadata.display_text.trim()
     ? metadata.display_text
-    : text.split('\n')[0].trim()
+    : firstLine.trim()
 }
 
 // A restated request whose original is still in the chat shows once, as first sent.
@@ -288,8 +288,8 @@ function userItem(id: string, stored: string): ChatItem {
   const { typed, notedImages } = withoutEngineText(stored)
   const images = [
     ...notedImages,
-    ...[...typed.matchAll(IMAGE_LINE), ...typed.matchAll(IMAGE_NOTE)].map((match) =>
-      match[1].trim()
+    ...[...typed.matchAll(IMAGE_LINE), ...typed.matchAll(IMAGE_NOTE)].flatMap(([, path]) =>
+      path === undefined ? [] : [path.trim()]
     )
   ]
   const text = typed.replace(IMAGE_LINE, '').replace(IMAGE_NOTE, '').trim()
@@ -301,8 +301,9 @@ function withoutEngineText(stored: string): { typed: string; notedImages: string
   const notedImages: string[] = []
   for (;;) {
     const note = ENGINE_IMAGE_NOTES.map((shape) => shape.exec(typed)).find(Boolean)
-    if (!note) return { typed, notedImages }
-    notedImages.push(note[1].trim())
+    const path = note?.[1]
+    if (!note || path === undefined) return { typed, notedImages }
+    notedImages.push(path.trim())
     typed = typed.slice(note[0].length)
   }
 }
@@ -466,14 +467,16 @@ function completeReply(transcript: Transcript, payload: Payload, id: string): Tr
 // The failed reply is the last item. Before it, past this turn's tool lines and streamed text, is
 // the message it answered, unless a delivery or another client started the turn.
 function failedTurn(items: ChatItem[]): FailedTurn {
-  const reply = items.length - 1
-  let start = reply
-  while (start > 0 && isTurnWork(items[start - 1])) start -= 1
-  const asked = items[start - 1]?.kind === 'user' ? start - 1 : -1
-  const first = asked < 0 ? start : asked
+  const reply = items.at(-1)
+  if (!reply) throw new Error('A failed turn has no reply in the transcript')
+  const start =
+    items.findLastIndex((item, index) => index < items.length - 1 && !isTurnWork(item)) + 1
+  const before = items[start - 1]
+  const asked = before?.kind === 'user' ? before : null
+  const first = asked ? start - 1 : start
   return {
     after: items[first - 1]?.id ?? null,
-    items: asked < 0 ? [items[reply]] : [items[asked], items[reply]]
+    items: asked ? [asked, reply] : [reply]
   }
 }
 

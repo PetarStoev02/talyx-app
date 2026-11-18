@@ -21,8 +21,10 @@ export function fixtureProviders(profiles: string[]): {
 } {
   const engine = providersDouble(profiles)
   for (const config of Object.values(engine.profiles)) {
+    const [endpoint] = config.endpoints
+    if (!endpoint) throw new Error('fixtureProviders needs an endpoint on every profile')
     config.endpoints[0] = {
-      ...config.endpoints[0],
+      ...endpoint,
       id: PROVIDER,
       name: 'Anthropic',
       base_url: 'https://api.anthropic.com/v1',
@@ -41,7 +43,10 @@ export function fixtureProviders(profiles: string[]): {
       }
     ]
   }
-  engine.profiles[profiles[0]].env.OPENAI_API_KEY = 'sk-fixture-openai'
+  const [first] = profiles
+  const home = first === undefined ? undefined : engine.profiles[first]
+  if (!home) throw new Error('fixtureProviders needs at least one profile')
+  home.env.OPENAI_API_KEY = 'sk-fixture-openai'
   let polls = 0
   const http = async <T>(request: EngineApiRequest): Promise<T> => {
     if (request.path.includes('/poll/')) {

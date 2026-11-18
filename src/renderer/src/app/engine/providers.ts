@@ -231,7 +231,7 @@ export function engineProvidersBackend(
     saveEndpoint: async (profile, draft) => {
       await rest(profile, '/api/providers/custom-endpoints', {
         method: 'POST',
-        body: endpointBody(draft, draft.models[0])
+        body: endpointBody(draft, draft.models[0] ?? null)
       })
     },
     removeEndpoint: async (profile, id) => {
@@ -457,7 +457,8 @@ function keySlots(env: Record<string, EnvVarInfo>): KeySlot[] {
     const { key, id, info } =
       entries.find((entry) => entry.primary) ??
       entries.find((entry) => !entry.info.advanced) ??
-      entries[0]
+      // A provider is listed only with the entry that added it, so it has a first one.
+      entries[0]!
     return {
       key,
       provider,

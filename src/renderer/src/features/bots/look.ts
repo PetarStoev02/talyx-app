@@ -22,7 +22,8 @@ const GREY_CHROMA = 0.02
 export function matchName(profile: string): Pick<Look, 'shape' | 'hue'> {
   const hash = fnv1a(profile)
   return {
-    shape: BLOCK_SHAPES[hash % BLOCK_SHAPES.length],
+    // A remainder of the length is always an index of the (non-empty) shape list.
+    shape: BLOCK_SHAPES[hash % BLOCK_SHAPES.length]!,
     hue: (hash >>> 8) % BLOCK_HUES.length
   }
 }
@@ -70,10 +71,8 @@ function hueOf(value: number | string | undefined): number | undefined {
     const turn = Math.abs(hue - angle) % 360
     return Math.min(turn, 360 - turn)
   }
-  return BLOCK_HUES.reduce(
-    (best, hue, index) => (distance(hue) < distance(BLOCK_HUES[best]) ? index : best),
-    0
-  )
+  const distances = BLOCK_HUES.map(distance)
+  return distances.indexOf(Math.min(...distances))
 }
 
 // The oklch hue of an `hsl(...)` or `#hex` colour, as older clients stored them.
@@ -83,6 +82,7 @@ function oklchHue(color: string): number | undefined {
   const [r, g, b] = rgb.map((channel) =>
     channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
   )
+  if (r === undefined || g === undefined || b === undefined) return undefined
   const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
   const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
   const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
@@ -105,10 +105,9 @@ function hslToRgb(color: string): number[] | undefined {
 }
 
 function hexToRgb(color: string): number[] | undefined {
-  const match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim())
-  if (!match) return undefined
-  const hex =
-    match[1].length === 3 ? [...match[1]].map((digit) => digit + digit).join('') : match[1]
+  const [, digits] = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim()) ?? []
+  if (digits === undefined) return undefined
+  const hex = digits.length === 3 ? [...digits].map((digit) => digit + digit).join('') : digits
   return [0, 2, 4].map((at) => parseInt(hex.slice(at, at + 2), 16) / 255)
 }
 

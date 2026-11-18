@@ -156,8 +156,9 @@ export function DetailsPanel({
       setRefused(error.sections)
       setRefusedReason(error.reason)
       const [only, ...others] = error.sections
-      if (others.length > 0 || !SECTION_TABS[only]) throw error
-      setTab(SECTION_TABS[only])
+      const tab = only === undefined ? undefined : SECTION_TABS[only]
+      if (others.length > 0 || !tab) throw error
+      setTab(tab)
       return undefined
     }
   }
