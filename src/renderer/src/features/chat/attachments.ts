@@ -29,7 +29,7 @@ export function sortAttachments(
   return sorted
 }
 
-/** The draft with each line (a path, dictated words) on its own line under what was typed. */
+/** The draft with each added line (a path, an edited waiting message, dictated words) under it. */
 export function draftWith(text: string, lines: string[]): string {
   return [...(text.trim() ? [text] : []), ...lines].join('\n')
 }

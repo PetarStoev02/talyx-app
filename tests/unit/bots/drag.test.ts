@@ -33,5 +33,11 @@ describe('roster drag', () => {
 
     endRosterDrag()
     expect(draggedRows()).toEqual([])
+
+    // A row outside the picked ones goes alone.
+    const planner: RosterRowRef = { kind: 'bot', id: 'planner' }
+    startRosterDrag(dragStart(), planner)
+    expect(draggedRows()).toEqual([planner])
+    endRosterDrag()
   })
 })

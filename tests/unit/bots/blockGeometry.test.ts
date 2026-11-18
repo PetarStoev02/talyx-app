@@ -77,7 +77,8 @@ describe('block geometry', () => {
   })
 
   it('should never change its size when it turns', () => {
-    // A cube's upright edges stay upright at any turn, so their length is the block's size.
+    // Points 1 and 2 of a side face are an upright edge. It stays upright at any turn, so its
+    // length is the block's size.
     const uprightEdges = (shape: BlockShape, size: number, yaw: number): number[] =>
       blockGeometry(shape, size, yaw)
         .faces.filter((face) => face.tone !== 'top')
