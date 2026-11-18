@@ -6,7 +6,9 @@ import { useEffect, useEffectEvent } from 'react'
  */
 export function useSubscription(subscribe: () => () => void): void {
   const start = useEffectEvent(subscribe)
-  useEffect(() => start(), [])
+  useEffect(() => {
+    return start()
+  }, [])
 }
 
 /** Calls `run` once, when the part leaves the screen. */
