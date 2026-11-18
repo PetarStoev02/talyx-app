@@ -182,6 +182,15 @@ describe('providers', () => {
     ] as const)("should report the provider's answer for the key %s", async (value, answer) => {
       expect(await checkKey(engine.backend, { key: 'OPENAI_API_KEY', value })).toEqual(answer)
     })
+
+    it('should check a key without the spaces around it, as it would be saved', async () => {
+      expect(await checkKey(engine.backend, { key: 'OPENAI_API_KEY', value: ' sk-good ' })).toEqual(
+        {
+          verdict: 'works',
+          message: ''
+        }
+      )
+    })
   })
 
   describe('custom endpoints', () => {
@@ -548,12 +557,15 @@ describe('providers', () => {
       expect(engine.profiles.writer.endpoints.find((e) => e.id === 'local')?.models).toHaveLength(3)
     })
 
-    it('should refuse to remove the last model, since an endpoint needs one', async () => {
-      const lone = { ...local(), model: 'small', models: ['small'] }
+    it.each([
+      ['the last model, since an endpoint needs one', ['small'], 'small'],
+      ['a model the endpoint does not list', ['small', 'medium', 'large'], 'huge']
+    ])('should refuse to remove %s', async (_case, models, model) => {
+      const endpoint = { ...local(), model: 'small', models }
 
-      await expect(
-        removeEndpointModel(engine.backend, { endpoint: lone, model: 'small' })
-      ).rejects.toMatchObject({ key: 'providers.errorEndpointLastModel' })
+      await expect(removeEndpointModel(engine.backend, { endpoint, model })).rejects.toMatchObject({
+        key: 'providers.errorEndpointLastModel'
+      })
       expect(engine.writes).toEqual([])
     })
 
@@ -813,6 +825,25 @@ describe('providers over a Talyx-terms backend', () => {
     }
 
     expect(await removeKey(backend, 'KEY')).toEqual(['writer'])
+  })
+
+  it('should not flag a bot whose model cannot be read as being on the removed model', async () => {
+    const backend = {
+      home: 'talyx',
+      profiles: async () => ['talyx', 'scout'],
+      endpoints: async () => [],
+      removeEndpointModel: async () => undefined,
+      usesEndpointModel: async (profile: string) => {
+        if (profile === 'scout') throw new Error('HTTP 500')
+        return true
+      }
+    }
+    const endpoint = { ...ROUTER, models: ['small', 'large'] }
+
+    expect(await removeEndpointModel(backend, { endpoint, model: 'large' })).toEqual({
+      failed: [],
+      flagged: ['talyx']
+    })
   })
 
   it('should ask again after a timed-out wait and stop at the first answer', async () => {

@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   SETTINGS_SECTIONS,
+  openSettings,
   settingsPages,
   shownPage,
+  useSettingsSection,
   type SettingsSection
 } from '../../../src/renderer/src/features/settings/sections'
 
@@ -28,12 +30,29 @@ describe('Settings pages', () => {
       }
     )
 
-    it('should fall back to General when the license goes while Modules is open', () => {
-      expect(shownPage('modules', false)).toBe('general')
+    it('should show General while the license is gone from Modules, and Modules once it returns', () => {
+      useSettingsSection.getState().open('modules')
+      const { section } = useSettingsSection.getState()
+
+      expect(shownPage(section, false)).toBe('general')
+      expect(shownPage(section, true)).toBe('modules')
     })
 
     it('should keep any other page open without a license', () => {
       expect(shownPage('engine', false)).toBe('engine')
+    })
+  })
+
+  describe('opening Settings from elsewhere', () => {
+    beforeEach(() => useSettingsSection.setState({ section: 'general' }))
+
+    it('should open Settings on the page asked for', () => {
+      const navigate = vi.fn(async () => true)
+
+      openSettings('providers', navigate)
+
+      expect(useSettingsSection.getState().section).toBe('providers')
+      expect(navigate).toHaveBeenCalledWith('settings')
     })
   })
 })
