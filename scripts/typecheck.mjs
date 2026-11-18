@@ -18,6 +18,8 @@ const config = ts.getParsedCommandLineOfConfigFile(
     onUnRecoverableConfigFileDiagnostic: (diagnostic) => report([diagnostic])
   }
 )
+// What tsc -p would refuse (an unknown option, an include that matches nothing) fails here too.
+report(config.errors)
 const options = { ...config.options, composite: false, noEmit: true }
 const strict = ts.createProgram({ rootNames: config.fileNames, options })
 const loose = ts.createProgram({
