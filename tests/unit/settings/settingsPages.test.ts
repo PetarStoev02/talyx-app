@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   SETTINGS_SECTIONS,
+  openSettings,
   settingsPages,
   shownPage,
+  useSettingsSection,
   type SettingsSection
 } from '../../../src/renderer/src/features/settings/sections'
 
@@ -34,6 +36,19 @@ describe('Settings pages', () => {
 
     it('should keep any other page open without a license', () => {
       expect(shownPage('engine', false)).toBe('engine')
+    })
+  })
+
+  describe('opening Settings from elsewhere', () => {
+    beforeEach(() => useSettingsSection.setState({ section: 'general' }))
+
+    it('should open Settings on the page asked for', () => {
+      const navigate = vi.fn(async () => true)
+
+      openSettings('providers', navigate)
+
+      expect(useSettingsSection.getState().section).toBe('providers')
+      expect(navigate).toHaveBeenCalledWith('settings')
     })
   })
 })

@@ -56,7 +56,7 @@ export async function importModule(id: string, version: string): Promise<ModuleP
   window.talyxModuleHost ??= {
     apiVersion: MODULE_API_VERSION,
     sidebar: true,
-    chat: provided,
+    ...(provided ? { chat: provided } : {}),
     avatars: MODULE_AVATARS,
     createItems: true,
     setLeaveGuard,

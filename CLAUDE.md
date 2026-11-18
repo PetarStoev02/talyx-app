@@ -79,7 +79,10 @@ Each line is the rule; the check's message names the fix.
   `npm run lint`.
 - Features name no engine method or REST path (that wiring is `app/engine/`):
   `tests/unit/featureBackends.test.ts`.
-- TypeScript strict, no `any`, explicit return types: `npm run lint` and `npm run typecheck`.
+- A feature that exports `xActions(backend)` has its tests in `tests/unit/<feature>/`:
+  `tests/unit/featureTests.test.ts`.
+- TypeScript strict with `exactOptionalPropertyTypes`, no `any`, explicit return types:
+  `npm run lint` and `npm run typecheck`.
 - `infrastructure/modules/signing.ts` imports no Electron and no alias value (the modules repo runs
   it in plain Node): `tests/unit/modules/moduleHostContract.test.ts`.
 - Effects and timers only in the renderer kernel (`shared/hooks`, `app/providers`,
@@ -96,6 +99,8 @@ Each line is the rule; the check's message names the fix.
 - Formatting (single quotes, no semicolons, 100 columns, no trailing commas): `npm run format:check`.
 - Semantic color tokens, never raw Tailwind palette classes: `tests/unit/designTokens.test.ts`.
 - Feature-map names match the app's copy: `tests/unit/featureMap.test.ts`.
+- Every key in `shared/lib/i18n.ts` is used in `src/`; a key built at runtime belongs to a family
+  declared in the test: `tests/unit/i18nKeys.test.ts`.
 
 ## Rules that need judgment
 
