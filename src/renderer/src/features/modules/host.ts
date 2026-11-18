@@ -11,12 +11,32 @@ import {
   type ModuleAvatars,
   type ModuleBackgroundProps,
   type ModuleChat,
-  type ModuleCreate,
   type ModuleCreateIcon,
   type ModuleCreateItem,
-  type ModulePageProps,
-  type ModuleParts
+  type ModulePageProps
 } from '@contract/moduleHost'
+
+/**
+ * The module's part of the sidebar's `+`: its items (a list, or a function giving them when the
+ * menu opens) and the button's name, such as "Add a task or a workflow".
+ */
+export interface ModuleCreate {
+  label: string | null
+  items: () => unknown
+}
+
+/**
+ * A module's renderer.js exports (ModuleExports) as Talyx loaded them: each optional part null
+ * when missing or of the wrong kind. The version is in the URL so an update imports the new file
+ * instead of the one this page already loaded; one URL imports once, so the page, its sidebar and
+ * its Background share the module's state.
+ */
+export interface ModuleParts {
+  page: React.ComponentType<ModulePageProps>
+  sidebar: React.ComponentType<ModulePageProps> | null
+  background: React.ComponentType<ModuleBackgroundProps> | null
+  create: ModuleCreate | null
+}
 
 export const MODULE_AVATARS: ModuleAvatars = {
   BlockAvatar,

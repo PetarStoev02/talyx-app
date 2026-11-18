@@ -133,26 +133,18 @@ export interface ModuleCreateItem {
   run: () => void
 }
 /**
- * The module's part of the sidebar's `+`: its items (a list, or a function giving them when the
- * menu opens) and the button's name, such as "Add a task or a workflow".
- */
-export interface ModuleCreate {
-  label: string | null
-  items: () => unknown
-}
-/**
  * What a module's renderer.js exports: its page (the default export), and optionally `Sidebar`,
  * drawn in Talyx's sidebar while its page is open, `Background`, mounted (drawing nothing) while
- * the module runs, and `createItems` with `createLabel`, offered in the sidebar's `+`. An `Icon`
- * export from an older module is ignored. The version is in the URL so an update imports the new
- * file instead of the one this page already loaded; one URL imports once, so the page, its sidebar
- * and its Background share the module's state.
+ * the module runs, and `createItems` (a list, or a function giving it when the menu opens) with
+ * `createLabel`, the `+` button's name, offered in the sidebar's `+`. Talyx reads each export
+ * only when it has the right kind; an `Icon` export from an older module is ignored.
  */
-export interface ModuleParts {
-  page: React.ComponentType<ModulePageProps>
-  sidebar: React.ComponentType<ModulePageProps> | null
-  background: React.ComponentType<ModuleBackgroundProps> | null
-  create: ModuleCreate | null
+export interface ModuleExports {
+  default: React.ComponentType<ModulePageProps>
+  Sidebar?: React.ComponentType<ModulePageProps>
+  Background?: React.ComponentType<ModuleBackgroundProps>
+  createItems?: ModuleCreateItem[] | (() => ModuleCreateItem[])
+  createLabel?: string
 }
 /** Answers one action of the module's page. The module validates its own input. */
 export type ModuleHandler = (input: unknown) => unknown

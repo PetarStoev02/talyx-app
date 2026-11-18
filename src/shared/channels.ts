@@ -198,6 +198,9 @@ export interface EventChannels {
   'modules:state': [state: ModulesState]
   'modules:activation-requested': []
   'mcp:call': [call: McpCall]
+  // The splash window's own preload (src/splash/preload.ts), not window.api.
+  'splash:version': [version: string]
+  'splash:status': [status: string]
 }
 
 export type InvokeChannel = keyof InvokeChannels

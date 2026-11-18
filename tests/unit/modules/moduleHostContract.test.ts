@@ -18,9 +18,9 @@ describe('the module host contract the modules repo imports', () => {
       const { readLicense, readBundle, PUBLISHED_KEYS } = await import(${JSON.stringify(pathToFileURL(SIGNING).href)})
       console.log([typeof readLicense, typeof readBundle, Object.keys(PUBLISHED_KEYS).join()].join(' '))
     `
-    const printed = execFileSync('node', ['--input-type=module', '--no-warnings', '-e', script], {
-      encoding: 'utf8'
-    })
+    // The flag is the default from Node 22.18; package.json still allows 22.12.
+    const flags = ['--experimental-strip-types', '--input-type=module', '--no-warnings']
+    const printed = execFileSync(process.execPath, [...flags, '-e', script], { encoding: 'utf8' })
     expect(printed.trim()).toBe('function function license,module')
   }, 20_000)
 })

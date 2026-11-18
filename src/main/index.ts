@@ -24,7 +24,7 @@ import { ACTIVATION_LINK, type ActivationRequest } from '@contract/modules'
 import { settingsStore } from './infrastructure/storage/SettingsStore'
 import { syncLaunchAtLogin, systemLoginItemDeps } from './infrastructure/system/loginItem'
 import { ThemeSchema, type Theme } from '@contract/channels'
-import { handle } from './infrastructure/ipc/handle'
+import { handle, sendEvent } from './infrastructure/ipc/handle'
 import { validateInput } from './infrastructure/ipc/validation'
 import { DevBridge, bridgeStartFailure } from './infrastructure/bridge/DevBridge'
 import icon from '../../resources/talyx-icon.png?asset'
@@ -314,8 +314,8 @@ app
     await waitForSplash(splash)
     // The splash can be closed by then (a crash, a click); startup goes on without it.
     if (!splash.isDestroyed()) {
-      splash.webContents.send('splash:version', app.getVersion())
-      splash.webContents.send('splash:status', 'Starting...')
+      sendEvent(splash.webContents, 'splash:version', app.getVersion())
+      sendEvent(splash.webContents, 'splash:status', 'Starting...')
     }
     await new Promise((resolve) => setTimeout(resolve, SPLASH_MIN_VISIBLE_MS))
 
