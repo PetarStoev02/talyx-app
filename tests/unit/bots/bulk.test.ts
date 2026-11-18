@@ -291,32 +291,40 @@ describe('deleting several picked rows', () => {
       return picked.map((row) => (row.id === 'archive' ? folder(archive) : row))
     }
     await fc.assert(
-      fc.asyncProperty(rows, fc.boolean(), fc.nat({ max: 12 }), async (picked, nested, failAt) => {
-        const clean = await prepare(picked, nested)
-        await act(() => actions().deleteRows(clean))
-        const deleted = placement()
+      fc.asyncProperty(
+        rows,
+        fc.boolean(),
+        fc.nat({ max: 12 }),
+        fc.boolean(),
+        async (picked, nested, failAt, landed) => {
+          const clean = await prepare(picked, nested)
+          await act(() => actions().deleteRows(clean))
+          const deleted = placement()
 
-        const doomed = await prepare(picked, nested)
-        const staying = shownBots().filter((name) => !doomed.some((row) => row.id === name))
-        let writes = 0
-        const failing =
-          <A extends unknown[]>(write: (...args: A) => Promise<void>) =>
-          (...args: A): Promise<void> =>
-            writes++ === failAt ? Promise.reject(new Error('socket closed')) : write(...args)
-        const flaky: RosterBackend = {
-          ...backend,
-          deleteRoom: failing(backend.deleteRoom),
-          deleteProfile: failing(backend.deleteProfile),
-          updateLayout: failing(backend.updateLayout),
-          saveBotMeta: failing(backend.saveBotMeta)
+          const doomed = await prepare(picked, nested)
+          const staying = shownBots().filter((name) => !doomed.some((row) => row.id === name))
+          let writes = 0
+          const lost = (): Promise<void> => Promise.reject(new Error('socket closed'))
+          // The failing write is refused, or it lands and only its reply is lost.
+          const failing =
+            <A extends unknown[]>(write: (...args: A) => Promise<void>) =>
+            (...args: A): Promise<void> =>
+              writes++ !== failAt ? write(...args) : landed ? write(...args).then(lost) : lost()
+          const flaky: RosterBackend = {
+            ...backend,
+            deleteRoom: failing(backend.deleteRoom),
+            deleteProfile: failing(backend.deleteProfile),
+            updateLayout: failing(backend.updateLayout),
+            saveBotMeta: failing(backend.saveBotMeta)
+          }
+          await runRosterMutation(flaky, () => rosterActions(flaky).deleteRows(doomed))
+          expect(shownBots()).toEqual(expect.arrayContaining(staying))
+          // The delete dialog stays open on a failure, so its retry sends the same rows again.
+          if (useRoster.getState().actionError) await act(() => actions().deleteRows(doomed))
+          expect(useRoster.getState().actionError).toBeNull()
+          expect(placement()).toEqual(deleted)
         }
-        await runRosterMutation(flaky, () => rosterActions(flaky).deleteRows(doomed))
-        expect(shownBots()).toEqual(expect.arrayContaining(staying))
-        // The delete dialog stays open on a failure, so its retry sends the same rows again.
-        if (useRoster.getState().actionError) await act(() => actions().deleteRows(doomed))
-        expect(useRoster.getState().actionError).toBeNull()
-        expect(placement()).toEqual(deleted)
-      })
+      )
     )
   })
   it('should refuse to delete Talyx’s own bot along with others', async () => {
