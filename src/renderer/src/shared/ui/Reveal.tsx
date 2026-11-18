@@ -11,7 +11,7 @@ export function Reveal<T>({
   children
 }: {
   value: T | null | undefined | false
-  className?: string
+  className?: string | undefined
   children: (value: T) => React.ReactNode
 }): React.JSX.Element | null {
   const open = !!value
@@ -35,7 +35,7 @@ export function SlidePanel<T>({
   children
 }: {
   value: T | null | undefined | false
-  className?: string
+  className?: string | undefined
   children: (value: T) => React.ReactNode
 }): React.JSX.Element | null {
   const open = !!value

@@ -10,7 +10,7 @@ export function IconButton({
   ...props
 }: React.ComponentProps<'button'> & {
   label: string
-  shortcut?: string
+  shortcut?: string | undefined
 }): React.JSX.Element {
   return (
     <Tooltip delayDuration={300}>

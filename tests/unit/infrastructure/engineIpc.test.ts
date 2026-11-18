@@ -81,6 +81,16 @@ describe('engine socket ownership', () => {
     expect(sockets.close).not.toHaveBeenCalled()
   })
 
+  it('should take a close of a socket that already closed as a no-op', async () => {
+    const owner = page()
+    await invoke('engine:socket-open', owner, ID, 'default')
+    const sink = sockets.open.mock.calls[0][2]
+    sink('engine:socket-closed', ID, 1006, '')
+
+    expect(() => invoke('engine:socket-close', owner, ID)).not.toThrow()
+    expect(sockets.close).not.toHaveBeenCalled()
+  })
+
   it('should forget a socket that failed to open', async () => {
     const owner = page()
     sockets.open.mockRejectedValueOnce(new Error('Engine socket failed to open'))

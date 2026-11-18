@@ -7,9 +7,10 @@ import {
   realpathSync,
   rmSync
 } from 'fs'
+import fc from 'fast-check'
 import { createServer, type Server } from 'net'
 import { tmpdir } from 'os'
-import { join } from 'path'
+import { dirname, join } from 'path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createEngine,
@@ -22,6 +23,7 @@ import {
 import {
   mintLocalGatewayTicket,
   routedGatewayEndpoint,
+  runEngineCli,
   type CliResult,
   type GatewayEndpoint
 } from '../../../src/main/infrastructure/engine/gateway'
@@ -301,6 +303,16 @@ describe('engine status', () => {
     })
   })
 
+  it('should never read the ensure answer from stderr, which is for diagnostics only', async () => {
+    const status = await engineWith({
+      ensure: () => ({ code: 0, stdout: '', stderr: ensureOutput().stdout })
+    }).engine.status()
+    expect(status).toMatchObject({
+      state: 'error',
+      message: expect.stringContaining('produced no result')
+    })
+  })
+
   it('should name the recovery command when the gateway is not ready', async () => {
     const status = await engineWith({
       ensure: () => ({
@@ -334,6 +346,31 @@ describe('profile routing', () => {
       'Invalid profile route'
     )
   })
+
+  it("should root every routed home in the endpoint's own resolved home, never another path", () => {
+    const name = fc.oneof(
+      fc.string(),
+      fc.stringMatching(/^[A-Za-z0-9][A-Za-z0-9._-]{0,12}$/),
+      fc.constantFrom('default', 'current', ' cfo ', '..', '.', 'a/../b', '../etc')
+    )
+    // The endpoint ensure reports: the root profile's home, or a sibling profile's under it.
+    const endpoint = fc.constantFrom(
+      endpointFixture(),
+      endpointFixture({ profile_id: `${HOME}/profiles/cfo` })
+    )
+    fc.assert(
+      fc.property(endpoint, name, (from, profile) => {
+        let home: string
+        try {
+          home = routedGatewayEndpoint(from, profile).profile_id
+        } catch (error) {
+          expect(error).toEqual(new Error('Invalid profile route'))
+          return
+        }
+        expect(home === HOME || dirname(home) === join(HOME, 'profiles')).toBe(true)
+      })
+    )
+  })
 })
 
 describe('the gateway Talyx attaches to', () => {
@@ -356,6 +393,20 @@ describe('the gateway Talyx attaches to', () => {
       .filter((args) => args.includes('gateway'))
       .map((args) => args[args.indexOf('gateway') + 1])
     expect(new Set(gatewayCommands)).toEqual(new Set(['ensure']))
+  })
+
+  it('should never cache a failed attach: the next redial starts over', async () => {
+    let starting = true
+    const { engine, run } = engineWith({
+      ensure: () =>
+        starting ? { code: 1, stdout: '', stderr: 'gateway still starting' } : ensureOutput()
+    })
+    await expect(engine.mint('default', 'interactive')).rejects.toThrow('produced no result')
+
+    starting = false
+    expect(await engine.mint('default', 'interactive')).toMatchObject({ ticket: 'ticket-1' })
+    const ensures = run.mock.calls.filter(([, args]) => (args as string[]).includes('ensure'))
+    expect(ensures).toHaveLength(2)
   })
 
   // The quit handler cannot load without Electron, so no main-process file may name the command.
@@ -452,6 +503,29 @@ describe('tickets and REST', () => {
     await expect(engine.http({ path: '/api/profiles' })).rejects.toEqual(
       new EngineHttpError(409, 'Profile busy')
     )
+  })
+})
+
+describe.skipIf(process.platform === 'win32')('the engine CLI client', () => {
+  // The engine's own `gateway ensure` startup deadline (its `--timeout` default).
+  const ENGINE_ENSURE_DEADLINE_MS = 60_000
+  // Time for the CLI's interpreter to start and print its verdict after that deadline.
+  const ANSWER_MS = 10_000
+
+  afterEach(() => vi.useRealTimers())
+
+  it('should never report a slow but valid cold start as producing no result', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const ensure = runEngineCli('/bin/sh', ['-c', 'sleep 0.3; echo ready'])
+    await vi.advanceTimersByTimeAsync(ENGINE_ENSURE_DEADLINE_MS + ANSWER_MS)
+    expect(await ensure).toEqual({ code: 0, stdout: 'ready\n', stderr: '' })
+  })
+
+  it('should still stop a client that hangs past that deadline', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const ensure = runEngineCli('/bin/sh', ['-c', 'exec sleep 30'])
+    await vi.advanceTimersByTimeAsync(2 * ENGINE_ENSURE_DEADLINE_MS)
+    expect(await ensure).toMatchObject({ code: 7, stdout: '', stderr: 'timed out' })
   })
 })
 
