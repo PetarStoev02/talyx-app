@@ -138,6 +138,19 @@ describe('next', () => {
     expect(next(available, { kind: 'found', release: summary('1.0.0') })).toBe(available)
     expect(next(ready, { kind: 'verified' })).toBe(ready)
   })
+
+  it('should never swap out a running download, whatever a check finds', () => {
+    const release = fc.option(
+      fc
+        .tuple(fc.constantFrom('0.9.0', '1.0.0', '1.1.0'), fc.boolean())
+        .map(([version, downloadable]) => summary(version, downloadable))
+    )
+    fc.assert(
+      fc.property(release, (found) => {
+        expect(next(downloading, { kind: 'found', release: found })).toBe(downloading)
+      })
+    )
+  })
 })
 
 describe('update store', () => {
