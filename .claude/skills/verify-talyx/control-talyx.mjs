@@ -21,6 +21,7 @@ const BRIDGE_PORT = 5195
 const MCP_PORT = 47899
 const READY_TIMEOUT_MS = 90_000
 const STEP_TIMEOUT_MS = 10_000
+const STOP_TIMEOUT_MS = 10_000
 const ENGINE_COMMAND = 'talyx-engine'
 
 const [command, ...rest] = process.argv.slice(2)
@@ -35,8 +36,9 @@ const commands = {
 }
 
 async function launch() {
-  if (pidAlive())
-    throw new Error(`A verification Talyx is already running (pid ${readPid()}). Run stop first.`)
+  const running = readPid()
+  if (running && groupAlive(running))
+    throw new Error(`A verification Talyx is already running (pid ${running}). Run stop first.`)
   rmSync(RUN, { recursive: true, force: true })
   mkdirSync(USER_DATA, { recursive: true })
   mkdirSync(HOME, { recursive: true })
@@ -89,14 +91,14 @@ async function doctor() {
 
 async function stop() {
   const pid = readPid()
-  if (pid && pidAlive()) {
-    try {
-      process.kill(-pid, 'SIGTERM')
-    } catch {
-      process.kill(pid, 'SIGTERM')
+  // Electron outlives electron-vite (the group leader) while it quits, so wait for the group.
+  if (pid && groupAlive(pid)) {
+    process.kill(-pid, 'SIGTERM')
+    if (!(await groupGone(pid, STOP_TIMEOUT_MS))) {
+      process.kill(-pid, 'SIGKILL')
+      if (!(await groupGone(pid, STOP_TIMEOUT_MS)))
+        throw new Error(`process group ${pid} survived SIGKILL; ${RUN} kept`)
     }
-    await sleep(1500)
-    if (pidAlive()) process.kill(-pid, 'SIGKILL')
   }
   rmSync(RUN, { recursive: true, force: true })
   console.log(`stopped${pid ? ` pid ${pid}` : ''}; evidence kept in ${EVIDENCE}`)
@@ -209,6 +211,22 @@ function pidAlive() {
   } catch {
     return false
   }
+}
+
+function groupAlive(pid) {
+  try {
+    process.kill(-pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function groupGone(pid, ms) {
+  for (const deadline = Date.now() + ms; Date.now() < deadline; await sleep(200)) {
+    if (!groupAlive(pid)) return true
+  }
+  return !groupAlive(pid)
 }
 
 function pathWithout(executable, path) {

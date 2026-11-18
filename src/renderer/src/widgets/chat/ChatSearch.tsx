@@ -1,12 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore
-} from 'react'
+import { useCallback, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import { useLanguage } from '@shared/lib/i18n'
 import { useRoster } from '@features/bots/store'
@@ -16,6 +8,11 @@ import { useFind } from '@features/chat/findStore'
 import { findMatches, pointIn } from '@features/chat/search'
 import { dialogOpen, platformOf, shortcutOf } from '@features/shortcuts/shortcuts'
 import { SearchResults } from './SearchResults'
+import { useHighlight } from '@shared/hooks/useHighlight'
+import { useLoad } from '@shared/hooks/useLoad'
+import { useScrollIntoView } from '@shared/hooks/useScrollIntoView'
+import { useWindowEvent } from '@shared/hooks/useSubscription'
+import { reportError } from '@shared/lib/report'
 import { cn } from '@shared/lib/utils'
 import { IconButton } from '@shared/ui/IconButton'
 
@@ -64,8 +61,6 @@ export function ChatSearch({
   const [loading, setLoading] = useState(true)
   // Null until you step: the search stays on the start message's first match as the chat loads.
   const [current, setCurrent] = useState<number | null>(null)
-  // The match last scrolled to: new text in the chat repaints the matches but does not scroll.
-  const scrolled = useRef('')
   // The list of messages under the field, and its active row (none: -1, Enter steps instead).
   const [listOpen, setListOpen] = useState(!!start.query && !start.messageId)
   // The active row, by its message: a new reply reorders the list but keeps the row. `byKeys`: Up
@@ -74,25 +69,21 @@ export function ChatSearch({
   const listId = useId()
   const found = useMemo(() => find(query), [find, query])
 
-  useEffect(() => {
-    let live = true
-    void loadWhole().finally(() => live && setLoading(false))
-    return () => {
-      live = false
+  useLoad(loadWhole, {
+    loaded: () => setLoading(false),
+    failed: (error) => {
+      setLoading(false)
+      reportError('chat', error)
     }
-  }, [loadWhole])
+  })
 
   // ⌘F again while it is open puts the cursor back in the field.
-  useEffect(() => {
-    function onKey(event: KeyboardEvent): void {
-      if (shortcutOf(event, platform) !== 'searchChat' || dialogOpen()) return
-      event.preventDefault()
-      input.current?.focus()
-      input.current?.select()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  useWindowEvent('keydown', (event) => {
+    if (shortcutOf(event, platform) !== 'searchChat' || dialogOpen()) return
+    event.preventDefault()
+    input.current?.focus()
+    input.current?.select()
+  })
 
   // Any change to the transcript's text finds the matches again: a new reply, the whole history.
   const edits = useSyncExternalStore(
@@ -110,24 +101,17 @@ export function ChatSearch({
   )
   const shown = matches.length ? Math.min(current ?? startAt, matches.length - 1) : -1
 
-  useEffect(() => {
-    CSS.highlights.set(ALL, new Highlight(...matches))
-    const range = matches[shown]
-    if (!range) return void CSS.highlights.delete(CURRENT)
-    CSS.highlights.set(CURRENT, new Highlight(range))
-    // The whole history arriving moves match 1 to an older message: that counts as a new place.
-    const place = `${loading}\n${query}\n${shown}`
-    if (scrolled.current === place) return
-    scrolled.current = place
-    range.startContainer.parentElement?.scrollIntoView({ block: 'center' })
-  }, [matches, shown, query, loading])
-
-  useEffect(
-    () => () => {
-      CSS.highlights.delete(ALL)
-      CSS.highlights.delete(CURRENT)
-    },
-    []
+  const shownRange = matches[shown] ?? null
+  useHighlight(ALL, matches)
+  useHighlight(
+    CURRENT,
+    useMemo(() => (shownRange ? [shownRange] : []), [shownRange])
+  )
+  // The whole history arriving moves match 1 to an older message: that counts as a new place.
+  // New text in the chat repaints the matches but does not scroll.
+  const scrollAgain = useScrollIntoView(
+    shownRange?.startContainer.parentElement ?? null,
+    `${loading}\n${query}\n${shown}`
   )
 
   const hits = found.hits
@@ -147,7 +131,7 @@ export function ChatSearch({
     setActiveRow(null)
     if (samePlace(hit.place, place)) {
       // Picked again after scrolling away: scroll to it again.
-      scrolled.current = ''
+      scrollAgain()
       return setCurrent(matchIn(transcript, matches, hit.messageId))
     }
     useFind.getState().ask({ place: hit.place, query, messageId: hit.messageId })

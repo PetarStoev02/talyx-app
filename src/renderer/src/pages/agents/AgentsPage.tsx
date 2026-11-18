@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useRoster } from '@features/bots/store'
 import { botTitle } from '@features/bots/roster'
 import { BotAvatar } from '@widgets/roster'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
 import { ErrorBoundary } from '@shared/ui/ErrorBoundary'
+import { useOnChange } from '@shared/hooks/useOnChange'
 import { useRefocus } from '@shared/hooks/useRefocus'
+import { useOnUnmount, useSubscription } from '@shared/hooks/useSubscription'
 import { cn } from '@shared/lib/utils'
 import { useLanguage } from '@shared/lib/i18n'
 import { EngineGate } from '@widgets/engine-gate'
@@ -62,12 +64,12 @@ export function AgentsPage({
   const rooms = useMemo(() => roster && roomActions(roster.room), [roster])
   // A find belongs to the chat or room it was opened in; selecting another ends it. Here, not when
   // a pane unmounts: a picked room hit asks for the find before its pane mounts.
-  useEffect(() => {
+  useOnChange(selection, (selected) => {
     const { request, clear } = useFind.getState()
-    if (request && !(selection && findIn(request, selection))) clear()
-  }, [selection])
+    if (request && !(selected && findIn(request, selected))) clear()
+  })
   // Leaving the Agents page (Settings, a module) ends the find too.
-  useEffect(() => () => useFind.getState().clear(), [])
+  useOnUnmount(() => useFind.getState().clear())
   const pill = useRef<HTMLButtonElement>(null)
   const page = useRef<HTMLDivElement>(null)
   // The header's right side, where a bot's chat puts its search.
@@ -76,14 +78,12 @@ export function AgentsPage({
   const [roomPanel, setRoomPanel] = useState(false)
   // A panel laid over the chat would cover the search that just opened in the header (Cmd+F), so
   // opening a find closes it. Beside the chat it covers nothing and stays.
-  useEffect(
-    () =>
-      useFind.subscribe((state, before) => {
-        if (!state.request || before.request || !panelOverlaysChat(page.current)) return
-        editProfile(null)
-        setRoomPanel(false)
-      }),
-    [editProfile]
+  useSubscription(() =>
+    useFind.subscribe((state, before) => {
+      if (!state.request || before.request || !panelOverlaysChat(page.current)) return
+      editProfile(null)
+      setRoomPanel(false)
+    })
   )
   const detailsOpen = bot ? editingProfile === bot.name : !!room && roomPanel
   const toggleDetails = (): void => {

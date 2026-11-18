@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useEngine } from '@features/setup/useEngine'
 import { useLanguage } from '@shared/lib/i18n'
 import { host } from '@shared/engine/host'
 import type { ConnectionState } from '@shared/engine/shared'
+import { useOnChange } from '@shared/hooks/useOnChange'
+import { useSubscription } from '@shared/hooks/useSubscription'
 import { Button } from '@shared/ui/button'
 
 const MAX_LOG_LINES = 500
@@ -18,23 +20,21 @@ export function DebugConsole(): React.JSX.Element {
   const [log, setLog] = useState<string[]>([])
   const sessions = useRef(new Map<string, string>())
 
-  useEffect(() => host.onState(setConnection), [])
+  useSubscription(() => host.onState(setConnection))
 
-  useEffect(
-    () =>
-      host.onEvent((event) =>
-        setLog((lines) => [...lines, JSON.stringify(event)].slice(-MAX_LOG_LINES))
-      ),
-    []
+  useSubscription(() =>
+    host.onEvent((event) =>
+      setLog((lines) => [...lines, JSON.stringify(event)].slice(-MAX_LOG_LINES))
+    )
   )
 
-  useEffect(() => {
-    if (connection !== 'open') return
+  useOnChange(connection, (state) => {
+    if (state !== 'open') return
     host
       .request<{ profiles: Array<{ name: string }> }>('default', 'profiles.list')
       .then((result) => setProfiles(result.profiles.map((row) => row.name)))
       .catch((err: unknown) => toast.error(err instanceof Error ? err.message : String(err)))
-  }, [connection])
+  })
 
   async function ping(): Promise<void> {
     try {

@@ -1,7 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useEngine } from '@features/setup/useEngine'
 import { useLanguage } from '@shared/lib/i18n'
+import { useBeforePaint } from '@shared/hooks/useBeforePaint'
+import { useOnChange } from '@shared/hooks/useOnChange'
+import { useWindowEvent } from '@shared/hooks/useSubscription'
 import { reportError } from '@shared/lib/report'
 import { engineScreen, watchRun } from './engineScreen'
 import {
@@ -46,36 +49,34 @@ export function InstallEngine({
   const engineName = steps?.kind === 'ready' ? steps.engineName : null
 
   // The install store outlives this screen: an earlier visit's result must not decide this one.
-  useLayoutEffect(() => {
+  useBeforePaint(() => {
     if (!useInstall.getState().running) useInstall.setState({ exit: null })
-  }, [])
+  })
 
-  useEffect(() => {
-    if (screen.kind === 'fetching')
+  // `backend` is one object for the window, so the screen alone decides what to do.
+  useOnChange(screen.kind, (kind) => {
+    if (kind === 'fetching')
       useInstall
         .getState()
         .loadSteps(backend)
         .catch((error: unknown) => reportError('setup', error))
-    if (screen.kind === 'commands' && installWhenReady.current) startInstall(backend)
-    if (screen.kind !== 'fetching') installWhenReady.current = false
-  }, [screen.kind, backend])
+    if (kind === 'commands' && installWhenReady.current) startInstall(backend)
+    if (kind !== 'fetching') installWhenReady.current = false
+  })
 
   // The engine may change outside Talyx (installed from a terminal): look again on return.
-  useEffect(() => {
-    const refresh = (): void => {
-      // A check already running (Try again, a chosen file) answers the same question.
-      if (!useInstall.getState().running && !useEngine.getState().checking)
-        void useEngine.getState().refresh()
-    }
-    window.addEventListener('focus', refresh)
-    return () => window.removeEventListener('focus', refresh)
-  }, [])
+  useWindowEvent('focus', () => {
+    // A check already running (Try again, a chosen file) answers the same question.
+    if (!useInstall.getState().running && !useEngine.getState().checking)
+      void useEngine.getState().refresh()
+  })
 
-  useEffect(() => {
-    const watch = watchRun(sawRun.current, running, exit)
+  // Only the turn of `running` can report a cancel: watchRun reads the exit it ended with.
+  useOnChange(running, (isRunning) => {
+    const watch = watchRun(sawRun.current, isRunning, exit)
     sawRun.current = watch.sawRun
     if (watch.cancelled) onCancel?.()
-  }, [running, exit, onCancel])
+  })
 
   const install = (): void => startInstall(backend)
   const recheck = (): void => void useEngine.getState().check()
