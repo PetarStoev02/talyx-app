@@ -101,6 +101,9 @@ Each line is the rule; the check's message names the fix.
 - Feature-map names match the app's copy: `tests/unit/featureMap.test.ts`.
 - Every key in `shared/lib/i18n.ts` is used in `src/`; a key built at runtime belongs to a family
   declared in the test: `tests/unit/i18nKeys.test.ts`.
+- `docs/state/` holds the small state machines' charts, drawn from their code; a machine change
+  regenerates them (`UPDATE_STATE_CHARTS=1 npx vitest run tests/unit/stateCharts.test.ts`):
+  `tests/unit/stateCharts.test.ts`.
 
 ## Rules that need judgment
 
