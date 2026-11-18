@@ -29,9 +29,9 @@ export function sortAttachments(
   return sorted
 }
 
-/** The draft with each path on its own line under what was typed. */
-export function draftWithPaths(text: string, paths: string[]): string {
-  return [...(text.trim() ? [text] : []), ...paths].join('\n')
+/** The draft with each line (a path, dictated words) on its own line under what was typed. */
+export function draftWith(text: string, lines: string[]): string {
+  return [...(text.trim() ? [text] : []), ...lines].join('\n')
 }
 
 /**
@@ -39,7 +39,7 @@ export function draftWithPaths(text: string, paths: string[]): string {
  * untouched, so a folder named `@Writer` still points where it is on disk.
  */
 export function roomText(text: string, paths: string[], mentions: Mention[]): string {
-  return draftWithPaths(sendMentions(text, mentions), paths)
+  return draftWith(sendMentions(text, mentions), paths)
 }
 
 /** The last part of a path: a file's or a folder's own name, for its chip in the composer. */

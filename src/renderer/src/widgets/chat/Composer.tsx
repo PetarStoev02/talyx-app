@@ -4,7 +4,7 @@ import { ArrowUp, ChevronDown, LoaderCircle, Mic, Plus, Square, X } from 'lucide
 import { toast } from 'sonner'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import { useNavigation } from '@features/modules/useNavigation'
-import { baseName, sortAttachments } from '@features/chat/attachments'
+import { baseName, draftWith, sortAttachments } from '@features/chat/attachments'
 import type { ChatActions } from '@features/chat/chat'
 import type { ChatState } from '@features/chat/store'
 import { dataUrlOf, dictationProblem, useDictation } from '@features/chat/useDictation'
@@ -79,14 +79,14 @@ export function Composer({
   if (seed !== seenSeed) {
     setSeenSeed(seed)
     // Added under a draft already typed (an edited waiting message), never over it.
-    if (seed) setText(text.trim() ? `${text}\n${seed.text}` : seed.text)
+    if (seed) setText(draftWith(text, [seed.text]))
   }
   const picker = useRef<HTMLInputElement>(null)
   // While an answer runs, a new message queues behind it; only a send still on its way waits.
   const running = target.running
   const dictation = useDictation(
     target.transcribe,
-    (words) => setText((current) => (current.trim() ? `${current}\n${words}` : words)),
+    (words) => setText((current) => draftWith(current, [words])),
     (error) => {
       const problem = dictationProblem(error)
       toast.error(t(problem.key), {
