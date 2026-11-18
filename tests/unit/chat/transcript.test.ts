@@ -1,5 +1,7 @@
+import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import {
+  LIVE_ID,
   addPrompt,
   applyEvent,
   fromHistory,
@@ -11,6 +13,7 @@ import {
 import type { ChatPrompt, Transcript } from '../../../src/renderer/src/features/chat/types'
 import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/shared'
 import type { SessionMessage } from '../../../src/renderer/src/shared/engine/types'
+import { turnFrames } from './turnFrames'
 
 const SESSION = 'chat-1'
 
@@ -560,5 +563,117 @@ describe('chat transcript', () => {
     expect(needsRebuild(event('session.updated', { operation: 'rewind' }))).toBe(true)
     expect(needsRebuild(event('session.updated', { operation: 'model' }))).toBe(false)
     expect(needsRebuild(event('message.delta', { text: 'x' }))).toBe(false)
+  })
+})
+
+describe('chat transcript, for any delivery of a turn sequence', () => {
+  // Each frame sent again any number of times, at any later point: a replay after a redial. And
+  // the engine's own re-send of a turn's start or text, with no sequence number, before the next
+  // turn starts: the stream cursor alone tells it apart.
+  const delivery = (clean: GatewayEvent[]): fc.Arbitrary<GatewayEvent[]> =>
+    fc
+      .tuple(
+        fc.array(fc.tuple(fc.nat(), fc.nat()), { maxLength: 12 }),
+        fc.array(fc.tuple(fc.nat(), fc.nat()), { maxLength: 6 })
+      )
+      .map(([replays, resends]) => {
+        const delivered = [...clean]
+        for (const [which, where] of replays) {
+          const frame = clean[which % clean.length]
+          const sentAt = delivered.indexOf(frame)
+          delivered.splice(sentAt + 1 + (where % (delivered.length - sentAt)), 0, frame)
+        }
+        const streamed = clean.filter(
+          (frame) =>
+            frame.type !== 'tool.start' &&
+            frame.type !== 'tool.complete' &&
+            frame.type !== 'message.complete'
+        )
+        for (const [which, where] of resends) {
+          const frame = streamed[which % streamed.length]
+          const sentAt = delivered.indexOf(frame)
+          const turnId = (frame.payload as { turn_id: string }).turn_id
+          const nextTurn = delivered.findIndex(
+            (later, index) =>
+              index > sentAt &&
+              later.type === 'message.start' &&
+              (later.payload as { turn_id: string }).turn_id !== turnId
+          )
+          const end = nextTurn < 0 ? delivered.length : nextTurn
+          const unsequenced: GatewayEvent = { ...frame, seq: undefined }
+          delivered.splice(sentAt + 1 + (where % (end - sentAt)), 0, unsequenced)
+        }
+        return delivered
+      })
+
+  const withDelivery = turnFrames(SESSION).chain((clean) =>
+    fc.tuple(fc.constant(clean), delivery(clean))
+  )
+
+  it('should give the same transcript for duplicated and late re-sent frames as for the clean sequence', () => {
+    fc.assert(
+      fc.property(withDelivery, ([clean, delivered]) => {
+        expect(replay(empty(), ...delivered)).toEqual(replay(empty(), ...clean))
+      })
+    )
+  })
+
+  // The engine (0.22.7 on) re-sends a turn's frames under new seqs on some roads (types.ts): part of
+  // a turn arrives, then the turn again from its start, renumbered, and on from there.
+  const resentTurn = turnFrames(SESSION).chain((clean) =>
+    fc.nat({ max: clean.length - 1 }).map((upTo) => {
+      const turnStart = clean.findLastIndex(
+        (frame, index) => index <= upTo && frame.type === 'message.start'
+      )
+      const again = [...clean.slice(turnStart, upTo + 1), ...clean.slice(upTo + 1)]
+      const renumbered = again.map((frame, index) => ({ ...frame, seq: upTo + 2 + index }))
+      return { clean, delivered: [...clean.slice(0, upTo + 1), ...renumbered] }
+    })
+  )
+  // A streamed reply's id names the seq it started at, which a re-send renumbers.
+  const shown = (transcript: Transcript): unknown[] =>
+    transcript.items.map((item) => (item.id.startsWith(LIVE_ID) ? { ...item, id: LIVE_ID } : item))
+
+  it('should give the same transcript when the engine re-sends a turn under new seqs', () => {
+    fc.assert(
+      fc.property(resentTurn, ({ clean, delivered }) => {
+        expect(shown(replay(empty(), ...delivered))).toEqual(shown(replay(empty(), ...clean)))
+      })
+    )
+  })
+
+  it('should keep every message id unique', () => {
+    fc.assert(
+      fc.property(withDelivery, ([, delivered]) => {
+        const ids = replay(empty(), ...delivered).items.map((item) => item.id)
+        expect(new Set(ids).size).toBe(ids.length)
+      })
+    )
+  })
+
+  it('should answer needsRebuild the same every time and leave the event as it was', () => {
+    const anyEvent = fc.record({
+      type: fc.constantFrom('session.replay_gap', 'session.updated', 'message.delta', 'tool.start'),
+      payload: fc.option(
+        fc.record(
+          { operation: fc.constantFrom('rewind', 'model', undefined) },
+          { requiredKeys: [] }
+        )
+      ),
+      session_id: fc.constant(SESSION)
+    })
+    fc.assert(
+      fc.property(anyEvent, (raw) => {
+        const frame = raw as unknown as GatewayEvent
+        const copy = structuredClone(frame)
+        const first = needsRebuild(frame)
+        expect(first).toBe(
+          raw.type === 'session.replay_gap' ||
+            (raw.type === 'session.updated' && raw.payload?.operation === 'rewind')
+        )
+        expect(needsRebuild(frame)).toBe(first)
+        expect(frame).toEqual(copy)
+      })
+    )
   })
 })

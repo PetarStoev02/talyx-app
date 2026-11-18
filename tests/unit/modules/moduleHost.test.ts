@@ -534,6 +534,27 @@ describe('module host', () => {
       expect(engineHttp).not.toHaveBeenCalled()
     })
 
+    it.each([
+      ['throws', 'deactivate() { throw new Error("cleanup broke") }'],
+      ['never finishes', 'deactivate: () => new Promise(() => {})']
+    ])(
+      'should never let a failed cleanup block an update: a deactivate that %s',
+      async (_name, stop) => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+        const main = `module.exports = { activate() {}, ${stop} }`
+        publish(helloBundle({ files: { 'renderer.js': '', 'main.js': main } }))
+        await host.activate(issueKey(signer))
+        await host.install('hello')
+
+        publish(helloBundle({ version: '1.1.0' }))
+        let settled = false
+        const updating = host.install('hello').finally(() => (settled = true))
+        while (!settled) await vi.advanceTimersByTimeAsync(1_000)
+        expect((await updating).modules[0]).toMatchObject({ version: '1.1.0', status: 'running' })
+        expect(helloRuns().started).toBe(1)
+      }
+    )
+
     it('should stop reading a download as soon as it passes the size cap', async () => {
       publish(helloBundle())
       const chunk = new Uint8Array(1024 * 1024)

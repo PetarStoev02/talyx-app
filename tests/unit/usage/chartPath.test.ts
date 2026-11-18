@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import { niceCeiling, smoothPath } from '../../../src/renderer/src/shared/lib/chartPath'
 
@@ -49,6 +50,32 @@ describe('chart path', () => {
       (peak, ceiling) => {
         expect(niceCeiling(peak)).toBe(ceiling)
       }
+    )
+  })
+})
+
+describe('smoothPath, for any counts', () => {
+  // Counts over strictly increasing x, as the usage chart lays its days out.
+  const series = fc
+    .array(fc.record({ gap: fc.integer({ min: 1, max: 50 }), count: fc.nat({ max: 10_000 }) }), {
+      minLength: 1,
+      maxLength: 30
+    })
+    .map((steps) => {
+      let x = 0
+      return steps.map(({ gap, count }) => ({ x: (x += gap), y: count }))
+    })
+
+  it('should never let the curve dip below zero or above its peak', () => {
+    fc.assert(
+      fc.property(series, (points) => {
+        const peak = Math.max(...points.map((point) => point.y))
+        // A cubic stays inside its control points, so bounding them bounds the whole curve.
+        for (const [, y] of coordinates(smoothPath(points))) {
+          expect(y).toBeGreaterThanOrEqual(0)
+          expect(y).toBeLessThanOrEqual(peak)
+        }
+      })
     )
   })
 })

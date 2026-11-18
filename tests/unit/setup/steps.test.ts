@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { describe, expect, it, vi } from 'vitest'
 import { isEngineCurrent, type EngineStatus } from '../../../src/shared/engine'
 
@@ -9,7 +10,8 @@ import {
   hasProvider,
   knownFirstStep,
   setupVisibility,
-  stepAfter
+  stepAfter,
+  type SetupStep
 } from '@features/setup/steps'
 import { useSetup } from '@features/setup/store'
 
@@ -178,5 +180,36 @@ describe('useSetup', () => {
     useSetup.getState().setHasOwnBot(false)
     expect(useSetup.getState().hasProvider).toBe(true)
     expect(useSetup.getState().hasOwnBot).toBe(false)
+  })
+})
+
+describe('setup steps, for every fact set', () => {
+  const ORDER: SetupStep[] = ['engine', 'provider', 'bot']
+  const engine: fc.Arbitrary<EngineStatus> = fc.oneof(
+    fc.constant(missing),
+    fc.constant(failed),
+    fc.oneof(fc.constantFrom('0.21.0', '0.22.7', '0.23.0', '1.0.0', ''), fc.string()).map(attached)
+  )
+  const facts = fc.record({ engine, hasProvider: fc.boolean(), hasOwnBot: fc.boolean() })
+
+  it('should walk firstUndoneStep then stepAfter forward to null, through undone steps only', () => {
+    fc.assert(
+      fc.property(facts, (given) => {
+        const walked: SetupStep[] = []
+        let step = firstUndoneStep(given)
+        while (step !== null && walked.length <= ORDER.length) {
+          walked.push(step)
+          step = stepAfter(step, given)
+        }
+        expect(step).toBeNull()
+        expect(walked).toEqual(
+          ORDER.filter((name) =>
+            name === 'engine'
+              ? !isEngineCurrent(given.engine)
+              : !(name === 'provider' ? given.hasProvider : given.hasOwnBot)
+          )
+        )
+      })
+    )
   })
 })
