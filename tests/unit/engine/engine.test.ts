@@ -328,6 +328,29 @@ describe('profile routing', () => {
   })
 })
 
+describe('the gateway Talyx attaches to', () => {
+  it('should never stop the engine gateway: it outlives the app', async () => {
+    const mintTicket = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Gateway ticket control socket missing'))
+      .mockResolvedValue('fresh')
+    const { engine, run } = engineWith({
+      mintTicket,
+      ensure: () => ensureOutput(endpointFixture(), { stale: true })
+    })
+    await engine.status()
+    await engine.mint('default', 'interactive')
+    await engine.status()
+    await engine.cli(['plugins', 'list'])
+
+    const gatewayCommands = run.mock.calls
+      .map(([, args]) => args as string[])
+      .filter((args) => args.includes('gateway'))
+      .map((args) => args[args.indexOf('gateway') + 1])
+    expect(new Set(gatewayCommands)).toEqual(new Set(['ensure']))
+  })
+})
+
 describe('tickets and REST', () => {
   it('should re-ensure once when the attached gateway is gone', async () => {
     const mintTicket = vi

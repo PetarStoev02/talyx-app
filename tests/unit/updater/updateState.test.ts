@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { describe, expect, it, vi } from 'vitest'
 
 const logger = vi.hoisted(() => ({ warn: vi.fn(), info: vi.fn() }))
@@ -245,5 +246,81 @@ describe('update store', () => {
     updates.found(found('1.0.0'))
     updates.found(found('1.0.0'))
     expect(published).toHaveLength(1)
+  })
+})
+
+describe('update store, for any order of checks and clicks', () => {
+  // What can happen to the store: a check's answer, the user's clicks, and how a download ends.
+  type Step =
+    | { kind: 'found'; version: string; downloadable: boolean }
+    | { kind: 'up-to-date' }
+    | { kind: 'click-download' }
+    | { kind: 'click-cancel' }
+    | { kind: 'click-restart' }
+    | { kind: 'download-ends'; ok: boolean }
+    | { kind: 'restart-fails' }
+
+  const step: fc.Arbitrary<Step> = fc.oneof(
+    fc.record({
+      kind: fc.constant('found' as const),
+      version: fc.constantFrom('1.0.0', '1.1.0', '1.2.0'),
+      downloadable: fc.boolean()
+    }),
+    fc.constant({ kind: 'up-to-date' as const }),
+    fc.constant({ kind: 'click-download' as const }),
+    fc.constant({ kind: 'click-cancel' as const }),
+    fc.constant({ kind: 'click-restart' as const }),
+    fc.record({ kind: fc.constant('download-ends' as const), ok: fc.boolean() }),
+    fc.constant({ kind: 'restart-fails' as const })
+  )
+  const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+
+  it('should never download or restart without a click', async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.array(step, { maxLength: 40, size: 'medium' }), async (steps) => {
+        const clicks = { download: 0, restart: 0 }
+        const ran = { downloads: 0, restarts: 0 }
+        let restartFails = false
+        // The download running now, ended by a 'download-ends' step.
+        const running: Array<{ end: (ok: boolean) => void }> = []
+        const updates = createUpdateStore({
+          publish: () => undefined,
+          download: (_version, _progress, signal) => {
+            ran.downloads += 1
+            return new Promise<Install>((resolve, reject) => {
+              const end = (ok: boolean): void =>
+                ok
+                  ? resolve(async () => {
+                      ran.restarts += 1
+                      if (restartFails) throw new ReleaseDownloadError('other', 'refused')
+                    })
+                  : reject(new ReleaseDownloadError('checksum', 'mismatch'))
+              running.push({ end })
+              signal.addEventListener('abort', () => end(false))
+            })
+          }
+        })
+        for (const next of steps) {
+          if (next.kind === 'found') updates.found(found(next.version, next.downloadable))
+          if (next.kind === 'up-to-date') updates.found(null)
+          if (next.kind === 'click-download') {
+            clicks.download += 1
+            void updates.startDownload()
+          }
+          if (next.kind === 'click-cancel') updates.cancel()
+          if (next.kind === 'click-restart') {
+            clicks.restart += 1
+            await updates.install().catch(() => undefined)
+          }
+          if (next.kind === 'download-ends') running.shift()?.end(next.ok)
+          if (next.kind === 'restart-fails') restartFails = true
+          await settle()
+
+          expect(ran.downloads).toBeLessThanOrEqual(clicks.download)
+          expect(ran.restarts).toBeLessThanOrEqual(clicks.restart)
+          if (clicks.download === 0) expect(['none', 'available']).toContain(updates.current().kind)
+        }
+      })
+    )
   })
 })

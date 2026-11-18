@@ -1,10 +1,11 @@
+import fc from 'fast-check'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   refreshRoster,
   rosterActions,
   runRosterMutation
 } from '../../../src/renderer/src/features/bots/actions'
-import { bulkChoices, deleteRows } from '../../../src/renderer/src/features/bots/bulk'
+import { bulkChoices, deleteRows, hideRows } from '../../../src/renderer/src/features/bots/bulk'
 import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
 import {
   ROOM_FOLDERS_KEY,
@@ -284,5 +285,55 @@ describe('deleteRows over a fake backend', () => {
     )
     expect(calls).toEqual(['deleteRoom standup', 'deleteProfile writer', 'updateLayout'])
     expect(written).toEqual([{ [ROOM_FOLDERS_KEY]: {}, [ROOM_PINS_KEY]: [] }])
+  })
+})
+
+describe('Talyx’s own bot among any picked rows', () => {
+  const snapshotWithTalyx = {
+    bots: [
+      { name: 'default', meta: {} },
+      { name: 'writer', meta: { sectionId: 'team' } }
+    ],
+    rooms: [{ room_id: 'standup', name: 'Standup', members: [] }],
+    folders: [{ id: 'team', name: 'Team' }],
+    roomFolders: {},
+    roomPins: [],
+    itemOrder: {}
+  }
+  const other = fc.constantFrom<RosterRowRef>(
+    { kind: 'bot', id: 'writer' },
+    { kind: 'room', id: 'standup' },
+    { kind: 'folder', id: 'team' },
+    { kind: 'room', id: 'default' },
+    { kind: 'folder', id: 'default' }
+  )
+  // The other picked rows, with Talyx's bot somewhere among them, once or more.
+  const picked = fc
+    .tuple(fc.array(other, { maxLength: 5 }), fc.nat(), fc.integer({ min: 1, max: 2 }))
+    .map(([rows, at, copies]) => {
+      const spot = at % (rows.length + 1)
+      return [...rows.slice(0, spot), ...Array(copies).fill(bot('default')), ...rows.slice(spot)]
+    })
+
+  it('should never hide or delete Talyx’s own bot', async () => {
+    await fc.assert(
+      fc.asyncProperty(picked, async (rows) => {
+        const calls: string[] = []
+        const backend = {
+          deleteRoom: async (id: string) => void calls.push(`deleteRoom ${id}`),
+          deleteProfile: async (id: string) => void calls.push(`deleteProfile ${id}`),
+          updateLayout: async () => void calls.push('updateLayout'),
+          saveBotMeta: async (id: string) => void calls.push(`saveBotMeta ${id}`)
+        }
+        expect(bulkChoices(snapshotWithTalyx, rows)).toMatchObject({ hide: false, delete: false })
+        await expect(hideRows(backend, snapshotWithTalyx, rows)).rejects.toMatchObject({
+          key: 'roster.errorKeepTalyx'
+        })
+        await expect(deleteRows(backend, snapshotWithTalyx, rows)).rejects.toMatchObject({
+          key: 'roster.errorKeepTalyx'
+        })
+        expect(calls).toEqual([])
+      })
+    )
   })
 })

@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import {
   botPreview,
@@ -14,7 +15,7 @@ import {
   timeInWords
 } from '../../../src/renderer/src/features/bots/roster'
 import { t } from '../../../src/renderer/src/shared/lib/i18n'
-import type { Bot, RosterSnapshot } from '../../../src/renderer/src/features/bots/types'
+import type { Bot, Folder, RosterSnapshot } from '../../../src/renderer/src/features/bots/types'
 
 const bot = (name: string, meta: Record<string, unknown> = {}): Bot => ({
   name,
@@ -228,5 +229,57 @@ describe('switching chats', () => {
 
   it('should go nowhere with no chats', () => {
     expect(stepChat(['folder:work'], null, 1)).toBeNull()
+  })
+})
+
+describe('normalizeFolders, for any stored folder layout', () => {
+  // A few ids, with stray spaces, so parents point at each other, at themselves and in loops.
+  const id = fc.constantFrom('a', 'b', 'c', 'd', ' a', 'b ', '', '  ')
+  const entry = fc.oneof(
+    {
+      weight: 5,
+      arbitrary: fc.record({ id, name: fc.constantFrom('Team', ' Ops', ''), parentId: id })
+    },
+    { weight: 2, arbitrary: fc.record({ id, name: fc.constant('Team') }) },
+    fc.record({ id: fc.anything(), name: fc.anything(), parentId: fc.anything() }),
+    fc.anything()
+  )
+  const stored = fc.oneof(
+    { weight: 5, arbitrary: fc.array(entry, { maxLength: 12 }) },
+    fc.anything()
+  )
+
+  // The roster's own walk (Roster.tsx, FolderGroup.tsx): top-level folders, then each one's
+  // children. A loop would never end, so it stops past the folder count and reports what it saw.
+  function rendered(folders: Folder[]): string[] {
+    const seen: string[] = []
+    const visit = (folder: Folder): void => {
+      if (seen.length > folders.length) return
+      seen.push(folder.id)
+      for (const child of folders.filter((item) => item.parentId === folder.id)) visit(child)
+    }
+    for (const top of folders.filter((folder) => !folder.parentId)) visit(top)
+    return seen
+  }
+
+  function storedIds(value: unknown): string[] {
+    if (!Array.isArray(value)) return []
+    const ids = (value as unknown[]).flatMap((item) => {
+      const { id, name } = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>
+      return typeof id === 'string' && id.trim() && typeof name === 'string' && name.trim()
+        ? [id.trim()]
+        : []
+    })
+    return [...new Set(ids)]
+  }
+
+  it('should never let malformed parents hide a folder or loop rendering', () => {
+    fc.assert(
+      fc.property(stored, (value) => {
+        const folders = normalizeFolders(value)
+        expect(folders.map((folder) => folder.id)).toEqual(storedIds(value))
+        expect(rendered(folders).sort()).toEqual(folders.map((folder) => folder.id).sort())
+      })
+    )
   })
 })

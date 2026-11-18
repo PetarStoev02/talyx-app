@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { describe, expect, it, vi } from 'vitest'
 import { createReleaseChecks } from '../../../src/main/infrastructure/updater/releaseChecks'
 import type {
@@ -90,5 +91,68 @@ describe('release checks', () => {
     await checks.check()
     checks.checkIfOlderThan(HOUR)
     await vi.waitFor(() => expect(fetchLatest).toHaveBeenCalledTimes(2))
+  })
+})
+
+describe('release checks, for any mix of triggers', () => {
+  // The four triggers: the Settings button checks now; start, the hourly timer, a wake and a focus
+  // check only past their staleness limit. Time passes and GitHub answers in between.
+  type Step =
+    | { kind: 'button' }
+    | { kind: 'stale-trigger'; maxAgeMs: number }
+    | { kind: 'time-passes'; ms: number }
+    | { kind: 'github-answers'; result: ReleaseCheck }
+
+  const step: fc.Arbitrary<Step> = fc.oneof(
+    fc.constant({ kind: 'button' as const }),
+    fc.record({
+      kind: fc.constant('stale-trigger' as const),
+      maxAgeMs: fc.constantFrom(0, 15 * 60_000, HOUR)
+    }),
+    fc.record({
+      kind: fc.constant('time-passes' as const),
+      ms: fc.integer({ min: 0, max: 2 * HOUR })
+    }),
+    fc.record({
+      kind: fc.constant('github-answers' as const),
+      result: fc.constantFrom<ReleaseCheck>(
+        { kind: 'available', release: RELEASE },
+        { kind: 'up-to-date' },
+        { kind: 'failed' }
+      )
+    })
+  )
+
+  it('should run one release check at a time, whoever asks', async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.array(step, { maxLength: 40, size: 'medium' }), async (steps) => {
+        const clock = { now: 0 }
+        const answers: Array<(result: ReleaseCheck) => void> = []
+        let atOnce = 0
+        let most = 0
+        const checks = createReleaseChecks({
+          fetchLatest: () => {
+            atOnce += 1
+            most = Math.max(most, atOnce)
+            return new Promise<ReleaseCheck>((resolve) =>
+              answers.push((result) => {
+                atOnce -= 1
+                resolve(result)
+              })
+            )
+          },
+          found: () => undefined,
+          now: () => clock.now
+        })
+        for (const next of steps) {
+          if (next.kind === 'button') void checks.check()
+          if (next.kind === 'stale-trigger') checks.checkIfOlderThan(next.maxAgeMs)
+          if (next.kind === 'time-passes') clock.now += next.ms
+          if (next.kind === 'github-answers') answers.shift()?.(next.result)
+          await new Promise((resolve) => setTimeout(resolve, 0))
+        }
+        expect(most).toBeLessThanOrEqual(1)
+      })
+    )
   })
 })

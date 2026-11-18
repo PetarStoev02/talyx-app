@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import {
   addPrompt,
@@ -560,5 +561,126 @@ describe('chat transcript', () => {
     expect(needsRebuild(event('session.updated', { operation: 'rewind' }))).toBe(true)
     expect(needsRebuild(event('session.updated', { operation: 'model' }))).toBe(false)
     expect(needsRebuild(event('message.delta', { text: 'x' }))).toBe(false)
+  })
+})
+
+describe('chat transcript, for any delivery of a turn sequence', () => {
+  // One part of a reply: streamed text in chunks, or a tool the bot ran.
+  type Part = { kind: 'text'; chunks: string[] } | { kind: 'tool' }
+  const part: fc.Arbitrary<Part> = fc.oneof(
+    fc.record({
+      kind: fc.constant('text' as const),
+      chunks: fc.array(fc.string({ minLength: 1, maxLength: 6 }), { minLength: 1, maxLength: 4 })
+    }),
+    fc.constant({ kind: 'tool' as const })
+  )
+  const turns = fc.array(fc.array(part, { maxLength: 4 }), { minLength: 1, maxLength: 3 })
+
+  // The frames the gateway sends for these turns, in order, each with its sequence number.
+  function frames(replies: Part[][]): GatewayEvent[] {
+    const sent: Array<[string, Record<string, unknown>]> = []
+    replies.forEach((parts, turn) => {
+      const turnId = `turn-${turn}`
+      sent.push(['message.start', { turn_id: turnId }])
+      let segment = 0
+      parts.forEach((reply, index) => {
+        if (reply.kind === 'tool') {
+          const toolId = `tool-${turn}-${index}`
+          sent.push(['tool.start', { tool_id: toolId, name: 'search' }])
+          sent.push(['tool.complete', { tool_id: toolId, duration_s: 1 }])
+          segment += 1
+          return
+        }
+        let offset = 0
+        for (const text of reply.chunks) {
+          sent.push(['message.delta', { text, turn_id: turnId, segment, offset }])
+          offset += text.length
+        }
+      })
+      sent.push(['message.complete', { status: 'complete', turn_id: turnId }])
+    })
+    return sent.map(([type, payload], index) => event(type, payload, index + 1))
+  }
+
+  // Each frame sent again any number of times, at any later point: a replay after a redial. And
+  // the engine's own re-send of a turn's start or text, with no sequence number, before the next
+  // turn starts: the stream cursor alone tells it apart.
+  const delivery = (clean: GatewayEvent[]): fc.Arbitrary<GatewayEvent[]> =>
+    fc
+      .tuple(
+        fc.array(fc.tuple(fc.nat(), fc.nat()), { maxLength: 12 }),
+        fc.array(fc.tuple(fc.nat(), fc.nat()), { maxLength: 6 })
+      )
+      .map(([replays, resends]) => {
+        const delivered = [...clean]
+        for (const [which, where] of replays) {
+          const frame = clean[which % clean.length]
+          const sentAt = delivered.indexOf(frame)
+          delivered.splice(sentAt + 1 + (where % (delivered.length - sentAt)), 0, frame)
+        }
+        const streamed = clean.filter(
+          (frame) =>
+            frame.type !== 'tool.start' &&
+            frame.type !== 'tool.complete' &&
+            frame.type !== 'message.complete'
+        )
+        for (const [which, where] of resends) {
+          const frame = streamed[which % streamed.length]
+          const sentAt = delivered.indexOf(frame)
+          const turnId = (frame.payload as { turn_id: string }).turn_id
+          const nextTurn = delivered.findIndex(
+            (later, index) =>
+              index > sentAt &&
+              later.type === 'message.start' &&
+              (later.payload as { turn_id: string }).turn_id !== turnId
+          )
+          const end = nextTurn < 0 ? delivered.length : nextTurn
+          const unsequenced: GatewayEvent = { ...frame, seq: undefined }
+          delivered.splice(sentAt + 1 + (where % (end - sentAt)), 0, unsequenced)
+        }
+        return delivered
+      })
+
+  const withDelivery = turns
+    .map(frames)
+    .chain((clean) => fc.tuple(fc.constant(clean), delivery(clean)))
+
+  it('should give the same transcript for duplicated and late re-sent frames as for the clean sequence', () => {
+    fc.assert(
+      fc.property(withDelivery, ([clean, delivered]) => {
+        expect(replay(empty(), ...delivered)).toEqual(replay(empty(), ...clean))
+      })
+    )
+  })
+
+  it('should keep every message id unique', () => {
+    fc.assert(
+      fc.property(withDelivery, ([, delivered]) => {
+        const ids = replay(empty(), ...delivered).items.map((item) => item.id)
+        expect(new Set(ids).size).toBe(ids.length)
+      })
+    )
+  })
+
+  it('should answer needsRebuild the same every time and leave the event as it was', () => {
+    const anyEvent = fc.record({
+      type: fc.constantFrom('session.replay_gap', 'session.updated', 'message.delta', 'tool.start'),
+      payload: fc.option(
+        fc.record(
+          { operation: fc.constantFrom('rewind', 'model', undefined) },
+          { requiredKeys: [] }
+        )
+      ),
+      session_id: fc.constant(SESSION)
+    })
+    fc.assert(
+      fc.property(anyEvent, (raw) => {
+        const frame = raw as unknown as GatewayEvent
+        const copy = structuredClone(frame)
+        const first = needsRebuild(frame)
+        expect(needsRebuild(frame)).toBe(first)
+        expect(frame).toEqual(copy)
+      })
+    )
   })
 })
