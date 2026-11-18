@@ -30,8 +30,11 @@ const available: UpdateState = { kind: 'available', release }
 const older = attached('0.0.1')
 
 describe('updateItems', () => {
-  it('should offer nothing when the engine is current and no release is out', () => {
-    expect(updateItems(attached(EXPECTED_ENGINE_VERSION), none)).toEqual([])
+  it.each([
+    ['the pinned', EXPECTED_ENGINE_VERSION],
+    ['a newer', '99.0.0']
+  ])('should offer nothing when %s engine is attached and no release is out', (_case, version) => {
+    expect(updateItems(attached(version), none)).toEqual([])
   })
 
   it('should offer the pinned engine when the attached engine is older', () => {
@@ -63,8 +66,12 @@ describe('releaseAge', () => {
 
   it.each([
     [30_000, { unit: 'now', count: 0 }],
+    [minute - 1, { unit: 'now', count: 0 }],
+    [minute, { unit: 'minutes', count: 1 }],
     [5 * minute, { unit: 'minutes', count: 5 }],
+    [60 * minute, { unit: 'hours', count: 1 }],
     [3 * 60 * minute + 59 * minute, { unit: 'hours', count: 3 }],
+    [24 * 60 * minute, { unit: 'days', count: 1 }],
     [2 * 24 * 60 * minute, { unit: 'days', count: 2 }]
   ])('should read %i ms after publishing as %o', (elapsed, age) => {
     expect(releaseAge(release.publishedAt, published + elapsed)).toEqual(age)
