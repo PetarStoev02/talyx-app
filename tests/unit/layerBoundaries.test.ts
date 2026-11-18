@@ -258,6 +258,24 @@ describe('layer boundaries', () => {
       'A file directly under features/ imports no other feature'
     ],
     [
+      'a page importing App',
+      `${R}/pages/agents/x.tsx`,
+      "import '@/App'",
+      'pages/ imports only widgets/, features/ and shared/'
+    ],
+    [
+      'shared importing the renderer entry',
+      `${R}/shared/lib/x.ts`,
+      "import '@renderer/main'",
+      'shared/ imports nothing above it'
+    ],
+    [
+      'a feature importing a slice its name prefixes',
+      `${R}/features/settings/x.ts`,
+      "import '@features/settings-extra/x'",
+      'features/settings imports no other feature'
+    ],
+    [
       'a re-export',
       `${R}/features/bots/x.ts`,
       "export * from '@app/x'",
