@@ -6,6 +6,7 @@ An edge is labelled with its event, then in brackets the cases that take it when
 
 ```mermaid
 stateDiagram-v2
+  [*] --> idle
   idle --> starting : start
   starting --> recording : opened
   starting --> idle : failed

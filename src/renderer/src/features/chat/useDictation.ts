@@ -1,20 +1,24 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef } from 'react'
 import { problemOf, type Problem } from '@shared/lib/problem'
 
 export type DictationState = 'idle' | 'starting' | 'recording' | 'transcribing'
 /** What moves dictation on: the first toggle, the microphone, the recorder, the transcription. */
 export type DictationEvent = 'start' | 'opened' | 'failed' | 'stopped' | 'settled'
 
-/** Where each event takes dictation; an event a state does not list leaves it where it is. */
-export const DICTATION_TRANSITIONS: Record<
-  DictationState,
-  Partial<Record<DictationEvent, DictationState>>
-> = {
+// Where each event takes dictation; an event a state does not list leaves it where it is.
+const TRANSITIONS: Record<DictationState, Partial<Record<DictationEvent, DictationState>>> = {
   idle: { start: 'starting' },
   starting: { opened: 'recording', failed: 'idle' },
   // The second toggle asks the recorder to stop; `stopped` is the recorder saying it has.
   recording: { stopped: 'transcribing' },
   transcribing: { settled: 'idle' }
+}
+
+export const DICTATION_START: DictationState = 'idle'
+
+/** The state `event` takes dictation to; the hook changes state only through this. */
+export function dictationAfter(state: DictationState, event: DictationEvent): DictationState {
+  return TRANSITIONS[state][event] ?? state
 }
 
 // The first format this platform records; the engine accepts any of them.
@@ -29,11 +33,9 @@ export function useDictation(
   onText: (text: string) => void,
   onError: (error: unknown) => void
 ): { state: DictationState; toggle: () => void } {
-  const [state, setState] = useState<DictationState>('idle')
+  const [state, move] = useReducer(dictationAfter, DICTATION_START)
   const recorder = useRef<MediaRecorder | null>(null)
   const closed = useRef(false)
-  const move = (event: DictationEvent): void =>
-    setState((current) => DICTATION_TRANSITIONS[current][event] ?? current)
 
   // Leaving the chat mid-recording releases the microphone and drops the recording.
   useEffect(() => {

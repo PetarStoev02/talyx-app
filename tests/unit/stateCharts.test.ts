@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 vi.mock('electron-log', () => ({ default: { warn: vi.fn(), info: vi.fn() } }))
 
 import {
-  DICTATION_TRANSITIONS,
+  DICTATION_START,
+  dictationAfter,
   type DictationEvent,
   type DictationState
 } from '../../src/renderer/src/features/chat/useDictation'
@@ -62,29 +63,25 @@ describe('state charts in docs/state', () => {
   })
 
   describe('dictation', () => {
-    const states = Object.keys(DICTATION_TRANSITIONS) as DictationState[]
+    const states = unionMembers(DICTATION, 'DictationState', null) as DictationState[]
     const events = unionMembers(DICTATION, 'DictationEvent', null) as DictationEvent[]
     const runs: Run[] = states.flatMap((from) =>
-      events.map((event) => ({
-        from,
-        event,
-        to: DICTATION_TRANSITIONS[from][event] ?? null,
-        via: [],
-        when: {}
-      }))
+      events.map((event) => {
+        const after = dictationAfter(from, event)
+        return { from, event, to: after === from ? null : after, via: [], when: {} }
+      })
     )
 
-    it('should give every dictation state a row and every event a move', () => {
-      expect(sorted(states)).toEqual(sorted(unionMembers(DICTATION, 'DictationState', null)))
+    it('should move some dictation state on every event', () => {
       const used = new Set(runs.filter((run) => run.to !== null).map((run) => run.event))
       expect(sorted(used)).toEqual(sorted(events))
     })
 
-    it('should keep docs/state/dictation.md the chart of DICTATION_TRANSITIONS', () => {
+    it('should keep docs/state/dictation.md the chart of dictationAfter', () => {
       expectCommittedChart('dictation', {
         title: 'Dictation state',
         sources: [DICTATION],
-        diagram: stateDiagram(runs, null),
+        diagram: stateDiagram(runs, DICTATION_START),
         notes: []
       })
     })
@@ -298,7 +295,14 @@ interface Line {
   /** Dials main has not answered yet. */
   dials: Array<{ open: () => void; refuse: () => void }>
   dropAll: () => void
+  /** From now on the engine answers no call, heartbeats included. */
+  hush: () => void
 }
+
+// Timers fired before "the engine goes quiet" gives up on a state change.
+const QUIET_TIMERS = 10
+// Event-loop turns an event gets to settle; one more must change nothing.
+const SETTLE_TURNS = 10
 
 const CONNECTION_EVENTS: Record<string, (line: Line) => Promise<unknown> | void> = {
   connect: (line) => void line.host.connect().catch(() => undefined),
@@ -308,16 +312,27 @@ const CONNECTION_EVENTS: Record<string, (line: Line) => Promise<unknown> | void>
   'socket opens': (line) => line.dials.shift()?.open(),
   'open fails': (line) => line.dials.shift()?.refuse(),
   'socket closes': (line) => line.dropAll(),
-  // The next timer fires: a redial's backoff, the dial timeout, a heartbeat.
-  'time passes': () => vi.advanceTimersToNextTimerAsync()
+  // Time runs, timer by timer, until the state changes: a redial's backoff, the dial timeout, or
+  // the heartbeat deadline of a socket whose engine went silent.
+  'engine goes quiet': async (line) => {
+    line.hush()
+    const before = line.states.length
+    for (let fired = 0; fired < QUIET_TIMERS && line.states.length === before; fired += 1) {
+      if (vi.getTimerCount() === 0) return
+      await vi.advanceTimersToNextTimerAsync()
+    }
+  }
 }
 
-/** How to reach each state, by the events that lead there; `when` tells the ways apart. */
+/**
+ * How to reach each state, by the events that lead there; `when` tells the ways apart. A new way
+ * into a state that answers some event differently needs its own row, or its edges are missing.
+ */
 const REACH: Record<ConnectionState, Array<{ when: string; path: string[] }>> = {
   idle: [{ when: 'never dialled', path: [] }],
   connecting: [
     { when: 'first dial', path: ['connect'] },
-    { when: 'redial', path: ['connect', 'socket opens', 'socket closes', 'time passes'] }
+    { when: 'redial', path: ['connect', 'socket opens', 'socket closes', 'engine goes quiet'] }
   ],
   open: [{ when: 'open', path: ['connect', 'socket opens'] }],
   closed: [
@@ -325,8 +340,8 @@ const REACH: Record<ConnectionState, Array<{ when: string; path: string[] }>> = 
     { when: 'disconnected', path: ['connect', 'socket opens', 'disconnect'] }
   ],
   error: [
-    { when: 'redial waiting', path: ['connect', 'time passes'] },
-    { when: 'disconnected', path: ['connect', 'time passes', 'disconnect'] }
+    { when: 'redial waiting', path: ['connect', 'engine goes quiet'] },
+    { when: 'disconnected', path: ['connect', 'engine goes quiet', 'disconnect'] }
   ]
 }
 
@@ -337,12 +352,26 @@ async function dialAlong(path: string[]): Promise<Line> {
     ...(await importOriginal<typeof import('@shared/engine/reconnect-backoff')>()),
     reconnectBackoffDelayMs: () => BACKOFF_MS
   }))
-  const { dropAll } = installFakeEngineApi(() => ({}))
+  let quiet = false
+  const { dropAll } = installFakeEngineApi(() => (quiet ? undefined : {}))
   const api = (
     globalThis as unknown as {
-      window: { api: { openEngineSocket: (id: string, profile: string) => Promise<void> } }
+      window: {
+        api: {
+          openEngineSocket: (id: string, profile: string) => Promise<void>
+          onEngineSocketFrame: (listener: (id: string, text: string) => void) => () => void
+        }
+      }
     }
   ).window.api
+  // The installed engine's greeting asks for heartbeats; the shared fake's does not.
+  const listen = api.onEngineSocketFrame
+  api.onEngineSocketFrame = (listener) =>
+    listen((id, text) => {
+      const frame = JSON.parse(text) as { params?: { type?: string; payload?: object } }
+      if (frame.params?.type === 'gateway.ready') frame.params.payload = { heartbeat: true }
+      listener(id, JSON.stringify(frame))
+    })
   const answer = api.openEngineSocket
   const dials: Line['dials'] = []
   api.openEngineSocket = (id, profile) =>
@@ -353,7 +382,15 @@ async function dialAlong(path: string[]): Promise<Line> {
       })
     )
   const { host } = await import('@shared/engine/host')
-  const line: Line = { host, states: [], dials, dropAll }
+  const line: Line = {
+    host,
+    states: [],
+    dials,
+    dropAll,
+    hush: () => {
+      quiet = true
+    }
+  }
   host.onState((state) => line.states.push(state))
   for (const event of path) await act(line, event)
   return line
@@ -363,8 +400,11 @@ async function dialAlong(path: string[]): Promise<Line> {
 async function act(line: Line, event: string): Promise<string> {
   const before = Date.now()
   await CONNECTION_EVENTS[event](line)
-  for (let turn = 0; turn < 10; turn += 1) await vi.advanceTimersByTimeAsync(0)
-  if (event !== 'time passes') return event
+  for (let turn = 0; turn < SETTLE_TURNS; turn += 1) await vi.advanceTimersByTimeAsync(0)
+  const settled = line.states.length
+  await vi.advanceTimersByTimeAsync(0)
+  expect(line.states.length, `"${event}" was still changing state`).toBe(settled)
+  if (event !== 'engine goes quiet') return event
   const waited = Date.now() - before
   return waited === BACKOFF_MS ? 'backoff elapses' : `no answer in ${waited / 1000} s`
 }
@@ -377,9 +417,11 @@ function backoffNote(): string {
     if (reconnectBackoffDelayMs(attempt + 1, { jitter: false }) === ceiling) break
   }
   const time = (ms: number): string => (ms < 1000 ? `${ms} ms` : `${ms / 1000} s`)
+  const last = ladder.length - 1
   return (
-    `A redial waits a random time below its attempt's ceiling: ${ladder.slice(0, -1).map(time).join(', ')}, ` +
-    `then ${time(ladder.at(-1) ?? 0)} for every attempt after. The count starts again after a socket ` +
-    `that stayed open ${time(RECONNECT_STABLE_OPEN_MS)}.`
+    `Redial n waits a random time below its ceiling: ${ladder.slice(0, last).map(time).join(', ')} ` +
+    `for n = 0 to ${last - 1}, and ${time(ladder[last])} from n = ${last} on. A socket that stayed ` +
+    `open ${time(RECONNECT_STABLE_OPEN_MS)} sets n back to 0; any other drop or failed dial adds ` +
+    `one, so the first redial after a failed dial is n = 1.`
   )
 }

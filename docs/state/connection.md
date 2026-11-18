@@ -17,6 +17,7 @@ stateDiagram-v2
   open --> closed : disconnect
   open --> closed : drop on purpose
   open --> closed : socket closes
+  open --> closed : no answer in 45 s
   closed --> connecting : connect
   closed --> connecting : retry now
   closed --> connecting : backoff elapses (redial waiting)
@@ -25,4 +26,4 @@ stateDiagram-v2
   error --> connecting : backoff elapses (redial waiting)
 ```
 
-A redial waits a random time below its attempt's ceiling: 300 ms, 600 ms, 1.2 s, 2.4 s, 4.8 s, 9.6 s, then 15 s for every attempt after. The count starts again after a socket that stayed open 5 s.
+Redial n waits a random time below its ceiling: 300 ms, 600 ms, 1.2 s, 2.4 s, 4.8 s, 9.6 s for n = 0 to 5, and 15 s from n = 6 on. A socket that stayed open 5 s sets n back to 0; any other drop or failed dial adds one, so the first redial after a failed dial is n = 1.
