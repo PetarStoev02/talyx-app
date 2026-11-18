@@ -1,8 +1,11 @@
+import fc from 'fast-check'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { mcpTools } from '../../../src/renderer/src/features/bots/mcp'
 import type { ApprovalRequest } from '../../../src/renderer/src/features/bots/mcp'
-import { pinnedBots } from '../../../src/renderer/src/features/bots/roster'
+import { lookOf } from '../../../src/renderer/src/features/bots/look'
+import { botTitle, pinnedBots } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
+import { t } from '../../../src/renderer/src/shared/lib/i18n'
 import { mcpToolList } from '../../../src/shared/mcp'
 import type { McpAnswer } from '../../../src/shared/mcp'
 import { BOT_META_KEY, backendFor, engineDouble, pngOf } from './engineDouble'
@@ -15,7 +18,9 @@ let asked: ApprovalRequest[]
 let allow: boolean
 let call: (tool: string, args?: unknown) => Promise<McpAnswer>
 
-beforeEach(() => {
+beforeEach(setUp)
+
+function setUp(): void {
   useRoster.setState({
     snapshot: { bots: [], folders: [], rooms: [], roomFolders: {}, roomPins: [], itemOrder: {} },
     selection: null,
@@ -33,7 +38,7 @@ beforeEach(() => {
     return allow
   })
   call = (tool, args = {}) => run(tool, args)
-})
+}
 
 /** The tool's result, which must have succeeded. */
 async function ok(tool: string, args: unknown = {}): Promise<Record<string, unknown>> {
@@ -195,6 +200,55 @@ describe('MCP tools', () => {
       })
       expect(metaOf('analyst').title).toBe('Numbers')
       expect(engine.profiles.analyst.model?.model).toBe('9-route-provider')
+    })
+
+    it('should say the other fields were saved exactly when one was, when the user says no to a costly model', async () => {
+      // Each field: left out, given as it is, given with stray spaces, or changed.
+      const given = fc.record({
+        title: fc.constantFrom('', 'same', 'padded', 'Numbers'),
+        description: fc.constantFrom('', 'same', 'padded', 'Counts things'),
+        look: fc.constantFrom('', 'same', 'shape', 'face')
+      })
+      const profile = fc.constantFrom('analyst', 'default')
+      await fc.assert(
+        fc.asyncProperty(profile, fc.boolean(), given, async (name, usesDefault, fields) => {
+          setUp()
+          engine.expensiveModels.add('paid-model')
+          allow = false
+          const meta = { ...(engine.metadata[name][BOT_META_KEY] as object), usesDefault }
+          engine.metadata[name][BOT_META_KEY] = meta
+          const bot = { name, meta }
+          const look = lookOf(bot)
+          const value = (field: string, same: string): string | undefined =>
+            field === ''
+              ? undefined
+              : field === 'same'
+                ? same
+                : field === 'padded'
+                  ? ` ${same} `
+                  : field
+          const args = {
+            profile: name,
+            title: value(fields.title, botTitle(bot)),
+            description: value(fields.description, engine.profiles[name].description),
+            look: {
+              '': undefined,
+              same: look,
+              shape: { ...look, shape: 'tower' },
+              face: { ...look, faces: !look.faces }
+            }[fields.look],
+            model: { provider: 'custom', model: 'paid-model' }
+          }
+          const stored = (): string =>
+            JSON.stringify([engine.metadata[name], engine.profiles[name], engine.assets])
+          const before = stored()
+          const answer = await call('update_bot', args)
+          expect(answer).toEqual({
+            ok: false,
+            text: stored() === before ? REFUSED : t('mcp.refusedModel', 'en')
+          })
+        })
+      )
     })
 
     it('should refuse a bot that does not exist', async () => {
