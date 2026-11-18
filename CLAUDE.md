@@ -300,7 +300,7 @@ export function AgentsPage(): React.JSX.Element {
   // 1. Zustand stores
   const t = useLanguage((s) => s.t)
   // 2. Local state
-  // 3. Effects
+  // 3. Named hooks: effects and timers live in shared/hooks, enforced by `npm run lint`
   // 4. Handlers (async functions with explicit Promise<void>)
   // 5. JSX
   return <div>...</div>

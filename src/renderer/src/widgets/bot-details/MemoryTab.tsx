@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Tabs } from 'radix-ui'
 import { Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -17,6 +17,8 @@ import { ProblemMessage, TryAgain } from '@features/bots/ProblemMessage'
 import type { Bot } from '@features/bots/types'
 import { AppError, ownOrFailure, problemOf, problemText } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'
+import { useLoad } from '@shared/hooks/useLoad'
+import { useOnChange } from '@shared/hooks/useOnChange'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { IconButton } from '@shared/ui/IconButton'
@@ -139,20 +141,16 @@ function MemoriesSection({
     [backend, bot.name]
   )
 
-  useEffect(() => {
-    let current = true
-    loadMemories(backend, bot.name).then(
-      (loaded) => {
-        if (!current) return
+  useLoad(
+    useCallback(() => loadMemories(backend, bot.name), [backend, bot.name]),
+    {
+      loaded: (loaded) => {
         setList(loaded)
         setProblem(null)
       },
-      (error: unknown) => current && setProblem(problemOf(error))
-    )
-    return () => {
-      current = false
+      failed: (error) => setProblem(problemOf(error))
     }
-  }, [backend, bot.name])
+  )
 
   // After a failure the list is read again too. When the bot changed the memory meanwhile, the
   // dialog closes and the fresh list shows it; any other failure keeps the dialog and its text.
@@ -170,10 +168,9 @@ function MemoriesSection({
   }
 
   const shown = list && filterMemories(list.memories, query)
-  const total = list?.memories.length
-  useEffect(() => {
+  useOnChange(list?.memories.length, (total) => {
     if (total !== undefined) counted('memories', total)
-  }, [counted, total])
+  })
 
   return (
     <div className="space-y-2">
@@ -275,20 +272,17 @@ function SkillsSection({
   // Skills whose change the engine has not answered yet.
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set())
 
-  useEffect(() => {
-    let current = true
-    loadSkills(backend, bot.name).then(
-      (loaded) => {
-        if (!current) return
-        setSkills(loaded)
-        setProblem(null)
-      },
-      (error: unknown) => current && setProblem(problemOf(error))
-    )
-    return () => {
-      current = false
-    }
+  const read = useCallback(() => {
+    void attempt // each attempt (Try again) is a new load, so it reads the skills again
+    return loadSkills(backend, bot.name)
   }, [backend, bot.name, attempt])
+  useLoad(read, {
+    loaded: (loaded) => {
+      setSkills(loaded)
+      setProblem(null)
+    },
+    failed: (error) => setProblem(problemOf(error))
+  })
 
   // The switch moves at once and moves back if the engine refuses; it waits for the engine's
   // answer before it moves again, so two changes never cross.
@@ -318,10 +312,9 @@ function SkillsSection({
   }
 
   const shown = skills && filterSkills(skills, query)
-  const total = skills?.length
-  useEffect(() => {
+  useOnChange(skills?.length, (total) => {
     if (total !== undefined) counted('skills', total)
-  }, [counted, total])
+  })
 
   return (
     <div className="space-y-2">

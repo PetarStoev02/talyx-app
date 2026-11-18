@@ -8,6 +8,8 @@ import { readdirSync } from 'node:fs'
 import { builtinModules } from 'node:module'
 import path from 'node:path'
 import { VENDORED_ENGINE_FILES } from './eslint.vendored.mjs'
+import { KERNEL, PRODUCT, kernelPlugin } from './eslint.kernel.mjs'
+import { RATCHET } from './eslint.ratchet.mjs'
 
 const NO_EM_DASH_MESSAGE = 'Em dashes are banned. Rewrite the sentence.'
 // Built from parts so this file does not contain the characters it bans.
@@ -277,6 +279,19 @@ export default defineConfig(
     }
   },
   layerBoundaries,
+  // Effects and timers only in the kernel; listed files wait their turn (tests/unit/ratchet.test.ts).
+  {
+    files: PRODUCT,
+    ignores: [...KERNEL, ...RATCHET.effects],
+    plugins: { kernel: kernelPlugin },
+    rules: { 'kernel/no-effect': 'error' }
+  },
+  {
+    files: PRODUCT,
+    ignores: [...KERNEL, ...RATCHET.timers],
+    plugins: { kernel: kernelPlugin },
+    rules: { 'kernel/no-timer': 'error' }
+  },
   {
     // Every handler goes through handle(), which checks its answer against the channel table.
     files: ['src/main/**/*.ts'],
