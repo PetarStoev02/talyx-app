@@ -80,30 +80,27 @@ describe('roster selection and unread state', () => {
     expect(botChatId(bot('a', { id: 'root' }))).toBe('root')
     expect(botChatId(bot('a'))).toBeNull()
   })
-})
-
-describe('the selection when another client changes the roster', () => {
-  // Bots and rooms from one set of ids, since a room and a bot may share one.
-  const id = fc.constantFrom('analyst', 'writer', 'standup')
-  const roster = fc
-    .record({
-      bots: fc.uniqueArray(fc.record({ name: id, hidden: fc.boolean() }), {
-        selector: (item) => item.name
-      }),
-      rooms: fc.uniqueArray(id)
-    })
-    .map(
-      ({ bots, rooms }): RosterSnapshot => ({
-        ...snapshotWith({}),
-        bots: bots.map(({ name, hidden }) => ({ ...bot(name), meta: hidden ? { hidden } : {} })),
-        rooms: rooms.map((room_id) => ({ room_id, name: room_id, members: [] }))
-      })
-    )
-  const selected = fc.option(fc.record({ kind: fc.constantFrom('bot', 'room'), id }), {
-    nil: null
-  }) as fc.Arbitrary<Selection>
 
   it('should never keep a bot or room selected once it is hidden or deleted', () => {
+    // Bots and rooms from one set of ids, since a room and a bot may share one.
+    const id = fc.constantFrom('analyst', 'writer', 'standup')
+    const roster = fc
+      .record({
+        bots: fc.uniqueArray(fc.record({ name: id, hidden: fc.boolean() }), {
+          selector: (item) => item.name
+        }),
+        rooms: fc.uniqueArray(id)
+      })
+      .map(
+        ({ bots, rooms }): RosterSnapshot => ({
+          ...snapshotWith({}),
+          bots: bots.map(({ name, hidden }) => ({ ...bot(name), meta: hidden ? { hidden } : {} })),
+          rooms: rooms.map((room_id) => ({ room_id, name: room_id, members: [] }))
+        })
+      )
+    const selected = fc.option(fc.record({ kind: fc.constantFrom('bot', 'room'), id }), {
+      nil: null
+    }) as fc.Arbitrary<Selection>
     fc.assert(
       fc.property(selected, roster, (selection, next) => {
         useRoster.setState({ selection })

@@ -100,7 +100,7 @@ describe('module rows when a module is installed', () => {
 
   it('should never move the rows when a module is installed, whatever the key and catalog', () => {
     const id = fc.constantFrom('atlas', 'hello', 'workflows', 'zeta')
-    const name = fc.constantFrom('Atlas', 'Hello', 'Workflows', 'aardvark', 'Hello')
+    const name = fc.constantFrom('Atlas', 'Hello', 'Workflows', 'aardvark')
     const version = fc.constantFrom('1.0.0', '1.1.0', '2.0.0')
     const listed = fc.uniqueArray(fc.record({ id, name, version, compatible: fc.boolean() }), {
       selector: (module) => module.id
