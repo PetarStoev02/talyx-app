@@ -41,7 +41,8 @@ const localPlugin = {
       create(context) {
         const from = unitOf(context.filename)
         const check = (node) => {
-          const source = node.source?.value
+          const source = node.source?.value ?? node.source?.quasis?.[0]?.value.cooked
+          if (node.source?.expressions?.length) return
           if (typeof source !== 'string' || !source.startsWith('.')) return
           const to = unitOf(path.resolve(path.dirname(context.filename), source))
           const crosses = to.unit === 'contract' || (from.renderer && to.renderer)
@@ -121,7 +122,7 @@ const RENDERER_RUNTIME = {
 }
 
 /**
- * Bans the patterns in static imports and re-exports, and in `import('x')` calls and types,
+ * Bans the patterns in static imports and re-exports, and in `import('x')` calls (quoted or backticked) and types,
  * which no-restricted-imports does not read. esquery regexes cannot hold a slash, hence `\x2F`.
  */
 function restrictImports(patterns) {
@@ -129,10 +130,19 @@ function restrictImports(patterns) {
     'no-restricted-imports': ['error', { patterns }],
     'no-restricted-syntax': [
       'error',
-      ...patterns.map(({ regex, message }) => ({
-        selector: `:matches(ImportExpression, TSImportType) > Literal.source[value=/${regex.replaceAll('/', '\\x2F')}/]`,
-        message
-      }))
+      ...patterns.flatMap(({ regex, message }) => {
+        const value = `/${regex.replaceAll('/', '\\x2F')}/`
+        return [
+          {
+            selector: `:matches(ImportExpression, TSImportType) > Literal.source[value=${value}]`,
+            message
+          },
+          {
+            selector: `ImportExpression > TemplateLiteral.source[expressions.length=0] > TemplateElement[value.cooked=${value}]`,
+            message
+          }
+        ]
+      })
     ]
   }
 }

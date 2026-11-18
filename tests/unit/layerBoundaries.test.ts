@@ -185,6 +185,30 @@ describe('layer boundaries', () => {
       "import it as '@contract/api'"
     ],
     [
+      'a backticked import() call',
+      `${R}/features/bots/x.ts`,
+      'void import(`@widgets/chat`)',
+      'features/ imports only shared/'
+    ],
+    [
+      'a backticked import() of a Node module',
+      `${R}/features/bots/x.ts`,
+      'void import(`node:fs`)',
+      'reach Electron and Node through window.api'
+    ],
+    [
+      'a backticked relative import() into the contract',
+      `${R}/features/bots/x.ts`,
+      'void import(`../../../../shared/api`)',
+      "import it as '@contract/api'"
+    ],
+    [
+      'a backticked import() from preload',
+      'src/preload/x.ts',
+      'void import(`../renderer/src/App`)',
+      'never import the renderer'
+    ],
+    [
       'a re-export',
       `${R}/features/bots/x.ts`,
       "export * from '@app/x'",
