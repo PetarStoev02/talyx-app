@@ -8,22 +8,46 @@ import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
 import { EFFECT_MESSAGE, KERNEL, TIMER_MESSAGE, kernelPlugin } from '../../eslint.kernel.mjs'
 import { RATCHET } from '../../eslint.ratchet.mjs'
+import {
+  DEFAULT_EXPORT_MESSAGE,
+  OPTIONAL_PROPERTY_MESSAGE,
+  STYLE_RULES,
+  magicNumberMessage,
+  stylePlugin
+} from '../../eslint.style.mjs'
 
 const R = 'src/renderer/src'
 const RATCHET_FILE = 'eslint.ratchet.mjs'
-const RULES = { effects: 'kernel/no-effect', timers: 'kernel/no-timer' } as const
+// Each list's rule as the config runs it, and what to do instead of adding a file to the list.
+const RULES = {
+  effects: {
+    rule: ['kernel/no-effect', 'error'],
+    fix: 'move the new code into a hook under shared/hooks'
+  },
+  timers: {
+    rule: ['kernel/no-timer', 'error'],
+    fix: 'move the new code into a hook under shared/hooks'
+  },
+  optionalProperties: { rule: STYLE_RULES.optionalProperties, fix: 'write `T | null` instead' },
+  magicNumbers: { rule: STYLE_RULES.magicNumbers, fix: 'name the number as a constant' }
+} as const
 type List = keyof typeof RULES
 const LISTS = Object.keys(RULES) as List[]
 
 // The whole config, so these cases also prove which paths the rules reach.
 const eslint = new ESLint()
 
-async function kernelErrors(filePath: string, source: string): Promise<string[]> {
+async function errorsOf(plugin: string, filePath: string, source: string): Promise<string[]> {
   const [result] = await eslint.lintText(`${source}\n`, { filePath })
   return result.messages
-    .filter((message) => message.ruleId?.startsWith('kernel/'))
+    .filter((message) => message.ruleId?.startsWith(`${plugin}/`))
     .map((message) => message.message)
 }
+
+const kernelErrors = (filePath: string, source: string): Promise<string[]> =>
+  errorsOf('kernel', filePath, source)
+const styleErrors = (filePath: string, source: string): Promise<string[]> =>
+  errorsOf('style', filePath, source)
 
 /** Whether `file` still breaks `list`'s rule, read without the allowlist that exempts it. */
 function stillViolates(file: string, list: List): boolean {
@@ -39,16 +63,19 @@ function stillViolates(file: string, list: List): boolean {
           parser: tseslint.parser,
           parserOptions: { ecmaFeatures: { jsx: true } }
         },
-        plugins: { kernel: kernelPlugin },
-        rules: { [RULES[list]]: 'error' }
+        plugins: { kernel: kernelPlugin, style: stylePlugin },
+        rules: { [RULES[list].rule[0]]: RULES[list].rule[1] }
       }
     ],
     file
   )
   // Anything but the rule's own report (a parse error, no matching config) must not pass.
-  const other = messages.find((message) => message.ruleId !== RULES[list])
+  // Warnings are left out: noInlineConfig warns about each disable comment it ignores.
+  const other = messages.find(
+    (message) => message.severity === 2 && message.ruleId !== RULES[list].rule[0]
+  )
   if (other) throw new Error(`${file}: ${other.message}`)
-  return messages.length > 0
+  return messages.some((message) => message.ruleId === RULES[list].rule[0])
 }
 
 function git(...args: string[]): string {
@@ -153,6 +180,73 @@ describe('kernel rules', () => {
   })
 })
 
+describe('style rules', () => {
+  it.each([`${R}/features/bots/x.ts`, 'src/shared/x.ts'])(
+    'should refuse an optional property in a data type in %s',
+    async (filePath) => {
+      expect(await styleErrors(filePath, 'export interface Bot {\n  title?: string\n}')).toEqual([
+        OPTIONAL_PROPERTY_MESSAGE
+      ])
+    }
+  )
+
+  it.each([
+    ['a props interface', 'export interface AvatarProps {\n  size?: number\n}'],
+    ['a props type alias', 'export type AvatarProps = { size?: number }'],
+    [
+      'an inline parameter type',
+      'export function f({ size }: { size?: number }): number {\n  return size ?? 0\n}'
+    ],
+    ['a zod-inferred type', 'import { z } from "zod"\nexport type X = z.infer<typeof X>'],
+    ['a nullable property', 'export interface Bot {\n  title: string | null\n}']
+  ])('should allow %s', async (_name, source) => {
+    expect(await styleErrors(`${R}/features/bots/x.tsx`, source)).toEqual([])
+  })
+
+  it('should leave optional properties alone outside the contract and the features', async () => {
+    const source = 'export interface Bot {\n  title?: string\n}'
+    expect(await styleErrors(`${R}/widgets/chat/x.ts`, source)).toEqual([])
+  })
+
+  it.each([
+    ['a default declaration', 'export default function f(): void {}'],
+    ['a default specifier', 'const f = 1\nexport { f as default }']
+  ])('should refuse %s', async (_name, source) => {
+    expect(await styleErrors(`${R}/widgets/chat/x.ts`, source)).toEqual([DEFAULT_EXPORT_MESSAGE])
+  })
+
+  it.each(['electron.vite.config.ts', 'tests/fixtures/x/vite.config.ts', 'src/main/x.d.ts'])(
+    'should allow a default export in %s',
+    async (filePath) => {
+      expect(await styleErrors(filePath, 'const f = 1\nexport default f')).toEqual([])
+    }
+  )
+
+  it.each(['src/main/x.ts', `${R}/features/chat/x.ts`])(
+    'should refuse a magic number in %s',
+    async (filePath) => {
+      expect(await styleErrors(filePath, 'export const f = (n: number): number => n * 60')).toEqual(
+        [magicNumberMessage('60')]
+      )
+    }
+  )
+
+  it.each([
+    ['0, 1 and -1', 'export const f = (n: number): number => (n - 1) * -1 + 0'],
+    ['an array index', 'export const f = (a: number[]): number | undefined => a[2]'],
+    ['a named constant', 'const MINUTE = 60\nexport const f = (n: number): number => n * MINUTE'],
+    ['a default value', 'export const f = (n = 5): number => n'],
+    ['a numeric literal type', 'export type Version = 2']
+  ])('should allow %s', async (_name, source) => {
+    expect(await styleErrors('src/main/x.ts', source)).toEqual([])
+  })
+
+  it('should leave numbers alone outside main and the features', async () => {
+    const source = 'export const f = (n: number): number => n * 60'
+    expect(await styleErrors(`${R}/widgets/chat/x.ts`, source)).toEqual([])
+  })
+})
+
 describe('ratchet', () => {
   it.each(LISTS.flatMap((list) => RATCHET[list].map((file) => [list, file] as const)))(
     'should list only files that still break the rule: %s %s (else remove it from the list)',
@@ -161,17 +255,22 @@ describe('ratchet', () => {
     }
   )
 
-  it.each(LISTS)('should list no file in the kernel, where %s are allowed anyway', (list) => {
-    const inKernel = (file: string): boolean =>
-      KERNEL.some((glob) => file.startsWith(glob.replace('**', '')))
-    expect(RATCHET[list].filter(inKernel)).toEqual([])
-  })
+  it.each(['effects', 'timers'] as const)(
+    'should list no file in the kernel, where %s are allowed anyway',
+    (list) => {
+      const inKernel = (file: string): boolean =>
+        KERNEL.some((glob) => file.startsWith(glob.replace('**', '')))
+      expect(RATCHET[list].filter(inKernel)).toEqual([])
+    }
+  )
 
   it('should gain no file that the list did not have where this branch left main', async () => {
     const base = await baseRatchet()
     for (const list of LISTS) {
-      const added = RATCHET[list].filter((file) => base && !base[list].includes(file))
-      expect(added, `${list}: move the new code into a hook under shared/hooks instead`).toEqual([])
+      // A list main does not have yet comes with the change that adds its rule.
+      const baseList = base?.[list]
+      const added = RATCHET[list].filter((file) => baseList && !baseList.includes(file))
+      expect(added, `${list}: ${RULES[list].fix}`).toEqual([])
     }
   })
 })
