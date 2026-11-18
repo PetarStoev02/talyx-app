@@ -27,15 +27,19 @@ Preconditions:
 - The scratch bot is selected: run `control-talyx browser click --role button --name "Verify scratch"`.
 
 - **Type.** Run `control-talyx browser fill --role textbox --name "Message Verify scratch" --value "Reply with the single word pong."`. The `Send` button is enabled.
-- **Send.** Choose `Send`. Run `control-talyx browser click --role button --name "Send" --exact`. The transcript shows the sent text; the composer is empty.
-- **Reply.** Run `control-talyx browser wait --role button --name "Send" --timeout 60000` after `Stop` disappears, or snapshot until the transcript shows a reply containing `pong`.
-- **Proof.** Run `control-talyx browser snapshot --path /tmp/talyx-verify/evidence/chat-send/after.aria.txt` and `control-talyx browser screenshot --path /tmp/talyx-verify/evidence/chat-send/after.png`. The snapshot has the sent text and the reply. Second view: reselect another bot, then `Verify scratch` again; the transcript still shows both.
+- **Send.** Choose `Send`. Run `control-talyx browser click --role button --name "Send" --exact`. The composer empties and `Send` is disabled. While the bot answers the snapshot has `status: Verify scratch is typing` and `button "Stop"`.
+- **Reply.** Snapshot until `status: Verify scratch replied` shows. The transcript is an unnamed `list` in `region "Chat with Verify scratch"`: one `listitem` with `paragraph: Reply with the single word pong.`, one with `paragraph: pong`, and a last `listitem` holding the button `Regenerate` (its accessible name starts `Regenerate: answer again`).
+- **Proof.** Run `control-talyx browser snapshot --path /tmp/talyx-verify/evidence/chat-send/after.aria.txt` and `control-talyx browser screenshot --path /tmp/talyx-verify/evidence/chat-send/after.png`. Second view: select another bot without typing, then `Verify scratch` again; the transcript still shows both, and the roster row reads `Verify scratch just now pong`.
 - **Cleanup.** Delete the scratch bot as in create-bot. Keep the evidence.
 
 ## Gotchas
 
-- Unverified by this skill so far: written from the code (2026-11-17), not from a run. The exact
-  roles of the transcript rows are to be read from a snapshot first.
+- Proven 2026-11-18 against the real engine on an approved scratch bot (`claude-haiku-4-5`).
+- The first message in a new bot's empty chat showed only with the reply: 1.5 s after `Send` the
+  empty state was still on screen, about 12 s later both rows were there. In a chat with messages
+  the sent text showed at once. Wait for the reply before asserting `send-show` on a first message.
+- After the first turn the composer's model button reads the bot's model
+  (`Model: claude-haiku-4-5-20251001`) instead of `Model: Bot’s model`.
 - A real send costs real tokens on the user's provider. Only on an approved scratch bot, one short
   message.
 - Never send to the user's existing bots; their chats are real conversations.

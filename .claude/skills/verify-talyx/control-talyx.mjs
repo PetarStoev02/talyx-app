@@ -129,6 +129,10 @@ const browserActions = {
     await locate(page, o).fill(o.value ?? '', { timeout: STEP_TIMEOUT_MS })
     console.log(`filled ${o.role} "${o.name}"`)
   },
+  async select(page, o) {
+    await locate(page, o).selectOption({ label: o.value ?? '' }, { timeout: STEP_TIMEOUT_MS })
+    console.log(`selected "${o.value}" in ${o.role} "${o.name}"`)
+  },
   async press(page, o) {
     await page.keyboard.press(o.key)
     console.log(`pressed ${o.key}`)
