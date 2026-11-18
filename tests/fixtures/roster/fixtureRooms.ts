@@ -250,8 +250,8 @@ export function roomSessionRequest(
   if (method === 'session.resume')
     return { session_id: id, revision: session.revision, subscription_id: `sub-${id}` }
   if (method === 'config.set' && params.key === 'model') {
-    // split always returns at least one part.
-    session.model = String(params.value).split(' --provider ')[0]!
+    const [model = ''] = String(params.value).split(' --provider ')
+    session.model = model
     session.revision++
     return { key: 'model', value: session.model }
   }
