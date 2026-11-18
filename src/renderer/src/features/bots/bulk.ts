@@ -15,7 +15,8 @@ import type { Bot, RosterRowRef, RosterSnapshot } from './types'
 
 // Several picked rows act together. The shared layout (folders, room folders, room pins, order)
 // changes in one revision-checked save; a bot's own folder, pin and hidden mark live on its own
-// profile, so each bot that changes is one save on that profile, after the layout.
+// profile, so each bot that changes is one save on that profile, after the layout. A delete moves
+// its bots first, so a retry still finds the folders.
 
 /** Which actions suit every picked row; a mix of bots, rooms and folders gets the shared ones. */
 export interface BulkChoices {

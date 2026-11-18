@@ -150,7 +150,6 @@ function lookChanged(bot: Bot, { opening, draft }: DetailsChange): boolean {
     : !sameLook(draft.look, opening.look)
 }
 
-// Title and look go to the bot's metadata.
 function metaChange(bot: Bot, change: DetailsChange): Partial<BotMeta> {
   const { opening, draft } = change
   const look = lookMeta(draft.look)
@@ -169,7 +168,6 @@ function metaChange(bot: Bot, change: DetailsChange): Partial<BotMeta> {
   return meta
 }
 
-// Description and SOUL go to the profile, in one call.
 function sectionsChange({
   opening,
   draft
