@@ -572,19 +572,25 @@ export function engineDouble(
   return double
 }
 
+// The engine's stored schedule; its display text is its own wording, not always a line it parses.
 function storedJob(job: CronJob): Record<string, unknown> {
   const every = /^every (\d+)([mh])$/.exec(job.schedule)
+  const minutes = every ? Number(every[1]) * (every[2] === 'h' ? 60 : 1) : 0
   const schedule = every
-    ? { kind: 'interval', minutes: Number(every[1]) * (every[2] === 'h' ? 60 : 1) }
+    ? { kind: 'interval', minutes, display: `every ${minutes}m` }
     : /^\d{4}-/.test(job.schedule)
-      ? { kind: 'once', run_at: job.schedule }
-      : { kind: 'cron', expr: job.schedule }
+      ? {
+          kind: 'once',
+          run_at: job.schedule,
+          display: `once at ${job.schedule.slice(0, 16).replace('T', ' ')}`
+        }
+      : { kind: 'cron', expr: job.schedule, display: job.schedule }
   return {
     id: job.job_id,
     name: job.name,
     prompt: job.prompt,
-    schedule: { ...schedule, display: job.schedule },
-    schedule_display: job.schedule,
+    schedule,
+    schedule_display: schedule.display,
     deliver: job.deliver ?? 'local',
     enabled: job.enabled,
     state: job.state,

@@ -15,7 +15,8 @@ import type { Bot, RosterRowRef, RosterSnapshot } from './types'
 
 // Several picked rows act together. The shared layout (folders, room folders, room pins, order)
 // changes in one revision-checked save; a bot's own folder, pin and hidden mark live on its own
-// profile, so each bot that changes is one save on that profile, after the layout.
+// profile, so each bot that changes is one save on that profile, after the layout. A delete moves
+// its bots first, so a retry still finds the folders.
 
 /** Which actions suit every picked row; a mix of bots, rooms and folders gets the shared ones. */
 export interface BulkChoices {
@@ -132,8 +133,9 @@ export async function hideRows(
 /**
  * Deletes the bots and rooms, then the folders in one layout save: what was in a deleted folder
  * and is not deleted itself moves up to the nearest folder that stays, or to Unassigned, after
- * that folder's own rows. The layout comes before the moved bots, so a failure part way never
- * hides one.
+ * that folder's own rows. The bots move before the layout save, so a retry of a delete that
+ * failed part way still finds its folders. A failure part way never hides a bot: one whose
+ * folder is gone shows in Unassigned.
  */
 export async function deleteRows(
   backend: Pick<RosterStore, 'deleteRoom' | 'deleteProfile' | 'updateLayout' | 'saveBotMeta'>,
@@ -141,7 +143,7 @@ export async function deleteRows(
   rows: RosterRowRef[]
 ): Promise<void> {
   if (hasTalyx(rows)) throw new RosterError('roster.errorKeepTalyx')
-  // A retry after a failure part way skips the bots and rooms already gone.
+  // A retry after a failure part way skips the rows already gone.
   const ids = (kind: RosterRowRef['kind']): string[] =>
     rows.filter((row) => row.kind === kind && stillThere(snapshot, row)).map((row) => row.id)
   const [bots, rooms, folders] = [ids('bot'), ids('room'), ids('folder')]
@@ -155,6 +157,15 @@ export async function deleteRows(
       cursor = snapshot.folders.find((folder) => folder.id === cursor)?.parentId ?? null
     return cursor
   }
+  // ponytail: a retry after some bots moved puts them before the deleted folder's other rows in
+  // their new folder; carry the first attempt's order across retries if that order matters.
+  for (const bot of snapshot.bots) {
+    const from = bot.meta.sectionId ?? null
+    if (bots.includes(bot.name) || !from || !folders.includes(from)) continue
+    const to = landing(from)
+    const sectionName = snapshot.folders.find((folder) => folder.id === to)?.name ?? null
+    await saveBotMeta(backend, bot.name, { sectionId: to, sectionName })
+  }
   await saveLayout(backend, snapshot, (layout) => ({
     ...(folders.length && {
       folders: folders.reduce(removeFolder, layout.folders),
@@ -167,13 +178,6 @@ export async function deleteRows(
     ),
     ...(rooms.length && { roomPins: layout.roomPins.filter((id) => !rooms.includes(id)) })
   }))
-  for (const bot of snapshot.bots) {
-    const from = bot.meta.sectionId ?? null
-    if (bots.includes(bot.name) || !from || !folders.includes(from)) continue
-    const to = landing(from)
-    const sectionName = snapshot.folders.find((folder) => folder.id === to)?.name ?? null
-    await saveBotMeta(backend, bot.name, { sectionId: to, sectionName })
-  }
 }
 
 // Each deleted folder's rows that stay go after the rows of the folder they land in, as they showed.
@@ -221,7 +225,7 @@ function insidePicked(
 function stillThere(snapshot: RosterSnapshot, row: RosterRowRef): boolean {
   if (row.kind === 'bot') return snapshot.bots.some((bot) => bot.name === row.id)
   if (row.kind === 'room') return snapshot.rooms.some((room) => room.room_id === row.id)
-  return true
+  return snapshot.folders.some((folder) => folder.id === row.id)
 }
 
 // Talyx's own bot is never hidden or deleted.

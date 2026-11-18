@@ -266,7 +266,7 @@ export function createEngine(deps: EngineDeps): Engine {
           [wire.ticketHeader]: ticket,
           ...(request.body === undefined ? {} : { 'Content-Type': 'application/json' })
         },
-        body: request.body === undefined ? undefined : JSON.stringify(request.body),
+        ...(request.body === undefined ? {} : { body: JSON.stringify(request.body) }),
         signal: AbortSignal.timeout(request.timeoutMs ?? DEFAULT_HTTP_TIMEOUT_MS)
       })
       const text = await response.text()

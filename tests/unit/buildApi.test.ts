@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { describe, it, expect } from 'vitest'
 import { buildApi, ipcErrorMessage, type ApiTransport } from '../../src/shared/api'
 
@@ -164,6 +165,21 @@ describe('buildApi', () => {
     ]
   ])('should give the handler’s own message from %s', (_case, message, expected) => {
     expect(ipcErrorMessage(new Error(message))).toBe(expected)
+  })
+
+  it('should never let Electron’s wrapping of a handler’s error reach the screen', () => {
+    const channel = fc.stringMatching(/^[a-z]+:[a-z-]+$/)
+    const name = fc.oneof(fc.constant('Error'), fc.stringMatching(/^[A-Z][A-Za-z]{0,12}Error$/))
+    // An error with no message prints as its bare name, which is then all there is to show.
+    const message = fc.string({ minLength: 1 })
+    fc.assert(
+      fc.property(channel, name, message, (sent, kind, said) => {
+        const thrown = Object.assign(new Error(said), { name: kind })
+        // How Electron rejects the page's invoke: the handler's error as a string, wrapped.
+        const relayed = new Error(`Error invoking remote method '${sent}': ${thrown}`)
+        expect(ipcErrorMessage(relayed)).toBe(said)
+      })
+    )
   })
 
   it('should reject a failed invoke with the handler’s message only', async () => {

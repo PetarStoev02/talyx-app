@@ -29,13 +29,22 @@ const ready: UpdateState = {
 }
 
 describe('useUpdates', () => {
-  beforeEach(() => useUpdates.setState({ state: { kind: 'none' }, engineInstallRequested: false }))
+  beforeEach(() =>
+    useUpdates.setState({
+      state: { kind: 'none' },
+      engineInstallRequested: false,
+      noticeRequested: false
+    })
+  )
 
-  it('should hold an engine install request until it is cleared', () => {
-    useUpdates.getState().requestEngineInstall()
-    expect(useUpdates.getState().engineInstallRequested).toBe(true)
-    useUpdates.getState().clearEngineInstall()
-    expect(useUpdates.getState().engineInstallRequested).toBe(false)
+  it.each([
+    ['an engine install', 'engineInstallRequested', 'requestEngineInstall', 'clearEngineInstall'],
+    ["a release's notice", 'noticeRequested', 'requestNotice', 'clearNotice']
+  ] as const)('should hold a request for %s until it is cleared', (_name, flag, ask, clear) => {
+    useUpdates.getState()[ask]()
+    expect(useUpdates.getState()[flag]).toBe(true)
+    useUpdates.getState()[clear]()
+    expect(useUpdates.getState()[flag]).toBe(false)
   })
 
   it('should load the current state, then follow what main announces', async () => {

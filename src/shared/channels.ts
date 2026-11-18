@@ -27,16 +27,15 @@ export const LastSelectionSchema = z.object({
 export const ThemeSchema = z.enum(['light', 'dark', 'system'])
 export type Theme = z.infer<typeof ThemeSchema>
 
-export const UserSettingsPartialSchema = z
-  .object({
-    lastSelection: LastSelectionSchema.nullable(),
-    theme: ThemeSchema,
-    setupDone: z.boolean(),
-    launchAtLogin: z.boolean(),
-    completionSound: z.boolean(),
-    sidebarWidth: z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max)
-  })
-  .partial()
+// exactOptional: a key sent as undefined is refused, not saved over the stored value.
+export const UserSettingsPartialSchema = z.object({
+  lastSelection: LastSelectionSchema.nullable().exactOptional(),
+  theme: ThemeSchema.exactOptional(),
+  setupDone: z.boolean().exactOptional(),
+  launchAtLogin: z.boolean().exactOptional(),
+  completionSound: z.boolean().exactOptional(),
+  sidebarWidth: z.number().int().min(SIDEBAR_WIDTH.min).max(SIDEBAR_WIDTH.max).exactOptional()
+})
 export type SettingsChange = z.infer<typeof UserSettingsPartialSchema>
 
 /** The engine as a page reports it for diagnostics ("0.22.7", "error (0.22.7)", "not found"). */

@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import { moduleRows } from '../../../src/renderer/src/features/modules/rows'
 import { ALL_MODULES, type AvailableModule, type ModulesState } from '../../../src/shared/modules'
@@ -95,6 +96,56 @@ describe('module rows when a module is installed', () => {
       'Hello',
       'Workflows'
     ])
+  })
+
+  it('should never move the rows when a module is installed, whatever the key and catalog', () => {
+    const id = fc.constantFrom('atlas', 'hello', 'workflows', 'zeta')
+    const name = fc.constantFrom('Atlas', 'Hello', 'Workflows', 'aardvark')
+    const version = fc.constantFrom('1.0.0', '1.1.0', '2.0.0')
+    const listed = fc.uniqueArray(fc.record({ id, name, version, compatible: fc.boolean() }), {
+      selector: (module) => module.id
+    })
+    const key = fc.oneof(
+      fc.constant([ALL_MODULES]),
+      fc.shuffledSubarray(['atlas', 'hello', 'zeta', 'gone'])
+    )
+    // The installed ones, each maybe naming itself otherwise and at another version.
+    const world = listed.chain((available) =>
+      fc.record({
+        available: fc.constant(available),
+        modules: key,
+        installed: fc.subarray(available).chain((picked) =>
+          fc.tuple(
+            ...picked.map((module) =>
+              fc.record({
+                id: fc.constant(module.id),
+                name: fc.oneof(fc.constant(module.name), name),
+                version: fc.oneof(fc.constant(module.version), version)
+              })
+            )
+          )
+        )
+      })
+    )
+    fc.assert(
+      fc.property(world, ({ available, modules, installed }) => {
+        const rows = (state: ModulesState): string[] =>
+          moduleRows(state, available).map((row) => row.id)
+        const before = rows({ license: { ...license, modules }, modules: [] })
+        const after = rows({
+          license: { ...license, modules },
+          modules: installed.map(({ id, name, version }) => ({
+            id,
+            name,
+            version,
+            status: 'running',
+            problem: null,
+            styled: false
+          }))
+        })
+        expect(after).toEqual(before)
+      })
+    )
   })
 
   it('should keep the catalog order when the installed module names itself otherwise', () => {

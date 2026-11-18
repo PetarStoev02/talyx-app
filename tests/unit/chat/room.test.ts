@@ -10,6 +10,8 @@ import { sendMentions, showMentions } from '../../../src/renderer/src/features/c
 import { useRooms } from '../../../src/renderer/src/features/chat/roomStore'
 import type { RoomEvent, RoomView } from '../../../src/renderer/src/features/chat/types'
 import { t } from '../../../src/renderer/src/shared/lib/i18n'
+import { roomMember } from '../../../src/renderer/src/widgets/chat/roomPeople'
+import type { Room } from '../../../src/renderer/src/features/bots/types'
 import { ROOM, memberSession, roomDouble } from './roomDouble'
 import type { ChatCall } from './chatDouble'
 import type { RoomDouble } from './roomDouble'
@@ -464,6 +466,38 @@ describe('room transcript', () => {
         stopped: false,
         sender: { name: 'Talyx', profile: 'default' }
       }
+    ])
+  })
+
+  it('should name each sender as the roster shows it, never by its handle', () => {
+    const room: Room = {
+      room_id: ROOM,
+      name: 'Team',
+      members: [
+        { member_id: 'cfo-seat', profile: 'acme-cfo', handle: 'bot-2', display_name: 'CFO seat' },
+        { member_id: 'guest', profile: 'guest', handle: 'bot-3', display_name: 'Visitor' },
+        { profile: 'scout', handle: 'bot-4' },
+        { profile: 'default', handle: 'agent' }
+      ]
+    }
+    const bots = [
+      { name: 'acme-cfo', meta: { title: 'Acme CFO' } },
+      { name: 'default', meta: {} }
+    ]
+    const says = (seq: number, member: string): RoomEvent =>
+      event(seq, 'message.member', { text: 'Noted.' }, { kind: 'member', id: member })
+    const items = roomItems(
+      [says(1, 'cfo-seat'), says(2, 'guest'), says(3, 'scout'), says(4, 'default')],
+      {
+        ...labels,
+        memberOf: (member) => roomMember(room, bots, member)
+      }
+    )
+    expect(items.map((item) => (item.kind === 'bot' ? item.sender : null))).toEqual([
+      { name: 'Acme CFO', profile: 'acme-cfo' },
+      { name: 'Visitor', profile: 'guest' },
+      { name: 'scout', profile: 'scout' },
+      { name: 'Talyx', profile: 'default' }
     ])
   })
 

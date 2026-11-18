@@ -205,6 +205,33 @@ describe('the chat the Agents page opens', () => {
     expect(startSelection(roster(bots, ['team']), saved)).toEqual(expected)
   })
 
+  it('should always open a chat the roster shows while it shows any bot, whatever was saved', () => {
+    const NAMES = ['default', 'analyst', 'writer']
+    const shownBots = fc.uniqueArray(
+      fc.record({ name: fc.constantFrom(...NAMES), hidden: fc.boolean() }),
+      { selector: (row) => row.name }
+    )
+    const roomIds = fc.uniqueArray(fc.constantFrom('team', 'ops'))
+    const id = fc.constantFrom(...NAMES, 'team', 'ops', 'gone')
+    const saved = fc.option(fc.record({ kind: fc.constantFrom('bot', 'room'), id }), {
+      nil: null
+    })
+    fc.assert(
+      fc.property(shownBots, roomIds, saved, (rows, rooms, pick) => {
+        const shown = roster(
+          rows.map((row) => bot(row.name, { hidden: row.hidden })),
+          rooms
+        )
+        const opened = startSelection(shown, pick)
+        const visible = rows.filter((row) => !row.hidden).map((row) => row.name)
+        if (visible.length === 0) return
+        const open =
+          opened?.kind === 'bot' ? visible.includes(opened.id) : rooms.includes(opened?.id ?? '')
+        expect(open).toBe(true)
+      })
+    )
+  })
+
   it('should open another bot when Talyx is not in the roster, and nothing when no bot is', () => {
     expect(startSelection(roster([bot('analyst')]), null)).toEqual({ kind: 'bot', id: 'analyst' })
     expect(startSelection(roster([]), null)).toBeNull()

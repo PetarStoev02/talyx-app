@@ -1,32 +1,33 @@
+// Undefined: a field another client wrote wrong (read), or a field a change removes (write).
 export interface BotMeta {
-  title?: string
-  description?: string
-  sectionId?: string | null
-  sectionName?: string | null
-  pinned?: boolean
-  pinnedOrder?: number
-  hidden?: boolean
+  title?: string | undefined
+  description?: string | undefined
+  sectionId?: string | null | undefined
+  sectionName?: string | null | undefined
+  pinned?: boolean | undefined
+  pinnedOrder?: number | undefined
+  hidden?: boolean | undefined
   // The avatar: a block shape name and a hue index. Older clients stored other strings here.
-  shape?: string
-  color?: number | string
-  faces?: boolean
+  shape?: string | undefined
+  color?: number | string | undefined
+  faces?: boolean | undefined
   // Follows Talyx's model: a change of Talyx's model moves this bot too. Absent: its own model.
-  usesDefault?: boolean
+  usesDefault?: boolean | undefined
 }
 
 export interface SessionPreview {
-  id?: string
-  resolved_id?: string
-  last_active?: number
-  preview?: string
+  id?: string | undefined
+  resolved_id?: string | undefined
+  last_active?: number | undefined
+  preview?: string | undefined
 }
 
 export interface Bot {
   meta: BotMeta
   name: string
-  display_name?: string
-  title?: string | null
-  description?: string
+  display_name?: string | undefined
+  title?: string | null | undefined
+  description?: string | undefined
   canonical_session?: SessionPreview | null
   last_session?: SessionPreview | null
   ui_meta?: Record<string, unknown>
@@ -45,7 +46,7 @@ export interface Room {
   members: { profile: string; member_id?: string; handle?: string; display_name?: string }[]
   disbanded_at?: number | null
   // The seq of the room's newest log row; a higher one than last seen is an unread message.
-  latest_seq?: number | null
+  latest_seq?: number | null | undefined
 }
 
 export interface RosterSnapshot {

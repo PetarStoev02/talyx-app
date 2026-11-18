@@ -7,7 +7,14 @@ import { BLOCK_HUES } from '@shared/ui/blockGeometry'
 import { refreshRoster, rosterActions, runRosterMutation } from './actions'
 import { createBot, profileIdFor } from './create'
 import type { RosterBackend, RosterStore } from './data'
-import { MANAGER, confirmModel, followIfDefaultChanged, loadDetails, saveDetails } from './details'
+import {
+  MANAGER,
+  confirmModel,
+  followIfDefaultChanged,
+  loadDetails,
+  saveDetails,
+  savesBesidesModel
+} from './details'
 import type { DetailsDraft } from './details'
 import { lookOf, matchName } from './look'
 import type { Look } from './look'
@@ -177,7 +184,7 @@ function toolsFor(
           message: costly.message
         })
         if (!(await approve({ tool: 'update_bot', action })))
-          throw othersSaved(opening, draft)
+          throw savesBesidesModel(bot, { opening, draft })
             ? new RosterError('mcp.refusedModel')
             : new ApprovalRefusedError()
         await confirmModel(backend, profile, costly.model)
@@ -454,16 +461,5 @@ function say(key: TranslationKey, values: Record<string, string>): string {
   return Object.entries(values).reduce(
     (text, [name, value]) => text.replaceAll(`{${name}}`, value),
     t(key, 'en')
-  )
-}
-
-// The other fields are saved before the model's cost is asked: a no to the model must not say
-// nothing changed.
-function othersSaved(opening: DetailsDraft, draft: DetailsDraft): boolean {
-  return Object.keys(draft).some(
-    (key) =>
-      key !== 'model' &&
-      JSON.stringify(draft[key as keyof DetailsDraft]) !==
-        JSON.stringify(opening[key as keyof DetailsDraft])
   )
 }

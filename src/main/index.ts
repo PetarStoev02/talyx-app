@@ -3,6 +3,7 @@ import log from 'electron-log'
 import { join } from 'path'
 import { optimizer, is } from './lib/electronUtils'
 import { DEV_VIEW_ITEMS, setAppMenu } from './lib/appMenu'
+import { showWhenReady, watchWindowFailures } from './lib/windowFailures'
 import { installWebContentsGuard } from './infrastructure/security/webContentsGuard'
 import { APP_ROOT, registerAppScheme, serveRenderer } from './infrastructure/security/appProtocol'
 import { registerSettingsIpc } from './infrastructure/ipc/settings.ipc'
@@ -36,7 +37,6 @@ const UPDATE_CHECK_INTERVAL_MS = 60 * 60_000
 const FOCUS_UPDATE_CHECK_MIN_MS = 15 * 60_000
 const SPLASH_LOAD_TIMEOUT_MS = 5_000
 const SPLASH_MIN_VISIBLE_MS = 500
-const WINDOW_SHOW_TIMEOUT_MS = 8_000
 
 const isMac = process.platform === 'darwin'
 const rendererUrl = is.dev ? process.env['ELECTRON_RENDERER_URL'] : undefined
@@ -103,39 +103,6 @@ function loadPage(win: BrowserWindow, page: 'index' | 'splash'): void {
   loading.catch((error: unknown) => log.warn(`[Main] ${page} page did not load`, error))
 }
 
-// Chromium's code for a load cut short by another navigation: not a failure.
-const LOAD_ABORTED = -3
-
-/**
- * The main window must never sit blank: a page that fails to load, or a renderer that dies, is
- * logged and offered a reload.
- */
-function watchWindowFailures(win: BrowserWindow): void {
-  win.webContents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
-    if (!isMainFrame || code === LOAD_ABORTED) return
-    log.error(`[Main] Window failed to load ${url} (${code} ${description})`)
-    void offerReload(win, 'Talyx could not load its window.', `${description} (${code})`)
-  })
-  win.webContents.on('render-process-gone', (_event, details) => {
-    log.error('[Main] Renderer process gone', details)
-    void offerReload(win, 'Talyx’s window stopped working.', details.reason)
-  })
-}
-
-async function offerReload(win: BrowserWindow, message: string, reason: string): Promise<void> {
-  if (win.isDestroyed()) return
-  const { response } = await dialog.showMessageBox(win, {
-    type: 'error',
-    message,
-    detail: `${reason}\n\nThe log has the details: ${log.transports.file.getFile().path}`,
-    buttons: ['Reload', 'Quit'],
-    defaultId: 0,
-    cancelId: 1
-  })
-  if (response === 1) app.quit()
-  else if (!win.isDestroyed()) loadPage(win, 'index')
-}
-
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1200,
@@ -164,7 +131,7 @@ function createWindow(): BrowserWindow {
   // not removed, so its shortcuts (zoom, full screen) still work; after the constructor, which
   // sets the app menu and would show the bar.
   if (!isMac) win.setMenuBarVisibility(false)
-  watchWindowFailures(win)
+  watchWindowFailures(win, () => loadPage(win, 'index'))
   // The page's <title> would otherwise rename the window back to Talyx.
   if (is.dev) win.on('page-title-updated', (event) => event.preventDefault())
   loadPage(win, 'index')
@@ -215,20 +182,8 @@ function waitForSplash(splash: BrowserWindow): Promise<void> {
 }
 
 function showMainWindow(splash: BrowserWindow): void {
-  const win = createWindow()
-  mainWindow = win
-  const swap = (): void => {
-    if (!splash.isDestroyed()) splash.close()
-    if (!win.isDestroyed()) win.show()
-  }
-  win.once('ready-to-show', swap)
-  // ready-to-show can fail to fire; never leave the user with only the splash
-  setTimeout(() => {
-    if (!win.isDestroyed() && !win.isVisible()) {
-      log.warn('[Main] ready-to-show timeout; forcing window show')
-      swap()
-    }
-  }, WINDOW_SHOW_TIMEOUT_MS)
+  mainWindow = createWindow()
+  showWhenReady(mainWindow, splash)
 }
 
 /** On macOS the window can be closed while the app keeps running; reopen it then. */
