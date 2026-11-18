@@ -1,8 +1,9 @@
+import fc from 'fast-check'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { applySnapshot } from '../../../src/renderer/src/features/bots/actions'
 import { botChatId } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
-import type { Bot, RosterSnapshot } from '../../../src/renderer/src/features/bots/types'
+import type { Bot, RosterSnapshot, Selection } from '../../../src/renderer/src/features/bots/types'
 
 const bot = (name: string, canonical: Bot['canonical_session'] = null): Bot => ({
   name,
@@ -78,5 +79,41 @@ describe('roster selection and unread state', () => {
     expect(botChatId(bot('a', { id: 'root', resolved_id: 'tip' }))).toBe('tip')
     expect(botChatId(bot('a', { id: 'root' }))).toBe('root')
     expect(botChatId(bot('a'))).toBeNull()
+  })
+})
+
+describe('the selection when another client changes the roster', () => {
+  // Bots and rooms from one set of ids, since a room and a bot may share one.
+  const id = fc.constantFrom('analyst', 'writer', 'standup')
+  const roster = fc
+    .record({
+      bots: fc.uniqueArray(fc.record({ name: id, hidden: fc.boolean() }), {
+        selector: (item) => item.name
+      }),
+      rooms: fc.uniqueArray(id)
+    })
+    .map(
+      ({ bots, rooms }): RosterSnapshot => ({
+        ...snapshotWith({}),
+        bots: bots.map(({ name, hidden }) => ({ ...bot(name), meta: hidden ? { hidden } : {} })),
+        rooms: rooms.map((room_id) => ({ room_id, name: room_id, members: [] }))
+      })
+    )
+  const selected = fc.option(fc.record({ kind: fc.constantFrom('bot', 'room'), id }), {
+    nil: null
+  }) as fc.Arbitrary<Selection>
+
+  it('should never keep a bot or room selected once it is hidden or deleted', () => {
+    fc.assert(
+      fc.property(selected, roster, (selection, next) => {
+        useRoster.setState({ selection })
+        applySnapshot(next)
+        const shown =
+          selection?.kind === 'bot'
+            ? next.bots.some((item) => item.name === selection.id && !item.meta.hidden)
+            : next.rooms.some((room) => room.room_id === selection?.id)
+        expect(useRoster.getState().selection).toEqual(shown ? selection : null)
+      })
+    )
   })
 })

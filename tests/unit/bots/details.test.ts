@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { refreshRoster } from '../../../src/renderer/src/features/bots/actions'
 import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
@@ -14,6 +15,8 @@ import {
 } from '../../../src/renderer/src/features/bots/details'
 import type { DetailsDraft } from '../../../src/renderer/src/features/bots/details'
 import { lookOf } from '../../../src/renderer/src/features/bots/look'
+import { BLOCK_HUES } from '../../../src/renderer/src/shared/ui/blockGeometry'
+import { BLOCK_SHAPES } from '../../../src/shared/moduleHost'
 import { RosterError } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import type { Bot } from '../../../src/renderer/src/features/bots/types'
@@ -129,14 +132,29 @@ describe('bot details', () => {
       expect(lookOf(bot('analyst'))).toEqual(look)
     })
 
-    it("should turn Talyx's face off without exporting an image", async () => {
-      const before = await opening('default')
-      await saveDetails(backend, bot('default'), {
-        opening: before,
-        draft: { ...before, look: { ...before.look, faces: false } }
+    it('should keep Talyx the logo whatever look is drafted: only its face is its own', async () => {
+      const look = fc.record({
+        shape: fc.constantFrom(...BLOCK_SHAPES),
+        hue: fc.nat({ max: BLOCK_HUES.length - 1 }),
+        faces: fc.boolean()
       })
-      expect(engine.metadata.default[BOT_META_KEY]).toEqual({ faces: false })
-      expect(engine.assets).toEqual([])
+      await fc.assert(
+        fc.asyncProperty(fc.boolean(), look, async (facesBefore, drafted) => {
+          engine.metadata.default = facesBefore ? {} : { [BOT_META_KEY]: { faces: false } }
+          engine.assets.length = 0
+          await refreshRoster(backend)
+          const before = await opening('default')
+          await saveDetails(backend, bot('default'), {
+            opening: before,
+            draft: { ...before, look: drafted }
+          })
+          expect(engine.metadata.default[BOT_META_KEY] ?? {}).not.toHaveProperty('shape')
+          expect(engine.metadata.default[BOT_META_KEY] ?? {}).not.toHaveProperty('color')
+          expect(engine.assets).toEqual([])
+          await refreshRoster(backend)
+          expect(lookOf(bot('default')).faces).toBe(drafted.faces)
+        })
+      )
     })
 
     it('should save nothing when the image export fails, so the same Save can retry', async () => {
