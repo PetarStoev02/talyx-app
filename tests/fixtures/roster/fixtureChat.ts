@@ -284,7 +284,7 @@ export function fixtureChat(providers: EngineHttp): ChatActions {
           return {}
         case 'clarify.lock': {
           const clarify = clarifies[String(params.request_id)]
-          if (clarify?.last === params.question_id) {
+          if (clarify && clarify.last === params.question_id) {
             setTimeout(() => emit(profile, 'clarify.settled', { prompt_id: params.request_id }))
             play(profile, finish(profile, clarify.reply(String(params.answer))))
           }
