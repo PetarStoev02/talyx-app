@@ -40,14 +40,17 @@ function isGlobalObject(node) {
   return node.type === 'MemberExpression' && GLOBAL_OBJECTS.has(propertyName(node))
 }
 
-/** Whether `node` names React itself: `React` or `R` from `import React`, `import * as R`. */
+/**
+ * Whether `node` names React itself: `React` or `R` from `import React`, `import * as R`. It
+ * follows imports, not values: `const R = React` hands React on unseen, as deliberate evasion.
+ */
 function isReact(node, context) {
   if (node.type !== 'Identifier') return false
   for (let scope = context.sourceCode.getScope(node); scope; scope = scope.upper) {
     const variable = scope.set.get(node.name)
     if (variable) {
       return variable.defs.some(
-        (def) => def.type === 'ImportBinding' && def.parent.source.value === 'react'
+        (def) => def.type === 'ImportBinding' && def.parent.source?.value === 'react'
       )
     }
   }

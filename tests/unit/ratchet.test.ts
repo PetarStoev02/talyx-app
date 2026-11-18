@@ -137,7 +137,8 @@ describe('kernel rules', () => {
       'an effect-named field of something else',
       'const hooks = { useEffect: 1 }\nconst { useEffect } = hooks\nvoid [hooks.useEffect, useEffect]'
     ],
-    ['other fields of window', 'const { innerWidth } = window\nvoid innerWidth']
+    ['other fields of window', 'const { innerWidth } = window\nvoid innerWidth'],
+    ['a TypeScript require import', "import x = require('./y')\nconst { a } = x\nvoid a"]
   ])('should allow what starts no timer and no effect: %s', async (_name, source) => {
     expect(await kernelErrors(`${R}/widgets/chat/x.tsx`, source)).toEqual([])
   })
