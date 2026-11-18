@@ -5,7 +5,12 @@ import {
   rosterActions,
   runRosterMutation
 } from '../../../src/renderer/src/features/bots/actions'
-import { bulkChoices, deleteRows, hideRows } from '../../../src/renderer/src/features/bots/bulk'
+import {
+  bulkChoices,
+  deleteRows,
+  hideRows,
+  refusesFolder
+} from '../../../src/renderer/src/features/bots/bulk'
 import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
 import {
   ROOM_FOLDERS_KEY,
@@ -155,9 +160,13 @@ describe('moving several picked rows', () => {
       actions().placeFolder({ id: folderId('Archive'), parentId: 'team', beforeId: null })
     )
     engine.configureCalls.length = 0
+    const picked = [folder('team'), bot('support')]
+    // The roster offers no drop where refusesFolder says no.
+    expect(refusesFolder(roster(), picked, 'clients')).toBe(false)
     for (const target of ['team', folderId('Archive')]) {
+      expect(refusesFolder(roster(), picked, target)).toBe(true)
       useRoster.setState({ actionError: null })
-      await act(() => actions().moveRows([folder('team'), bot('support')], target))
+      await act(() => actions().moveRows(picked, target))
       expect(useRoster.getState().actionError?.key).toBe('roster.errorFolderCycle')
     }
     expect(engine.configureCalls).toEqual([])
