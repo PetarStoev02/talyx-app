@@ -66,6 +66,7 @@ describe('the main window', () => {
       watchWindowFailures(asWindow(win), reload)
       fail(win)
       await vi.waitFor(() => expect(reload).toHaveBeenCalledOnce())
+      expect(electron.dialog.showMessageBox).toHaveBeenCalledOnce()
       expect(electron.app.quit).not.toHaveBeenCalled()
     })
 

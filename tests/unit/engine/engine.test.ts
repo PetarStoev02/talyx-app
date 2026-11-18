@@ -364,7 +364,7 @@ describe('profile routing', () => {
         try {
           home = routedGatewayEndpoint(from, profile).profile_id
         } catch (error) {
-          expect((error as Error).message).toBe('Invalid profile route')
+          expect(error).toEqual(new Error('Invalid profile route'))
           return
         }
         expect(home === HOME || dirname(home) === join(HOME, 'profiles')).toBe(true)
