@@ -146,6 +146,7 @@ describe('layer boundaries', () => {
     ['a relative import inside a slice', `${R}/features/bots/memory/x.ts`, '../store'],
     ['a widget importing a feature', `${R}/widgets/chat/x.tsx`, '@features/chat/x'],
     ['a page importing a widget', `${R}/pages/agents/x.tsx`, '@widgets/chat'],
+    ['app importing App', `${R}/app/providers/x.ts`, '@/App'],
     ['app importing a page', `${R}/app/providers/x.ts`, '@pages/agents'],
     ['shared importing another segment', `${R}/shared/ui/x.tsx`, '@/shared/lib/utils'],
     ['main importing a sibling folder', 'src/main/infrastructure/ipc/x.ts', '../engine/engine'],
@@ -219,6 +220,42 @@ describe('layer boundaries', () => {
       'src/splash/preload.ts',
       "import '@renderer/App'",
       'never import the renderer'
+    ],
+    [
+      'an alias that walks back into another feature',
+      `${R}/features/bots/x.ts`,
+      "import '@features/bots/../chat/x'",
+      "never walks back with '..'"
+    ],
+    [
+      'an alias that walks back into the renderer from main',
+      'src/main/x.ts',
+      "import '@contract/../renderer/src/App'",
+      "never walks back with '..'"
+    ],
+    [
+      'a backticked alias that walks back',
+      `${R}/features/bots/x.ts`,
+      'void import(`@features/bots/../chat`)',
+      "never walks back with '..'"
+    ],
+    [
+      'a feature importing App',
+      `${R}/features/bots/x.ts`,
+      "import '@/App.tsx'",
+      'features/ imports only shared/'
+    ],
+    [
+      'a widget importing the renderer entry',
+      `${R}/widgets/chat/x.tsx`,
+      "import '@renderer/main'",
+      'widgets/ imports only features/ and shared/'
+    ],
+    [
+      'a file directly under features/ importing a feature',
+      `${R}/features/x.ts`,
+      "import '@features/chat/x'",
+      'A file directly under features/ imports no other feature'
     ],
     [
       'a re-export',

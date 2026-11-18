@@ -115,9 +115,19 @@ function unitOf(file) {
   return { unit: 'renderer', alias: `@renderer/${parts.slice(3).join('/')}`, renderer: true }
 }
 
-/** Matches every alias spelling of a renderer folder: `@app/x`, `@/app/x`, `@renderer/app/x`. */
+/**
+ * Matches every alias spelling of a renderer folder: `@app/x`, `@/app/x`, `@renderer/app/x`.
+ * `App.tsx` and `main.tsx` sit beside the layers and count as app/.
+ */
 function aliasOf(folders) {
-  return `^@(renderer/|/)?(${folders.join('|')})(/|$)`
+  const entries = folders.includes('app') ? '|^@(renderer/|/)(App|main)([.]|$)' : ''
+  return `^@(renderer/|/)?(${folders.join('|')})(/|$)${entries}`
+}
+
+// An alias that walks back with `..` could reach any folder past the rules above.
+const ALIAS_TRAVERSAL = {
+  regex: '^@[^/]*/(.*/)?[.][.](/|$)',
+  message: "An alias path never walks back with '..': import the target by its own alias."
 }
 
 const RENDERER_RUNTIME = {
@@ -132,10 +142,10 @@ const RENDERER_RUNTIME = {
  */
 function restrictImports(patterns) {
   return {
-    'no-restricted-imports': ['error', { patterns }],
+    'no-restricted-imports': ['error', { patterns: [ALIAS_TRAVERSAL, ...patterns] }],
     'no-restricted-syntax': [
       'error',
-      ...patterns.flatMap(({ regex, message }) => {
+      ...[ALIAS_TRAVERSAL, ...patterns].flatMap(({ regex, message }) => {
         const value = `/${regex.replaceAll('/', '\\x2F')}/`
         return [
           {
@@ -156,20 +166,22 @@ function rendererImportBlock(files, patterns) {
   return { files: [files], rules: restrictImports([RENDERER_RUNTIME, ...patterns]) }
 }
 
+/** One block per slice folder, and one for files directly under the layer (each its own slice). */
 function sliceBlocks(layer, upward) {
   if (!SLICED_LAYERS.includes(layer)) return []
   const slices = readdirSync(path.join(ROOT, RENDERER, layer), { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
-  return slices.map((slice) =>
-    rendererImportBlock(`${RENDERER}/${layer}/${slice}/**`, [
-      upward,
-      {
-        regex: `^@(renderer/|/)?${layer}/(?!${slice}(/|$))`,
-        message: `${layer}/${slice} imports no other ${layer.slice(0, -1)}: move the common code down a layer, or compose the two one layer up.`
-      }
-    ])
-  )
+  const siblings = (slice) => ({
+    regex: `^@(renderer/|/)?${layer}/${slice ? `(?!${slice}(/|$))` : ''}`,
+    message: `${slice ? `${layer}/${slice}` : `A file directly under ${layer}/`} imports no other ${layer.slice(0, -1)}: move the common code down a layer, or compose the two one layer up.`
+  })
+  return [
+    rendererImportBlock(`${RENDERER}/${layer}/*`, [upward, siblings(null)]),
+    ...slices.map((slice) =>
+      rendererImportBlock(`${RENDERER}/${layer}/${slice}/**`, [upward, siblings(slice)])
+    )
+  ]
 }
 
 // A later block replaces an earlier one's rule options, so each slice block repeats the layer's.
@@ -185,7 +197,7 @@ const layerBoundaries = [
       {
         regex: `${aliasOf(['renderer', ...LAYERS]).replace('(renderer/|/)?', '')}|^@/|^\\.\\.?/(.*/)?renderer(/|$)`,
         message:
-          'main, preload and the contract never import the renderer: move the shared code to src/shared and import it as @contract/.'
+          'main, preload, splash and the contract never import the renderer: move the shared code to src/shared and import it as @contract/.'
       }
     ])
   },
