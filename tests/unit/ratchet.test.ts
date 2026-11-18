@@ -56,11 +56,13 @@ function git(...args: string[]): string {
 }
 
 /**
- * The lists as they are where this branch left main. Null when main has no ratchet yet (the
- * change that adds it). A missing main ref fails: a skipped check would pass any growth.
+ * The lists as they are where this branch left main; on main itself, as they were one commit
+ * before. Null when the base has no ratchet yet (the change that adds it). A missing main ref
+ * fails: a skipped check would pass any growth.
  */
 async function baseRatchet(): Promise<typeof RATCHET | null> {
-  const base = git('merge-base', 'HEAD', 'origin/main')
+  const forkPoint = git('merge-base', 'HEAD', 'origin/main')
+  const base = forkPoint === git('rev-parse', 'HEAD') ? `${forkPoint}~1` : forkPoint
   try {
     git('cat-file', '-e', `${base}:${RATCHET_FILE}`)
   } catch {
@@ -76,7 +78,10 @@ describe('kernel rules', () => {
     ['the bare import', `import { useEffect } from 'react'`],
     ['an aliased import', `import { useLayoutEffect as useBefore } from 'react'`],
     ['the namespace form', `import React from 'react'\nReact.useEffect(() => {}, [])`],
-    ['a layout effect by namespace', `import * as R from 'react'\nR.useLayoutEffect(() => {})`]
+    ['a layout effect by namespace', `import * as R from 'react'\nR.useLayoutEffect(() => {})`],
+    ['an insertion effect', `import { useInsertionEffect } from 'react'`],
+    ['a re-export', `export { useEffect } from 'react'`],
+    ['a destructured namespace', `import React from 'react'\nconst { useEffect } = React`]
   ])('should refuse an effect outside the kernel: %s', async (_name, source) => {
     expect(await kernelErrors(`${R}/widgets/chat/x.tsx`, source)).toEqual([EFFECT_MESSAGE])
   })
@@ -89,7 +94,9 @@ describe('kernel rules', () => {
     ['the window form', 'window.setTimeout(() => {}, 1)'],
     ['the globalThis form', 'globalThis.requestAnimationFrame(() => {})'],
     ['a timer passed on as a value', 'new Promise((resolve) => setTimeout(resolve, 1))'],
-    ['a computed window form', "window['setInterval'](() => {}, 1)"]
+    ['a computed window form', "window['setInterval'](() => {}, 1)"],
+    ['a timer reached through window twice', 'window.window.setTimeout(() => {}, 1)'],
+    ['a timer destructured from window', 'const { setTimeout: later } = window\nlater(() => {}, 1)']
   ])('should refuse a timer outside the kernel: %s', async (_name, source) => {
     expect(await kernelErrors(`${R}/features/bots/x.ts`, source)).toEqual([TIMER_MESSAGE])
   })

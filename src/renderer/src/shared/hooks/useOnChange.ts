@@ -6,5 +6,7 @@ import { useEffect, useEffectEvent } from 'react'
  */
 export function useOnChange<T>(value: T, onChange: (value: T) => void): void {
   const changed = useEffectEvent(onChange)
-  useEffect(() => changed(value), [value])
+  useEffect(() => {
+    changed(value)
+  }, [value])
 }

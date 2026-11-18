@@ -1,7 +1,8 @@
 // Files that still hold effects or timers outside the kernel (eslint.kernel.mjs), from before the
 // rules. The lists only shrink: move a file's effects or timers into named hooks under
 // shared/hooks, then delete its line. tests/unit/ratchet.test.ts fails when a listed file is
-// clean, and when a list gains a file that main's copy of this file does not have.
+// clean, and when a list gains a file that main's copy of this file does not have. A listed
+// file that is renamed or moved counts as a new file: migrate it before moving it.
 
 export const RATCHET = {
   effects: [

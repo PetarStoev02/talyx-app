@@ -9,7 +9,7 @@ export const KERNEL = [
 ]
 export const PRODUCT = ['src/renderer/src/**/*.{js,jsx,ts,tsx}']
 
-const EFFECTS = new Set(['useEffect', 'useLayoutEffect'])
+const EFFECTS = new Set(['useEffect', 'useLayoutEffect', 'useInsertionEffect'])
 const TIMERS = new Set([
   'setTimeout',
   'setInterval',
@@ -29,6 +29,17 @@ function propertyName(node) {
   return null
 }
 
+function keyName(property) {
+  if (property.type !== 'Property') return null
+  return property.key.type === 'Identifier' ? property.key.name : property.key.value
+}
+
+/** `window`, `globalThis`, `self`, and the same reached through one of them (`window.window`). */
+function isGlobalObject(node) {
+  if (node.type === 'Identifier') return GLOBAL_OBJECTS.has(node.name)
+  return node.type === 'MemberExpression' && GLOBAL_OBJECTS.has(propertyName(node))
+}
+
 const noEffect = {
   meta: { type: 'problem', schema: [] },
   create(context) {
@@ -40,9 +51,20 @@ const noEffect = {
           context.report({ node, message: EFFECT_MESSAGE })
         }
       },
+      // `export { useEffect } from 'react'`.
+      ExportSpecifier(node) {
+        if (node.parent.source?.value !== 'react') return
+        if (EFFECTS.has(node.local.name ?? node.local.value)) {
+          context.report({ node, message: EFFECT_MESSAGE })
+        }
+      },
       // `React.useEffect(...)` and any other namespace spelling.
       MemberExpression(node) {
         if (EFFECTS.has(propertyName(node))) context.report({ node, message: EFFECT_MESSAGE })
+      },
+      // `const { useEffect } = React`.
+      'VariableDeclarator > ObjectPattern > Property'(node) {
+        if (EFFECTS.has(keyName(node))) context.report({ node, message: EFFECT_MESSAGE })
       }
     }
   }
@@ -69,8 +91,17 @@ const noTimer = {
       },
       // `window.setTimeout`, `globalThis.requestAnimationFrame`, `self.setInterval`.
       MemberExpression(node) {
-        if (node.object.type !== 'Identifier' || !GLOBAL_OBJECTS.has(node.object.name)) return
+        if (!isGlobalObject(node.object)) return
         if (TIMERS.has(propertyName(node))) context.report({ node, message: TIMER_MESSAGE })
+      },
+      // `const { setTimeout: later } = window`.
+      VariableDeclarator(node) {
+        if (node.id.type !== 'ObjectPattern' || !node.init || !isGlobalObject(node.init)) return
+        for (const property of node.id.properties) {
+          if (TIMERS.has(keyName(property))) {
+            context.report({ node: property, message: TIMER_MESSAGE })
+          }
+        }
       }
     }
   }
