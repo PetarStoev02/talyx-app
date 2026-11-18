@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { MODULE_AVATARS } from '../../../src/renderer/src/features/modules/host'
 import { BlockAvatar } from '../../../src/renderer/src/shared/ui/BlockAvatar'
-import { BLOCK_HUES, BLOCK_SHAPES } from '../../../src/renderer/src/shared/ui/blockGeometry'
+import { BLOCK_SHAPES } from '../../../src/shared/moduleHost'
+import { BLOCK_HUES } from '../../../src/renderer/src/shared/ui/blockGeometry'
 
 describe('the block avatars a module page gets from Talyx', () => {
   it('should be the avatar the roster draws', () => {

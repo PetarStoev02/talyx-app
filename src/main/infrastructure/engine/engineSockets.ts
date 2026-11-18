@@ -1,4 +1,5 @@
 import log from 'electron-log'
+import type { EventChannels } from '@contract/channels'
 import type { Engine } from './engine'
 
 // A close the app asked for; anything else is worth a line in the log.
@@ -6,9 +7,11 @@ const NORMAL_CLOSE = 1000
 
 const MAX_SOCKETS = 16
 
+type SocketEvent = 'engine:socket-frame' | 'engine:socket-closed'
+
+/** Takes one socket event: its channel, then the arguments that channel carries. */
 export type SocketEventSink = (
-  channel: 'engine:socket-frame' | 'engine:socket-closed',
-  ...args: unknown[]
+  ...event: { [C in SocketEvent]: [channel: C, ...args: EventChannels[C]] }[SocketEvent]
 ) => void
 
 /**

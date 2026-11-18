@@ -6,7 +6,8 @@ import { botTitle } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { useChat } from '@features/chat/store'
 import type { ChatActions } from '@features/chat/chat'
-import { provideModuleChat, type ModuleChat } from '@features/modules/host'
+import type { ModuleChat } from '@contract/moduleHost'
+import { provideModuleChat } from '@features/modules/host'
 import { problemText } from '@shared/lib/problem'
 
 export class ModuleChatError extends Error {

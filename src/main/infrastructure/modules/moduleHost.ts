@@ -10,7 +10,8 @@ import {
   type ModulesState,
   unlocksModule
 } from '@contract/modules'
-import { ModuleActionSchema } from '../ipc/validation'
+import type { ModuleContext, ModuleHandler, ModuleLog, ModuleMain } from '@contract/moduleHost'
+import { ModuleActionSchema } from '@contract/channels'
 import { fetchBundleBytes, fetchCatalog } from './catalog'
 import {
   installedIds,
@@ -49,31 +50,6 @@ class ModuleTimeoutError extends ModuleError {
   override name = 'ModuleTimeoutError'
 }
 
-type Handler = (input: unknown) => unknown
-
-/** What a module's main.js gets from Talyx: the whole contract on the main side. */
-export interface ModuleContext {
-  /** The module's own folder for what it stores (userData/module-data/<id>). */
-  dataDir: string
-  /** Answers the module page's `invoke(name, input)`. The module validates its own input. */
-  handle: (name: string, handler: Handler) => void
-  engine: { http: (request: unknown) => Promise<unknown> }
-  /** The system's folder chooser, over Talyx's window: the chosen folder, or null if cancelled. */
-  pickFolder: (options?: { title?: string }) => Promise<string | null>
-  log: ModuleLog
-}
-
-interface ModuleLog {
-  info: (...args: unknown[]) => void
-  warn: (...args: unknown[]) => void
-  error: (...args: unknown[]) => void
-}
-
-interface ModuleMain {
-  activate?: (context: ModuleContext) => unknown
-  deactivate?: () => unknown
-}
-
 export interface ModuleHostDeps {
   /** userData: modules live in modules/<id>/, their data in module-data/<id>/. */
   root: string
@@ -95,7 +71,7 @@ interface Loaded {
   status: ModuleStatus
   problem: string | null
   bundle: ModuleBundle | null
-  handlers: Map<string, Handler>
+  handlers: Map<string, ModuleHandler>
   deactivate: (() => unknown) | null
   /** Its start timed out: whatever it still does reaches nothing (no actions, no engine). */
   retired: boolean

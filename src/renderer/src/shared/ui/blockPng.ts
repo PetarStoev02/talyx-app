@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 import { BlockAvatar } from './BlockAvatar'
-import type { BlockShape } from './blockGeometry'
+import type { BlockShape } from '@contract/moduleHost'
 
 // The profile asset other engine surfaces show; large enough to stay crisp anywhere.
 const PNG_SIZE = 1024

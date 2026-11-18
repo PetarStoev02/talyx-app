@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import pluginInit from '../../../../resources/engine-plugin/talyx-usage/__init__.py?raw'
 import pluginManifest from '../../../../resources/engine-plugin/talyx-usage/plugin.yaml?raw'
+import type { BotDays, UsageDays } from '@contract/engine'
 import { enginePlugin, type EnginePluginDeps } from './enginePlugin'
 
 /** The engine plugin's name, as its manifest and its CLI command spell it. */
@@ -12,7 +13,7 @@ export const USAGE_PLUGIN_FILES: Record<string, string> = {
 }
 
 // What the plugin answers per bot: its rows, or why its store could not be read.
-const BotDaysSchema = z.union([
+const BotDaysSchema: z.ZodType<BotDays> = z.union([
   z.object({
     rows: z.array(
       z.object({
@@ -28,14 +29,12 @@ const BotDaysSchema = z.union([
 ])
 const BotsSchema = z.record(z.string(), BotDaysSchema)
 
-export type BotDays = z.infer<typeof BotDaysSchema>
-
 /**
  * Each bot's tokens per local day and billing provider, read from its own store by Talyx's engine
  * plugin: the engine's REST has days, and providers, but not the two together.
  */
 export function usageDays(deps: EnginePluginDeps): {
-  read: (profiles: string[], days: number) => Promise<Record<string, BotDays>>
+  read: (profiles: string[], days: number) => Promise<UsageDays>
 } {
   const plugin = enginePlugin(deps, { name: USAGE_PLUGIN, files: USAGE_PLUGIN_FILES })
   return {

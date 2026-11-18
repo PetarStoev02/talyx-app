@@ -63,13 +63,12 @@ function scheduleReconnect(): void {
 }
 
 export const host = {
-  status: (): Promise<EngineStatus> => window.api.getEngineStatus() as Promise<EngineStatus>,
+  status: (): Promise<EngineStatus> => window.api.getEngineStatus(),
 
-  pickEnginePath: (): Promise<EngineStatus> => window.api.pickEnginePath() as Promise<EngineStatus>,
+  pickEnginePath: (): Promise<EngineStatus> => window.api.pickEnginePath(),
 
   /** Point Talyx at the engine the install steps linked; rejects when none is there. */
-  useInstalledEngine: (): Promise<EngineStatus> =>
-    window.api.useInstalledEngine() as Promise<EngineStatus>,
+  useInstalledEngine: (): Promise<EngineStatus> => window.api.useInstalledEngine(),
 
   /** Open the shared socket and keep it open: a drop redials with backoff and replays the gap. */
   connect(): Promise<void> {

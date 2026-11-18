@@ -431,11 +431,12 @@ async function openRpc(engineSockets: EngineSockets): Promise<Rpc> {
     { method: string; settle: (error: Error | null, result?: unknown) => void }
   >()
   let nextId = 1
-  await engineSockets.open(SOCKET_ID, 'default', (channel, _id, text) => {
-    if (channel === 'engine:socket-closed') {
+  await engineSockets.open(SOCKET_ID, 'default', (...event) => {
+    if (event[0] === 'engine:socket-closed') {
       for (const waiter of pending.values()) waiter.settle(new SmokeFailure('the socket closed'))
       return
     }
+    const [, , text] = event
     let frame: { id?: unknown; result?: unknown; error?: { code?: number } }
     try {
       frame = JSON.parse(String(text))

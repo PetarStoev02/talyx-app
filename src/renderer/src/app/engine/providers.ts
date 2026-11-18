@@ -22,7 +22,7 @@ import type {
   ProvidersBackend,
   TestChatResult
 } from '@features/providers/providers'
-import type { BotDays } from '@shared/api/ipc'
+import type { EngineHttpRequest, UsageDays } from '@contract/engine'
 import type { EngineAccess } from './access'
 
 /** The manager bot's profile: new bots copy its model and endpoint, every bot reads its sign-ins. */
@@ -56,7 +56,7 @@ export interface EndpointModelConfig {
 
 /** What main runs where the engine's REST has no route: a config unset, Talyx's usage plugin. */
 export interface MainCalls extends EndpointModelConfig {
-  usageDays: (request: { profiles: string[]; days: number }) => Promise<Record<string, BotDays>>
+  usageDays: (request: { profiles: string[]; days: number }) => Promise<UsageDays>
 }
 
 // Sign-ins whose usage the engine records under another provider id than the sign-in's own.
@@ -82,7 +82,9 @@ export function engineProvidersBackend(
     {
       query = {},
       ...request
-    }: { method?: string; body?: unknown; timeoutMs?: number; query?: Record<string, string> } = {}
+    }: Pick<EngineHttpRequest, 'method' | 'body' | 'timeoutMs'> & {
+      query?: Record<string, string>
+    } = {}
   ): Promise<T> => engine.http<T>({ path: scoped(path, profile, query), profile, ...request })
   const env = (profile: string): Promise<Record<string, EnvVarInfo>> => rest(profile, '/api/env')
 

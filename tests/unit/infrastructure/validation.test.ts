@@ -1,13 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
   EngineHttpRequestSchema,
-  EnginePathSchema,
   KeptFileSchema,
   RendererErrorSchema,
   UsageDaysSchema,
-  validateInput,
   UserSettingsPartialSchema
-} from '../../../src/main/infrastructure/ipc/validation'
+} from '../../../src/shared/channels'
+import { EnginePathSchema, validateInput } from '../../../src/main/infrastructure/ipc/validation'
 
 describe('UserSettingsPartialSchema', () => {
   it.each(['light', 'dark', 'system'] as const)('should accept the %s theme', (theme) => {

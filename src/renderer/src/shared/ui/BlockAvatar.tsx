@@ -1,24 +1,14 @@
 import { useId } from 'react'
 import { cn } from '@shared/lib/utils'
-import { BLOCK_SHAPES, blockGeometry, blockTones, frontPoint } from './blockGeometry'
-import type { BlockShape, Point } from './blockGeometry'
+import {
+  BLOCK_SHAPES,
+  type BlockAvatarProps,
+  type BlockShape,
+  type BlockState
+} from '@contract/moduleHost'
+import { blockGeometry, blockTones, frontPoint } from './blockGeometry'
+import type { Point } from './blockGeometry'
 import { TALYX_CUTS, TALYX_SILHOUETTE } from './talyxMark'
-
-export type BlockState = 'idle' | 'working' | 'waiting' | 'offline'
-
-export interface BlockAvatarProps {
-  // `talyx` is the manager: the logo as a block in black and white.
-  shape: BlockShape | 'talyx'
-  // An index into BLOCK_HUES; Talyx has none.
-  hue: number
-  size: number
-  state?: BlockState
-  face?: boolean
-  // Blink, the working bob and the ticks turning between states.
-  animated?: boolean
-  // Degrees about the vertical axis, for the details hero following the cursor.
-  yaw?: number
-}
 
 // The face is drawn from this size up; a 24px row shows the plain block.
 const FACE_MIN_SIZE = 40

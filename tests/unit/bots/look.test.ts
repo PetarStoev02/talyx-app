@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { lookMeta, lookOf, matchName } from '../../../src/renderer/src/features/bots/look'
 import type { BotMeta } from '../../../src/renderer/src/features/bots/types'
-import { BLOCK_HUES, BLOCK_SHAPES } from '../../../src/renderer/src/shared/ui/blockGeometry'
+import { BLOCK_SHAPES } from '../../../src/shared/moduleHost'
+import { BLOCK_HUES } from '../../../src/renderer/src/shared/ui/blockGeometry'
 
 // A profile id whose own hue (10) differs from every colour mapped below.
 const NAME = 'bot-14'

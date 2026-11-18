@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, protocol } from 'electron'
+import { app, BrowserWindow, dialog, protocol } from 'electron'
 import log from 'electron-log'
 import {
   MODULE_SCHEME,
@@ -14,8 +14,10 @@ import {
   EngineHttpRequestSchema,
   LicenseKeyInputSchema,
   ModuleActionSchema,
-  validateInput
-} from './validation'
+  type EventChannels
+} from '@contract/channels'
+import { handle, sendEvent } from './handle'
+import { validateInput } from './validation'
 
 /** The modules for every window; index.ts starts it and serves its files. */
 export const modules = createModuleHost({
@@ -54,30 +56,30 @@ export function requestActivation(request: ActivationRequest): void {
 }
 
 export function registerModulesIpc(): void {
-  ipcMain.handle('modules:state', (): ModulesState => modules.state())
-  ipcMain.handle('modules:take-activation', (): ActivationRequest | null => {
+  handle('modules:state', (): ModulesState => modules.state())
+  handle('modules:take-activation', (): ActivationRequest | null => {
     const request = pendingActivation
     pendingActivation = null
     return request
   })
-  ipcMain.handle(
+  handle(
     'modules:activate',
     (_event, rawKey: unknown): Promise<ModulesState> =>
       modules.activate(validateInput(LicenseKeyInputSchema, rawKey))
   )
-  ipcMain.handle('modules:deactivate', (): Promise<ModulesState> => modules.deactivate())
-  ipcMain.handle('modules:available', (): Promise<AvailableModule[]> => modules.available())
-  ipcMain.handle(
+  handle('modules:deactivate', (): Promise<ModulesState> => modules.deactivate())
+  handle('modules:available', (): Promise<AvailableModule[]> => modules.available())
+  handle(
     'modules:install',
     (_event, rawId: unknown): Promise<ModulesState> =>
       modules.install(validateInput(ModuleIdSchema, rawId))
   )
-  ipcMain.handle(
+  handle(
     'modules:uninstall',
     (_event, rawId: unknown): Promise<ModulesState> =>
       modules.uninstall(validateInput(ModuleIdSchema, rawId))
   )
-  ipcMain.handle(
+  handle(
     'modules:invoke',
     (_event, rawId: unknown, rawAction: unknown, input: unknown): Promise<unknown> =>
       modules.invoke(
@@ -110,8 +112,11 @@ export function serveModuleFiles(): void {
   })
 }
 
-function broadcast(channel: string, ...args: unknown[]): void {
+function broadcast<C extends 'modules:state' | 'modules:activation-requested'>(
+  channel: C,
+  ...args: EventChannels[C]
+): void {
   for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.webContents.isDestroyed()) win.webContents.send(channel, ...args)
+    if (!win.webContents.isDestroyed()) sendEvent(win.webContents, channel, ...args)
   }
 }

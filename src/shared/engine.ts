@@ -4,6 +4,8 @@
 // The gateway's wire strings and the profile metadata keys carry the engine's own name. That
 // name is never written in this repo (not even in git history): main reads it at runtime from
 // the first word of the engine's `--version` line and builds the strings here.
+import type { z } from 'zod/v4'
+import type { EngineHttpRequestSchema } from './channels'
 
 export interface EngineVersion {
   name: string
@@ -110,10 +112,26 @@ export function engineWire(name: string): EngineWire {
 }
 
 /** One REST call to the engine gateway, proxied by main (which adds the one-use ticket). */
-export interface EngineHttpRequest {
-  path: string
-  method?: string
-  body?: unknown
-  profile?: string | null
-  timeoutMs?: number
+export type EngineHttpRequest = z.infer<typeof EngineHttpRequestSchema>
+
+/** What a room's bots change did (`engine:room-members`). */
+export interface MembersChange {
+  added: string[]
+  removed: string[]
+  changed: boolean
 }
+
+/** One day of one bot's usage with one billing provider, as Talyx's engine plugin reads it. */
+export interface BotDayRow {
+  day: string
+  provider: string | null
+  input_tokens: number | null
+  output_tokens: number | null
+  api_calls: number | null
+}
+
+/** A bot's days, or why its store could not be read. */
+export type BotDays = { rows: BotDayRow[] } | { error: string }
+
+/** Each bot's days, by profile (`engine:usage-days`). */
+export type UsageDays = Record<string, BotDays>

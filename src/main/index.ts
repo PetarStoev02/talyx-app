@@ -23,7 +23,9 @@ import { activationRequestFrom, activationRequestIn } from './infrastructure/mod
 import { ACTIVATION_LINK, type ActivationRequest } from '@contract/modules'
 import { settingsStore } from './infrastructure/storage/SettingsStore'
 import { syncLaunchAtLogin, systemLoginItemDeps } from './infrastructure/system/loginItem'
-import { ThemeSchema, validateInput, type Theme } from './infrastructure/ipc/validation'
+import { ThemeSchema, type Theme } from '@contract/channels'
+import { handle } from './infrastructure/ipc/handle'
+import { validateInput } from './infrastructure/ipc/validation'
 import { DevBridge, bridgeStartFailure } from './infrastructure/bridge/DevBridge'
 import icon from '../../resources/talyx-icon.png?asset'
 
@@ -74,7 +76,7 @@ function registerIpc(): void {
   registerModulesIpc()
   registerMcpIpc()
   registerFilesIpc()
-  ipcMain.handle('theme:set-native', (_event, theme: unknown) =>
+  handle('theme:set-native', (_event, theme: unknown) =>
     syncNativeTheme(validateInput(ThemeSchema, theme))
   )
   const bridgePort = Number(process.env['TALYX_BRIDGE_PORT'] ?? 5175)

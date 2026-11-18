@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { BLOCK_SHAPES } from '../../../src/shared/moduleHost'
 import {
   BLOCK_HUES,
-  BLOCK_SHAPES,
   blockGeometry,
   blockTones,
   frontPoint

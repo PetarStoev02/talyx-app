@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { reportError } from '@shared/lib/report'
-import { importModule, type ModuleParts } from './host'
+import type { ModuleParts } from '@contract/moduleHost'
+import { importModule } from './host'
 import type { ModuleSummary } from '@contract/modules'
 
 /**

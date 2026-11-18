@@ -1,5 +1,4 @@
-export const BLOCK_SHAPES = ['cube', 'tall', 'slab', 'stair', 'twin', 'tower'] as const
-export type BlockShape = (typeof BLOCK_SHAPES)[number]
+import type { BlockShape } from '@contract/moduleHost'
 
 // Hue angles in oklch, in picker order; a bot's metadata stores the index.
 export const BLOCK_HUES = [20, 50, 80, 110, 140, 170, 200, 230, 260, 285, 310, 340]

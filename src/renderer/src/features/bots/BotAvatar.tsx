@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { BlockAvatar } from '@shared/ui/BlockAvatar'
-import type { BlockState } from '@shared/ui/BlockAvatar'
+import type { BlockState } from '@contract/moduleHost'
 import { lookOf } from './look'
 import { useRoster } from './store'
 import type { Bot } from './types'
