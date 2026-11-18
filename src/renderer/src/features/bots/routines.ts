@@ -146,12 +146,12 @@ export function describeSchedule(schedule: string): {
   if (Number.isInteger(hours) && hours >= 1 && hours <= MAX_HOURS)
     return { ...none, kind: 'hours', hours }
   if (minutes > 0) return { ...none, kind: 'custom', minutes }
-  const at = AT_TIME.exec(schedule)
-  if (at && Number(at[1]) < 60 && Number(at[2]) < 24) {
-    const time = `${at[2].padStart(2, '0')}:${at[1].padStart(2, '0')}`
-    if (at[3] === '*') return { ...none, kind: 'daily', time }
-    if (at[3] === '1-5') return { ...none, kind: 'weekdays', time }
-    return { ...none, kind: 'weekly', time, weekday: Number(at[3]) }
+  const [, minute, hour, days] = AT_TIME.exec(schedule) ?? []
+  if (minute !== undefined && hour !== undefined && Number(minute) < 60 && Number(hour) < 24) {
+    const time = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`
+    if (days === '*') return { ...none, kind: 'daily', time }
+    if (days === '1-5') return { ...none, kind: 'weekdays', time }
+    return { ...none, kind: 'weekly', time, weekday: Number(days) }
   }
   return { ...none, kind: 'custom' }
 }

@@ -29,7 +29,8 @@ export function ClarifyCard({
   const chosen = (choice: string): boolean =>
     Array.isArray(picked) ? picked.includes(choice) : picked === choice
 
-  function choose(choice: string): void {
+  // An arrow, not a hoisted function, so it keeps `question` narrowed by the guard above.
+  const choose = (choice: string): void => {
     setAnswers((current) => {
       if (!question.multiSelect) return { ...current, [question.qid]: choice }
       const list = Array.isArray(current[question.qid]) ? (current[question.qid] as string[]) : []

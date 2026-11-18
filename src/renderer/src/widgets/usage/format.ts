@@ -22,5 +22,6 @@ export function shareText(part: number, whole: number): string {
 /** A YYYY-MM-DD local day as "Nov 16". */
 export function dayLabel(day: string): string {
   const [year, month, date] = day.split('-').map(Number)
+  if (year === undefined || month === undefined || date === undefined) return day
   return SHORT_DATE.format(new Date(year, month - 1, date))
 }

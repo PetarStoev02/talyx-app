@@ -48,7 +48,10 @@ export function isNewerVersion(latest: string, current: string): boolean {
   const a = parse(latest)
   const b = parse(current)
   if (!a || !b) return false
-  for (let i = 0; i < 3; i++) if (a.core[i] !== b.core[i]) return a.core[i] > b.core[i]
+  for (const [i, part] of a.core.entries()) {
+    const other = b.core[i]
+    if (other !== undefined && part !== other) return part > other
+  }
   // Same core: a final release beats any pre-release of it (1.0.0 > 1.0.0-alpha.1)
   if (a.pre === null || b.pre === null) return a.pre === null && b.pre !== null
   // ponytail: numeric-aware string compare, not full semver identifier rules; fine for alpha.N / beta.N
@@ -69,8 +72,8 @@ function sectionLines(body: string, title: RegExp): string[] {
 export function parseHighlights(body: string): Highlight[] {
   const found: Highlight[] = []
   for (const line of sectionLines(body, /^##\s+Highlights$/i)) {
-    const match = /^[-*]\s+\*\*(.+?)\*\*\s+(\S.*)$/.exec(line.trim())
-    if (match) found.push({ lead: match[1], text: match[2] })
+    const [, lead, text] = /^[-*]\s+\*\*(.+?)\*\*\s+(\S.*)$/.exec(line.trim()) ?? []
+    if (lead !== undefined && text !== undefined) found.push({ lead, text })
   }
   return found.slice(0, MAX_HIGHLIGHTS)
 }
@@ -122,8 +125,8 @@ async function feedVersion(
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
     })
     if (!response.ok) return null
-    const match = /^version:\s*['"]?([^\s'"]+)/m.exec(await response.text())
-    return match && parse(match[1]) ? match[1] : null
+    const [, version] = /^version:\s*['"]?([^\s'"]+)/m.exec(await response.text()) ?? []
+    return version !== undefined && parse(version) ? version : null
   } catch (err) {
     log.warn('Update check: feed unreadable:', err instanceof Error ? err.message : String(err))
     return null

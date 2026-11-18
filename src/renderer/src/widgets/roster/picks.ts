@@ -35,8 +35,8 @@ export function clickRow(event: React.MouseEvent, row: RosterRowRef, plain: () =
   const open = selection && shown.includes(itemKey(selection)) ? itemKey(selection) : null
   if (event.shiftKey) {
     const anchor = pickAnchor && shown.includes(pickAnchor) ? pickAnchor : (open ?? key)
-    const [from, to] = [shown.indexOf(anchor), shown.indexOf(key)].sort((a, b) => a - b)
-    pick(shown.slice(from, to + 1), anchor)
+    const ends = [shown.indexOf(anchor), shown.indexOf(key)]
+    pick(shown.slice(Math.min(...ends), Math.max(...ends) + 1), anchor)
   } else if (isMac ? event.metaKey : event.ctrlKey) {
     // The first ⌘+click adds to the open chat's row, as Finder adds to what is selected.
     const base = picked.length || !open ? picked : [open]

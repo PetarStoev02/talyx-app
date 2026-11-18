@@ -244,8 +244,10 @@ function readInstallFile(path: string): { commands: string[]; version: string; c
   const commands = file.platforms[process.platform]?.commands
   if (!commands) throw new SmokeFailure(`no commands for ${process.platform}`)
   const commits = new Set(commands.join('\n').match(/\b[0-9a-f]{40}\b/g))
-  if (commits.size !== 1) throw new SmokeFailure(`${commits.size} pinned commits, expected one`)
-  return { commands, version: file.engineVersion, commit: [...commits][0] }
+  const [commit] = commits
+  if (commits.size !== 1 || commit === undefined)
+    throw new SmokeFailure(`${commits.size} pinned commits, expected one`)
+  return { commands, version: file.engineVersion, commit }
 }
 
 async function install(home: string, commands: string[]): Promise<void> {

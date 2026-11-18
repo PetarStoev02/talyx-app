@@ -72,7 +72,9 @@ export function rosterControls(options: ControlsOptions): {
     drops: {
       items: (rows, place) => {
         if (rows.length > 1) return run(() => actions.placeRows(rows, place))
-        const [{ kind, id }] = rows
+        const [row] = rows
+        if (!row) return
+        const { kind, id } = row
         if (kind !== 'folder') run(() => actions.placeItem({ kind, id }, place))
       },
       folder: (id, place) => {
@@ -278,11 +280,15 @@ function pinOrderActions(bot: Bot, { actions, run, t }: ControlsOptions): MenuAc
   const pins = pinnedBots(useRoster.getState().snapshot.bots)
   const index = pins.findIndex((item) => item.name === bot.name)
   if (index < 0) return []
-  return [-1, 1]
-    .filter((direction) => pins[index + direction])
-    .map((direction) => ({
-      label: direction < 0 ? t('roster.pinEarlier') : t('roster.pinLater'),
-      icon: direction < 0 ? ArrowLeft : ArrowRight,
-      onSelect: () => run(() => actions.orderPin(bot.name, pins[index + direction].name))
-    }))
+  return [-1, 1].flatMap((direction) => {
+    const neighbour = pins[index + direction]
+    if (!neighbour) return []
+    return [
+      {
+        label: direction < 0 ? t('roster.pinEarlier') : t('roster.pinLater'),
+        icon: direction < 0 ? ArrowLeft : ArrowRight,
+        onSelect: () => run(() => actions.orderPin(bot.name, neighbour.name))
+      }
+    ]
+  })
 }

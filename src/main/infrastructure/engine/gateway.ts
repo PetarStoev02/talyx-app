@@ -260,10 +260,11 @@ function profileRouteSuffix(pathname: string): string {
 
 function profileCollectionRoute(pathname: string, method?: string): string | null {
   const suffix = profileRouteSuffix(pathname)
-  if (!suffix || !Object.hasOwn(PROFILE_COLLECTION_ROUTES, suffix)) return null
-  return method === undefined || PROFILE_COLLECTION_ROUTES[suffix].includes(method.toUpperCase())
-    ? suffix
-    : null
+  const methods = Object.hasOwn(PROFILE_COLLECTION_ROUTES, suffix)
+    ? PROFILE_COLLECTION_ROUTES[suffix]
+    : undefined
+  if (!suffix || !methods) return null
+  return method === undefined || methods.includes(method.toUpperCase()) ? suffix : null
 }
 
 /** The native grant a REST request needs. Creating a profile and renaming/deleting the one a path
@@ -392,7 +393,7 @@ function requestTicket(
       }
       if (!buffer.includes('\n')) return
       try {
-        const reply = JSON.parse(buffer.split('\n')[0]) as {
+        const reply = JSON.parse(buffer.slice(0, buffer.indexOf('\n'))) as {
           ok?: boolean
           protocol?: number
           id?: number

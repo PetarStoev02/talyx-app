@@ -4,6 +4,7 @@
     "src/shared/**/*","electron.vite.config.*", "src/main/**/*", "src/preload/**/*", "src/splash/preload.ts", "tests/smoke/**/*", "tests/types/**/*", "vitest.smoke.config.ts"],
   "compilerOptions": {
     "composite": true,
+    "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "types": ["electron-vite/node"],
     "baseUrl": ".",
