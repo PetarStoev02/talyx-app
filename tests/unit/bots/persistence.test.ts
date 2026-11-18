@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import {
   hasSharedLayout,
@@ -8,10 +9,12 @@ import {
 } from '../../../src/renderer/src/features/bots/data'
 import {
   FOLDERS_KEY,
+  ITEM_ORDER_KEY,
+  ROOM_FOLDERS_KEY,
   ROOM_PINS_KEY,
   moveFolder
 } from '../../../src/renderer/src/features/bots/roster'
-import { BOT_META_KEY, backendFor, engineDouble } from './engineDouble'
+import { BOT_META_KEY, GROUPS_META_KEY, backendFor, engineDouble } from './engineDouble'
 import type { EngineRequest } from './engineDouble'
 
 describe('shared roster persistence', () => {
@@ -105,6 +108,76 @@ describe('shared roster persistence', () => {
     expect(roster.roomFolders).toEqual({})
     await saveBotMeta(backendFor(engine), 'writer', { hidden: true })
     expect(engine.metadata.writer[BOT_META_KEY]).toEqual({ hidden: true })
+  })
+  it('should drop a bad field, never the whole roster, whatever other clients wrote', async () => {
+    const text = (value: unknown): boolean => typeof value === 'string'
+    const flag = (value: unknown): boolean => typeof value === 'boolean'
+    const count = (value: unknown): boolean => Number.isFinite(value)
+    const textOrNull = (value: unknown): boolean => value === null || text(value)
+    // Each field of a bot's record and the type Talyx reads it as.
+    const FIELDS: Record<string, (value: unknown) => boolean> = {
+      title: text,
+      description: text,
+      sectionId: textOrNull,
+      sectionName: textOrNull,
+      pinned: flag,
+      pinnedOrder: count,
+      hidden: flag,
+      shape: text,
+      color: (value) => count(value) || text(value),
+      faces: flag,
+      usesDefault: flag
+    }
+    const fields = fc.record(
+      Object.fromEntries(Object.keys(FIELDS).map((field) => [field, fc.jsonValue()])),
+      { requiredKeys: [] }
+    )
+    const record = fc.oneof(fields, fc.jsonValue())
+    const layout = fc.record(
+      Object.fromEntries(
+        [FOLDERS_KEY, ROOM_FOLDERS_KEY, ROOM_PINS_KEY, ITEM_ORDER_KEY, GROUPS_META_KEY].map(
+          (key) => [key, fc.jsonValue()]
+        )
+      ),
+      { requiredKeys: [] }
+    )
+    // What the engine lists of a profile, as clients set it.
+    const profile = fc.record(
+      Object.fromEntries(
+        ['display_name', 'title', 'description', 'canonical_session', 'last_session'].map((key) => [
+          key,
+          fc.jsonValue()
+        ])
+      ),
+      { requiredKeys: [] }
+    )
+    await fc.assert(
+      fc.asyncProperty(layout, record, record, profile, async (shared, analyst, writer, row) => {
+        const engine = engineDouble({
+          default: shared,
+          analyst: { [BOT_META_KEY]: analyst },
+          writer: { [BOT_META_KEY]: writer }
+        })
+        const request: EngineRequest = async (name, method, params) => {
+          const answer = await engine.request(name, method, params)
+          if (method !== 'profiles.list') return answer
+          const { profiles } = answer as { profiles: Record<string, unknown>[] }
+          return { profiles: profiles.map((listed) => ({ ...listed, ...row })) }
+        }
+        const { bots } = await readRoster(backendFor({ request }))
+        expect(bots.map((bot) => bot.name)).toEqual(['default', 'analyst', 'writer'])
+        for (const [bot, written] of [
+          [bots[1], analyst],
+          [bots[2], writer]
+        ] as const) {
+          const stored = (written ?? {}) as Record<string, unknown>
+          for (const [field, readable] of Object.entries(FIELDS)) {
+            if (readable(stored[field])) expect(bot.meta).toHaveProperty(field, stored[field])
+            else expect(bot.meta[field as keyof typeof bot.meta]).toBeUndefined()
+          }
+        }
+      })
+    )
   })
 })
 

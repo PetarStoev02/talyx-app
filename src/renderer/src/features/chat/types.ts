@@ -63,8 +63,8 @@ export interface Transcript {
   stream: StreamCursor | null
   // What the engine says while it waits on a provider before retrying; null when it is not waiting.
   wait: string | null
-  // The turns that failed here, oldest first. The engine never stores one, so a reload puts them
-  // back where they were.
+  // The turns that failed here, oldest first. The engine stores only a turn that failed after it
+  // reached the model, so a reload puts the others back where they were.
   failed: FailedTurn[]
 }
 

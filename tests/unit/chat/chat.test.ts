@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { MediaGoneError, chatActions } from '../../../src/renderer/src/features/chat/chat'
 import type { ChatActions, ChatBackend } from '../../../src/renderer/src/features/chat/chat'
@@ -609,17 +610,24 @@ describe('bot chat', () => {
       expect(chat(MANAGER).waiting.map((message) => message.draft.text)).toEqual(['Later'])
     })
 
-    it('should send the next waiting message when a gap hides the end of the answer', async () => {
-      emit('message.complete', { text: 'A', status: 'complete' })
-      await settled()
-      await actions.queue(MANAGER, draft('Mine'))
-      await actions.queue(MANAGER, draft('Next'))
-      expect(submitted()).toEqual(['Mine'])
-      // The answer to Mine started and ended while the socket was away; the redial reports a gap.
-      emit('session.replay_gap')
-      await settled()
-      expect(submitted()).toEqual(['Mine', 'Next'])
-    })
+    // The answer to Mine started and ended unseen: the socket was away (the redial reports a gap),
+    // or another client rewound the chat.
+    it.each([
+      ['a gap', 'session.replay_gap', {}],
+      ['a rewind', 'session.updated', { operation: 'rewind' }]
+    ])(
+      'should never leave the next waiting message stuck when %s hides the end of the answer',
+      async (_case, type, payload) => {
+        emit('message.complete', { text: 'A', status: 'complete' })
+        await settled()
+        await actions.queue(MANAGER, draft('Mine'))
+        await actions.queue(MANAGER, draft('Next'))
+        expect(submitted()).toEqual(['Mine'])
+        emit(type, payload)
+        await settled()
+        expect(submitted()).toEqual(['Mine', 'Next'])
+      }
+    )
 
     it('should send a picked message at once when the chat is idle', async () => {
       emit('message.complete', { text: 'A', status: 'complete' })
@@ -641,6 +649,52 @@ describe('bot chat', () => {
       // The next message retries it, in order.
       await actions.queue(MANAGER, draft('After'))
       expect(submitted()).toEqual(['Next', 'Next'])
+    })
+
+    it('should never cut into an answer, whatever mix of sends, ends and stops comes', async () => {
+      const ANSWERED = { text: 'A', status: 'complete' }
+      const STOPPED = { text: '', status: 'interrupted' }
+      const steps = fc.array(fc.constantFrom('send', 'engine moves', 'stop'), { maxLength: 10 })
+      await fc.assert(
+        fc.asyncProperty(steps, async (script) => {
+          useChat.setState({ chats: {} })
+          engine = chatDouble()
+          actions = chatActions(engine.backend)
+          await actions.open(MANAGER, 'manager-chat')
+          emit('message.start', { turn_id: 'before' })
+          let running = true
+          let answered = 0
+          let typed = 0
+          // The engine's next move: it ends the running answer, or starts on the message out.
+          const engineMoves = async (ending: Record<string, unknown>): Promise<void> => {
+            if (running) {
+              emit('message.complete', ending)
+              running = false
+            } else if (submitted().length > answered) {
+              answered += 1
+              emit('message.start', { turn_id: `t${answered}` })
+              running = true
+            }
+            await settled()
+          }
+          for (const step of script) {
+            if (step === 'send') {
+              typed += 1
+              await actions.queue(MANAGER, draft(`m${typed}`))
+              await settled()
+            } else if (step === 'engine moves') await engineMoves(ANSWERED)
+            else if (running) {
+              await actions.interrupt(MANAGER)
+              await engineMoves(STOPPED)
+            }
+            // None goes while an answer runs; between answers the next one is out, alone.
+            expect(submitted().length - answered).toBe(running ? 0 : Math.min(1, typed - answered))
+          }
+          while (running || submitted().length > answered) await engineMoves(ANSWERED)
+          // Each one goes once, in order, after the answer before it ended.
+          expect(submitted()).toEqual(Array.from({ length: typed }, (_, at) => `m${at + 1}`))
+        })
+      )
     })
   })
 
@@ -943,7 +997,7 @@ describe('bot chat', () => {
   })
 
   describe('during a turn', () => {
-    it('should answer every clarify question in order', async () => {
+    it('should answer every clarify question in order, each once the one before is in', async () => {
       await actions.open(MANAGER, 'manager-chat')
       useChat.getState().update(MANAGER, {
         transcript: addPrompt(chat(MANAGER).transcript!, {
@@ -956,10 +1010,16 @@ describe('bot chat', () => {
           answers: {}
         })
       })
-      await actions.answerClarify(MANAGER, 'p1', { q1: 'Q3', q2: ['a', 'b'] })
-      expect(
+      const locks = (): Record<string, unknown>[] =>
         engine.calls.filter((item) => item.method === 'clarify.lock').map((item) => item.params)
-      ).toEqual([
+      const firstIn = engine.holdNext('clarify.lock')
+      const answering = actions.answerClarify(MANAGER, 'p1', { q1: 'Q3', q2: ['a', 'b'] })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      // The last lock completes the batch, so it waits until the engine has the first.
+      expect(locks()).toHaveLength(1)
+      firstIn()
+      await answering
+      expect(locks()).toEqual([
         { request_id: 'p1', question_id: 'q1', answer: 'Q3' },
         { request_id: 'p1', question_id: 'q2', answer: '["a","b"]' }
       ])

@@ -64,7 +64,12 @@ export function diagnosticsReport({ talyx, engine, os, log, home }: Diagnostics)
   return redactSecrets(home ? text.replace(homePattern(home), '~') : text)
 }
 
-// The home folder only as a whole path segment: /home/al must not turn /home/alice into ~ice.
+// The home folder only as a whole path segment: /home/al must not turn /home/alice into ~ice, in
+// any script.
 function homePattern(home: string): RegExp {
-  return new RegExp(`${home.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-]|\\.\\w)`, 'g')
+  const nameChar = '[\\p{L}\\p{M}\\p{N}_-]'
+  return new RegExp(
+    `${home.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?!${nameChar}|\\.${nameChar})`,
+    'gu'
+  )
 }

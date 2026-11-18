@@ -252,6 +252,11 @@ describe('routines', () => {
       expect(loaded.schedule).toMatchObject({ kind: 'custom', custom: '15 */3 * * 1-5' })
     })
 
+    it('should read a one-time routine back as the time it runs, not the engine’s wording', async () => {
+      const { draft: loaded } = await open({ schedule: '2026-11-20T09:00:00+00:00' })
+      expect(loaded.schedule).toMatchObject({ kind: 'custom', custom: '2026-11-20T09:00:00+00:00' })
+    })
+
     it('should read every 2 hours back as the hours kind', async () => {
       const { draft: loaded } = await open({ schedule: 'every 2h' })
       expect(loaded.schedule).toMatchObject({ kind: 'hours', hours: 2 })
