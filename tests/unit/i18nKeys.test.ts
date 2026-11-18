@@ -84,7 +84,10 @@ describe('i18n keys', () => {
     )
 
     expect(KEYS).not.toHaveLength(0)
-    expect(KEYS.filter((key) => !used.has(key))).toEqual([])
+    expect(
+      KEYS.filter((key) => !used.has(key)),
+      'Delete each key from i18n.ts, or declare the call that builds it at runtime in FAMILIES'
+    ).toEqual([])
   })
 
   describe('keys a source uses', () => {
