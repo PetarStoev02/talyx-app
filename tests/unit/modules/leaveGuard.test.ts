@@ -41,6 +41,14 @@ describe('leaving a module page with unsaved work', () => {
     expect(useNavigation.getState().currentView).toBe('agents')
   })
 
+  it('should keep the user on the page while its answer never settles', async () => {
+    openModulePage()
+    setLeaveGuard(() => new Promise<boolean>(() => undefined))
+    useNavigation.getState().navigate('agents')
+    await settle()
+    expect(useNavigation.getState().currentView).toBe(WORKFLOWS)
+  })
+
   it('should leave when the guard itself fails, so a broken module never traps the user', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     openModulePage()

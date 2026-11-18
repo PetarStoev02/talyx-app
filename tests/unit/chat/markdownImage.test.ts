@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import { markdownImage } from '../../../src/renderer/src/features/chat/markdownImage'
 
@@ -17,6 +18,21 @@ describe('markdownImage', () => {
       ['//track.example/x.png', 'https://track.example/x.png']
     ])('should show %s as a link instead of loading it', (src, href) => {
       expect(markdownImage(src, 'chart')).toEqual({ kind: 'link', href, label: 'chart' })
+    })
+
+    it('should never load an image that is not inline data', () => {
+      const source = fc.oneof(
+        fc.webUrl(),
+        fc.webUrl().map((url) => url.replace(/^https?:/, '')),
+        fc.string().map((rest) => `data:${rest}`),
+        fc.string()
+      )
+      fc.assert(
+        fc.property(source, fc.string(), (src, alt) => {
+          fc.pre(!src.startsWith('data:image/'))
+          expect(markdownImage(src, alt).kind).not.toBe('image')
+        })
+      )
     })
 
     it('should label the link with the URL when there is no alt text', () => {

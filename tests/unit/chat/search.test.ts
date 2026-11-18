@@ -1,3 +1,4 @@
+import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import { findMatches, pointIn } from '../../../src/renderer/src/features/chat/search'
 
@@ -39,6 +40,22 @@ describe('finding text in a chat', () => {
     expect(findMatches(['İx'], 'x')).toEqual([{ text: 0, start: 1, end: 2 }])
   })
 
+  it('should never lowercase the text, so a match keeps its place whatever comes before it', () => {
+    // A mark no other character folds to: the query can only match where the mark is.
+    const MARK = '\u0001'
+    const chunk = fc.oneof(fc.constantFrom('İ', 'ẞ', 'ŉ', 'Σ'), fc.string({ unit: 'grapheme' }))
+    const before = fc.array(chunk).map((chunks) => chunks.join('').replaceAll(MARK, ''))
+    const word = fc.string({ unit: 'grapheme', minLength: 1 }).map((w) => w.replaceAll(MARK, ''))
+    fc.assert(
+      fc.property(before, word, (text, typed) => {
+        const query = MARK + typed
+        expect(findMatches([text + query], query)).toEqual([
+          { text: 0, start: text.length, end: text.length + query.length }
+        ])
+      })
+    )
+  })
+
   it('should find characters that mean something in a pattern as plain text', () => {
     expect(findMatches(['cost (net) is $5.00?'], '(net) is $5.00?')).toEqual([
       { text: 0, start: 5, end: 20 }
@@ -57,6 +74,30 @@ describe('finding text in a chat', () => {
     it('should end in the piece the match ends in, before a piece that starts there', () => {
       expect(pointIn(lengths, 17, 'end')).toEqual({ piece: 1, at: 6 })
       expect(pointIn(lengths, 21, 'end')).toEqual({ piece: 2, at: 4 })
+    })
+
+    it('should never let a range cover an empty edge of a piece', () => {
+      const range = fc
+        .array(fc.nat(6), { minLength: 1 })
+        .filter((pieces) => pieces.some((length) => length > 0))
+        .chain((pieces) => {
+          const total = pieces.reduce((sum, length) => sum + length, 0)
+          return fc.tuple(
+            fc.constant(pieces),
+            fc.integer({ min: 0, max: total - 1 }),
+            fc.integer({ min: 1, max: total })
+          )
+        })
+        .filter(([, start, end]) => start < end)
+      fc.assert(
+        fc.property(range, ([pieces, start, end]) => {
+          const from = pointIn(pieces, start, 'start')
+          const to = pointIn(pieces, end, 'end')
+          expect(from.at).toBeLessThan(pieces[from.piece])
+          expect(to.at).toBeGreaterThan(0)
+          expect(to.at).toBeLessThanOrEqual(pieces[to.piece])
+        })
+      )
     })
   })
 })
