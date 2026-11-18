@@ -43,7 +43,8 @@ control-talyx launch                                       # attaches to this ma
 control-talyx doctor
 ```
 
-Read-only. Checks the pid is alive, CDP answers at `http://127.0.0.1:9333`, the run directory
+Read-only. Checks the pid is alive, CDP answers at `http://127.0.0.1:9333` (or
+`TALYX_VERIFY_CDP_PORT`), the run directory
 exists, and names the window. Run it first whenever a step looks wrong.
 
 ## Drive
@@ -88,7 +89,8 @@ control-talyx stop
   pick it as `Talyx’s model`, make a bot. Then run `fuzz`: it sees the engine in the run's home and
   also checks that its gateway still runs after every step. Bots answer through the provider, so a
   step that sends costs one call. Replies differ between runs, so a replay starts from a fresh
-  setup and may still drift.
+  setup and may still drift. The run's home keeps your own engine and bots apart, but it is not a
+  sandbox for the bots: they run tools as you, and only the approval buttons are skipped.
 - A failure prints the seed, the failed check and the step log, and saves `steps.log`,
   `after.aria.txt` and `after.png` under `evidence/fuzz-<seed>/`. Rerun the same seed on a fresh
   launch to replay it; a pass also saves `steps.log`.

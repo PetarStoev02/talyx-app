@@ -84,8 +84,9 @@ async function launch() {
 
 // An engine installed by setup in a --no-engine run lives in the run's HOME, and its gateway
 // outlives Talyx (Talyx never owns the gateway). Stop what runs from inside the run directory, by
-// that path (also by its real path, for a TALYX_VERIFY_ROOT behind a symlink). Not `gateway stop`: the engine looks for its
-// launchd service under the account's real home, so it could stop the user's own gateway.
+// that path (also by its real path, for a TALYX_VERIFY_ROOT behind a symlink). Not `gateway stop`:
+// the engine looks for its launchd service under the account's real home, so it could stop the
+// user's own gateway.
 async function stopRunProcesses() {
   const signal = (name) =>
     pathsOf(RUN).forEach((path) => spawnSync('pkill', [`-${name}`, '-U', uid(), '-f', `${path}/`]))
@@ -218,7 +219,7 @@ async function fuzz() {
   const random = mulberry32(seed)
   const pick = (list) => list[Math.floor(random() * list.length)]
   const engine = existsSync(SANDBOX_ENGINE)
-  if (engine && !runsFrom(HOME)) throw new Error(`no gateway runs from ${HOME}`)
+  if (engine && gatewayGone()) throw new Error(`no gateway runs from ${HOME}`)
   const page = await mainPage()
   const errors = []
   page.on('console', (message) => message.type() === 'error' && errors.push(message.text()))
@@ -259,10 +260,18 @@ async function fuzz() {
   }
 }
 
-// The sandbox gateway runs from the run's home (Talyx itself only from userData), and nothing
-// the fuzz may click stops it.
+// Nothing the fuzz may click stops the run's gateway. Its command starts with a program in the
+// run's home; a shell or tail that only names the path does not count. Talyx restarts a gateway
+// that dies, so this sees a stop only while it lasts.
 function gatewayGone() {
-  return runsFrom(HOME) ? null : `the gateway in ${HOME} stopped`
+  const running = pathsOf(HOME).some(
+    (path) => spawnSync('pgrep', ['-U', uid(), '-f', `^${escapeRegExp(path)}/`]).status === 0
+  )
+  return running ? null : `the gateway in ${HOME} stopped`
+}
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 // A whole-number flag, so a typo cannot pass as a run (`--seed` alone parses as true).
@@ -297,15 +306,22 @@ function parseControls(aria) {
 
 async function fuzzAct(page, action, text) {
   if (action.key) {
-    // Enter and Space press the focused control, so they honour FUZZ_SKIP like clicks do.
+    // Enter and Space press the focused control, so they honour FUZZ_SKIP like clicks do, and
+    // never follow a link (it opens the system browser).
     if (action.key === 'Enter' || action.key === 'Space') {
       const focused = await page.evaluate(() => {
         // The control that holds focus (or contains it); nothing when focus is on the page.
         const control = document.activeElement?.closest('button, a, input, select, [role]')
-        if (!control) return ''
-        return (control.getAttribute('aria-label') ?? control.textContent ?? '').trim().slice(0, 80)
+        if (!control) return { link: false, name: '' }
+        return {
+          link: control.closest('a[href]') !== null,
+          name: (control.getAttribute('aria-label') ?? control.textContent ?? '')
+            .trim()
+            .slice(0, 80)
+        }
       })
-      if (FUZZ_SKIP.test(focused)) return `skip ${action.key} on "${focused}"`
+      if (focused.link || FUZZ_SKIP.test(focused.name))
+        return `skip ${action.key} on "${focused.name}"`
     }
     await page.keyboard.press(action.key)
     return `press ${action.key}`
