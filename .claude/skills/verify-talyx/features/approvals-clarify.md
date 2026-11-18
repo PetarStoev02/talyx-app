@@ -26,7 +26,7 @@ Preconditions:
 
 - **Ask for a clarify.** Run `control-talyx browser fill --role textbox --name "Message Verify scratch" --value "Use your clarify tool to ask me one question with the two choices Red and Blue."`, then `control-talyx browser click --role button --name "Send" --exact`. Within about 60 s a region named after the question shows, with two choice buttons and a disabled `Send`.
 - **Pick and send.** Read the snapshot, then click the first choice pill by the name the snapshot prints (that text comes from the bot, so it has no i18n handle). It shows `[pressed]` and `Send` turns enabled. Run `control-talyx browser click --role button --name "Send" --exact`. The card is gone and the bot's reply names the choice.
-- **Ask for an approval.** Run `control-talyx browser fill --role textbox --name "Message Verify scratch" --value "Run the shell command rm -rf /tmp/talyx-verify-probe and tell me the result."`, send it, then `control-talyx browser wait --role region --name "Verify scratch wants to run this" --timeout 60000`. The region shows the command and the buttons `Deny`, `Allow once`, `Allow in this chat`, `Always allow` (or the subset the request allows).
+- **Ask for an approval.** Run `control-talyx browser fill --role textbox --name "Message Verify scratch" --value "Run the shell command curl -fsS https://example.com and tell me the first line."`, send it, then `control-talyx browser wait --role region --name "Verify scratch wants to run this" --timeout 60000`. The region shows the command and the buttons `Deny`, `Allow once`, `Allow in this chat`, `Always allow` (or the subset the request allows).
 - **Deny.** Run `control-talyx browser click --role button --name "Deny" --exact`. The card is gone and the bot reports that the command was denied.
 - **Proof.** Run `control-talyx browser snapshot --path /tmp/talyx-verify/evidence/approvals-clarify/after.aria.txt` and `control-talyx browser screenshot --path /tmp/talyx-verify/evidence/approvals-clarify/after.png`. The snapshot has no region named `Verify scratch wants to run this`. Second view: select another bot, come back to `Verify scratch`, and check that no card comes back.
 - **Cleanup.** Delete the scratch bot as in create-bot. Keep the evidence.
@@ -35,7 +35,7 @@ Preconditions:
 
 - Real engine only, and only on the approved scratch bot `Verify scratch`. Never trigger or answer cards in the user's bots or rooms. Each turn costs real tokens.
 - Always answer approvals with `Deny` in a run. Never click `Always allow`: it changes the engine's allowlist past this run.
-- An approval shows only when the engine's approval mode flags the command. If no card shows after 60 s, report `approval-show` as unreachable with that mode as the unmet precondition, and do not loosen the check.
+- An approval shows only when the engine's approval mode flags the command. If no card shows after 60 s, report `approval-show` as unreachable with that mode as the unmet precondition, and do not loosen the check. The probe command is harmless if the engine runs it without asking.
 - Name not from i18n: the clarify region, its text box and its choice pills are named by the bot's question and choices (`ClarifyCard.tsx`). Read those names from a snapshot.
 - Name not from i18n: the command and description in an approval card are engine text, not a control.
 - Both cards are a `section` with `aria-labelledby`, so they should show as role `region`. Confirm that in a snapshot.

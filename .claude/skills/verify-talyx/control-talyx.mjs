@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
-const ROOT = process.env.TALYX_VERIFY_ROOT ?? '/tmp/talyx-verify'
+const ROOT = resolve(process.env.TALYX_VERIFY_ROOT ?? '/tmp/talyx-verify')
 const RUN = join(ROOT, 'run')
 const EVIDENCE = join(ROOT, 'evidence')
 const PID_FILE = join(RUN, 'pid')
@@ -72,17 +72,11 @@ async function launch() {
 }
 
 // An engine installed by setup in a --no-engine run lives in the run's HOME, and its gateway
-// outlives Talyx (Talyx never owns the gateway), so stop it before the run directory goes.
-function stopSandboxEngine() {
-  const engine = join(HOME, '.local/bin', ENGINE_COMMAND)
-  if (!existsSync(engine)) return
-  spawnSync(engine, ['gateway', 'stop'], {
-    env: { ...process.env, HOME, PATH: '/usr/bin:/bin' },
-    stdio: 'ignore',
-    timeout: STOP_TIMEOUT_MS
-  })
-  // Anything still running from inside the run directory is this run's; stop it by that path.
-  spawnSync('pkill', ['-f', RUN])
+// outlives Talyx (Talyx never owns the gateway). Stop what runs from inside the run directory, by
+// that path. Not `gateway stop`: the engine looks for its launchd service under the account's real
+// home, so it could stop the user's own gateway.
+function stopRunProcesses() {
+  spawnSync('pkill', ['-U', String(process.getuid()), '-f', `${RUN}/`])
 }
 
 async function doctor() {
@@ -114,7 +108,7 @@ async function stop() {
         throw new Error(`process group ${pid} survived SIGKILL; ${RUN} kept`)
     }
   }
-  stopSandboxEngine()
+  stopRunProcesses()
   rmSync(RUN, { recursive: true, force: true })
   console.log(`stopped${pid ? ` pid ${pid}` : ''}; evidence kept in ${EVIDENCE}`)
 }

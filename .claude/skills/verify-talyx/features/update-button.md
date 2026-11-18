@@ -28,7 +28,7 @@ Preconditions:
 - **Check.** Run `control-talyx browser click --role button --name "Check for updates"`. The button reads "Checking…" for a moment. The status line then reads "Talyx is up to date.", "Talyx {version} is available." or "Talyx could not check for updates. Check your connection and try again."
 - **Notice (only if a release was found).** Run `control-talyx browser wait --role dialog --name "Updates"`. The footer has `button "Update available"`. The dialog has a heading "Talyx {version} is available" and either `button "Download"` with `button "Later"`, or only `button "Open the release page"`.
 - **Later.** Run `control-talyx browser click --role button --name "Later" --exact`. The dialog closes and `button "Update available"` stays. To reopen it, run `control-talyx browser click --role button --name "Update available"`.
-- **Proof.** Run `control-talyx browser snapshot --path /tmp/talyx-verify/evidence/update-button/after.aria.txt` and `control-talyx browser screenshot --path /tmp/talyx-verify/evidence/update-button/after.png`. Record which result the check gave.
+- **Proof.** After the check (whatever its result) run `control-talyx browser snapshot --path /tmp/talyx-verify/evidence/update-button/after.aria.txt` and `control-talyx browser screenshot --path /tmp/talyx-verify/evidence/update-button/after.png`. Record which result the check gave.
 - **Cleanup.** Press Escape with `control-talyx browser press --key Escape`, then run `control-talyx browser click --role button --name "Close Settings"`. Nothing is stored in `settings.json`, and the update state lives in main until `control-talyx stop`.
 
 ## Gotchas

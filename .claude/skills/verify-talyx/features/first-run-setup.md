@@ -41,8 +41,9 @@ Preconditions:
 - `Install` runs the release's install commands. Click it only in a `--no-engine` run, where
   `HOME` is the run's home; without `--no-engine` it installs into the user's real `~/.local/bin`.
   It downloads the engine and its runtime (minutes, network).
-- The installed engine starts its own gateway from the run's home. `control-talyx stop` stops it
-  and anything else running from the run directory; the user's own gateway is not touched.
+- The installed engine starts its own gateway from the run's home. `control-talyx stop` stops
+  everything running from the run directory by that path; it never calls the engine's own
+  `gateway stop`, which could reach the user's gateway service.
 - A provider key typed into the Provider step lands in the run's engine files and is deleted
   with the run directory by `stop`.
 - `Open release page` opens the browser outside the app; CDP does not see it.

@@ -89,8 +89,8 @@ control-talyx stop
 ```
 
 Kills the process group it started (from `/tmp/talyx-verify/run/pid`, never by name), waits until
-every process in it has exited (Electron quits after electron-vite), stops the gateway of an engine
-setup installed into the run's home (and anything else still running from the run directory), and removes
+every process in it has exited (Electron quits after electron-vite), stops anything still running
+from the run directory (the gateway of an engine setup installed into the run's home), and removes
 `/tmp/talyx-verify/run/`. Evidence stays. Run it after every attempt, including failed ones; a
 later `launch` refuses while any process in that group is alive.
 

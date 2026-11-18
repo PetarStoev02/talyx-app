@@ -22,11 +22,11 @@ Preconditions:
 - Network access to GitHub for the update check.
 
 - **Open Settings.** Run `control-talyx browser click --role button --name "Settings" --exact`. The Settings pages sidebar shows.
-- **Open About.** Run `control-talyx browser click --role button --name "Version, updates, diagnostics"`, then `control-talyx browser wait --role heading --name "About" --exact`. The snapshot shows the sr-only h1 `Settings: About`, the text `Talyx 1.1.0` and `Engine not found`, `button "Check for updates"` and `button "Copy diagnostics"`.
+- **Open About.** Each Settings page button is named by its title plus its detail line (`About Version, updates, diagnostics`), so match the detail. Run `control-talyx browser click --role button --name "Version, updates, diagnostics"`, then `control-talyx browser wait --role heading --name "About" --exact`. The snapshot shows the sr-only h1 `Settings: About`, the text `Talyx 1.1.0` and `Engine not found`, `button "Check for updates"` and `button "Copy diagnostics"`.
 - **Check for updates.** Run `control-talyx browser click --role button --name "Check for updates"`, then `control-talyx browser wait --role button --name "Check for updates" --timeout 20000`. A `status` region holds `Talyx is up to date.`, `Talyx {version} is available.` or the failure line.
 - **Copy diagnostics.** The copy overwrites the user's clipboard: save it first with `pbpaste > /tmp/talyx-verify/clipboard.bak` and put it back afterwards with `pbcopy < /tmp/talyx-verify/clipboard.bak`. Run `control-talyx browser click --role button --name "Copy diagnostics"`. The button reads `Copied.` (`control-talyx browser wait --role button --name "Copied."`), then goes back to `Copy diagnostics`. Save the clipboard with `pbpaste > /tmp/talyx-verify/evidence/settings-about/diagnostics.txt`. Its first lines are `Talyx 1.1.0` and `Engine not found`, and no line contains your home path or a key.
 - **Proof.** Run `control-talyx browser snapshot --path /tmp/talyx-verify/evidence/settings-about/after.aria.txt` and `control-talyx browser screenshot --path /tmp/talyx-verify/evidence/settings-about/after.png`. Nothing is written to `settings.json`, so the snapshot, the status text and the clipboard file are the proof.
-- **Cleanup.** Run `control-talyx stop`. The clipboard still holds the report. Clear it if that matters (`pbcopy < /dev/null`).
+- **Cleanup.** Put the clipboard back with `pbcopy < /tmp/talyx-verify/clipboard.bak`, then run `control-talyx stop`.
 
 ## Gotchas
 
