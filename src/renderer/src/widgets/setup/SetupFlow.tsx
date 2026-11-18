@@ -43,7 +43,7 @@ export function SetupFlow({
       ? stepAfter(after, { engine, hasProvider: !!hasProvider, hasOwnBot: !!hasOwnBot })
       : 'engine'
     if (step === null) return onDone()
-    // The engine step looks for the engine again: it may have been installed while Welcome was open.
+    // The engine step looks again: the engine may have been installed while Welcome was open.
     if (step === 'engine') void useEngine.getState().check()
     setScreen(step)
   }

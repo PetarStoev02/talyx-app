@@ -159,6 +159,7 @@ function Dock({ sections, label }: { sections: DockSection[]; label: string }): 
   )
 }
 
+// The dock's geometry as its classes draw it: NavButton's size-8, the nav's gap-0.5 and p-1.
 const BUTTON_PX = 32
 const GAP_PX = 2
 const PAD_PX = 4

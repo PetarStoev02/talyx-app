@@ -53,7 +53,7 @@ export const EXPECTED_ENGINE_VERSION = '0.22.7'
 /** The command Talyx runs; the engine's own installer never names it this, so the user links it. */
 export const ENGINE_COMMAND = 'talyx-engine'
 
-/** The largest text frame main relays on an engine socket. */
+/** The longest text frame main relays on an engine socket, in characters (string length). */
 export const ENGINE_SOCKET_TEXT_MAX = 16 * 1024 * 1024
 
 export type EngineVersionFit = 'older' | 'same' | 'newer' | 'unknown'

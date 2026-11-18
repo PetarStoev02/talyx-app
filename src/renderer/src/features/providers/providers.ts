@@ -119,6 +119,7 @@ export type SignInPoll =
   | { status: 'pending' }
   | { status: 'failed'; message: string }
 
+// The operations a write to every bot needs.
 type EveryBot = Pick<ProvidersBackend, 'home' | 'profiles'>
 
 /** One provider's API key, as the engine's key catalog lists it. */

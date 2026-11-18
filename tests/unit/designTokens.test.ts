@@ -42,9 +42,11 @@ describe('design tokens', () => {
     }
   })
 
-  it('should keep a closing part mounted exactly as long as the longest animation', () => {
+  it('should keep a closing part mounted exactly as long as the longest closing animation', () => {
     const css = readFileSync(join(RENDERER_SRC, 'assets/theme.css'), 'utf-8')
-    const durations = [...css.matchAll(/--duration-[\w-]+:\s*(\d+)ms/g)].map(([, ms]) => Number(ms))
+    const durations = [...css.matchAll(/--duration-(?:out|move):\s*(\d+)ms/g)].map(([, ms]) =>
+      Number(ms)
+    )
 
     expect(durations.length).toBeGreaterThan(0)
     expect(CLOSE_MS).toBe(Math.max(...durations))
