@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import {
@@ -27,10 +26,13 @@ import { TestChatDialog } from './TestChatDialog'
 import { DefaultModelSection } from './DefaultModelSection'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { useArrival } from '@shared/hooks/useStayMounted'
+import { useOnChange } from '@shared/hooks/useOnChange'
+import { useWindowEvent } from '@shared/hooks/useSubscription'
 import { reportError } from '@shared/lib/report'
 import { cn } from '@shared/lib/utils'
 import { reportFlagged, reportSpread } from '@features/bots/spread'
 import { failureText } from './feedback'
+import { EndpointModels, Row } from './ProviderRow'
 
 const linkClass =
   'text-sm underline underline-offset-4 hover:decoration-2 disabled:opacity-50 disabled:hover:decoration-1'
@@ -76,10 +78,9 @@ export function ProvidersSection({
   const [revealed, setRevealed] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const arrival = useArrival(!overview && !problem)
-  // The latest callback, read at load time, so a new one each render does not reload the list.
-  const reportOverview = useRef(onOverview)
-  useLayoutEffect(() => {
-    reportOverview.current = onOverview
+  // Each overview that loads, told to the latest callback, so a new one does not reload the list.
+  useOnChange(overview, (loaded) => {
+    if (loaded) onOverview?.(loaded)
   })
 
   const load = useCallback(
@@ -88,7 +89,6 @@ export function ProvidersSection({
         (next) => {
           setOverview(next)
           setProblem(null)
-          reportOverview.current?.(next)
           // A revealed value may be stale now, and every model menu must load the new list.
           setRevealed({})
           chat?.forgetModels()
@@ -98,25 +98,19 @@ export function ProvidersSection({
     [backend, t, chat]
   )
 
-  useEffect(() => {
-    void load()
-  }, [load])
+  useOnChange(load, (run) => void run())
 
   // A provider may be added outside this form (another window, the engine's CLI). Only the list
   // refreshes: revealed keys and loaded models stay, and a failed refresh keeps the list shown.
-  useEffect(() => {
-    const refresh = (): void =>
-      void loadProviders(backend).then(
-        (next) => {
-          setOverview(next)
-          setProblem(null)
-          reportOverview.current?.(next)
-        },
-        (error: unknown) => reportError('providers', error)
-      )
-    window.addEventListener('focus', refresh)
-    return () => window.removeEventListener('focus', refresh)
-  }, [backend])
+  useWindowEvent('focus', () => {
+    loadProviders(backend).then(
+      (next) => {
+        setOverview(next)
+        setProblem(null)
+      },
+      (error: unknown) => reportError('providers', error)
+    )
+  })
 
   function hide(key: string): void {
     setRevealed((shown) =>
@@ -319,90 +313,6 @@ export function ProvidersSection({
         onChanged={load}
       />
     </>
-  )
-}
-
-function Row({
-  title,
-  badge = null,
-  lines,
-  models = null,
-  secret = false,
-  children
-}: {
-  title: string
-  badge?: string | null
-  lines: string[]
-  models?: React.ReactNode
-  secret?: boolean
-  children: React.ReactNode
-}): React.JSX.Element {
-  return (
-    // A narrow pane puts the actions under the text instead of squeezing the text.
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-secondary p-3">
-      <div className="min-w-48 flex-1">
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base font-medium">
-          <span className="min-w-0 wrap-break-word">{title}</span>
-          {badge && (
-            <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-sm font-normal">
-              {badge}
-            </span>
-          )}
-        </p>
-        {lines.map((line) => (
-          <p
-            key={line}
-            className={
-              secret
-                ? 'font-mono text-sm break-all select-text'
-                : 'text-sm text-muted-foreground wrap-break-word'
-            }
-          >
-            {line}
-          </p>
-        ))}
-        {models}
-      </div>
-      <div className="flex shrink-0 gap-3">{children}</div>
-    </li>
-  )
-}
-
-/** The endpoint's saved models, each with its own remove button when it can go. */
-function EndpointModels({
-  models,
-  onRemove
-}: {
-  models: string[]
-  onRemove: ((model: string) => void) | null
-}): React.JSX.Element {
-  const t = useLanguage((s) => s.t)
-  return (
-    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-      <span>{t('providers.modelsLabel')}</span>
-      <ul className="contents">
-        {models.map((model) => (
-          <li
-            key={model}
-            className="inline-flex items-center gap-1 rounded-full bg-background py-0.5 pr-1 pl-2 text-foreground"
-          >
-            <span className="break-all">{model}</span>
-            {onRemove ? (
-              <button
-                aria-label={t('providers.removeModelNamed').replace('{model}', model)}
-                title={t('providers.removeModelNamed').replace('{model}', model)}
-                onClick={() => onRemove(model)}
-                className="rounded-full p-1 transition-colors hover:bg-foreground/10"
-              >
-                <X size={14} />
-              </button>
-            ) : (
-              <span className="w-1" />
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
   )
 }
 

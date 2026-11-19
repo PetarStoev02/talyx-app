@@ -195,6 +195,7 @@ function AccountForm({ backend, overview, onChanged, onClose }: FormProps): Reac
   if (account)
     return (
       <SignIn
+        key={account.id}
         backend={backend}
         account={account}
         onBack={() => setPicked(null)}
