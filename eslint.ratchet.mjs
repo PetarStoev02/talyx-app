@@ -38,8 +38,6 @@ export const RATCHET = {
     'src/renderer/src/widgets/chat/Transcript.tsx',
     'src/renderer/src/widgets/chat/WorkflowParts.tsx',
     'src/renderer/src/widgets/chat/useBotRoomLogs.ts',
-    'src/renderer/src/widgets/engine-gate/ConnectionBanner.tsx',
-    'src/renderer/src/widgets/engine-gate/EngineGate.tsx',
     'src/renderer/src/widgets/modules/ActivationDialog.tsx',
     'src/renderer/src/widgets/modules/ModuleList.tsx',
     'src/renderer/src/widgets/providers/ProvidersSection.tsx',
