@@ -63,7 +63,7 @@ describe('the MCP key', () => {
     writeFileSync(KEY_FILE(), SAVED_KEY)
     readFault.code = 'EIO'
     const main = await startMain()
-    await expect(main.connection()).rejects.toThrow()
+    await expect(main.connection()).rejects.toMatchObject({ name: 'McpTokenError' })
     readFault.code = null
     expect(readFileSync(KEY_FILE(), 'utf8')).toBe(SAVED_KEY)
   })
@@ -87,7 +87,7 @@ describe('the MCP key', () => {
     writeFileSync(KEY_FILE(), SAVED_KEY)
     readFault.code = 'EIO'
     const main = await startMain()
-    await expect(main.connection()).rejects.toThrow()
+    await expect(main.connection()).rejects.toMatchObject({ name: 'McpTokenError' })
     readFault.code = null
     expect(await main.connection()).toMatchObject({ token: SAVED_KEY })
   })
