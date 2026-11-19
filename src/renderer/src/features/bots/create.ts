@@ -24,7 +24,7 @@ export interface CreateBackend {
 export interface NewBot {
   name: string
   folder: Folder | null
-  /** Null starts the bot on Talyx's model, or on the engine's when Talyx has none. */
+  /** Null starts the bot on Talyx's model when the engine takes it, else on the engine's own. */
   model: ModelChoice | null
   look: Look
   /** What the bot does: its description, also written into its SOUL. Blank counts as none. */
@@ -87,10 +87,8 @@ export async function createBot(
   const purpose = bot.purpose?.trim() || null
   await backend.createProfile({ id, soul: soulFor(title, id, purpose), description: purpose })
   try {
-    // The engine gives a new profile Talyx's model as it read it a moment ago, which lags a change
-    // made just before; Talyx's model as it is now is pinned instead.
-    const model = bot.model ?? (await backend.talyxModel())
-    if (model) await confirmBotModel(backend, id, model)
+    if (bot.model) await confirmBotModel(backend, id, bot.model)
+    else await followTalyxModel(backend, id)
   } catch (error) {
     throw new IncompleteBotError(id, 'create.errorModel', problemOf(error).detail)
   }
@@ -115,6 +113,18 @@ export async function createBot(
     throw new IncompleteBotError(id, 'create.errorRules', problemOf(error).detail)
   }
   return id
+}
+
+// The engine gives a new profile Talyx's model as it read it a moment ago, which lags a change made
+// just before, so Talyx's model as it is now is pinned on top. The engine refuses a model whose
+// provider it cannot reach (none set up yet): then the bot keeps the model the engine gave it.
+async function followTalyxModel(
+  backend: Pick<CreateBackend, 'talyxModel'> & Pick<DetailsBackend, 'pinAgreedModel'>,
+  profile: string
+): Promise<void> {
+  const model = await backend.talyxModel()
+  if (!model) return
+  await confirmBotModel(backend, profile, model).catch(() => undefined)
 }
 
 // The engine adds the teammate-messaging protocol itself; the SOUL only says who the bot is.

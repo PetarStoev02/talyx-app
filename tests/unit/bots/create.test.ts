@@ -143,6 +143,20 @@ describe('creating a bot', () => {
       })
     })
 
+    it("should keep the engine's model on a bot made without a pick when Talyx's cannot be set", async () => {
+      engine.homeModel = 'fresh-model'
+      engine.refuseModelOn.add('agro-ops-legal')
+      const id = await createBot(backend, newBot({ model: null }), [])
+      expect(id).toBe('agro-ops-legal')
+      expect(engine.profiles['agro-ops-legal'].model).toEqual({
+        provider: 'custom',
+        model: '9-route-provider'
+      })
+      await refreshRoster(backend)
+      const team = folderBots(useRoster.getState().snapshot, 'team').map((bot) => bot.name)
+      expect(team).toContain('agro-ops-legal')
+    })
+
     it('should leave the model to the engine when none is picked and Talyx has none', async () => {
       engine.homeProvider = ''
       await createBot(backend, newBot({ model: null }), [])
