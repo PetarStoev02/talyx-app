@@ -152,9 +152,10 @@ jobs:
           path: ~/.cache/electron
           key: electron-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
+      # Electron downloads its binary on first use (install-electron), into the cache above.
       - name: Install dependencies
         if: steps.scope.outputs.run
-        run: npm ci
+        run: npm ci && npx install-electron
 
       # Ubuntu's AppArmor blocks the user namespaces Chromium's sandbox needs; Xvfb is the screen.
       - name: Start a virtual display
