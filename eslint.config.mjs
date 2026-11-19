@@ -14,6 +14,8 @@ import {
   DEFAULT_EXPORT_IGNORES,
   MAGIC_NUMBER_FILES,
   OPTIONAL_PROPERTY_FILES,
+  STORE_FILES,
+  STORE_HOMES,
   STYLE_RULES,
   stylePlugin
 } from './eslint.style.mjs'
@@ -311,6 +313,12 @@ export default defineConfig(
     ignores: RATCHET.magicNumbers,
     plugins: { style: stylePlugin },
     rules: { [STYLE_RULES.magicNumbers[0]]: STYLE_RULES.magicNumbers[1] }
+  },
+  {
+    files: STORE_FILES,
+    ignores: [...STORE_HOMES, ...RATCHET.stores],
+    plugins: { style: stylePlugin },
+    rules: { [STYLE_RULES.stores[0]]: STYLE_RULES.stores[1] }
   },
   {
     files: ['**/*.{js,mjs,cjs,ts,tsx}'],
