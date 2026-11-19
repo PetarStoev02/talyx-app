@@ -43,6 +43,7 @@ export function EngineGate({
   const [waitStart, setWaitStart] = useState(() => Date.now())
   const waitedLong = useElapsed(waitStart, FIRST_CONNECT_GRACE_MS)
 
+  // `check` is a store action, so this runs once, on mount: the first check, unless one ran.
   useOnChange(check, (run) => {
     if (!useEngine.getState().status) void run()
   })
