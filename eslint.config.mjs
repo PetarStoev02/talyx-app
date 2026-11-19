@@ -286,16 +286,16 @@ export default defineConfig(
     }
   },
   layerBoundaries,
-  // Effects and timers only in the kernel; listed files wait their turn (tests/unit/ratchet.test.ts).
+  // Effects and timers only in the kernel (tests/unit/ratchet.test.ts).
   {
     files: PRODUCT,
-    ignores: [...KERNEL, ...RATCHET.effects],
+    ignores: KERNEL,
     plugins: { kernel: kernelPlugin },
     rules: { 'kernel/no-effect': 'error' }
   },
   {
     files: PRODUCT,
-    ignores: [...KERNEL, ...RATCHET.timers],
+    ignores: KERNEL,
     plugins: { kernel: kernelPlugin },
     rules: { 'kernel/no-timer': 'error' }
   },
