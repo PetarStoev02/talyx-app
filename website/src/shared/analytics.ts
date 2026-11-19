@@ -1,4 +1,5 @@
 import type { PostHog } from 'posthog-js'
+import { inject } from '@vercel/analytics'
 import { injectSpeedInsights } from '@vercel/speed-insights'
 
 /** A public project key: PostHog ships it to every browser, so it is no secret. */
@@ -11,11 +12,12 @@ let posthog: PostHog | null = null
 
 /**
  * Counts page views, page leaves and download clicks on talyx.app, without cookies or browser
- * storage, and measures page speed with Vercel Speed Insights. Everything the privacy policy says
- * about the site's analytics is set here.
+ * storage, counts page views with Vercel Web Analytics and measures page speed with Vercel Speed
+ * Insights. Everything the privacy policy says about the site's analytics is set here.
  */
 export function startAnalytics(): void {
   if (!PRODUCTION_HOSTS.includes(location.hostname)) return
+  inject({ framework: 'vite' })
   injectSpeedInsights({ framework: 'vite' })
   // Loaded only here, so other hosts never download it.
   void import('posthog-js').then(({ default: client }) => {
