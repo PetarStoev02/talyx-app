@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useLanguage } from '@shared/lib/i18n'
 import { modulesApi } from '@shared/api/ipc'
 import { problemOf } from '@shared/lib/problem'
@@ -12,6 +12,7 @@ import {
   DialogTitle
 } from '@shared/ui/dialog'
 import { Input } from '@shared/ui/input'
+import { useSubscription } from '@shared/hooks/useSubscription'
 import { useModules } from '@features/modules/store'
 import { ModuleList } from './ModuleList'
 
@@ -29,7 +30,7 @@ export function ActivationDialog(): React.JSX.Element | null {
   const [problem, setProblem] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
+  useSubscription(() => {
     function take(): void {
       modulesApi
         .takeActivationRequest()
@@ -46,7 +47,7 @@ export function ActivationDialog(): React.JSX.Element | null {
     // A link that started Talyx asked before this page was listening.
     take()
     return unsubscribe
-  }, [])
+  })
 
   async function activate(): Promise<void> {
     setSaving(true)
