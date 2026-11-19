@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   botPreview,
   botTitle,
+  childFolders,
   folderBots,
   folderCount,
   moveFolder,
@@ -31,6 +32,12 @@ const snapshot = (bots: Bot[]): RosterSnapshot => ({
 })
 
 describe('roster layout', () => {
+  it('should nest only subfolders under a folder and no folder under Unassigned', () => {
+    const top: Folder = { id: 'team', name: 'Team', parentId: null }
+    const sub: Folder = { id: 'sub', name: 'Sub', parentId: 'team' }
+    expect(childFolders([top, sub], 'team')).toEqual([sub])
+    expect(childFolders([top, sub], null)).toEqual([])
+  })
   it('should keep a pinned bot out of its folder and restore it when unpinned', () => {
     const item = bot('worker', { pinned: true, sectionId: 'team' })
     expect(folderBots(snapshot([item]), 'team')).toEqual([])

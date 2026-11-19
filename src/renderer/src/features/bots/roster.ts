@@ -165,6 +165,11 @@ export function folderCount(snapshot: RosterSnapshot, folderId: string | null): 
     .reduce((total, folder) => total + rows(folder.id), 0)
 }
 
+/** A folder's subfolders. Unassigned (null) holds none: a top-level folder's null parent is not it. */
+export function childFolders(folders: Folder[], folderId: string | null): Folder[] {
+  return folderId === null ? [] : folders.filter((folder) => folder.parentId === folderId)
+}
+
 export function isWithin(folders: Folder[], id: string, ancestorId: string): boolean {
   const byId = new Map(folders.map((folder) => [folder.id, folder]))
   let cursor: string | null = id
