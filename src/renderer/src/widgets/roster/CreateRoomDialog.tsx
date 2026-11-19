@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useLanguage } from '@shared/lib/i18n'
 import { rosterActions, runRosterMutation } from '@features/bots/actions'
 import type { RosterBackend } from '@features/bots/data'
@@ -21,6 +21,7 @@ import {
 } from '@shared/ui/dialog'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { Input, NativeSelect } from '@shared/ui/input'
+import { useLoad } from '@shared/hooks/useLoad'
 
 // Mounted only while open, so the form starts empty each time and survives a failed create.
 export function CreateRoomDialog({
@@ -48,19 +49,16 @@ export function CreateRoomDialog({
   // The bots the engine will seat; null when it does not say, and create checks instead.
   const [seatable, setSeatable] = useState<{ profiles: string[] | null } | null>(null)
 
-  useEffect(() => {
-    let live = true
-    seatableProfiles(backend)
-      .then((profiles) => live && setSeatable({ profiles }))
-      .catch((failure: unknown) => {
-        if (!live) return
+  useLoad(
+    useCallback(() => seatableProfiles(backend), [backend]),
+    {
+      loaded: (profiles) => setSeatable({ profiles }),
+      failed: (failure) => {
         setSeatable({ profiles: [] })
         useRoster.setState({ actionError: problemOf(failure) })
-      })
-    return () => {
-      live = false
+      }
     }
-  }, [backend])
+  )
 
   const candidates = snapshot.bots.filter(
     (bot) => !bot.meta.hidden && (seatable?.profiles?.includes(bot.name) ?? true)

@@ -5,6 +5,7 @@ import { runRosterMutation } from '@features/bots/actions'
 import type { RosterBackend } from '@features/bots/data'
 import { useRoster } from '@features/bots/store'
 import { IconButton } from '@shared/ui/IconButton'
+import { useElapsed } from '@shared/hooks/useElapsed'
 import { cn } from '@shared/lib/utils'
 
 // A read takes a few milliseconds and usually changes nothing, so the spin lasts at least this
@@ -19,15 +20,18 @@ const MIN_SPIN_MS = 600
 export function RosterRefresh({ backend }: { backend: RosterBackend }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const saving = useRoster((state) => state.saving)
-  const [refreshing, setRefreshing] = useState(false)
+  const [reading, setReading] = useState(false)
+  const [started, setStarted] = useState<number | null>(null)
+  const spun = useElapsed(started, MIN_SPIN_MS)
+  const refreshing = reading || (started !== null && !spun)
 
   async function refresh(): Promise<void> {
-    setRefreshing(true)
-    const spin = new Promise((resolve) => setTimeout(resolve, MIN_SPIN_MS))
+    setReading(true)
+    setStarted(Date.now())
     try {
-      await Promise.all([runRosterMutation(backend, () => Promise.resolve()), spin])
+      await runRosterMutation(backend, () => Promise.resolve())
     } finally {
-      setRefreshing(false)
+      setReading(false)
     }
   }
 
