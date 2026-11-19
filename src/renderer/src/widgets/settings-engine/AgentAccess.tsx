@@ -7,13 +7,18 @@ import { mcpAddCommand } from '@contract/mcp'
 import type { McpConnection } from '@contract/mcp'
 import { useLoad } from '@shared/hooks/useLoad'
 
-const readConnection = (): Promise<McpConnection> => mcpApi.connection()
+// Logged even when Settings closed meanwhile.
+const readConnection = (): Promise<McpConnection> =>
+  mcpApi.connection().catch((error: unknown) => {
+    reportError('mcp', error)
+    throw error
+  })
 
 /** How an outside agent reaches Talyx: the address, and a copy of the add line with its token. */
 export function AgentAccess(): React.JSX.Element | null {
   const t = useLanguage((s) => s.t)
   const [connection, setConnection] = useState<McpConnection | null>(null)
-  useLoad(readConnection, { loaded: setConnection, failed: (error) => reportError('mcp', error) })
+  useLoad(readConnection, { loaded: setConnection, failed: () => undefined })
   if (!connection) return null
   return (
     <div className="space-y-2 text-base">

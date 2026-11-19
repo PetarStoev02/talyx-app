@@ -9,11 +9,17 @@ import { useLoad } from '@shared/hooks/useLoad'
 // Main registers a login item on these only; elsewhere the switch would do nothing.
 const LOGIN_ITEM_PLATFORMS = ['darwin', 'linux']
 
-// Null where the switch would do nothing, so it stays hidden.
+// Null where the switch would do nothing, so it stays hidden. Logged even when Settings closed
+// meanwhile.
 async function readLaunchAtLogin(): Promise<boolean | null> {
   if (import.meta.env.DEV || !LOGIN_ITEM_PLATFORMS.includes(window.electron?.platform ?? ''))
     return null
-  return (await settingsApi.get()).launchAtLogin
+  try {
+    return (await settingsApi.get()).launchAtLogin
+  } catch (error) {
+    reportError('settings', error)
+    throw error
+  }
 }
 
 /** The switch for starting Talyx at login. A dev run is not the installed app, so it shows nothing. */
@@ -21,10 +27,7 @@ export function StartupSection(): React.JSX.Element | null {
   const t = useLanguage((s) => s.t)
   const [enabled, setEnabled] = useState<boolean | null>(null)
 
-  useLoad(readLaunchAtLogin, {
-    loaded: setEnabled,
-    failed: (error) => reportError('settings', error)
-  })
+  useLoad(readLaunchAtLogin, { loaded: setEnabled, failed: () => undefined })
 
   async function change(next: boolean): Promise<void> {
     try {

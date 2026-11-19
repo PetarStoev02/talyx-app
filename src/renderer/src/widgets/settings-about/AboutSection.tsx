@@ -12,7 +12,12 @@ import { useElapsed } from '@shared/hooks/useElapsed'
 import { useLoad } from '@shared/hooks/useLoad'
 
 const COPIED_MS = 1500
-const readVersion = (): Promise<string> => appApi.version()
+// Logged even when About closed meanwhile.
+const readVersion = (): Promise<string> =>
+  appApi.version().catch((error: unknown) => {
+    reportError('about', error)
+    throw error
+  })
 
 /** Which Talyx and engine run here, and a redacted report to paste into a bug report. */
 export function AboutSection(): React.JSX.Element {
@@ -21,13 +26,13 @@ export function AboutSection(): React.JSX.Element {
   const [version, setVersion] = useState<string | null>(null)
   // When the report was last copied; the button says so for COPIED_MS.
   const [copiedAt, setCopiedAt] = useState<number | null>(null)
-  const copyShown = useElapsed(copiedAt, COPIED_MS)
-  const copied = copiedAt !== null && !copyShown
+  const copyLapsed = useElapsed(copiedAt, COPIED_MS)
+  const copied = copiedAt !== null && !copyLapsed
   const [checking, setChecking] = useState(false)
   const [check, setCheck] = useState<UpdateCheck | null>(null)
   const requestNotice = useUpdates((s) => s.requestNotice)
 
-  useLoad(readVersion, { loaded: setVersion, failed: (error) => reportError('about', error) })
+  useLoad(readVersion, { loaded: setVersion, failed: () => undefined })
 
   async function checkForUpdate(): Promise<void> {
     setChecking(true)
