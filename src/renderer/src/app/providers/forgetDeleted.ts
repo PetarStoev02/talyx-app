@@ -1,5 +1,5 @@
 import type { RosterState } from '@features/bots/store'
-import { useRooms } from '@features/chat/roomStore'
+import { useRooms } from '@features/chat/store'
 import { useChat } from '@features/chat/store'
 
 // A bot or room gone from the roster takes its chat or view along.

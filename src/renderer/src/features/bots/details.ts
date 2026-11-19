@@ -1,4 +1,3 @@
-import { create } from 'zustand'
 import { saveBotMeta } from './data'
 import type { RosterStore } from './data'
 import { exportAvatar, lookMeta, sameLook } from './look'
@@ -7,6 +6,7 @@ import { problemOf } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'
 import { RosterError } from './roster'
 import type { Bot, BotMeta } from './types'
+import { useDetailsRevision } from './store'
 
 export interface ModelChoice {
   provider: string
@@ -74,12 +74,6 @@ type SaveBackend = DetailsBackend & Pick<RosterStore, 'saveBotMeta'> & AvatarBac
 
 /** Talyx's own profile, the manager. Its avatar is the logo, so it never gets an exported image. */
 export const MANAGER = 'default'
-
-/**
- * Counts saves of bot details, so a view that shows them (the chat's intro) reads them again;
- * the details panel and the intro each read their own.
- */
-export const useDetailsRevision = create<{ revision: number }>(() => ({ revision: 0 }))
 
 export function loadDetails(
   backend: Pick<DetailsBackend, 'loadDetails'>,

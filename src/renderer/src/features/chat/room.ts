@@ -1,6 +1,6 @@
 import type { ModelPick } from '@shared/ui/ModelPicker'
 import { replyFinished } from './completionSound'
-import { useRooms } from './roomStore'
+import { useRooms } from './store'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { failureOf } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'

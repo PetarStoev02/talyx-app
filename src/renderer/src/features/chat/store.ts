@@ -3,7 +3,7 @@ import type { GatewayEvent } from '@shared/engine/shared'
 import type { Problem } from '@shared/lib/problem'
 import type { FindRequest } from './botSearch'
 import type { ChatDraft } from './chat'
-import type { Transcript } from './types'
+import type { RoomView, Transcript } from './types'
 
 /** The session's model and reasoning level, as the composer shows them. */
 export interface ChatInfo {
@@ -93,4 +93,39 @@ export const useFind = create<FindStore>((set) => ({
   request: null,
   ask: (request) => set({ request }),
   clear: () => set({ request: null })
+}))
+
+interface RoomStore {
+  // One view per room, keyed by room id.
+  rooms: Record<string, RoomView>
+  update: (roomId: string, change: Partial<RoomView>) => void
+  forget: (roomIds: string[]) => void
+}
+
+const blankRoom = (): RoomView => ({
+  events: [],
+  models: [],
+  lastSeq: 0,
+  live: false,
+  working: false,
+  phases: {},
+  tasks: [],
+  failedSend: null,
+  loading: true,
+  error: null,
+  actionError: null
+})
+
+export const useRooms = create<RoomStore>((set) => ({
+  rooms: {},
+  update: (roomId, change) =>
+    set((state) => ({
+      rooms: { ...state.rooms, [roomId]: { ...(state.rooms[roomId] ?? blankRoom()), ...change } }
+    })),
+  forget: (roomIds) =>
+    set((state) => ({
+      rooms: Object.fromEntries(
+        Object.entries(state.rooms).filter(([roomId]) => !roomIds.includes(roomId))
+      )
+    }))
 }))

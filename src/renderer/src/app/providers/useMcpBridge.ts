@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useApprovals } from '@features/bots/approvals'
+import { useApprovals } from '@features/bots/store'
 import type { RosterBackend } from '@features/bots/data'
 import { mcpTools } from '@features/bots/mcp'
 import { registerMcpServer } from '@features/bots/mcpRegistration'

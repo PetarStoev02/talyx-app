@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
-import { useNavigation } from '@features/modules/useNavigation'
+import { useNavigation } from '@features/modules/store'
 import { botChatId, botTitle } from '@features/bots/roster'
 import type { RosterBackend } from '@features/bots/data'
 import { MANAGER } from '@features/bots/details'
