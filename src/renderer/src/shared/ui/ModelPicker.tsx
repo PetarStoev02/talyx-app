@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useOnChange } from '@shared/hooks/useOnChange'
 import { DropdownMenu } from 'radix-ui'
 import { ChevronDown } from 'lucide-react'
 import type { ModelOptionProvider } from '@shared/engine/gateway-events'
@@ -144,12 +145,12 @@ export function ModelField({
       ? `${value.provider} · ${value.model}`
       : labels.empty
   const preloaded = useRef(false)
-  useEffect(() => {
-    if (!load || preloaded.current) return
+  useOnChange(load, (preload) => {
+    if (!preload || preloaded.current) return
     preloaded.current = true
     // A failure here is shown when the menu opens and loads again.
-    load().catch(() => undefined)
-  }, [load])
+    preload().catch(() => undefined)
+  })
   return (
     <ModelPicker
       load={load ?? (() => Promise.resolve([]))}

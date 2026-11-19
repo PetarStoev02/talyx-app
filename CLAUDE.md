@@ -87,11 +87,12 @@ Each line is the rule; the check's message names the fix.
   it in plain Node): `tests/unit/modules/moduleHostContract.test.ts`.
 - Effects and timers only in the renderer kernel (`shared/hooks`, `app/providers`,
   `shared/engine`, and `shared/lib/timers.ts` for a wait outside a component). A feature hook
-  composes the kernel's hooks. The ratchet allowlists only shrink: an entry that leaves never returns, and a
-  new file is never on one. `npm run lint` (`eslint.kernel.mjs`, `eslint.ratchet.mjs`) and
+  composes the kernel's hooks. `npm run lint` (`eslint.kernel.mjs`) and
   `tests/unit/ratchet.test.ts`.
 - `string | null`, not optional properties, in `src/shared` and `features/` (React props exempt):
-  `npm run lint` (`eslint.style.mjs`, ratchet as above).
+  `npm run lint` (`eslint.style.mjs`). Files from before a rule wait on `eslint.ratchet.mjs`, whose
+  lists only shrink: an entry that leaves never returns, and a new file is never on one
+  (`tests/unit/ratchet.test.ts`).
 - No default exports outside config files: `npm run lint` (`eslint.style.mjs`).
 - No magic numbers in `src/main` and `features/`: `npm run lint` (`eslint.style.mjs`, ratchet as
   above).
