@@ -77,8 +77,7 @@ function useModelLeftEndpoint(
     {
       loaded: (found) => {
         if (found) setVerdict(found)
-      },
-      failed: () => undefined
+      }
     }
   )
   return verdict?.model === model && verdict.stranded
