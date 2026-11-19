@@ -63,10 +63,10 @@ export interface ChatDraft {
   // 'queue': when the bot is mid-turn, the message waits for that turn to end instead of
   // redirecting it (the engine's default for a busy chat). Module pages send this way, so one
   // workflow task's message never cuts into another's turn.
-  whenBusy?: 'queue'
+  whenBusy: 'queue' | null
   // The id of your message this one is sent in place of: the engine cuts the chat back to before
   // it (when it stored it), and its turn goes, so the new answer replaces the old.
-  replaces?: string
+  replaces: string | null
 }
 
 export interface ChatActions {
@@ -130,14 +130,15 @@ export interface ChatActions {
 /** What Settings needs of the chat: the model lists, and a way to drop them. */
 export type ModelLists = Pick<ChatActions, 'models' | 'forgetModels'>
 
+/** The engine's snapshot of a chat; null where the engine left a field out. */
 export interface ResumeSnapshot {
-  info?: SessionLiveInfo | null
+  info: SessionLiveInfo | null
   // The cards still open, when the engine lists them.
-  open_requests?: { id: string }[]
-  replay_epoch?: string
-  running?: boolean
-  last_sequence?: number
-  inflight?: { assistant?: string; user?: string; error?: string } | null
+  open_requests: { id: string }[] | null
+  replay_epoch: string | null
+  running: boolean
+  last_sequence: number | null
+  inflight: { assistant: string | null; user: string | null; error: string | null } | null
 }
 
 export function chatActions(backend: ChatBackend): ChatActions {
@@ -411,7 +412,12 @@ export function chatActions(backend: ChatBackend): ChatActions {
       if (busy(profile)) return false
       rewinding.add(profile)
       try {
-        return await submit(profile, { text: asked.text, images: [], replaces: asked.id })
+        return await submit(profile, {
+          text: asked.text,
+          images: [],
+          whenBusy: null,
+          replaces: asked.id
+        })
       } finally {
         rewinding.delete(profile)
       }

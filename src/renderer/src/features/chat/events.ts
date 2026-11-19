@@ -38,7 +38,7 @@ export function handleEvent(actions: ChatActions, event: GatewayEvent): ChatUpda
   // When there is one, it comes first (seen on engine 0.22.7), so this ends the turn once.
   if (completed || (transcript.running && !next.running)) void actions.turnEnded(profile)
   // Only a turn the engine marks complete is an answer: a stopped or failed one is not.
-  if (completed && (event.payload as { status?: unknown } | null)?.status === 'complete')
+  if (completed && (event.payload as { status: unknown } | null)?.status === 'complete')
     replyFinished()
   return { profile, completed, activity: activityOf(next) }
 }

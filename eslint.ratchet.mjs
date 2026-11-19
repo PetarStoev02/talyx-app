@@ -37,11 +37,7 @@ export const RATCHET = {
   optionalProperties: [
     'src/renderer/src/features/bots/types.ts',
     'src/renderer/src/features/chat/botSearch.ts',
-    'src/renderer/src/features/chat/chat.ts',
-    'src/renderer/src/features/chat/events.ts',
     'src/renderer/src/features/chat/room.ts',
-    'src/renderer/src/features/chat/transcript.ts',
-    'src/renderer/src/features/chat/types.ts',
     'src/renderer/src/features/shortcuts/shortcuts.ts',
     'src/shared/mcp.ts',
     'src/shared/moduleHost.ts'
@@ -69,7 +65,6 @@ export const RATCHET = {
     'src/renderer/src/features/bots/routines.ts',
     'src/renderer/src/features/bots/store.ts',
     'src/renderer/src/features/bots/useRosterConnection.ts',
-    'src/renderer/src/features/chat/transcript.ts',
     'src/renderer/src/features/providers/providers.ts',
     'src/renderer/src/features/providers/usage.ts',
     'src/renderer/src/features/setup/ScreenParts.tsx',

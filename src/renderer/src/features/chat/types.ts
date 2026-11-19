@@ -90,7 +90,7 @@ export interface RoomEvent {
   seq: number
   event_id: string
   kind: string
-  actor: { kind: string; id: string; display_name?: string }
+  actor: { kind: string; id: string }
   payload: Record<string, unknown>
   created_at: number
 }
