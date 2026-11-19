@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useRef } from 'react'
+import { useOnChange } from '@shared/hooks/useOnChange'
 import { useLanguage } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
 import { displayOutput, downloadFailed, hideEngineName } from './install'
@@ -108,9 +109,9 @@ export function OutputLog({
     [output, engineName]
   )
 
-  useEffect(() => {
+  useOnChange(output, () => {
     if (log.current) log.current.scrollTop = log.current.scrollHeight
-  }, [output])
+  })
 
   return (
     <pre

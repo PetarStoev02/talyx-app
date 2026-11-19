@@ -6,22 +6,8 @@
 // as a new file: fix it before moving it.
 
 export const RATCHET = {
-  effects: [
-    'src/renderer/src/App.tsx',
-    'src/renderer/src/features/bots/BotAvatar.tsx',
-    'src/renderer/src/features/setup/InstallOutput.tsx',
-    'src/renderer/src/pages/module/ModulePage.tsx',
-    'src/renderer/src/pages/usage/UsagePage.tsx',
-    'src/renderer/src/shared/ui/ModelPicker.tsx',
-    'src/renderer/src/widgets/app-shell/AppShell.tsx',
-    'src/renderer/src/widgets/app-shell/ModuleBackground.tsx',
-    'src/renderer/src/widgets/app-shell/SidebarFooter.tsx',
-    'src/renderer/src/widgets/app-shell/UpdateButton.tsx'
-  ],
-  timers: [
-    'src/renderer/src/features/bots/BotAvatar.tsx',
-    'src/renderer/src/widgets/app-shell/UpdateButton.tsx'
-  ],
+  effects: [],
+  timers: [],
   optionalProperties: [
     'src/renderer/src/features/bots/types.ts',
     'src/renderer/src/features/chat/botSearch.ts',
@@ -46,7 +32,6 @@ export const RATCHET = {
     'src/main/infrastructure/storage/SettingsStore.ts',
     'src/main/infrastructure/updater/releaseCheck.ts',
     'src/main/infrastructure/updater/selfUpdate.ts',
-    'src/renderer/src/features/bots/BotAvatar.tsx',
     'src/renderer/src/features/bots/RoomAvatars.tsx',
     'src/renderer/src/features/bots/look.ts',
     'src/renderer/src/features/bots/roster.ts',
