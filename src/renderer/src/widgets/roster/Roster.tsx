@@ -21,7 +21,7 @@ import {
   FolderNameDialog
 } from './RosterDialogs'
 import { rosterControls } from './rosterControls'
-import { useCreating } from './creating'
+import { useCreating } from '@features/bots/store'
 import { Loading, Skeleton, SkeletonRows } from '@shared/ui/skeleton'
 import { useFlip } from '@shared/hooks/useFlip'
 import { Reveal } from '@shared/ui/Reveal'

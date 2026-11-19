@@ -6,8 +6,7 @@ import { reportError } from '@shared/lib/report'
 import type { ModuleSummary } from '@contract/modules'
 import { addMenu } from './addMenu'
 import type { AddMenu } from './addMenu'
-import { useCreating } from './creating'
-import type { Creating } from './creating'
+import { useCreating, type Creating } from '@features/bots/store'
 import { RosterMenu } from './RosterMenu'
 
 /**

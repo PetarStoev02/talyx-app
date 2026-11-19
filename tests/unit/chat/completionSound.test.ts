@@ -2,21 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const saved = vi.hoisted(() => ({ completionSound: false }))
 vi.mock('@shared/lib/chime', () => ({ playChime: vi.fn() }))
-vi.mock('@shared/api/ipc', () => ({
-  settingsApi: {
-    get: async () => ({ ...saved }),
-    set: async (partial: { completionSound?: boolean }) => Object.assign(saved, partial)
-  }
-}))
 
 import { chatActions } from '../../../src/renderer/src/features/chat/chat'
 import type { ChatActions } from '../../../src/renderer/src/features/chat/chat'
-import { useCompletionSound } from '../../../src/renderer/src/features/chat/completionSound'
+import {
+  loadCompletionSound,
+  setCompletionSound,
+  type CompletionSoundBackend
+} from '../../../src/renderer/src/features/chat/completionSound'
 import { handleEvent } from '../../../src/renderer/src/features/chat/events'
 import { roomActions } from '../../../src/renderer/src/features/chat/room'
 import type { RoomActions } from '../../../src/renderer/src/features/chat/room'
 import { useRooms } from '../../../src/renderer/src/features/chat/roomStore'
-import { useChat } from '../../../src/renderer/src/features/chat/store'
+import { useChat, useCompletionSound } from '../../../src/renderer/src/features/chat/store'
 import { playChime } from '../../../src/renderer/src/shared/lib/chime'
 import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/shared'
 import { chatDouble } from './chatDouble'
@@ -24,6 +22,11 @@ import { ROOM, roomDouble } from './roomDouble'
 import type { RoomDouble } from './roomDouble'
 
 const WORKER = 'acme-worker'
+// The saved settings, as main keeps them.
+const settings: CompletionSoundBackend = {
+  get: async () => ({ ...saved }),
+  set: async (change) => Object.assign(saved, change)
+}
 
 const event = (type: string, seq: number, payload: Record<string, unknown> = {}): GatewayEvent =>
   ({ type, payload, session_id: 'worker-chat', seq }) as GatewayEvent
@@ -50,14 +53,14 @@ beforeEach(async () => {
 describe('completion sound', () => {
   describe('setting', () => {
     it('should be off until the user turns it on', async () => {
-      await useCompletionSound.getState().load()
+      await loadCompletionSound(settings)
       expect(useCompletionSound.getState().enabled).toBe(false)
     })
 
     it('should save the choice so the next launch reads it back', async () => {
-      await useCompletionSound.getState().setEnabled(true)
+      await setCompletionSound(settings, true)
       useCompletionSound.setState({ enabled: false })
-      await useCompletionSound.getState().load()
+      await loadCompletionSound(settings)
       expect(useCompletionSound.getState().enabled).toBe(true)
     })
   })

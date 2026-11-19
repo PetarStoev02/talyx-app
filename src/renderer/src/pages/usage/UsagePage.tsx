@@ -6,7 +6,8 @@ import { useLanguage } from '@shared/lib/i18n'
 import { useNavigation } from '@features/modules/useNavigation'
 import type { ProvidersBackend } from '@features/providers/providers'
 import { USAGE_PERIODS, type UsagePeriod } from '@features/providers/usage'
-import { useUsageView } from '@features/providers/usageView'
+import { useUsageView } from '@features/providers/store'
+import { loadUsageView } from '@features/providers/usageView'
 import type { SetupBackend } from '@features/setup/install'
 import { reportError } from '@shared/lib/report'
 import { cn } from '@shared/lib/utils'
@@ -34,10 +35,7 @@ export function UsagePage({
 
   const load = useCallback((): void => {
     if (!providers) return
-    useUsageView
-      .getState()
-      .load(providers)
-      .catch((error: unknown) => reportError('usage', error))
+    loadUsageView(providers).catch((error: unknown) => reportError('usage', error))
   }, [providers])
 
   // Opening the page loads afresh, and so does each new period, so the numbers are current.

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { GatewayEvent } from '@shared/engine/shared'
 import type { Problem } from '@shared/lib/problem'
+import type { FindRequest } from './botSearch'
 import type { ChatDraft } from './chat'
 import type { Transcript } from './types'
 
@@ -71,4 +72,25 @@ export const useChat = create<ChatStore>((set, get) => ({
         Object.entries(state.chats).filter(([profile]) => !profiles.includes(profile))
       )
     }))
+}))
+
+interface CompletionSoundState {
+  /** Off until the saved setting is read, so a launch never chimes against the user's choice. */
+  enabled: boolean
+}
+
+/** The chime when a bot finishes a reply; completionSound.ts reads and saves it. */
+export const useCompletionSound = create<CompletionSoundState>(() => ({ enabled: false }))
+
+interface FindStore {
+  request: FindRequest | null
+  ask: (request: FindRequest) => void
+  clear: () => void
+}
+
+/** The find a bot's chat or a room opens: from its search button, ⌘F, or a hit picked elsewhere. */
+export const useFind = create<FindStore>((set) => ({
+  request: null,
+  ask: (request) => set({ request }),
+  clear: () => set({ request: null })
 }))
