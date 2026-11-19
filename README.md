@@ -91,6 +91,8 @@ Two things change when the engine moves on, and only one of them is updated from
 
 Before merging an engine bump, run `TALYX_SMOKE_INSTALL_FILE=engine-install.json npm run test:smoke` and paste its summary in the PR.
 
+The smoke test also creates a scratch bot, sends it a message and, with a provider, gets a reply. The reply step needs an OpenAI-compatible endpoint: `TALYX_SMOKE_PROVIDER_KEY` (required), `TALYX_SMOKE_PROVIDER_URL` (default `https://api.anthropic.com/v1`) and `TALYX_SMOKE_PROVIDER_MODEL` (default `claude-haiku-4-5`). Without a key it is skipped, and the summary says so. The Release workflow passes the `SMOKE_PROVIDER_KEY` secret.
+
 ## Build from source
 
 Node 22.12 or newer (Node 24 matches the Electron runtime).
