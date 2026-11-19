@@ -12,7 +12,7 @@ The bots run on **the engine**, a separate agent backend the user installs; Taly
 of it and holds no orchestration logic of its own. The screens and their user-facing names are
 in the feature map, `.claude/skills/verify-talyx/features/README.md`.
 
-Version 1.1.0. Electron 44, React 19, TypeScript 5.9, TailwindCSS 4, Zustand, shadcn/ui (New
+Version 1.1.1. Electron 44, React 19, TypeScript 5.9, TailwindCSS 4, Zustand, shadcn/ui (New
 York), electron-vite + electron-builder, Vitest.
 
 ### History and plans
