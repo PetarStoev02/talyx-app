@@ -80,9 +80,12 @@ const CHECKS = [
   'delete throwaway profile',
   'no service unit'
 ] as const
-const FLOW_CHECKS = ['create bot', 'send message'] as const
-
-type Check = (typeof CHECKS)[number] | (typeof FLOW_CHECKS)[number] | 'get reply'
+type Check =
+  | (typeof CHECKS)[number]
+  | 'connect renderer'
+  | 'create bot'
+  | 'send message'
+  | 'get reply'
 type Attached = Extract<EngineStatus, { state: 'attached' }>
 type Rpc = (profile: string, method: string, params: Record<string, unknown>) => Promise<unknown>
 
@@ -193,8 +196,13 @@ let renderer: Renderer | null = null
 describe.skipIf(INSTALL_FILE === null)('real engine smoke', () => {
   afterAll(async () => {
     try {
-      // The renderer's socket goes first, so the teardown waits on nothing of the test's own.
-      if (renderer) disconnectRenderer()
+      // The renderer's socket goes first, so the teardown waits on nothing of the test's own. A
+      // failed disconnect still leaves the teardown to delete the temp home and its key.
+      try {
+        if (renderer) disconnectRenderer()
+      } catch {
+        process.stderr.write('Smoke: the renderer did not disconnect\n')
+      }
       if (home) await check('teardown', () => tearDown(home!))
     } finally {
       // stderr, not console.log: vitest hides the log of a passing run, and the README asks for
@@ -251,7 +259,6 @@ describe.skipIf(INSTALL_FILE === null)('real engine smoke', () => {
     await check('create bot', () =>
       withScratchBot(flows, (profile) => check('send message', () => sendMessage(flows, profile)))
     )
-    expect(passed).toEqual(expect.arrayContaining([...FLOW_CHECKS]))
   })
 
   it.skipIf(PROVIDER === null)('should get a reply (needs TALYX_SMOKE_PROVIDER_KEY)', async () => {
@@ -270,7 +277,8 @@ describe.skipIf(INSTALL_FILE === null)('real engine smoke', () => {
 async function rendererFor(): Promise<Renderer> {
   if (!attachedEngine || !sockets || !attached)
     throw new SmokeFailure('the main checks did not attach')
-  renderer ??= await connectRenderer(attachedEngine, sockets, attached)
+  const [engine, engineSockets, status] = [attachedEngine, sockets, attached]
+  renderer ??= await check('connect renderer', () => connectRenderer(engine, engineSockets, status))
   return renderer
 }
 

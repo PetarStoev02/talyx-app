@@ -3,6 +3,12 @@
 // transport that calls main's engine code directly, so every layer below the DOM is the real one.
 import { vi } from 'vitest'
 import { buildApi } from '../../src/shared/api'
+import {
+  EngineHttpRequestSchema,
+  EngineSocketIdSchema,
+  EngineSocketTextSchema,
+  ProfileNameSchema
+} from '../../src/shared/channels'
 import type { Engine } from '../../src/main/infrastructure/engine/engine'
 import type { EngineSockets } from '../../src/main/infrastructure/engine/engineSockets'
 import { engineAccess } from '../../src/renderer/src/app/engine/access'
@@ -28,6 +34,8 @@ import { host } from '../../src/renderer/src/shared/engine/host'
 
 const SCRATCH_ENDPOINT = 'Smoke endpoint'
 const PROMPT = 'Reply with the single word: pong'
+// An error the engine stores as the bot's message is not a reply.
+const REPLY = /pong/i
 const REPLY_TIMEOUT_MS = 120_000
 const POLL_MS = 1_000
 // Enough of the newest messages to hold the reply behind any tool rows.
@@ -62,19 +70,26 @@ export async function connectRenderer(
   const emit = (channel: string, ...args: unknown[]): void => {
     for (const listener of listeners.get(channel) ?? []) listener(...args)
   }
-  const handlers: Record<string, (...args: never[]) => unknown> = {
+  // Main's engine handlers (engine.ipc.ts), with the same input schemas; the flows use no other
+  // channel, so any other one fails by name.
+  const handlers: Record<string, (...args: unknown[]) => unknown> = {
     'engine:status': () => engine.status(),
-    'engine:http': (request: Parameters<Engine['http']>[0]) => engine.http(request),
-    'engine:socket-open': (id: string, profile: string) =>
-      sockets.open(id, profile, (channel, ...args) => emit(channel, ...args)),
-    'engine:socket-send': (id: string, text: string) => sockets.send(id, text),
-    'engine:socket-close': (id: string) => sockets.close(id)
+    'engine:http': (request) => engine.http(EngineHttpRequestSchema.parse(request)),
+    'engine:socket-open': (id, profile) =>
+      sockets.open(
+        EngineSocketIdSchema.parse(id),
+        ProfileNameSchema.parse(profile),
+        (channel, ...args) => emit(channel, ...args)
+      ),
+    'engine:socket-send': (id, text) =>
+      sockets.send(EngineSocketIdSchema.parse(id), EngineSocketTextSchema.parse(text)),
+    'engine:socket-close': (id) => sockets.close(EngineSocketIdSchema.parse(id))
   }
   const api = buildApi({
     invoke: async (channel, ...args) => {
       const handler = handlers[channel]
       if (!handler) throw new Error(`Smoke: no handler for ${channel}`)
-      return handler(...(args as never[]))
+      return handler(...args)
     },
     on: (channel, listener) => {
       const set = listeners.get(channel) ?? new Set()
@@ -138,9 +153,12 @@ export async function withScratchBot(
     if (!useRoster.getState().snapshot.bots.some((bot) => bot.name === profile))
       throw new Error('the new bot is not on the roster')
     await body(profile)
-  } finally {
-    await renderer.roster.deleteProfile(profile)
+  } catch (error) {
+    // A failed delete must not hide why the flow failed.
+    await renderer.roster.deleteProfile(profile).catch(() => undefined)
+    throw error
   }
+  await renderer.roster.deleteProfile(profile)
 }
 
 /**
@@ -152,6 +170,7 @@ export async function sendMessage(renderer: Renderer, profile: string): Promise<
     throw new Error(
       `the send failed: ${useChat.getState().chats[profile]?.error?.key ?? 'unknown'}`
     )
+  if (!useChat.getState().chats[profile]?.sessionId) throw new Error('the send opened no chat')
 }
 
 /**
@@ -181,7 +200,7 @@ export async function pinScratchModel(
 export function awaitReply(renderer: Renderer, profile: string): Promise<void> {
   return until(REPLY_TIMEOUT_MS, profile, 'no reply within the timeout', async () => {
     const replies = await renderer.chat.recent(profile, RECENT_LIMIT)
-    return replies.some((text) => text.trim())
+    return replies.some((text) => REPLY.test(text))
   })
 }
 
