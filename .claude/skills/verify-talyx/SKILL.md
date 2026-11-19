@@ -58,6 +58,7 @@ control-talyx browser press --key Escape
 control-talyx browser wait --role heading --name "Settings: General" [--timeout 10000]
 control-talyx browser snapshot [--path <file>]          # ARIA tree of the window (stdout or file)
 control-talyx browser screenshot --path <file.png>
+control-talyx browser theme                              # the painted scheme: dark or light
 control-talyx settings                                   # the run's settings.json
 ```
 

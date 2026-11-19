@@ -127,15 +127,16 @@ jobs:
       DISPLAY: ':99'
 
     steps:
+      # A PR's HEAD is its merge commit, so HEAD^1 is main and the diff is the PR's own.
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0
+          fetch-depth: 2
 
       - name: Does the PR touch the UI
         id: scope
         run: |
-          if [ "${{ github.event_name }}" != pull_request ] || git diff --name-only \
-            "${{ github.event.pull_request.base.sha }}" HEAD -- src/renderer \
+          if [ "${{ github.event_name }}" != pull_request ] || git diff --name-only HEAD^1 HEAD \
+            -- src/renderer src/preload src/shared package-lock.json \
             .claude/skills/verify-talyx .github/workflows/ci.yml | grep -q .; then
             echo run=true >> "$GITHUB_OUTPUT"
           fi
@@ -180,6 +181,9 @@ jobs:
           $CONTROL browser screenshot --path "$out/after.png"
           $CONTROL settings > "$out/settings.json"
           grep -F 'button "Dark" [pressed]' "$out/after.aria.txt"
+          # Each command reconnects, which resets the emulated colour scheme: the window must
+          # still paint the pick.
+          test "$($CONTROL browser theme)" = dark
           node -e 'process.exit(require(process.argv[1]).theme === "dark" ? 0 : 1)' \
             "$out/settings.json"
           $CONTROL stop
@@ -191,7 +195,6 @@ jobs:
           set -euo pipefail
           $CONTROL launch --no-engine --seed /tmp/seed.json
           $CONTROL fuzz --steps 100 --seed ${{ github.run_number }}
-          $CONTROL stop
 
       - uses: actions/upload-artifact@v4
         if: always() && steps.scope.outputs.run

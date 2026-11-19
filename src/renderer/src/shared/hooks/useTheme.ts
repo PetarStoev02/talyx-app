@@ -29,27 +29,45 @@ function syncNative(pref: ThemePreference): void {
 interface ThemeStore {
   theme: ThemePreference
   effectiveTheme: EffectiveTheme
-  show: (pref: ThemePreference) => void
+  // The user picked in this window; the stored pick, read later, must not undo that.
+  picked: boolean
+  applyPreference: (pref: ThemePreference) => void
   reset: () => void
 }
 
 // One pick for every caller: a caller still on 'system' would repaint over another's pick when
 // the OS appearance changes.
-const useThemeStore = create<ThemeStore>((set) => ({
+const useThemeStore = create<ThemeStore>((set, get) => ({
   theme: 'system',
   effectiveTheme: resolveTheme('system'),
-  show: (pref) => {
+  picked: false,
+  applyPreference: (pref) => {
     const effectiveTheme = resolveTheme(pref)
     applyTheme(effectiveTheme)
     set({ theme: pref, effectiveTheme })
   },
-  reset: () => set({ theme: 'system', effectiveTheme: resolveTheme('system') })
+  reset: () => {
+    get().applyPreference('system')
+    set({ picked: false })
+  }
 }))
 
 mq.addEventListener('change', () => {
-  const { theme, show } = useThemeStore.getState()
-  if (theme === 'system') show('system')
+  const { theme, applyPreference } = useThemeStore.getState()
+  if (theme === 'system') applyPreference('system')
 })
+
+// The stored pick is read once per window, whichever caller mounts first.
+let loading: Promise<void> | null = null
+
+function loadStoredPick(): Promise<void> {
+  return settingsApi.get().then((s) => {
+    if (useThemeStore.getState().picked) return
+    const pref = s.theme ?? 'system'
+    useThemeStore.getState().applyPreference(pref)
+    syncNative(pref)
+  })
+}
 
 export function useTheme(): {
   theme: ThemePreference
@@ -60,22 +78,16 @@ export function useTheme(): {
   const effectiveTheme = useThemeStore((s) => s.effectiveTheme)
 
   useEffect(() => {
-    settingsApi
-      .get()
-      .then((s) => {
-        const pref = s.theme ?? 'system'
-        useThemeStore.getState().show(pref)
-        syncNative(pref)
-      })
-      // Unreadable settings leave the system theme on screen; the log says why.
-      .catch((error: unknown) => reportError('settings', error))
+    // Unreadable settings leave the system theme on screen; the log says why.
+    loading ??= loadStoredPick().catch((error: unknown) => reportError('settings', error))
   }, [])
 
   return { theme, effectiveTheme, setTheme }
 }
 
 function setTheme(pref: ThemePreference): void {
-  useThemeStore.getState().show(pref)
+  useThemeStore.setState({ picked: true })
+  useThemeStore.getState().applyPreference(pref)
   settingsApi.save({ theme: pref })
   syncNative(pref)
 }
