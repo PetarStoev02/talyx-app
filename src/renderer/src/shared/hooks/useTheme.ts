@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect } from 'react'
+import { create } from 'zustand'
 import { settingsApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
 
@@ -25,50 +26,56 @@ function syncNative(pref: ThemePreference): void {
   window.api.setNativeTheme(pref).catch((error: unknown) => reportError('theme', error))
 }
 
+interface ThemeStore {
+  theme: ThemePreference
+  effectiveTheme: EffectiveTheme
+  show: (pref: ThemePreference) => void
+  reset: () => void
+}
+
+// One pick for every caller: a caller still on 'system' would repaint over another's pick when
+// the OS appearance changes.
+const useThemeStore = create<ThemeStore>((set) => ({
+  theme: 'system',
+  effectiveTheme: resolveTheme('system'),
+  show: (pref) => {
+    const effectiveTheme = resolveTheme(pref)
+    applyTheme(effectiveTheme)
+    set({ theme: pref, effectiveTheme })
+  },
+  reset: () => set({ theme: 'system', effectiveTheme: resolveTheme('system') })
+}))
+
+mq.addEventListener('change', () => {
+  const { theme, show } = useThemeStore.getState()
+  if (theme === 'system') show('system')
+})
+
 export function useTheme(): {
   theme: ThemePreference
   effectiveTheme: EffectiveTheme
   setTheme: (t: ThemePreference) => void
 } {
-  const [theme, setThemeState] = useState<ThemePreference>('system')
-  const [effectiveTheme, setEffectiveTheme] = useState<EffectiveTheme>(() => resolveTheme('system'))
+  const theme = useThemeStore((s) => s.theme)
+  const effectiveTheme = useThemeStore((s) => s.effectiveTheme)
 
   useEffect(() => {
     settingsApi
       .get()
       .then((s) => {
         const pref = s.theme ?? 'system'
-        setThemeState(pref)
-        const resolved = resolveTheme(pref)
-        setEffectiveTheme(resolved)
-        applyTheme(resolved)
+        useThemeStore.getState().show(pref)
         syncNative(pref)
       })
       // Unreadable settings leave the system theme on screen; the log says why.
       .catch((error: unknown) => reportError('settings', error))
   }, [])
 
-  useEffect(() => {
-    if (theme !== 'system') return
-
-    const handler = (e: MediaQueryListEvent): void => {
-      const resolved: EffectiveTheme = e.matches ? 'dark' : 'light'
-      setEffectiveTheme(resolved)
-      applyTheme(resolved)
-    }
-
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [theme])
-
-  const setTheme = useCallback((pref: ThemePreference) => {
-    setThemeState(pref)
-    const resolved = resolveTheme(pref)
-    setEffectiveTheme(resolved)
-    applyTheme(resolved)
-    settingsApi.save({ theme: pref })
-    syncNative(pref)
-  }, [])
-
   return { theme, effectiveTheme, setTheme }
+}
+
+function setTheme(pref: ThemePreference): void {
+  useThemeStore.getState().show(pref)
+  settingsApi.save({ theme: pref })
+  syncNative(pref)
 }
