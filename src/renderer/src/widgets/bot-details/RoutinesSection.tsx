@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
@@ -22,9 +22,11 @@ import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
 import { useArrival } from '@shared/hooks/useStayMounted'
+import { useLoad } from '@shared/hooks/useLoad'
 import { cn } from '@shared/lib/utils'
 import { Switch } from '@shared/ui/switch'
-import { RoutineDialog, RoutineForm } from './RoutineDialog'
+import { RoutineDialog } from './RoutineDialog'
+import { RoutineForm } from './RoutineForm'
 
 type Translate = (key: TranslationKey) => string
 
@@ -65,16 +67,10 @@ export function RoutinesSection({
     [backend, bot.name]
   )
 
-  useEffect(() => {
-    let current = true
-    listRoutines(backend, bot.name).then(
-      (list) => current && setRoutines(list),
-      (error: unknown) => current && setProblem(problemOf(error))
-    )
-    return () => {
-      current = false
-    }
-  }, [backend, bot.name])
+  useLoad(
+    useCallback(() => listRoutines(backend, bot.name), [backend, bot.name]),
+    { loaded: setRoutines, failed: (error) => setProblem(problemOf(error)) }
+  )
 
   async function toggle(routine: Routine, active: boolean): Promise<void> {
     setRoutines((list) => list?.map((r) => (r.id === routine.id ? { ...r, active } : r)) ?? null)

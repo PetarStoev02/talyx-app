@@ -1,9 +1,9 @@
-import { useEffect } from 'react'
 import { LoaderCircle } from 'lucide-react'
 import { useEngine } from '@features/setup/useEngine'
 import { useLanguage } from '@shared/lib/i18n'
 import { host } from '@shared/engine/host'
 import { useElapsed } from '@shared/hooks/useElapsed'
+import { useOnChange } from '@shared/hooks/useOnChange'
 import { Reveal } from '@shared/ui/Reveal'
 import { reportError } from '@shared/lib/report'
 
@@ -22,9 +22,9 @@ export function ConnectionBanner(): React.JSX.Element | null {
   const check = useEngine((s) => s.check)
   const longLost = useElapsed(lostAt, RECHECK_AFTER_MS)
 
-  useEffect(() => {
-    if (longLost) void check()
-  }, [longLost, check])
+  useOnChange(longLost, (long) => {
+    if (long) void check()
+  })
 
   const shown = attached && lostAt !== null
   return (

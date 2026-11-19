@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useLoad } from '@shared/hooks/useLoad'
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import type { Components, UrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -154,15 +155,9 @@ function ChatImage({
   loadImage: (path: string) => Promise<string>
 }): React.JSX.Element {
   const [src, setSrc] = useState<string | null>(null)
-  useEffect(() => {
-    let live = true
-    loadImage(path)
-      .then((url) => live && setSrc(url))
-      .catch(() => undefined)
-    return () => {
-      live = false
-    }
-  }, [path, loadImage])
+  const load = useCallback(() => loadImage(path), [path, loadImage])
+  // Without a preview the image stays a name chip.
+  useLoad(load, { loaded: setSrc, failed: () => undefined })
   const name = path.split(/[\\/]/).pop() ?? path
   return src ? (
     <img src={src} alt={name} className="max-h-72 rounded-2xl" />

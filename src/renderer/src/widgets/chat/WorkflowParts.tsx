@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Check, ChevronRight, Copy } from 'lucide-react'
 import { toast } from 'sonner'
+import { useFlash } from '@shared/hooks/useFlash'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import { summarizeStatus } from '@features/chat/workflowLines'
 import type { FixedStep, WorkflowBrief, WorkflowStatus } from '@features/chat/workflowLines'
@@ -132,17 +133,9 @@ export function WorkflowStatusRow({
 /** Copies `text`, saying so for a moment; a refused copy says how to do it by hand. */
 function useCopy(text: string, failed: TranslationKey): { copy: () => void; copied: boolean } {
   const t = useLanguage((s) => s.t)
-  const [copied, setCopied] = useState(false)
-  useEffect(() => {
-    if (!copied) return
-    const timer = setTimeout(() => setCopied(false), COPIED_MS)
-    return () => clearTimeout(timer)
-  }, [copied])
+  const [copied, showCopied] = useFlash(COPIED_MS)
   const copy = (): void => {
-    navigator.clipboard.writeText(text).then(
-      () => setCopied(true),
-      () => toast.error(t(failed))
-    )
+    navigator.clipboard.writeText(text).then(showCopied, () => toast.error(t(failed)))
   }
   return { copy, copied }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useLanguage } from '@shared/lib/i18n'
 import { deleteSkill, editSkill, loadSkillText } from '@features/bots/memory'
 import type { MemoryBackend, Skill } from '@features/bots/memory'
@@ -8,6 +8,7 @@ import type { Problem } from '@shared/lib/problem'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { Textarea } from '@shared/ui/input'
+import { useLoad } from '@shared/hooks/useLoad'
 import { Loading, Skeleton } from '@shared/ui/skeleton'
 
 /**
@@ -35,20 +36,16 @@ export function SkillDialog({
   const [confirming, setConfirming] = useState(false)
   const [problem, setProblem] = useState<Problem | null>(null)
 
-  useEffect(() => {
-    let current = true
-    loadSkillText(backend, bot, skill.name).then(
-      (loaded) => {
-        if (!current) return
+  useLoad(
+    useCallback(() => loadSkillText(backend, bot, skill.name), [backend, bot, skill.name]),
+    {
+      loaded: (loaded) => {
         setOpening(loaded)
         setText(loaded)
       },
-      (error: unknown) => current && setProblem(ownOrFailure('skills.errorLoad', error))
-    )
-    return () => {
-      current = false
+      failed: (error) => setProblem(ownOrFailure('skills.errorLoad', error))
     }
-  }, [backend, bot, skill.name])
+  )
 
   async function run(change: () => Promise<void>, failed: Problem['key']): Promise<void> {
     setBusy(true)

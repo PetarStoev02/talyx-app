@@ -1,20 +1,16 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react'
-import { DropdownMenu } from 'radix-ui'
-import { ArrowUp, ChevronDown, LoaderCircle, Mic, Plus, Square, X } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { ArrowUp, LoaderCircle, Mic, Plus, Square, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
+import { useParentFileDrop } from '@shared/hooks/useParentFileDrop'
+import { useLanguage } from '@shared/lib/i18n'
 import { useNavigation } from '@features/modules/useNavigation'
 import { baseName, draftWith, sortAttachments } from '@features/chat/attachments'
-import type { ChatActions } from '@features/chat/chat'
-import type { ChatState } from '@features/chat/store'
 import { dataUrlOf, dictationProblem, useDictation } from '@features/chat/useDictation'
 import { openSettings } from '@features/settings/sections'
 import { filesApi } from '@shared/api/ipc'
 import { problemOf, problemText } from '@shared/lib/problem'
 import { cn } from '@shared/lib/utils'
 import { IconButton } from '@shared/ui/IconButton'
-import { ModelPicker } from '@shared/ui/ModelPicker'
-import { CheckItem, menuContentClass } from '@shared/ui/menu'
 import { composerWanted } from './focusComposer'
 
 const MAX_ROWS = 8
@@ -24,11 +20,6 @@ const ICON_SIZE = 18
 // Electron says where a file is on disk; a page in a plain browser (the dev bridge) cannot.
 const pathOf = (file: File): string => window.electron?.pathOf?.(file) ?? ''
 const names = (files: File[]): string => files.map((file) => file.name).join(', ')
-const REASONING_LEVELS: Array<[string, TranslationKey]> = [
-  ['low', 'chat.reasoningLow'],
-  ['medium', 'chat.reasoningMedium'],
-  ['high', 'chat.reasoningHigh']
-]
 
 /** A file attached to the draft: a bot chat's upload path, or a room attachment id. */
 export interface ComposerFile {
@@ -159,28 +150,7 @@ export function Composer({
   // Files dropped anywhere on the chat, transcript included, land here: the composer's parent is
   // the whole chat area (the panes render as fragments into it).
   const form = useRef<HTMLFormElement>(null)
-  const attachDropped = useEffectEvent((files: FileList) => void attach(files))
-  useEffect(() => {
-    const area = form.current?.parentElement
-    if (!area) return
-    const over = (event: DragEvent): void => {
-      // Only a drag of files: selected text or a link still drops into the text field.
-      if (!event.dataTransfer?.types.includes('Files')) return
-      event.preventDefault()
-      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
-    }
-    const drop = (event: DragEvent): void => {
-      if (!event.dataTransfer?.types.includes('Files')) return
-      event.preventDefault()
-      attachDropped(event.dataTransfer.files)
-    }
-    area.addEventListener('dragover', over)
-    area.addEventListener('drop', drop)
-    return () => {
-      area.removeEventListener('dragover', over)
-      area.removeEventListener('drop', drop)
-    }
-  }, [])
+  useParentFileDrop(form, (dropped) => void attach(dropped))
 
   function onKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>): void {
     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
@@ -340,92 +310,5 @@ function AttachedChip({
         <X size={14} />
       </button>
     </li>
-  )
-}
-
-interface ChipMenuProps {
-  chat: ChatState
-  actions: ChatActions
-  // The composer's text field: closing a chip's menu puts focus back there, not on the chip.
-  returnFocusTo: React.RefObject<HTMLTextAreaElement | null>
-}
-
-export function ChatChips(props: ChipMenuProps): React.JSX.Element {
-  return (
-    <>
-      <ModelMenu {...props} />
-      <ReasoningMenu {...props} />
-    </>
-  )
-}
-
-function ModelMenu({ chat, actions, returnFocusTo }: ChipMenuProps): React.JSX.Element {
-  const t = useLanguage((s) => s.t)
-  const selected =
-    chat.info.model && chat.info.provider
-      ? { model: chat.info.model, provider: chat.info.provider }
-      : null
-  return (
-    <ModelPicker
-      load={() => actions.models(chat.profile)}
-      selected={selected}
-      onSelect={(pick) => void actions.setModel(chat.profile, pick)}
-      labels={{ loading: t('chat.modelsLoading'), failed: t('chat.modelsFailed') }}
-      returnFocusTo={returnFocusTo}
-    >
-      {/* A chat with no session yet shows the bot's own model; a pick starts the session. */}
-      <Chip label={t('chat.model')} value={chat.info.model ?? t('chat.modelDefault')} />
-    </ModelPicker>
-  )
-}
-
-function ReasoningMenu({ chat, actions, returnFocusTo }: ChipMenuProps): React.JSX.Element {
-  const t = useLanguage((s) => s.t)
-  const current = REASONING_LEVELS.find(([level]) => level === chat.info.reasoning)
-  return (
-    <DropdownMenu.Root>
-      <Chip label={t('chat.reasoning')} value={current ? t(current[1]) : t('chat.reasoning')} />
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          sideOffset={4}
-          className={menuContentClass}
-          onCloseAutoFocus={(event) => {
-            event.preventDefault()
-            returnFocusTo.current?.focus()
-          }}
-        >
-          {REASONING_LEVELS.map(([level, label]) => (
-            <CheckItem
-              key={level}
-              label={t(label)}
-              selected={chat.info.reasoning === level}
-              onSelect={() => void actions.setReasoning(chat.profile, level)}
-            />
-          ))}
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
-  )
-}
-
-/** A composer chip that opens a menu; the bot chat's model and reasoning, a room's model. */
-export function Chip({
-  label,
-  value,
-  disabled = false
-}: {
-  label: string
-  value: string
-  disabled?: boolean
-}): React.JSX.Element {
-  return (
-    <DropdownMenu.Trigger
-      disabled={disabled}
-      aria-label={`${label}: ${value}`}
-      className="flex h-9 max-w-48 items-center gap-1 rounded-full px-3 text-sm hover:bg-foreground/10 disabled:opacity-50 disabled:hover:bg-transparent"
-    >
-      <span className="truncate">{value}</span>
-      <ChevronDown size={14} className="shrink-0" />
-    </DropdownMenu.Trigger>
   )
 }
