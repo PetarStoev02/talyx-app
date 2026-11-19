@@ -1,15 +1,11 @@
-import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useLanguage } from '@shared/lib/i18n'
 import { runRosterMutation } from '@features/bots/actions'
 import type { RosterBackend } from '@features/bots/data'
 import { useRoster } from '@features/bots/store'
 import { IconButton } from '@shared/ui/IconButton'
+import { useMinSpin } from '@shared/hooks/useMinSpin'
 import { cn } from '@shared/lib/utils'
-
-// A read takes a few milliseconds and usually changes nothing, so the spin lasts at least this
-// long to be seen.
-const MIN_SPIN_MS = 600
 
 /**
  * Reads the roster again now instead of at the next 10 s poll; every mutation re-reads the roster
@@ -19,16 +15,10 @@ const MIN_SPIN_MS = 600
 export function RosterRefresh({ backend }: { backend: RosterBackend }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const saving = useRoster((state) => state.saving)
-  const [refreshing, setRefreshing] = useState(false)
+  const { spinning: refreshing, spin } = useMinSpin()
 
   async function refresh(): Promise<void> {
-    setRefreshing(true)
-    const spin = new Promise((resolve) => setTimeout(resolve, MIN_SPIN_MS))
-    try {
-      await Promise.all([runRosterMutation(backend, () => Promise.resolve()), spin])
-    } finally {
-      setRefreshing(false)
-    }
+    await spin(() => runRosterMutation(backend, () => Promise.resolve()))
   }
 
   return (

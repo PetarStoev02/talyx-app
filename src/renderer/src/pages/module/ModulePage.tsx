@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useStylesheet } from '@shared/hooks/useStylesheet'
 import { useLanguage } from '@shared/lib/i18n'
 import { moduleInvoker, moduleStyleUrl } from '@features/modules/host'
 import { useModuleParts } from '@features/modules/useModuleParts'
@@ -11,14 +11,7 @@ export function ModulePage({ module }: { module: ModuleSummary }): React.JSX.Ele
   // Undefined while loading, null when the file failed (reported): an update shows nothing stale.
   const parts = useModuleParts(module)
 
-  useEffect(() => {
-    if (!styled) return
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = moduleStyleUrl(id, version)
-    document.head.append(link)
-    return () => link.remove()
-  }, [id, version, styled])
+  useStylesheet(styled ? moduleStyleUrl(id, version) : null)
 
   return (
     <div className="flex h-full flex-col">

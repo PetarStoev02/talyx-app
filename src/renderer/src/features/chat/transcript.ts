@@ -30,9 +30,12 @@ const EMPTY_RESPONSE = 'empty_response'
 // this mark. Its notice has an em dash (from its code point: this repo never spells one), shown as
 // a comma like the rest of the app's copy.
 const WAIT_MARK = '⏳'
-const WAIT_DASH = new RegExp(`\\s*${String.fromCharCode(0x2014)}\\s*`, 'g')
+const EM_DASH_CODE_POINT = 0x2014
+const EM_DASH = String.fromCharCode(EM_DASH_CODE_POINT)
+const WAIT_DASH = new RegExp(`\\s*${EM_DASH}\\s*`, 'g')
 // How the engine's wait names its next attempt, in whole seconds from when it said so.
 const RETRY_IN = /retrying in (\d+)s\b/
+const SECOND_MS = 1000
 // Frames that mean the engine is no longer waiting: the turn went on or ended.
 const WAIT_ENDS = new Set(['message.delta', 'message.complete', 'tool.start', 'tool.complete'])
 const IMAGE_LINE = /^@image:(.+)$/gm
@@ -47,7 +50,7 @@ const ENGINE_IMAGE_NOTES = [
 // A request the engine restates after compacting the context, because it was not finished. The
 // engine's header has an em dash, built from its code point since this repo never spells one.
 const RESTATED = new RegExp(
-  `^\\[STILL IN PROGRESS ${String.fromCharCode(0x2014)} this is the active request, restated after the compaction boundary because it was not finished yet\\. Continue it; do not start over\\.\\]\\n`
+  `^\\[STILL IN PROGRESS ${EM_DASH} this is the active request, restated after the compaction boundary because it was not finished yet\\. Continue it; do not start over\\.\\]\\n`
 )
 
 type Payload = Record<string, unknown>
@@ -314,7 +317,7 @@ function toolItem(
   args: Payload,
   labels: unknown
 ): Omit<ToolItem, 'done'> {
-  const label = Array.isArray(labels) ? (labels[0] as { text?: unknown } | undefined)?.text : null
+  const label = Array.isArray(labels) ? (labels[0] as { text: unknown } | undefined)?.text : null
   return {
     kind: 'tool',
     id,
@@ -331,8 +334,8 @@ function toolCalls(messages: SessionMessage[]): Map<string, { name: string; args
   for (const message of messages) {
     if (!Array.isArray(message.tool_calls)) continue
     for (const call of message.tool_calls as Array<{
-      id?: string
-      function?: { name?: string; arguments?: unknown }
+      id: string | undefined
+      function: { name: string | undefined; arguments: unknown } | undefined
     }>) {
       if (call.id && call.function?.name)
         calls.set(call.id, { name: call.function.name, args: parseArgs(call.function.arguments) })
@@ -507,7 +510,7 @@ export function waitLeft(
   retry: (seconds: number) => string
 ): string {
   return wait.replace(RETRY_IN, (_match, seconds: string) =>
-    retry(Math.max(0, Number(seconds) - Math.floor(waitedMs / 1000)))
+    retry(Math.max(0, Number(seconds) - Math.floor(waitedMs / SECOND_MS)))
   )
 }
 

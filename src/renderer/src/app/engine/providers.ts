@@ -4,6 +4,7 @@ import { randomUuid } from '@shared/engine/session-http-mutations'
 import type { SessionMutationSnapshot } from '@shared/engine/session-http-mutations'
 import type { MessageCompletePayload } from '@shared/engine/gateway-contract.generated'
 import { reportError } from '@shared/lib/report'
+import { after, sleep } from '@shared/lib/timers'
 import type {
   CustomEndpointValidationResponse,
   EnvVarInfo,
@@ -224,7 +225,7 @@ export function engineProvidersBackend(
         } catch (error) {
           if (attempt === DELETE_ATTEMPTS) throw error
           // A turn that was just stopped can hold the chat for a moment.
-          await new Promise((resolve) => setTimeout(resolve, DELETE_RETRY_MS))
+          await sleep(DELETE_RETRY_MS)
         }
       }
     },
@@ -374,18 +375,18 @@ function askOnce(
       if (stopping) return timedOut()
       finish(() => resolve(turnEnd(event.payload as MessageCompletePayload | undefined)))
     })
-    let timer = setTimeout(() => {
+    let cancel = after(TEST_CHAT_TIMEOUT_MS, () => {
       stopping = true
-      timer = setTimeout(timedOut, STOP_WAIT_MS)
+      cancel = after(STOP_WAIT_MS, timedOut)
       engine
         .request(HOME_PROFILE, 'session.interrupt', { session_id: chatId })
         .catch((error: unknown) => {
           reportError('providers', error)
           timedOut()
         })
-    }, TEST_CHAT_TIMEOUT_MS)
+    })
     function finish(settle: () => void): void {
-      clearTimeout(timer)
+      cancel()
       stop()
       settle()
     }

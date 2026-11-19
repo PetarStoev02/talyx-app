@@ -10,6 +10,7 @@ import { RestartHint } from '@features/setup/EngineScreens'
 import { useUpdates } from '@features/updates/store'
 import { timeInWords } from '@features/bots/roster'
 import { useNow } from '@shared/hooks/useNow'
+import { useMinSpin } from '@shared/hooks/useMinSpin'
 import { AgentAccess } from './AgentAccess'
 
 const STATE_KEYS = {
@@ -24,9 +25,6 @@ const ACTION_KEYS = {
   install: 'settings.engineInstall',
   update: 'settings.engineUpdate'
 } as const
-
-// A check can finish in a few milliseconds; the icon spins at least this long so the click shows.
-const MIN_SPIN_MS = 600
 
 /**
  * `debugConsole` is the engine-gated console: the page wraps it, since a widget cannot import the
@@ -52,17 +50,14 @@ export function EngineSection({
   // What a screen reader hears after Check again: the visible line below ages every minute, so it
   // is not a live region itself. Cleared first, so a second check is announced again.
   const [checkNote, setCheckNote] = useState('')
-  const [spinning, setSpinning] = useState(false)
+  const { spinning, spin } = useMinSpin()
 
   const busy = checking || spinning
 
   async function recheck(): Promise<void> {
     if (busy) return
     setCheckNote('')
-    setSpinning(true)
-    const spin = new Promise((resolve) => setTimeout(resolve, MIN_SPIN_MS))
-    await Promise.all([check(), spin])
-    setSpinning(false)
+    await spin(check)
     setCheckNote(t('settings.engineChecked').replace('{when}', t('time.justNow')))
   }
 
@@ -119,7 +114,8 @@ export function EngineSection({
         </p>
       )}
       <p role="status" className="sr-only">
-        {checkNote}
+        {/* Announced once the spin ends, so the line and the icon agree. */}
+        {spinning ? '' : checkNote}
       </p>
       <AgentAccess />
       <div className="space-y-3">

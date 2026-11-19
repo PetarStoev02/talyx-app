@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useEngine } from '@features/setup/useEngine'
 import { useLanguage } from '@shared/lib/i18n'
 import type { SetupBackend } from '@features/setup/install'
@@ -7,6 +7,7 @@ import { linkClass } from '@features/setup/screenStyles'
 import { useUpdates } from '@features/updates/store'
 import { host } from '@shared/engine/host'
 import { useElapsed } from '@shared/hooks/useElapsed'
+import { useOnChange } from '@shared/hooks/useOnChange'
 import { reportError } from '@shared/lib/report'
 import { Button } from '@shared/ui/button'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
@@ -42,9 +43,10 @@ export function EngineGate({
   const [waitStart, setWaitStart] = useState(() => Date.now())
   const waitedLong = useElapsed(waitStart, FIRST_CONNECT_GRACE_MS)
 
-  useEffect(() => {
-    if (!useEngine.getState().status) void check()
-  }, [check])
+  // `check` is a store action, so this runs once, on mount: the first check, unless one ran.
+  useOnChange(check, (run) => {
+    if (!useEngine.getState().status) void run()
+  })
 
   if (installing || status?.state === 'error')
     return (

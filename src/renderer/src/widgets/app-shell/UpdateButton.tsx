@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Check, Download, ExternalLink, LoaderCircle } from 'lucide-react'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
@@ -8,6 +8,7 @@ import { releaseAge, type UpdateItem } from '@features/updates/items'
 import { useUpdates } from '@features/updates/store'
 import { updaterApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
+import { useLater } from '@shared/hooks/useLater'
 import { Button } from '@shared/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@shared/ui/popover'
 import type { UpdateFailure } from '@contract/updater'
@@ -48,7 +49,7 @@ export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Elem
   const [opened, setOpened] = useState(false)
   // Opened by a click, a key or focus inside: it stays until dismissed, and focus moves in and back.
   const pinned = useRef(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const { later, cancel } = useLater()
   const look = buttonLook(items, engineInstalling)
   const talyx = items.find((item) => item.kind === 'talyx')?.state
   const percent = talyx?.kind === 'downloading' ? Math.floor(fraction(talyx) * 100) : 0
@@ -57,15 +58,13 @@ export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Elem
   const clearNotice = useUpdates((s) => s.clearNotice)
   const open = opened || noticeRequested
 
-  useEffect(() => () => clearTimeout(timer.current), [])
-
   // A notice Settings opened counts as opened by a click: it stays until dismissed.
   function isPinned(): boolean {
     return pinned.current || noticeRequested
   }
 
   function show(next: boolean, pin: boolean): void {
-    clearTimeout(timer.current)
+    cancel()
     if (next) pinned.current = pin
     else clearNotice()
     setOpened(next)
@@ -73,10 +72,9 @@ export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Elem
 
   function hover(event: React.PointerEvent, entering: boolean): void {
     if (event.pointerType !== 'mouse') return
-    clearTimeout(timer.current)
-    if (entering && !open) timer.current = setTimeout(() => show(true, false), HOVER_OPEN_MS)
-    if (!entering && open && !isPinned())
-      timer.current = setTimeout(() => show(false, false), HOVER_CLOSE_MS)
+    cancel()
+    if (entering && !open) later(HOVER_OPEN_MS, () => show(true, false))
+    if (!entering && open && !isPinned()) later(HOVER_CLOSE_MS, () => show(false, false))
   }
 
   return (

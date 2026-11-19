@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import { useEngine } from '@features/setup/useEngine'
@@ -8,31 +8,31 @@ import { reportError } from '@shared/lib/report'
 import { Button } from '@shared/ui/button'
 import { engineLabel, engineSummary } from '@features/setup/engineSummary'
 import type { UpdateCheck } from '@contract/updater'
+import { useElapsed } from '@shared/hooks/useElapsed'
+import { useLoad } from '@shared/hooks/useLoad'
 
 const COPIED_MS = 1500
+// Logged even when About closed meanwhile.
+const readVersion = (): Promise<string> =>
+  appApi.version().catch((error: unknown) => {
+    reportError('about', error)
+    throw error
+  })
 
 /** Which Talyx and engine run here, and a redacted report to paste into a bug report. */
 export function AboutSection(): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const engine = engineSummary(useEngine((s) => s.status))
   const [version, setVersion] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+  // When the report was last copied; the button says so for COPIED_MS.
+  const [copiedAt, setCopiedAt] = useState<number | null>(null)
+  const copyLapsed = useElapsed(copiedAt, COPIED_MS)
+  const copied = copiedAt !== null && !copyLapsed
   const [checking, setChecking] = useState(false)
   const [check, setCheck] = useState<UpdateCheck | null>(null)
   const requestNotice = useUpdates((s) => s.requestNotice)
 
-  useEffect(() => {
-    appApi
-      .version()
-      .then(setVersion)
-      .catch((error: unknown) => reportError('about', error))
-  }, [])
-
-  useEffect(() => {
-    if (!copied) return
-    const timer = setTimeout(() => setCopied(false), COPIED_MS)
-    return () => clearTimeout(timer)
-  }, [copied])
+  useLoad(readVersion, { loaded: setVersion })
 
   async function checkForUpdate(): Promise<void> {
     setChecking(true)
@@ -56,7 +56,7 @@ export function AboutSection(): React.JSX.Element {
         .diagnostics(engineLabel(engine))
         .then((text) => new Blob([text], { type: 'text/plain' }))
       await navigator.clipboard.write([new ClipboardItem({ 'text/plain': report })])
-      setCopied(true)
+      setCopiedAt(Date.now())
     } catch (error) {
       reportError('about', error)
       toast.error(t('settings.errorDiagnostics'))

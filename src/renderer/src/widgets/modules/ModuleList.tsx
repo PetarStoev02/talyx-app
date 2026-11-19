@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import { modulesApi } from '@shared/api/ipc'
@@ -9,6 +9,14 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/u
 import { useModules } from '@features/modules/store'
 import { moduleRows, type ModuleRow } from '@features/modules/rows'
 import type { AvailableModule } from '@contract/modules'
+import { useLoad } from '@shared/hooks/useLoad'
+
+// Logged even when the list has closed meanwhile.
+const readCatalog = (): Promise<AvailableModule[]> =>
+  modulesApi.available().catch((error: unknown) => {
+    reportError('modules', error)
+    throw error
+  })
 
 /**
  * The modules the license unlocks, each with Install or Update; Settings adds Uninstall. Reading
@@ -24,19 +32,7 @@ export function ModuleList({ removable }: { removable: boolean }): React.JSX.Ele
   const [uninstalling, setUninstalling] = useState<ModuleRow | null>(null)
   const rows = moduleRows(state, available)
 
-  useEffect(() => {
-    let live = true
-    modulesApi
-      .available()
-      .then((list) => live && setAvailable(list))
-      .catch((error: unknown) => {
-        reportError('modules', error)
-        if (live) setCatalogFailed(true)
-      })
-    return () => {
-      live = false
-    }
-  }, [])
+  useLoad(readCatalog, { loaded: setAvailable, failed: () => setCatalogFailed(true) })
 
   async function run(id: string, change: (id: string) => Promise<unknown>): Promise<void> {
     setBusy(id)

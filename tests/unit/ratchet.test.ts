@@ -20,14 +20,6 @@ const R = 'src/renderer/src'
 const RATCHET_FILE = 'eslint.ratchet.mjs'
 // Each list's rule as the config runs it, and what to do instead of adding a file to the list.
 const RULES = {
-  effects: {
-    rule: ['kernel/no-effect', 'error'],
-    fix: 'move the new code into a hook under shared/hooks'
-  },
-  timers: {
-    rule: ['kernel/no-timer', 'error'],
-    fix: 'move the new code into a hook under shared/hooks'
-  },
   optionalProperties: { rule: STYLE_RULES.optionalProperties, fix: 'write `T | null` instead' },
   magicNumbers: { rule: STYLE_RULES.magicNumbers, fix: 'name the number as a constant' }
 } as const
@@ -263,15 +255,6 @@ describe('ratchet', () => {
     'should list only files that still break the rule: %s %s (else remove it from the list)',
     (list, file) => {
       expect(stillViolates(file, list)).toBe(true)
-    }
-  )
-
-  it.each(['effects', 'timers'] as const)(
-    'should list no file in the kernel, where %s are allowed anyway',
-    (list) => {
-      const inKernel = (file: string): boolean =>
-        KERNEL.some((glob) => file.startsWith(glob.replace('**', '')))
-      expect(RATCHET[list].filter(inKernel)).toEqual([])
     }
   )
 

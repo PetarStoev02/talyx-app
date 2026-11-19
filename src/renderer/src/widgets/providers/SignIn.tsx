@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useLanguage } from '@shared/lib/i18n'
 import {
   cancelSignIn,
@@ -15,6 +15,8 @@ import type {
 } from '@features/providers/providers'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
+import { useOnChange } from '@shared/hooks/useOnChange'
+import { useSubscription } from '@shared/hooks/useSubscription'
 import { failureText } from './feedback'
 
 const linkClass = 'text-base underline underline-offset-4 hover:decoration-2'
@@ -54,9 +56,10 @@ export function SignIn({
   // A pasted code finishes outside the effect; its session must not be cancelled on close.
   const approved = useRef(false)
 
-  // Unmounting (closing the dialog) ends the wait and drops the engine's sign-in session.
-  useEffect(() => {
-    if (account.flow === 'external') return
+  // Unmounting (closing the dialog) ends the wait and drops the engine's sign-in session. One
+  // mount is one account: the dialog keys it by the account.
+  useSubscription(() => {
+    if (account.flow === 'external') return () => undefined
     let live = true
     let session: string | null = null
     const finish = (result: SignInResult): void => {
@@ -88,7 +91,7 @@ export function SignIn({
       live = false
       if (session && !approved.current) void cancelSignIn(backend, session).catch(() => undefined)
     }
-  }, [backend, account.id, account.flow, t])
+  })
 
   // The browser opens only once the code is on screen, so the user has it when the page asks.
   const signInUrl =
@@ -97,9 +100,9 @@ export function SignIn({
         ? step.start.verification_url
         : step.start.auth_url
       : null
-  useEffect(() => {
-    if (signInUrl) window.open(signInUrl)
-  }, [signInUrl])
+  useOnChange(signInUrl, (url) => {
+    if (url) window.open(url)
+  })
 
   async function submit(sessionId: string): Promise<void> {
     setBusy(true)

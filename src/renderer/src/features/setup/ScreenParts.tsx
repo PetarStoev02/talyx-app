@@ -1,26 +1,27 @@
-import { useEffect, useRef, useState } from 'react'
 import { LoaderCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { useFlash } from '@shared/hooks/useFlash'
 import { useLanguage } from '@shared/lib/i18n'
 import { cn } from '@shared/lib/utils'
 
 // How long a Copy button says "Copied." before it reads Copy again.
 const COPIED_MS = 1500
+const SPINNER_PX = 16
+
+type HeadingLevel = 1 | 2
 
 /** A screen's heading; it takes focus when the screen appears, so a screen reader reads it. */
 export function ScreenTitle({
   level,
   children
 }: {
-  level: 1 | 2
+  level: HeadingLevel
   children: React.ReactNode
 }): React.JSX.Element {
-  const ref = useRef<HTMLHeadingElement>(null)
-  useEffect(() => ref.current?.focus(), [])
   const Heading = level === 1 ? 'h1' : 'h2'
   return (
     <Heading
-      ref={ref}
+      ref={focusOnMount}
       tabIndex={-1}
       className={cn(
         'font-semibold text-foreground outline-none',
@@ -31,6 +32,9 @@ export function ScreenTitle({
     </Heading>
   )
 }
+
+// Stable, so React calls it once, when the heading mounts.
+const focusOnMount = (heading: HTMLHeadingElement | null): void => heading?.focus()
 
 /** A whole screen that only waits: its heading is for screen readers, the spinner for the eye. */
 export function Waiting({ label }: { label: string }): React.JSX.Element {
@@ -50,7 +54,7 @@ export function Waiting({ label }: { label: string }): React.JSX.Element {
 export function Spinner(): React.JSX.Element {
   return (
     <LoaderCircle
-      size={16}
+      size={SPINNER_PX}
       className="animate-spin motion-reduce:animate-none"
       aria-hidden="true"
     />
@@ -70,13 +74,7 @@ export function CopyButton({
   className?: string
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const [copied, setCopied] = useState(false)
-
-  useEffect(() => {
-    if (!copied) return
-    const timer = setTimeout(() => setCopied(false), COPIED_MS)
-    return () => clearTimeout(timer)
-  }, [copied])
+  const [copied, showCopied] = useFlash(COPIED_MS)
 
   return (
     <button
@@ -87,10 +85,9 @@ export function CopyButton({
         className
       )}
       onClick={() =>
-        void navigator.clipboard.writeText(text).then(
-          () => setCopied(true),
-          () => toast.error(t('providers.copyFailed'))
-        )
+        void navigator.clipboard
+          .writeText(text)
+          .then(showCopied, () => toast.error(t('providers.copyFailed')))
       }
     >
       {copied ? t('providers.copied') : label}
