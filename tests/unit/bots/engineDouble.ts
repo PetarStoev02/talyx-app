@@ -70,6 +70,8 @@ export interface EngineDouble {
   modelSets: Record<string, unknown>[]
   /** The provider Talyx's own model is on; a bare custom pick copies its URL only from custom. */
   homeProvider: string
+  /** Talyx's own model as its config holds it now; a new profile still inherits the one before. */
+  homeModel: string
   /** Each profile's prompt setting (`agent.system_prompt`); absent when it has none. */
   prompts: Record<string, unknown>
   /** Every profile whose prompt setting was written, in order. */
@@ -276,7 +278,7 @@ export function engineDouble(
         ],
         current: {
           provider: double.homeProvider,
-          model: '9-route-provider',
+          model: double.homeModel,
           base_url: custom ? HOME_ENDPOINT : ''
         }
       } as T
@@ -333,7 +335,7 @@ export function engineDouble(
     created.push(structuredClone(params))
     metadata[name] = {}
     revisions[name] = {}
-    // Without a model the engine gives the new profile Talyx's own.
+    // Without a model the engine gives the new profile Talyx's own, as it read it a moment ago.
     profiles[name] = {
       description: (params.description as string) ?? '',
       soul: (params.soul as string) ?? '',
@@ -532,6 +534,7 @@ export function engineDouble(
     promptWrites,
     reasoning,
     homeProvider: 'custom',
+    homeModel: '9-route-provider',
     homeKeyPreview: HOME_KEY_REF,
     rooms,
     roomLogs: {},

@@ -17,12 +17,14 @@ export interface CreateBackend {
     soul: string
     description: string | null
   }) => Promise<void>
+  /** Talyx's own model as its config holds it now, or null when it has none of its own. */
+  talyxModel: () => Promise<ModelChoice | null>
 }
 
 export interface NewBot {
   name: string
   folder: Folder | null
-  /** Null leaves the model the engine gives a new profile: Talyx's own. */
+  /** Null starts the bot on Talyx's model, or on the engine's when Talyx has none. */
   model: ModelChoice | null
   look: Look
   /** What the bot does: its description, also written into its SOUL. Blank counts as none. */
@@ -68,7 +70,8 @@ export function profileIdFor(name: string, taken: string[]): string {
  * Creates the profile, pins its model, files it with its title and look, exports the look, then
  * tells it about Talyx.
  * Returns its id. The model goes through the same pin as the details panel's: the pick was made
- * in the form, so a costly one is not asked about again.
+ * in the form, and Talyx's own was agreed to when it was picked, so a costly one is not asked
+ * about again.
  */
 export async function createBot(
   backend: CreateBackend &
@@ -84,7 +87,10 @@ export async function createBot(
   const purpose = bot.purpose?.trim() || null
   await backend.createProfile({ id, soul: soulFor(title, id, purpose), description: purpose })
   try {
-    if (bot.model) await confirmBotModel(backend, id, bot.model)
+    // The engine gives a new profile Talyx's model as it read it a moment ago, which lags a change
+    // made just before; Talyx's model as it is now is pinned instead.
+    const model = bot.model ?? (await backend.talyxModel())
+    if (model) await confirmBotModel(backend, id, model)
   } catch (error) {
     throw new IncompleteBotError(id, 'create.errorModel', problemOf(error).detail)
   }
