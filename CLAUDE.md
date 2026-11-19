@@ -87,15 +87,13 @@ Each line is the rule; the check's message names the fix.
   it in plain Node): `tests/unit/modules/moduleHostContract.test.ts`.
 - Effects and timers only in the renderer kernel (`shared/hooks`, `app/providers`,
   `shared/engine`, and `shared/lib/timers.ts` for a wait outside a component). A feature hook
-  composes the kernel's hooks. `npm run lint` (`eslint.kernel.mjs`) and
-  `tests/unit/ratchet.test.ts`.
+  composes the kernel's hooks. `npm run lint` (`eslint.kernel.mjs`, cases in
+  `tests/unit/lintRules.test.ts`).
 - `string | null`, not optional properties, in `src/shared` and `features/` (React props and
-  `moduleHost.ts` exempt): `npm run lint` (`eslint.style.mjs`). Files from before a rule wait on
-  `eslint.ratchet.mjs`, whose lists only shrink: an entry that leaves never returns, and a new file
-  is never on one (`tests/unit/ratchet.test.ts`).
+  `moduleHost.ts` exempt): `npm run lint` (`eslint.style.mjs`).
 - No default exports outside config files: `npm run lint` (`eslint.style.mjs`).
 - A Zustand store lives only in a feature's `store.ts` (or `app/`): `npm run lint`
-  (`eslint.style.mjs`, ratchet as above).
+  (`eslint.style.mjs`).
 - No magic numbers in `src/main` and `features/`: `npm run lint` (`eslint.style.mjs`).
 - `ipcMain.handle` only inside `handle()`, and channel types only from `src/shared/channels.ts`:
   `npm run lint` and `npm run typecheck`.
