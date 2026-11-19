@@ -530,7 +530,7 @@ function rebuilt(
   messages: SessionMessage[],
   resume: ResumeSnapshot
 ): Transcript {
-  let transcript = fromHistory(sessionId, messages, resume.running === true)
+  let transcript = fromHistory(sessionId, messages, resume.running)
   const inflight = resume.running ? resume.inflight?.assistant : null
   if (inflight) {
     transcript = [

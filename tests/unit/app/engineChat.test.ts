@@ -40,6 +40,53 @@ describe('engine chat backend', () => {
     })
   })
 
+  describe('resume', () => {
+    function engineResuming(answer: unknown): EngineAccess {
+      return {
+        request: async <T>() => answer as T,
+        http: async () => {
+          throw new Error('no REST call expected')
+        }
+      }
+    }
+
+    it('should read every field the engine left out as null and a missing running as false', async () => {
+      const snapshot = await engineChatBackend(engineResuming({})).resume('acme', 'chat-1')
+
+      expect(snapshot).toEqual({
+        info: null,
+        open_requests: null,
+        replay_epoch: null,
+        running: false,
+        last_sequence: null,
+        inflight: null
+      })
+    })
+
+    it('should keep the fields the engine sent, an in-flight turn with only part of its text', async () => {
+      const info = { model: 'claude-haiku-4-5', provider: 'anthropic', reasoning_effort: 'low' }
+      const snapshot = await engineChatBackend(
+        engineResuming({
+          info,
+          open_requests: [{ id: 'p1' }],
+          replay_epoch: 'epoch-2',
+          running: true,
+          last_sequence: 12,
+          inflight: { assistant: 'Half an answer' }
+        })
+      ).resume('acme', 'chat-1')
+
+      expect(snapshot).toEqual({
+        info,
+        open_requests: [{ id: 'p1' }],
+        replay_epoch: 'epoch-2',
+        running: true,
+        last_sequence: 12,
+        inflight: { assistant: 'Half an answer', user: null, error: null }
+      })
+    })
+  })
+
   describe('transcribe', () => {
     it('should post the recording for the profile and return its words', async () => {
       const { engine, sent } = engineAnswering({ transcript: 'dictated words' })
