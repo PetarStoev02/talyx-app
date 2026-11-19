@@ -2,6 +2,7 @@ import { net, protocol } from 'electron'
 import { isAbsolute, join, relative } from 'path'
 import { pathToFileURL } from 'url'
 import { MODULE_SCHEME } from '@contract/modules'
+import { HTTP_STATUS } from '../httpStatus'
 
 const SCHEME = 'app'
 const HOST = 'talyx'
@@ -50,6 +51,8 @@ export function registerAppScheme(): void {
 export function serveRenderer(rendererDir: string): void {
   protocol.handle(SCHEME, (request) => {
     const file = rendererFile(request.url, rendererDir)
-    return file ? net.fetch(pathToFileURL(file).href) : new Response(null, { status: 404 })
+    return file
+      ? net.fetch(pathToFileURL(file).href)
+      : new Response(null, { status: HTTP_STATUS.notFound })
   })
 }

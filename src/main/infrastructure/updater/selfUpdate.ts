@@ -6,12 +6,12 @@ import type { KeyObject } from 'node:crypto'
 import { FEED_SIGNATURE_SUFFIX, feedVouchesFor, type OfferedUpdate } from './feedSignature'
 import { RELEASE_ASSET_PREFIX, UPDATE_FEED_NAME } from './releaseCheck'
 import { ReleaseDownloadError } from './updateState'
+import { HTTP_STATUS } from '../httpStatus'
 
 const CHECKSUM_MISMATCH = 'ERR_CHECKSUM_MISMATCH'
 
 let configured = false
 
-const NOT_FOUND = 404
 const FEED_TIMEOUT_MS = 10_000
 // A feed is a few hundred bytes; anything far larger is not one.
 const MAX_FEED_BYTES = 65_536
@@ -109,7 +109,7 @@ async function requireSignedFeed(
       signal: AbortSignal.any([signal, AbortSignal.timeout(FEED_TIMEOUT_MS)])
     })
     // Not there means not signed; any other answer is GitHub failing, and says nothing of that.
-    if (response.status === NOT_FOUND)
+    if (response.status === HTTP_STATUS.notFound)
       throw new ReleaseDownloadError('signature', `${from} is missing`)
     if (!response.ok) throw new ReleaseDownloadError('other', `${from}: ${response.status}`)
     if (Number(response.headers.get('content-length') ?? 0) > MAX_FEED_BYTES)

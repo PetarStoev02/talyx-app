@@ -27,6 +27,8 @@ import {
 
 const DEFAULT_HTTP_TIMEOUT_MS = 30_000
 const WINDOWS_UNSUPPORTED = 'Talyx cannot attach to the engine on Windows yet'
+// Enough of an error page to say what went wrong, short enough for a toast.
+const ERROR_DETAIL_MAX = 200
 
 export class EngineMissingError extends Error {
   constructor() {
@@ -298,9 +300,6 @@ function parseJson(text: string): unknown {
     return text
   }
 }
-
-// Enough of an error page to say what went wrong, short enough for a toast.
-const ERROR_DETAIL_MAX = 200
 
 function errorDetail(payload: unknown, text: string): string {
   const detail =

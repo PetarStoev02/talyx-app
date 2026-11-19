@@ -13,14 +13,14 @@ import path from 'node:path'
 
 // The stderr kept for diagnostics, from its end.
 const STDERR_TAIL = 4096
-// The exit code reported for an ensure that was cut off or ended without one.
-const ENSURE_FAILED = 7
+// The exit code reported for a CLI run that was cut off or ended without one.
+const CLI_FAILED = 7
 const MAX_TICKET_RESPONSE = 65_536
 // The permission bits of a mode, printed in octal; the group and other bits that must be clear.
 const PERMISSIONS = 0o777
 const OCTAL = 8
-const OTHERS_WRITE = 0o022
-const OTHERS_ANY = 0o077
+const GROUP_OTHERS_WRITE = 0o022
+const GROUP_OTHERS_ANY = 0o077
 // Linux's own limit on symbolic links in one path (ELOOP past it).
 const MAX_SYMLINKS = 40
 
@@ -90,7 +90,7 @@ export function runEngineCli(command: string, args: string[]): Promise<CliResult
     child.on('close', (code) => {
       clearTimeout(timer)
       resolve({
-        code: expired ? code || ENSURE_FAILED : (code ?? ENSURE_FAILED),
+        code: expired ? code || CLI_FAILED : (code ?? CLI_FAILED),
         stdout,
         stderr: expired ? `${stderr}\n${expired}`.trim() : stderr
       })
@@ -453,12 +453,12 @@ async function privateNode(file: string, kind: 'home' | 'socket'): Promise<void>
     )
   }
   const mode = (node.mode & PERMISSIONS).toString(OCTAL)
-  if (kind === 'home' && node.mode & OTHERS_WRITE) {
+  if (kind === 'home' && node.mode & GROUP_OTHERS_WRITE) {
     throw new Error(
       `Unsafe gateway control path: profile home ${quoted} is writable by other users (mode ${mode}): run chmod go-w ${quoted}`
     )
   }
-  if (kind === 'socket' && node.mode & OTHERS_ANY) {
+  if (kind === 'socket' && node.mode & GROUP_OTHERS_ANY) {
     throw new Error(
       `Unsafe gateway control path: ${quoted} is accessible to other users (mode ${mode}): run chmod go-rwx ${quoted}`
     )

@@ -31,17 +31,18 @@ export class ModuleBundleError extends Error {
 }
 
 const LICENSE_PREFIX = 'TALYX-'
-// Lengths far above any real license or bundle, so a forged one stays small.
-const NAME_MAX = 100
-const LONG_NAME_MAX = 200
+// Sanity bounds far above any real license or bundle.
+const LICENSE_ID_MAX = 100
+const LICENSEE_NAME_MAX = 200
 const MODULES_MAX = 50
+const MODULE_NAME_MAX = 100
 
 export const ModuleIdSchema = z.string().regex(/^[a-z][a-z0-9-]{0,39}$/)
 
 const LicensePayloadSchema = z.object({
   v: z.literal(1),
-  id: z.string().min(1).max(NAME_MAX),
-  name: z.string().min(1).max(LONG_NAME_MAX),
+  id: z.string().min(1).max(LICENSE_ID_MAX),
+  name: z.string().min(1).max(LICENSEE_NAME_MAX),
   modules: z.array(ModuleIdSchema).max(MODULES_MAX),
   expires: z.iso.date().nullable()
 })
@@ -80,7 +81,7 @@ const DAY_MS = 86_400_000
 
 const ModuleBundleSchema = z.object({
   id: ModuleIdSchema,
-  name: z.string().min(1).max(NAME_MAX),
+  name: z.string().min(1).max(MODULE_NAME_MAX),
   version: z.string().regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/),
   apiVersion: z.number().int().positive(),
   files: z.object({

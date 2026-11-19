@@ -18,6 +18,7 @@ import {
 } from '@contract/channels'
 import { handle, sendEvent } from './handle'
 import { validateInput } from './validation'
+import { HTTP_STATUS } from '../httpStatus'
 
 /** The modules for every window; index.ts starts it and serves its files. */
 export const modules = createModuleHost({
@@ -98,7 +99,7 @@ export function serveModuleFiles(): void {
   protocol.handle(MODULE_SCHEME, (request) => {
     const url = new URL(request.url)
     const file = modules.file(url.hostname, url.pathname.slice(1))
-    if (!file) return new Response(null, { status: 404 })
+    if (!file) return new Response(null, { status: HTTP_STATUS.notFound })
     // The page imports it as a module script from another origin (app:// or the dev server).
     // Never cached: the files come from memory anyway, and a cached stylesheet would outlive a
     // reinstall of the same version.
