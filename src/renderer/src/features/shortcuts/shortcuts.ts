@@ -14,7 +14,7 @@ export interface Keys {
 type Modifier = 'mod' | 'alt' | 'shift'
 
 /** `key` with exactly the `held` modifiers. */
-function press(key: string, ...held: Modifier[]): Keys {
+function chord(key: string, ...held: Modifier[]): Keys {
   return {
     mod: held.includes('mod'),
     alt: held.includes('alt'),
@@ -59,29 +59,29 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     label: 'shortcuts.chats',
     shortcuts: [
-      { id: 'newBot', label: 'shortcuts.newBot', keys: press('n', 'mod') },
-      { id: 'previousChat', label: 'shortcuts.previousChat', keys: press('ArrowUp', 'alt') },
-      { id: 'nextChat', label: 'shortcuts.nextChat', keys: press('ArrowDown', 'alt') },
-      { id: 'searchChat', label: 'shortcuts.searchChat', keys: press('f', 'mod') },
-      { id: 'pickRow', label: 'shortcuts.pickRow', keys: press('Click', 'mod') },
-      { id: 'pickRange', label: 'shortcuts.pickRange', keys: press('Click', 'shift') }
+      { id: 'newBot', label: 'shortcuts.newBot', keys: chord('n', 'mod') },
+      { id: 'previousChat', label: 'shortcuts.previousChat', keys: chord('ArrowUp', 'alt') },
+      { id: 'nextChat', label: 'shortcuts.nextChat', keys: chord('ArrowDown', 'alt') },
+      { id: 'searchChat', label: 'shortcuts.searchChat', keys: chord('f', 'mod') },
+      { id: 'pickRow', label: 'shortcuts.pickRow', keys: chord('Click', 'mod') },
+      { id: 'pickRange', label: 'shortcuts.pickRange', keys: chord('Click', 'shift') }
     ]
   },
   {
     label: 'shortcuts.composer',
     shortcuts: [
-      { id: 'focusComposer', label: 'shortcuts.focusComposer', keys: press('l', 'mod') },
-      { id: 'send', label: 'shortcuts.send', keys: press('Enter') },
-      { id: 'newLine', label: 'shortcuts.newLine', keys: press('Enter', 'shift') }
+      { id: 'focusComposer', label: 'shortcuts.focusComposer', keys: chord('l', 'mod') },
+      { id: 'send', label: 'shortcuts.send', keys: chord('Enter') },
+      { id: 'newLine', label: 'shortcuts.newLine', keys: chord('Enter', 'shift') }
     ]
   },
   {
     label: 'shortcuts.app',
     shortcuts: [
-      { id: 'dockPage', label: 'shortcuts.dockPage', keys: press('1-9', 'mod') },
-      { id: 'settings', label: 'shortcuts.settings', keys: press(',', 'mod') },
-      { id: 'leave', label: 'shortcuts.leave', keys: press('Escape') },
-      { id: 'cheatSheet', label: 'shortcuts.cheatSheet', keys: press('/', 'mod') }
+      { id: 'dockPage', label: 'shortcuts.dockPage', keys: chord('1-9', 'mod') },
+      { id: 'settings', label: 'shortcuts.settings', keys: chord(',', 'mod') },
+      { id: 'leave', label: 'shortcuts.leave', keys: chord('Escape') },
+      { id: 'cheatSheet', label: 'shortcuts.cheatSheet', keys: chord('/', 'mod') }
     ]
   }
 ]

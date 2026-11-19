@@ -76,7 +76,6 @@ const schedule = z
   })
   .describe('When the routine runs')
 
-/** A tool as listed below; one marked `destructive` asks the user in Talyx before it runs. */
 type McpToolSpec =
   | { description: string; args: z.ZodType }
   | { description: string; args: z.ZodType; destructive: boolean }
