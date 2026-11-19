@@ -14,7 +14,7 @@ let configured = false
 const NOT_FOUND = 404
 const FEED_TIMEOUT_MS = 10_000
 // A feed is a few hundred bytes; anything far larger is not one.
-const MAX_FEED_BYTES = 64 * 1024
+const MAX_FEED_BYTES = 65_536
 
 /** The download the user clicked: the version the update button showed them. */
 export interface OfferedDownload {

@@ -299,9 +299,12 @@ function parseJson(text: string): unknown {
   }
 }
 
+// Enough of an error page to say what went wrong, short enough for a toast.
+const ERROR_DETAIL_MAX = 200
+
 function errorDetail(payload: unknown, text: string): string {
   const detail =
     payload && typeof payload === 'object' ? (payload as { detail?: unknown }).detail : undefined
   if (typeof detail === 'string') return detail
-  return text.slice(0, 200)
+  return text.slice(0, ERROR_DETAIL_MAX)
 }

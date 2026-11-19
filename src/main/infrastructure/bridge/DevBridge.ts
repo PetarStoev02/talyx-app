@@ -6,6 +6,7 @@ import {
   type ServerResponse
 } from 'http'
 import log from 'electron-log'
+import { HTTP_STATUS } from '../httpStatus'
 
 type IpcHandler = (event: unknown, ...args: unknown[]) => unknown
 type BroadcastListener = (channel: string, ...args: unknown[]) => void
@@ -147,7 +148,7 @@ export class DevBridge {
       { bridgePort: this.bridgePort, rendererPort: this.rendererPort }
     )
     if (!trusted) {
-      res.writeHead(403)
+      res.writeHead(HTTP_STATUS.forbidden)
       res.end()
       return
     }
@@ -159,10 +160,12 @@ export class DevBridge {
           try {
             const { channel, args } = JSON.parse(body) as { channel: string; args: unknown[] }
             const reply = await this.dispatchInvoke(channel, args ?? [])
-            res.writeHead(reply.ok ? 200 : 400, { 'Content-Type': 'application/json' })
+            res.writeHead(reply.ok ? HTTP_STATUS.ok : HTTP_STATUS.badRequest, {
+              'Content-Type': 'application/json'
+            })
             res.end(JSON.stringify(reply))
           } catch (err) {
-            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.writeHead(HTTP_STATUS.badRequest, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ ok: false, error: String(err) }))
           }
         })()
@@ -175,12 +178,12 @@ export class DevBridge {
     }
     // Lets a browser tab check it reached this app's bridge, not another dev run's.
     if (req.method === 'GET' && req.url === '/bridge/hello') {
-      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.writeHead(HTTP_STATUS.ok, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ rendererPort: this.rendererPort }))
       return
     }
     if (req.method === 'GET' && req.url === '/bridge/events') {
-      res.writeHead(200, {
+      res.writeHead(HTTP_STATUS.ok, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         Connection: 'keep-alive'
@@ -190,7 +193,7 @@ export class DevBridge {
       req.on('close', () => this.sseClients.delete(res))
       return
     }
-    res.writeHead(404)
+    res.writeHead(HTTP_STATUS.notFound)
     res.end()
   }
 
@@ -209,12 +212,12 @@ export class DevBridge {
       .split('/')
     const file = this.moduleFileAt(id, name)
     if (!file) {
-      res.writeHead(404)
+      res.writeHead(HTTP_STATUS.notFound)
       res.end()
       return
     }
     // Never cached, as in Electron: a reinstall of the same version must show.
-    res.writeHead(200, { 'Content-Type': file.type, 'Cache-Control': 'no-store' })
+    res.writeHead(HTTP_STATUS.ok, { 'Content-Type': file.type, 'Cache-Control': 'no-store' })
     res.end(file.body)
   }
 }

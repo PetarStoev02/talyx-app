@@ -11,6 +11,19 @@ import fs from 'node:fs/promises'
 import net from 'node:net'
 import path from 'node:path'
 
+// The stderr kept for diagnostics, from its end.
+const STDERR_TAIL = 4096
+// The exit code reported for an ensure that was cut off or ended without one.
+const ENSURE_FAILED = 7
+const MAX_TICKET_RESPONSE = 65_536
+// The permission bits of a mode, printed in octal; the group and other bits that must be clear.
+const PERMISSIONS = 0o777
+const OCTAL = 8
+const OTHERS_WRITE = 0o022
+const OTHERS_ANY = 0o077
+// Linux's own limit on symbolic links in one path (ELOOP past it).
+const MAX_SYMLINKS = 40
+
 // `gateway ensure` answers with a protocol verdict within its own 60 s startup deadline. The
 // client is killed only after that deadline plus interpreter start and verdict output, so a
 // slow-but-valid cold start is never reported as "produced no result".
@@ -69,7 +82,7 @@ export function runEngineCli(command: string, args: string[]): Promise<CliResult
     })
     // Diagnostics only (never protocol): a missing profile or an import crash explain
     // themselves here while stdout stays empty.
-    child.stderr.on('data', (data) => (stderr = (stderr + data.toString()).slice(-4096)))
+    child.stderr.on('data', (data) => (stderr = (stderr + data.toString()).slice(-STDERR_TAIL)))
     child.on('error', (error) => {
       clearTimeout(timer)
       reject(error)
@@ -77,7 +90,7 @@ export function runEngineCli(command: string, args: string[]): Promise<CliResult
     child.on('close', (code) => {
       clearTimeout(timer)
       resolve({
-        code: expired ? code || 7 : (code ?? 7),
+        code: expired ? code || ENSURE_FAILED : (code ?? ENSURE_FAILED),
         stdout,
         stderr: expired ? `${stderr}\n${expired}`.trim() : stderr
       })
@@ -387,7 +400,7 @@ function requestTicket(
     socket.on('connect', () => socket.write(JSON.stringify(request) + '\n'))
     socket.on('data', (chunk) => {
       buffer += chunk.toString()
-      if (buffer.length > 65_536) {
+      if (buffer.length > MAX_TICKET_RESPONSE) {
         socket.destroy(new Error('Oversized gateway ticket response'))
         return
       }
@@ -439,13 +452,13 @@ async function privateNode(file: string, kind: 'home' | 'socket'): Promise<void>
       `Unsafe gateway control path: ${quoted} is owned by uid ${node.uid}, not this user (uid ${uid})`
     )
   }
-  const mode = (node.mode & 0o777).toString(8)
-  if (kind === 'home' && node.mode & 0o022) {
+  const mode = (node.mode & PERMISSIONS).toString(OCTAL)
+  if (kind === 'home' && node.mode & OTHERS_WRITE) {
     throw new Error(
       `Unsafe gateway control path: profile home ${quoted} is writable by other users (mode ${mode}): run chmod go-w ${quoted}`
     )
   }
-  if (kind === 'socket' && node.mode & 0o077) {
+  if (kind === 'socket' && node.mode & OTHERS_ANY) {
     throw new Error(
       `Unsafe gateway control path: ${quoted} is accessible to other users (mode ${mode}): run chmod go-rwx ${quoted}`
     )
@@ -475,7 +488,7 @@ async function posixRealpath(dir: string): Promise<string> {
       resolved = next
       continue
     }
-    if (++links > 40)
+    if (++links > MAX_SYMLINKS)
       throw Object.assign(new Error(`Too many levels of symbolic links: ${dir}`), { code: 'ELOOP' })
     const target = await fs.readlink(next)
     if (target.startsWith('/')) resolved = '/'

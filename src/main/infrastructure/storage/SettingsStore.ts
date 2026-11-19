@@ -6,6 +6,8 @@ import { SIDEBAR_WIDTH, clampSidebarWidth } from '@contract/sidebar'
 import { LastSelectionSchema } from '@contract/channels'
 import type { UserSettings } from '@contract/settings'
 
+const JSON_INDENT = 2
+
 const defaults: UserSettings = {
   theme: 'system',
   sidebarWidth: SIDEBAR_WIDTH.initial,
@@ -75,7 +77,7 @@ function read(): UserSettings {
 function write(settings: UserSettings): void {
   mkdirSync(app.getPath('userData'), { recursive: true })
   const path = getSettingsPath()
-  writeFileSync(`${path}.tmp`, JSON.stringify(settings, null, 2))
+  writeFileSync(`${path}.tmp`, JSON.stringify(settings, null, JSON_INDENT))
   renameSync(`${path}.tmp`, path)
 }
 
