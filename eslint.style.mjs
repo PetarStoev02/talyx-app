@@ -69,10 +69,23 @@ export const stylePlugin = {
     'no-stray-store': {
       meta: { type: 'suggestion', schema: [] },
       create(context) {
+        const report = (node) => context.report({ node, message: STORE_MESSAGE })
+        // zustand itself and its entry points that make a store (`zustand/vanilla`, ...).
+        const fromZustand = (node) => /^zustand(\/|$)/.test(node.source?.value ?? '')
         return {
-          // A type from zustand makes no store.
-          'ImportDeclaration[source.value="zustand"][importKind!="type"]'(node) {
-            context.report({ node, message: STORE_MESSAGE })
+          ImportDeclaration(node) {
+            // A type from zustand makes no store.
+            const typesOnly =
+              node.importKind === 'type' ||
+              (node.specifiers.length > 0 &&
+                node.specifiers.every((specifier) => specifier.importKind === 'type'))
+            if (fromZustand(node) && !typesOnly) report(node)
+          },
+          ExportNamedDeclaration(node) {
+            if (fromZustand(node) && node.exportKind !== 'type') report(node)
+          },
+          ExportAllDeclaration(node) {
+            if (fromZustand(node) && node.exportKind !== 'type') report(node)
           }
         }
       }

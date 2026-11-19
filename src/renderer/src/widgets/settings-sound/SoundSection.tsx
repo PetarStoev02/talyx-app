@@ -3,6 +3,7 @@ import { useLanguage } from '@shared/lib/i18n'
 import { setCompletionSound } from '@features/chat/completionSound'
 import { useCompletionSound } from '@features/chat/store'
 import { reportError } from '@shared/lib/report'
+import { settingsApi } from '@shared/api/ipc'
 import { Switch } from '@shared/ui/switch'
 
 /** The switch for the chime that plays when a bot finishes a reply. */
@@ -12,7 +13,7 @@ export function SoundSection(): React.JSX.Element {
 
   async function change(next: boolean): Promise<void> {
     try {
-      await setCompletionSound(next)
+      await setCompletionSound(settingsApi, next)
     } catch (error) {
       reportError('settings', error)
       toast.error(t('settings.errorCompletionSound'))

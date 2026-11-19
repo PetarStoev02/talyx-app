@@ -1,15 +1,23 @@
-import { settingsApi } from '@shared/api/ipc'
 import { playChime } from '@shared/lib/chime'
 import { useCompletionSound } from './store'
 
+/** Where the choice is saved: the app's settings. */
+export interface CompletionSoundBackend {
+  get: () => Promise<{ completionSound: boolean }>
+  set: (change: { completionSound: boolean }) => Promise<{ completionSound: boolean }>
+}
+
 /** Reads the saved choice. */
-export async function loadCompletionSound(): Promise<void> {
-  useCompletionSound.setState({ enabled: (await settingsApi.get()).completionSound })
+export async function loadCompletionSound(backend: CompletionSoundBackend): Promise<void> {
+  useCompletionSound.setState({ enabled: (await backend.get()).completionSound })
 }
 
 /** Saves the choice and shows what was saved. */
-export async function setCompletionSound(next: boolean): Promise<void> {
-  const saved = await settingsApi.set({ completionSound: next })
+export async function setCompletionSound(
+  backend: CompletionSoundBackend,
+  next: boolean
+): Promise<void> {
+  const saved = await backend.set({ completionSound: next })
   useCompletionSound.setState({ enabled: saved.completionSound })
 }
 

@@ -255,6 +255,14 @@ describe('style rules', () => {
     }
   )
 
+  it.each([
+    ['the vanilla entry point', "import { createStore } from 'zustand/vanilla'"],
+    ['a re-export', "export { create } from 'zustand'"],
+    ['a re-export of all of zustand', "export * from 'zustand'"]
+  ])('should refuse a store made another way: %s', async (_name, source) => {
+    expect(await styleErrors(`${R}/widgets/roster/x.ts`, source)).toEqual([STORE_MESSAGE])
+  })
+
   it.each([`${R}/features/bots/store.ts`, `${R}/app/providers/x.ts`])(
     'should allow a store in %s',
     async (filePath) => {
@@ -262,8 +270,13 @@ describe('style rules', () => {
     }
   )
 
-  it('should allow a type from zustand anywhere', async () => {
-    const source = "import type { StoreApi } from 'zustand'\nexport type S = StoreApi<number>"
+  it.each([
+    ['a type import', "import type { StoreApi } from 'zustand'\nexport type S = StoreApi<number>"],
+    [
+      'an inline type specifier',
+      "import { type StoreApi } from 'zustand'\nexport type S = StoreApi<number>"
+    ]
+  ])('should allow %s from zustand anywhere', async (_name, source) => {
     expect(await styleErrors(`${R}/widgets/roster/x.ts`, source)).toEqual([])
   })
 
