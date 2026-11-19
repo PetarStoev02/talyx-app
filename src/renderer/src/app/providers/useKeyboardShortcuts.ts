@@ -2,9 +2,9 @@ import { useEffect } from 'react'
 import { useNavigation } from '@features/modules/store'
 import { useCreating, useRoster } from '@features/bots/store'
 import { dialogOpen, platformOf, shortcutOf, type ShortcutId } from '@features/shortcuts/shortcuts'
+import { useCheatSheet } from '@features/shortcuts/store'
 import { focusComposer } from '@widgets/chat'
 import { switchChat } from '@widgets/roster'
-import { useCheatSheet } from '@features/shortcuts/store'
 
 const platform = platformOf(navigator.platform)
 
