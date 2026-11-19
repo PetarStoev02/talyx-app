@@ -14,6 +14,7 @@ import {
   DEFAULT_EXPORT_IGNORES,
   MAGIC_NUMBER_FILES,
   OPTIONAL_PROPERTY_FILES,
+  OPTIONAL_PROPERTY_IGNORES,
   STORE_FILES,
   STORE_HOMES,
   STYLE_RULES,
@@ -304,7 +305,7 @@ export default defineConfig(
   // CLAUDE.md style rules; listed files wait their turn (tests/unit/ratchet.test.ts).
   {
     files: OPTIONAL_PROPERTY_FILES,
-    ignores: RATCHET.optionalProperties,
+    ignores: [...OPTIONAL_PROPERTY_IGNORES, ...RATCHET.optionalProperties],
     plugins: { style: stylePlugin },
     rules: { [STYLE_RULES.optionalProperties[0]]: STYLE_RULES.optionalProperties[1] }
   },

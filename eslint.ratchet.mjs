@@ -8,8 +8,7 @@ export const RATCHET = {
   optionalProperties: [
     'src/renderer/src/features/bots/types.ts',
     'src/renderer/src/features/chat/botSearch.ts',
-    'src/renderer/src/features/chat/room.ts',
-    'src/shared/moduleHost.ts'
+    'src/renderer/src/features/chat/room.ts'
   ],
   stores: [
     'src/renderer/src/features/bots/approvals.ts',
