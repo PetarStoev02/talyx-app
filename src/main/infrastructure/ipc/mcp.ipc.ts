@@ -12,6 +12,9 @@ import { McpAnswerSchema, McpCallIdSchema } from '@contract/channels'
 import { handle } from './handle'
 import { validateInput } from './validation'
 
+// 256 bits: the bearer token agents send to the MCP server.
+const TOKEN_BYTES = 32
+
 const calls = new McpCalls()
 // Pages already watched for a close or reload, so a reload does not add listeners again.
 const watched = new WeakSet<object>()
@@ -64,7 +67,7 @@ function mcpToken(): string {
     // No token yet: the first start makes one.
   }
   if (!token) {
-    token = randomBytes(32).toString('hex')
+    token = randomBytes(TOKEN_BYTES).toString('hex')
     writeFileSync(path, token, { mode: 0o600 })
   }
   return token

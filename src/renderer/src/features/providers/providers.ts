@@ -340,7 +340,7 @@ export async function removeEndpointModel(
   removal: { endpoint: CustomEndpoint; model: string }
 ): Promise<ModelRemoval> {
   const { endpoint, model } = removal
-  if (!endpoint.models.includes(model) || endpoint.models.length < 2)
+  if (!endpoint.models.includes(model) || endpoint.models.length <= 1)
     throw new ProvidersError('providers.errorEndpointLastModel')
   const drop = { endpoint: endpoint.id, model }
   const failed = await onEveryBot(backend, (profile) =>

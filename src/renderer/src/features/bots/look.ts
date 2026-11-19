@@ -1,5 +1,6 @@
 import { BLOCK_SHAPES, type BlockShape } from '@contract/moduleHost'
 import { BLOCK_HUES } from '@shared/ui/blockGeometry'
+import { fnv1a, oklchHue } from '@shared/lib/color'
 import type { Bot, BotMeta } from './types'
 
 export interface AvatarBackend {
@@ -15,8 +16,9 @@ export interface Look {
   faces: boolean
 }
 
-// Below this oklab chroma an old colour reads as grey and has no hue to keep.
-const GREY_CHROMA = 0.02
+// The hue reads the hash's next byte, so shape and hue vary apart.
+const HUE_SHIFT = 8
+const FULL_TURN = 360
 
 /** "Match the name": the profile id picks the shape and the hue, the same on every client. */
 export function matchName(profile: string): Pick<Look, 'shape' | 'hue'> {
@@ -24,7 +26,7 @@ export function matchName(profile: string): Pick<Look, 'shape' | 'hue'> {
   return {
     // A remainder of the length is always an index of the (non-empty) shape list.
     shape: BLOCK_SHAPES[hash % BLOCK_SHAPES.length]!,
-    hue: (hash >>> 8) % BLOCK_HUES.length
+    hue: (hash >>> HUE_SHIFT) % BLOCK_HUES.length
   }
 }
 
@@ -69,54 +71,9 @@ function hueOf(value: number | string | undefined): number | undefined {
   // An unreadable stored colour (NaN) falls back like a missing one.
   if (angle === undefined || Number.isNaN(angle)) return undefined
   const distance = (hue: number): number => {
-    const turn = Math.abs(hue - angle) % 360
-    return Math.min(turn, 360 - turn)
+    const turn = Math.abs(hue - angle) % FULL_TURN
+    return Math.min(turn, FULL_TURN - turn)
   }
   const distances = BLOCK_HUES.map(distance)
   return distances.indexOf(Math.min(...distances))
-}
-
-// The oklch hue of an `hsl(...)` or `#hex` colour, as older clients stored them.
-function oklchHue(color: string): number | undefined {
-  const rgb = hslToRgb(color) ?? hexToRgb(color)
-  if (!rgb) return undefined
-  const [r, g, b] = rgb.map((channel) =>
-    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
-  )
-  if (r === undefined || g === undefined || b === undefined) return undefined
-  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
-  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
-  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
-  const a = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s
-  const bb = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s
-  if (Math.hypot(a, bb) < GREY_CHROMA) return undefined
-  return ((Math.atan2(bb, a) * 180) / Math.PI + 360) % 360
-}
-
-function hslToRgb(color: string): number[] | undefined {
-  const match = /^hsla?\(\s*([\d.]+)(?:deg)?[\s,]+([\d.]+)%[\s,]+([\d.]+)%/i.exec(color.trim())
-  if (!match) return undefined
-  const [h, s, l] = [Number(match[1]), Number(match[2]) / 100, Number(match[3]) / 100]
-  const a = s * Math.min(l, 1 - l)
-  const f = (n: number): number => {
-    const k = (n + h / 30) % 12
-    return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))
-  }
-  return [f(0), f(8), f(4)]
-}
-
-function hexToRgb(color: string): number[] | undefined {
-  const [, digits] = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim()) ?? []
-  if (digits === undefined) return undefined
-  const hex = digits.length === 3 ? [...digits].map((digit) => digit + digit).join('') : digits
-  return [0, 2, 4].map((at) => parseInt(hex.slice(at, at + 2), 16) / 255)
-}
-
-function fnv1a(text: string): number {
-  let hash = 0x811c9dc5
-  for (const char of text) {
-    hash ^= char.codePointAt(0) ?? 0
-    hash = Math.imul(hash, 0x01000193) >>> 0
-  }
-  return hash
 }

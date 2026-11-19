@@ -1,5 +1,6 @@
 import { EXPECTED_ENGINE_VERSION, isEngineCurrent, type EngineStatus } from '@contract/engine'
 import type { UpdateState } from '@contract/updater'
+import { DAY_MS, HOUR_MS, MINUTE_MS } from '@shared/lib/time'
 
 /** One pending update the footer button offers. */
 export type UpdateItem =
@@ -22,10 +23,6 @@ export interface ReleaseAge {
   unit: 'now' | 'minutes' | 'hours' | 'days'
   count: number
 }
-
-const MINUTE_MS = 60_000
-const HOUR_MS = 60 * MINUTE_MS
-const DAY_MS = 24 * HOUR_MS
 
 /** How long ago a release came out ("3h ago"), whole units rounded down; null for a bad date. */
 export function releaseAge(publishedAt: string, now: number): ReleaseAge | null {

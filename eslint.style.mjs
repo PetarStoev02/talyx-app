@@ -16,6 +16,9 @@ export const OPTIONAL_PROPERTY_FILES = [
   'src/shared/**/*.ts',
   'src/renderer/src/features/**/*.{ts,tsx}'
 ]
+// The module host contract keeps `?`: a module's export or a field an older Talyx lacks is absent,
+// not null, and modules written against it read it that way.
+export const OPTIONAL_PROPERTY_IGNORES = ['src/shared/moduleHost.ts']
 export const MAGIC_NUMBER_FILES = ['src/main/**/*.ts', 'src/renderer/src/features/**/*.{ts,tsx}']
 // A store's homes: a feature's store.ts, and the app's wiring.
 export const STORE_FILES = ['src/renderer/src/**/*.{ts,tsx}']

@@ -22,7 +22,6 @@ const RATCHET_FILE = 'eslint.ratchet.mjs'
 // Each list's rule as the config runs it, and what to do instead of adding a file to the list.
 const RULES = {
   optionalProperties: { rule: STYLE_RULES.optionalProperties, fix: 'write `T | null` instead' },
-  magicNumbers: { rule: STYLE_RULES.magicNumbers, fix: 'name the number as a constant' },
   stores: { rule: STYLE_RULES.stores, fix: "move the store into its feature's store.ts" }
 } as const
 type List = keyof typeof RULES
@@ -208,10 +207,13 @@ describe('style rules', () => {
     ])
   })
 
-  it('should leave optional properties alone outside the contract and the features', async () => {
-    const source = 'export interface Bot {\n  title?: string\n}'
-    expect(await styleErrors(`${R}/widgets/chat/x.ts`, source)).toEqual([])
-  })
+  it.each([`${R}/widgets/chat/x.ts`, 'src/shared/moduleHost.ts'])(
+    'should leave optional properties alone outside the contract and the features: %s',
+    async (filePath) => {
+      const source = 'export interface Bot {\n  title?: string\n}'
+      expect(await styleErrors(filePath, source)).toEqual([])
+    }
+  )
 
   it.each([
     ['a default declaration', 'export default function f(): void {}'],

@@ -7,9 +7,13 @@ import type {
   ProvidersBackend,
   ProvidersOverview
 } from './providers'
+import { CLOCK_DIGITS, DAY_MS } from '@shared/lib/time'
 
+const WEEK_DAYS = 7
+const MONTH_DAYS = 30
+const QUARTER_DAYS = 90
 /** The periods, in days, the Usage page offers. */
-export const USAGE_PERIODS = [7, 30, 90] as const
+export const USAGE_PERIODS = [WEEK_DAYS, MONTH_DAYS, QUARTER_DAYS] as const
 export type UsagePeriod = (typeof USAGE_PERIODS)[number]
 
 type Counts = { tokens: number; requests: number }
@@ -112,7 +116,6 @@ export function dailySeries(daily: DayUsage[], period: { days: number; today: Da
 }
 
 const ZERO: Counts = { tokens: 0, requests: 0 }
-const DAY_MS = 86_400_000
 
 // A bot whose totals cannot be read is left out; one whose days alone cannot be read keeps its
 // totals and is left out of the days. When no day can be read at all, the totals stand alone.
@@ -247,6 +250,6 @@ function add(sum: Counts | null, row: Counts): Counts | null {
 }
 
 function localDay(date: Date): string {
-  const pad = (value: number): string => String(value).padStart(2, '0')
+  const pad = (value: number): string => String(value).padStart(CLOCK_DIGITS, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }

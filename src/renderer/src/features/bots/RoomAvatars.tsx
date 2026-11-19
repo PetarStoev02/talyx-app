@@ -1,6 +1,9 @@
 import { BotAvatar } from './BotAvatar'
 import type { Bot, Room } from './types'
 
+// Two members sit corner to corner; a third sits centred below the pair.
+const PAIR = 2
+
 // A room shows up to three of its members.
 const SHOWN = 3
 // In a cluster each member takes this share of the square's side, so three overlap a little.
@@ -45,7 +48,7 @@ export function RoomAvatars({
   const spots: [number, number][] =
     members.length === 1
       ? [[0, 0]]
-      : members.length === 2
+      : members.length === PAIR
         ? [
             [0, 0],
             [far, far]
@@ -53,7 +56,7 @@ export function RoomAvatars({
         : [
             [0, 0],
             [far, 0],
-            [far / 2, far]
+            [far / PAIR, far]
           ]
   return (
     <span

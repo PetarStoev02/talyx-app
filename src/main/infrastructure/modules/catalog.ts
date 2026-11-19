@@ -1,5 +1,6 @@
 import { z } from 'zod/v4'
 import { ModuleIdSchema } from './signing'
+import { HTTP_STATUS } from '../httpStatus'
 
 /**
  * The published list of modules: built, signed bundles only, never their source. The server
@@ -8,19 +9,21 @@ import { ModuleIdSchema } from './signing'
 export const CATALOG_URL = 'https://modules.talyx.app/index.json'
 
 const FETCH_TIMEOUT_MS = 30_000
-const UNAUTHORIZED = 401
-const FORBIDDEN = 403
 /** Far above any real module; stops a broken or hostile server from filling memory. */
-export const MAX_BUNDLE_BYTES = 20 * 1024 * 1024
+export const MAX_BUNDLE_BYTES = 20_971_520 // 20 MiB
+// Lengths far above any real entry, so a hostile catalog cannot fill memory or the screen.
+const NAME_MAX = 100
+const VERSION_MAX = 50
+const SIGNATURE_MAX = 200
 
 const CatalogEntrySchema = z.object({
   id: ModuleIdSchema,
-  name: z.string().min(1).max(100),
-  version: z.string().max(50),
+  name: z.string().min(1).max(NAME_MAX),
+  version: z.string().max(VERSION_MAX),
   apiVersion: z.number().int().positive(),
   url: z.url({ protocol: /^https$/ }),
   /** The module key's signature over the bundle's bytes (base64url). */
-  signature: z.string().min(1).max(200)
+  signature: z.string().min(1).max(SIGNATURE_MAX)
 })
 
 const CatalogSchema = z.object({ modules: z.array(CatalogEntrySchema) })
@@ -94,9 +97,9 @@ async function fetchOk(fetchFn: typeof fetch, url: string, licenseKey: string): 
       `Talyx could not reach the module download (${error instanceof Error ? error.message : String(error)}).`
     )
   }
-  if (response.status === UNAUTHORIZED)
+  if (response.status === HTTP_STATUS.unauthorized)
     throw new CatalogError('The module server did not accept this license key.')
-  if (response.status === FORBIDDEN)
+  if (response.status === HTTP_STATUS.forbidden)
     throw new CatalogError('Your license does not include this module.')
   if (!response.ok)
     throw new CatalogError(

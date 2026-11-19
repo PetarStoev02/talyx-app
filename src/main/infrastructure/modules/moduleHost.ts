@@ -37,8 +37,9 @@ const CONTENT_TYPES: Record<string, string> = {
 }
 /** A module's activate or deactivate past this counts as failed, so one module never stalls the rest. */
 const LIFECYCLE_TIMEOUT_MS = 10_000
+const SECOND_MS = 1000
 /** setTimeout's ceiling (about 24.8 days); a later expiry is looked at again then. */
-const MAX_TIMER_MS = 2 ** 31 - 1
+const MAX_TIMER_MS = 2_147_483_647
 /** In userData: one folder per installed module. */
 const MODULES_FOLDER = 'modules'
 
@@ -459,7 +460,7 @@ function blankModule(id: string): Loaded {
 /** A module's own start or stop, given up on after LIFECYCLE_TIMEOUT_MS. */
 async function withinTimeout(work: Promise<unknown>, verb: 'start' | 'stop'): Promise<void> {
   let timer: ReturnType<typeof setTimeout> | undefined
-  const seconds = LIFECYCLE_TIMEOUT_MS / 1000
+  const seconds = LIFECYCLE_TIMEOUT_MS / SECOND_MS
   const timeout = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(
       () => reject(new ModuleTimeoutError(`The module did not ${verb} within ${seconds} seconds.`)),
