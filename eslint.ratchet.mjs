@@ -13,16 +13,7 @@ export const RATCHET = {
     'src/shared/mcp.ts',
     'src/shared/moduleHost.ts'
   ],
-  magicNumbers: [
-    'src/renderer/src/features/bots/RoomAvatars.tsx',
-    'src/renderer/src/features/bots/look.ts',
-    'src/renderer/src/features/bots/roster.ts',
-    'src/renderer/src/features/bots/routines.ts',
-    'src/renderer/src/features/bots/store.ts',
-    'src/renderer/src/features/providers/providers.ts',
-    'src/renderer/src/features/providers/usage.ts',
-    'src/renderer/src/features/updates/items.ts'
-  ],
+  magicNumbers: [],
   stores: [
     'src/renderer/src/features/bots/approvals.ts',
     'src/renderer/src/features/bots/details.ts',

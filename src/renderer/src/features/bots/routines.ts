@@ -1,3 +1,5 @@
+import { HOURS_PER_DAY, MINUTES_PER_HOUR } from '@shared/lib/time'
+
 /** A scheduled job in the bot's own cron store; the engine runs it with the app closed. */
 export interface Routine {
   id: string
@@ -111,7 +113,10 @@ const EVERY_HOURS = /^every (\d+)h$/
 // How the engine stores an interval ("every 2h" comes back as "every 120m"), and a cron step.
 const EVERY_MINUTES = /^every (\d+)m$/
 const CRON_MINUTES = /^\*\/(\d{1,2}) \* \* \* \*$/
-const MINUTES_PER_HOUR = 60
+// Cron's fields as the form shows them: two digits each.
+const TIME_DIGITS = 2
+// 2023-01-01 was a Sunday, so day N of that week is cron's weekday N.
+const A_SUNDAY = { year: 2023, month: 0, day: 1 }
 export const MAX_HOURS = 24
 
 export function composeSchedule(draft: ScheduleDraft): string {
@@ -147,8 +152,13 @@ export function describeSchedule(schedule: string): {
     return { ...none, kind: 'hours', hours }
   if (minutes > 0) return { ...none, kind: 'custom', minutes }
   const [, minute, hour, days] = AT_TIME.exec(schedule) ?? []
-  if (minute !== undefined && hour !== undefined && Number(minute) < 60 && Number(hour) < 24) {
-    const time = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`
+  if (
+    minute !== undefined &&
+    hour !== undefined &&
+    Number(minute) < MINUTES_PER_HOUR &&
+    Number(hour) < HOURS_PER_DAY
+  ) {
+    const time = `${hour.padStart(TIME_DIGITS, '0')}:${minute.padStart(TIME_DIGITS, '0')}`
     if (days === '*') return { ...none, kind: 'daily', time }
     if (days === '1-5') return { ...none, kind: 'weekdays', time }
     return { ...none, kind: 'weekly', time, weekday: Number(days) }
@@ -168,10 +178,9 @@ export function scheduleDraft(schedule: string): ScheduleDraft {
   }
 }
 
-// 2023-01-01 was a Sunday, so day N of that week is cron's weekday N.
 export function weekdayName(day: number): string {
   return new Intl.DateTimeFormat('en', { weekday: 'long', timeZone: 'UTC' }).format(
-    Date.UTC(2023, 0, 1 + day)
+    Date.UTC(A_SUNDAY.year, A_SUNDAY.month, A_SUNDAY.day + day)
   )
 }
 

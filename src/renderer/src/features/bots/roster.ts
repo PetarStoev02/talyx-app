@@ -11,6 +11,7 @@ import type {
   RosterSnapshot,
   Selection
 } from './types'
+import { HOURS_PER_DAY, MINUTES_PER_HOUR, MINUTE_MS, SECOND_MS } from '@shared/lib/time'
 
 export const FOLDERS_KEY = 'talyx-folders'
 export const ROOM_FOLDERS_KEY = 'talyx-room-folders'
@@ -66,12 +67,12 @@ export function timeInWords(
   now = Date.now()
 ): string {
   if (!timestamp || !Number.isFinite(timestamp)) return ''
-  const minutes = Math.max(0, Math.floor((now - timestamp * 1000) / 60000))
-  const hours = Math.floor(minutes / 60)
-  const days = Math.floor(hours / 24)
+  const minutes = Math.max(0, Math.floor((now - timestamp * SECOND_MS) / MINUTE_MS))
+  const hours = Math.floor(minutes / MINUTES_PER_HOUR)
+  const days = Math.floor(hours / HOURS_PER_DAY)
   if (minutes < 1) return t('time.justNow')
-  if (minutes < 60) return ago(minutes, ['time.minute', 'time.minutes'], t)
-  if (hours < 24) return ago(hours, ['time.hour', 'time.hours'], t)
+  if (minutes < MINUTES_PER_HOUR) return ago(minutes, ['time.minute', 'time.minutes'], t)
+  if (hours < HOURS_PER_DAY) return ago(hours, ['time.hour', 'time.hours'], t)
   return ago(days, ['time.day', 'time.days'], t)
 }
 
