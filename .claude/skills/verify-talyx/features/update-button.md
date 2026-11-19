@@ -34,7 +34,7 @@ Preconditions:
 ## Gotchas
 
 - Do not click `Download` or `Restart to update` in a verification run. Download fetches a real signed release, and Restart replaces the running app. Report `update-download` and `update-restart` as not driven unless the user approves.
-- Whether a release shows depends on the network and on GitHub's latest release being newer than the dev build's package version (1.1.0). With no newer release, only the "Talyx is up to date." status line is provable, and the button never shows.
+- Whether a release shows depends on the network and on GitHub's latest release being newer than the dev build's package version (`package.json`). With no newer release, only the "Talyx is up to date." status line is provable, and the button never shows.
 - The status line is `role="status"`, which takes no name from its text. Read it from the snapshot; do not wait on it by name.
 - `update-engine` needs the real engine attached at a version other than the pinned one. With `--no-engine` the engine row never shows. Never click `Install the engine` against the user's engine without approval: it runs the real install.
 - Hovering opens the popover only for a real mouse pointer. Drive it with clicks: a click pins the popover open.
