@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUp, Pencil, RefreshCw, RotateCcw, X } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import { useNavigation } from '@features/modules/useNavigation'
 import { botChatId, botTitle } from '@features/bots/roster'
@@ -9,7 +8,6 @@ import type { Bot } from '@features/bots/types'
 import type { ChatActions } from '@features/chat/chat'
 import { draftWith } from '@features/chat/attachments'
 import type { RoomActions } from '@features/chat/room'
-import { botHits } from '@features/chat/botSearch'
 import { useChat } from '@features/chat/store'
 import type { WaitingMessage } from '@features/chat/store'
 import { useSetup } from '@features/setup/store'
@@ -17,6 +15,8 @@ import { turnOutcome, turnView } from '@features/chat/turns'
 import type { TurnOutcome } from '@features/chat/turns'
 import type { MessageItem } from '@features/chat/types'
 import { openSettings } from '@features/settings/sections'
+import { useFocusLater } from '@shared/hooks/useFocusLater'
+import { useOnChange } from '@shared/hooks/useOnChange'
 import { useRefocus } from '@shared/hooks/useRefocus'
 import { ActivityLine } from './ActivityLine'
 import { ApprovalCard } from './ApprovalCard'
@@ -27,15 +27,14 @@ import { ChatIntro } from './ChatIntro'
 import type { Starter } from './ChatIntro'
 import { ChatSkeleton } from './ChatSkeleton'
 import { ChatSearch } from './ChatSearch'
-import type { SearchFound } from './ChatSearch'
-import { useBotRoomLogs } from './useBotRoomLogs'
+import { useBotSearch } from './useBotSearch'
 import { FindSlot } from './FindSlot'
-import { usePlaceFind } from './usePlaceFind'
 import { Button } from '@shared/ui/button'
 import { Reveal } from '@shared/ui/Reveal'
 import { useArrival } from '@shared/hooks/useStayMounted'
 import { cn } from '@shared/lib/utils'
 import { Transcript } from './Transcript'
+import { OutcomeLine, WaitingBubble } from './TurnParts'
 
 /** A bot's chat: its transcript with any open cards below, then the composer. */
 export function ChatPane({
@@ -63,15 +62,12 @@ export function ChatPane({
   const chatId = botChatId(bot)
   const composer = useRef<HTMLTextAreaElement>(null)
   const [seed, setSeed] = useState<{ text: string } | null>(null)
+  const focusComposer = useFocusLater(composer)
   const start = (starter: Starter): void => {
     if (starter.send) return void actions?.send(bot.name, { text: starter.text, images: [] })
     setSeed({ text: starter.text })
     // After the composer has the text: the cursor goes to its end, ready to finish the sentence.
-    requestAnimationFrame(() => {
-      composer.current?.focus()
-      const end = composer.current?.value.length ?? 0
-      composer.current?.setSelectionRange(end, end)
-    })
+    focusComposer(null)
   }
   const edit = (message: WaitingMessage): void => {
     actions?.unqueue(bot.name, message.id)
@@ -80,41 +76,25 @@ export function ChatPane({
   // An answered card unmounts with focus on it; the composer is where the conversation goes on.
   useRefocus(composer, chat?.transcript?.prompts.length)
   const [transcriptArea, setTranscriptArea] = useState<HTMLDivElement | null>(null)
-  const { request, open: openFind, close } = usePlaceFind('bot', bot.name)
-  const place = useMemo(() => ({ kind: 'bot' as const, id: bot.name }), [bot.name])
-  // What the bot said in its group chats, read while the search is open.
-  const roomLogs = useBotRoomLogs(bot.name, rooms, !!request)
-  const chatItems = chat?.transcript?.items
-  const find = useCallback(
-    (query: string): SearchFound => ({
-      hits: botHits(
-        { profile: bot.name, chat: chatItems ?? [], rooms: roomLogs.logs ?? [] },
-        query
-      ),
-      note: !roomLogs.logs ? t('search.searching') : roomLogs.failed ? t('search.roomsFailed') : ''
-    }),
-    [bot.name, chatItems, roomLogs, t]
-  )
-  const loadWhole = useCallback(
-    () => actions?.loadWhole(bot.name) ?? Promise.resolve(),
-    [actions, bot.name]
-  )
+  const {
+    request,
+    open: openFind,
+    close,
+    place,
+    find,
+    loadWhole
+  } = useBotSearch(bot.name, actions, rooms)
   const closeSearch = (): void => {
     close()
     composer.current?.focus()
   }
-  // However the search ends (closed, or another bot opened), the chat goes back to its newest part.
-  const searching = !!request
-  useEffect(() => {
-    if (!searching) return undefined
-    return () => actions?.keepNewest(bot.name)
-  }, [searching, actions, bot.name])
 
   // The roster learns the chat id after the first send; the open chat already has it.
-  useEffect(() => {
-    if (actions && !useChat.getState().chats[bot.name]?.sessionId)
-      void actions.open(bot.name, chatId)
-  }, [actions, bot.name, chatId])
+  const opening = useMemo(() => (actions ? { actions, chatId } : null), [actions, chatId])
+  useOnChange(opening, (open) => {
+    if (open && !useChat.getState().chats[bot.name]?.sessionId)
+      void open.actions.open(bot.name, open.chatId)
+  })
 
   const loading = !actions || !chat || (chat.loading && !chat.transcript)
   // A chat that had to load fades in; one already loaded shows at once when you switch to it.
@@ -278,134 +258,4 @@ function announcement(
   const last = items.at(-1)
   if (last?.kind !== 'bot') return null
   return last.error ? 'chat.replyFailedAnnounce' : 'chat.replied'
-}
-
-// How a turn ended, and a way to ask its message again: a new answer, or a retry of one that failed.
-function OutcomeLine({
-  outcome,
-  name,
-  onAskAgain
-}: {
-  outcome: TurnOutcome
-  name: string
-  onAskAgain: () => void
-}): React.JSX.Element | null {
-  const t = useLanguage((s) => s.t)
-  const { kind, asked } = outcome
-  const attach = asked.images.length > 0
-  // A new answer to a message with images would need them attached again: that is a new message.
-  if (kind === 'answered')
-    return attach ? null : (
-      <OutcomeButton
-        label={t('chat.regenerateLabel').replace('{text}', asked.text)}
-        onClick={onAskAgain}
-      >
-        <RefreshCw size={14} />
-        {t('chat.regenerate')}
-      </OutcomeButton>
-    )
-  const said =
-    kind === 'stopped'
-      ? t('chat.replyStopped')
-      : kind === 'noReply'
-        ? t('chat.noReply').replace('{name}', name)
-        : null
-  return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 text-sm text-muted-foreground">
-      {said && <p>{said}</p>}
-      <OutcomeButton
-        label={t(attach ? 'chat.retryImagesLabel' : 'chat.retryLabel').replace(
-          '{text}',
-          asked.text
-        )}
-        onClick={onAskAgain}
-      >
-        <RotateCcw size={14} />
-        {t(attach ? 'chat.retryImages' : 'chat.retry')}
-      </OutcomeButton>
-    </div>
-  )
-}
-
-function OutcomeButton({
-  label,
-  onClick,
-  children
-}: {
-  label: string
-  onClick: () => void
-  children: React.ReactNode
-}): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      className="inline-flex items-center gap-1 self-start rounded-md px-1.5 py-0.5 text-sm text-muted-foreground hover:bg-foreground/10"
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  )
-}
-
-// A message held until the running answer ends, as a dashed bubble: send it now (stops that
-// answer), take it back into the composer to edit, or drop it.
-function WaitingBubble({
-  message,
-  onSendNow,
-  onEdit,
-  onRemove
-}: {
-  message: WaitingMessage
-  onSendNow: () => void
-  // Null for a message with images: the composer takes text back, not files.
-  onEdit: (() => void) | null
-  onRemove: () => void
-}): React.JSX.Element {
-  const t = useLanguage((s) => s.t)
-  const { text, images } = message.draft
-  const action = 'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-foreground/10'
-  return (
-    <div className="ml-auto flex max-w-[80%] flex-col items-end gap-1">
-      <p
-        dir="auto"
-        className="rounded-3xl border border-dashed border-border px-4 py-2 text-base whitespace-pre-wrap wrap-anywhere text-muted-foreground"
-      >
-        {text ||
-          (images.length === 1
-            ? t('chat.queuedImage')
-            : t('chat.queuedImages').replace('{count}', String(images.length)))}
-        <span className="sr-only">{` (${t('chat.queued')})`}</span>
-      </p>
-      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-        <button
-          type="button"
-          aria-label={`${t('chat.sendNow')}: ${text}`}
-          className={action}
-          onClick={onSendNow}
-        >
-          <ArrowUp size={14} />
-          {t('chat.sendNow')}
-        </button>
-        {onEdit && (
-          <button
-            type="button"
-            aria-label={`${t('chat.editQueued')}: ${text}`}
-            className={action}
-            onClick={onEdit}
-          >
-            <Pencil size={14} />
-          </button>
-        )}
-        <button
-          type="button"
-          aria-label={`${t('chat.unqueue')}: ${text}`}
-          className={action}
-          onClick={onRemove}
-        >
-          <X size={14} />
-        </button>
-      </div>
-    </div>
-  )
 }
