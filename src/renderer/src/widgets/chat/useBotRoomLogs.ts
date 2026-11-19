@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useLoad } from '@shared/hooks/useLoad'
 import { useRoster } from '@features/bots/store'
 import { roomsOf } from '@features/chat/botSearch'
 import type { RoomLog } from '@features/chat/botSearch'
@@ -17,7 +18,6 @@ export function useBotRoomLogs(
   rooms: RoomActions | null,
   active: boolean
 ): { logs: RoomLog[] | null; failed: number } {
-  const [read, setRead] = useState<{ logs: RoomLog[]; failed: number } | null>(null)
   // The rooms by id: the roster's snapshot changes with every bot's activity, and that alone must
   // not read every room's log again while the search is open.
   const roomKey = useRoster((s) =>
@@ -25,31 +25,43 @@ export function useBotRoomLogs(
       .map((room) => room.room_id)
       .join('\n')
   )
-
-  useEffect(() => {
-    if (!active || !rooms) return
-    let live = true
-    const targets = roomsOf(useRoster.getState().snapshot.rooms, profile)
-    void Promise.all(
-      targets.map((room) =>
-        rooms.log(room.room_id).then(
-          (events) => ({ room, events: shownAsInRoom(room, events) }),
-          () => null
-        )
-      )
-    ).then((logs) => {
-      const found: RoomLog[] = logs.flatMap((log) => (log ? [log] : []))
-      if (live) setRead({ logs: found, failed: logs.length - found.length })
-    })
-    return () => {
-      live = false
-      setRead(null)
-    }
-  }, [active, rooms, profile, roomKey])
+  const load = useCallback(
+    () => (active && rooms ? readLogs(rooms, roomKey) : Promise.resolve(null)),
+    [active, rooms, roomKey]
+  )
+  // A read counts only for the load that made it: a new one is on its way until it lands.
+  const [read, setRead] = useState<(LogsRead & { load: typeof load }) | null>(null)
+  useLoad(load, {
+    loaded: (logs) => setRead(logs && { ...logs, load }),
+    // Each room's failure is counted in the read; the read itself does not fail.
+    failed: () => undefined
+  })
+  const current = read?.load === load ? read : null
 
   // No rooms to read (no engine yet): nothing is on its way.
   if (!rooms) return { logs: [], failed: 0 }
-  return { logs: read?.logs ?? null, failed: read?.failed ?? 0 }
+  return { logs: current?.logs ?? null, failed: current?.failed ?? 0 }
+}
+
+interface LogsRead {
+  logs: RoomLog[]
+  failed: number
+}
+
+// `roomKey`: the ids of the rooms to read, one per line.
+async function readLogs(rooms: RoomActions, roomKey: string): Promise<LogsRead> {
+  const ids = new Set(roomKey.split('\n'))
+  const targets = useRoster.getState().snapshot.rooms.filter((room) => ids.has(room.room_id))
+  const logs = await Promise.all(
+    targets.map((room) =>
+      rooms.log(room.room_id).then(
+        (events) => ({ room, events: shownAsInRoom(room, events) }),
+        () => null
+      )
+    )
+  )
+  const found: RoomLog[] = logs.flatMap((log) => (log ? [log] : []))
+  return { logs: found, failed: logs.length - found.length }
 }
 
 // Each message's text as the room shows it: @handles become the members' names.
