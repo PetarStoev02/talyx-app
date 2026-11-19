@@ -34,7 +34,10 @@ export function matchName(profile: string): Pick<Look, 'shape' | 'hue'> {
  * The look a bot shows. Saved values win; an older client's (a blobatar id, a CSS colour) are
  * read as the nearest block; anything missing comes from the name. Nothing is written back.
  */
-export function lookOf(bot: Pick<Bot, 'name' | 'meta'>): Look {
+export function lookOf(bot: {
+  name: string
+  meta: Pick<BotMeta, 'shape' | 'color' | 'faces'>
+}): Look {
   const named = matchName(bot.name)
   return {
     shape: shapeOf(bot.meta.shape) ?? named.shape,

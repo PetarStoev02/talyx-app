@@ -208,7 +208,10 @@ export function normalizeFolders(value: unknown): Folder[] {
 
 /** The folders as the layout stores them: a top-level folder has no parentId field. */
 export function folderRecords(folders: Folder[]): Record<string, string>[] {
-  return folders.map(({ id, name, parentId }) => (parentId ? { id, name, parentId } : { id, name }))
+  return folders.map(
+    ({ id, name, parentId }): Record<string, string> =>
+      parentId ? { id, name, parentId } : { id, name }
+  )
 }
 
 /** A folder's name with its parents, for a folder picker. */
