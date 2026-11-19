@@ -7,7 +7,7 @@ const SETTLED = 0.05
 
 /**
  * A yaw that eases toward a few degrees left or right of the cursor, measured from the returned
- * anchor's centre; still while disabled and under reduced motion. The details hero turns with it.
+ * anchor's centre; still while disabled and under reduced motion.
  */
 export function useTurnToCursor(
   enabled: boolean
