@@ -5,7 +5,7 @@ import { t } from '@shared/lib/i18n'
 import { problemOf } from '@shared/lib/problem'
 import { reportError } from '@shared/lib/report'
 import type { UsageDays } from '@contract/engine'
-import type { SettingsChange } from '@contract/channels'
+import type { SettingsChange, Theme } from '@contract/channels'
 import type { PageSettings } from '@contract/settings'
 import type { InstallExit, InstallSteps } from '@contract/setup'
 import type { UpdateCheck, UpdateState } from '@contract/updater'
@@ -27,6 +27,16 @@ export const settingsApi = {
         duration: Infinity
       })
     })
+  }
+}
+
+/** The theme pick: saved like any setting, and the native chrome (menus, dialogs) follows it. */
+export const themeApi = {
+  get: settingsApi.get,
+  save: ({ theme }: { theme: Theme }): void => {
+    settingsApi.save({ theme })
+    // Cosmetic: a failure is only logged.
+    window.api.setNativeTheme(theme).catch((error: unknown) => reportError('theme', error))
   }
 }
 

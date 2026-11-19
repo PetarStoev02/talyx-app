@@ -1,0 +1,16 @@
+import { create } from 'zustand'
+import type { Theme } from '@contract/channels'
+
+interface ThemePickState {
+  theme: Theme
+  /** The user picked in this window: the saved pick, read later, must not undo it. */
+  picked: boolean
+  reset: () => void
+}
+
+/** The window's one theme pick; theme.ts reads and saves it, the app paints it. */
+export const useThemePick = create<ThemePickState>((set) => ({
+  theme: 'system',
+  picked: false,
+  reset: () => set({ theme: 'system', picked: false })
+}))

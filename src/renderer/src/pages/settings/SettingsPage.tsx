@@ -4,10 +4,12 @@ import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
 import { cn } from '@shared/lib/utils'
 import { reportError } from '@shared/lib/report'
-import { useTheme } from '@shared/hooks/useTheme'
+import { themeApi } from '@shared/api/ipc'
 import { useEscape } from '@shared/hooks/useEscape'
 import { useLanguage } from '@shared/lib/i18n'
 import { useNavigation } from '@features/modules/useNavigation'
+import { pickTheme } from '@features/settings/theme'
+import { useThemePick } from '@features/settings/store'
 import type { ProvidersBackend } from '@features/providers/providers'
 import type { ModelLists } from '@features/chat/chat'
 import type { RosterBackend } from '@features/bots/data'
@@ -42,7 +44,7 @@ export function SettingsPage({
   chat: ModelLists | null
   setup: SetupBackend
 }): React.JSX.Element {
-  const { theme, setTheme } = useTheme()
+  const theme = useThemePick((s) => s.theme)
   const t = useLanguage((s) => s.t)
   const goBack = useNavigation((s) => s.goBack)
   const leave = useCallback((): void => void goBack(), [goBack])
@@ -87,7 +89,7 @@ export function SettingsPage({
               {themes.map(({ value, label, Icon }) => (
                 <button
                   key={value}
-                  onClick={() => setTheme(value)}
+                  onClick={() => pickTheme(themeApi, value)}
                   aria-pressed={theme === value}
                   className={cn(
                     'flex h-9 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors',

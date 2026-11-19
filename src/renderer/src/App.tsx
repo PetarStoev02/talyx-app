@@ -8,7 +8,7 @@ import { useChatBackend } from '@app/providers/useChatBackend'
 import { useProvidersBackend } from '@app/providers/useProvidersBackend'
 import { useSetupBackend } from '@app/providers/useSetupBackend'
 import { useFirstSetupStep } from '@app/providers/useFirstSetupStep'
-import { useTheme } from '@shared/hooks/useTheme'
+import { useAppTheme } from '@app/providers/useAppTheme'
 import { useOnChange } from '@shared/hooks/useOnChange'
 import { useOnMount } from '@shared/hooks/useSubscription'
 import { useKeyboardShortcuts } from '@app/providers/useKeyboardShortcuts'
@@ -39,7 +39,7 @@ import { useMcpBridge } from '@app/providers/useMcpBridge'
 
 export function App(): React.JSX.Element {
   useSelectionMemory()
-  const { effectiveTheme } = useTheme()
+  const effectiveTheme = useAppTheme()
   const currentView = useNavigation((s) => s.currentView)
   const navigate = useNavigation((s) => s.navigate)
   const rosterBackend = useRosterBackend()
