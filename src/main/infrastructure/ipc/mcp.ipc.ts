@@ -25,7 +25,15 @@ const port = Number(process.env['TALYX_MCP_PORT'] ?? MCP_DEFAULT_PORT)
  * its tools; the open page runs each one through the same code the roster and details use.
  */
 export function startMcpServer(): void {
-  const server = createServer(mcpHandler({ token: mcpToken(), version: app.getVersion(), calls }))
+  let key: string
+  try {
+    key = mcpToken()
+  } catch (error) {
+    // Like a taken port: Talyx starts, without the server, and the log says why.
+    log.error('[MCP] Server did not start: its key could not be read or saved', error)
+    return
+  }
+  const server = createServer(mcpHandler({ token: key, version: app.getVersion(), calls }))
   // A port another program holds leaves Talyx working without the server; the log says why.
   server.on('error', (error) => log.error(`[MCP] Server did not start on port ${port}`, error))
   server.listen(port, '127.0.0.1')
@@ -61,14 +69,27 @@ let token: string | null = null
 function mcpToken(): string {
   if (token) return token
   const path = join(app.getPath('userData'), 'mcp-token')
+  const saved = savedToken(path)
+  if (saved) return (token = saved)
+  const made = randomBytes(TOKEN_BYTES).toString('hex')
+  writeFileSync(path, made, { mode: 0o600 })
+  return (token = made)
+}
+
+/** The saved token, or null when none is saved yet. A file that fails to read is never replaced. */
+function savedToken(path: string): string | null {
   try {
-    token = readFileSync(path, 'utf8').trim()
-  } catch {
-    // No token yet: the first start makes one.
+    return readFileSync(path, 'utf8').trim() || null
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+    throw new McpTokenError(error)
   }
-  if (!token) {
-    token = randomBytes(TOKEN_BYTES).toString('hex')
-    writeFileSync(path, token, { mode: 0o600 })
+}
+
+/** The saved MCP token exists but could not be read. */
+export class McpTokenError extends Error {
+  constructor(cause: unknown) {
+    super('Talyx could not read its MCP key', { cause })
+    this.name = 'McpTokenError'
   }
-  return token
 }
