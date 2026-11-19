@@ -21,6 +21,7 @@ import {
 } from '@contract/channels'
 import { handle, type EventSender } from './handle'
 import { EnginePathSchema, validateInput } from './validation'
+import { HTTP_STATUS } from '../httpStatus'
 
 const MEDIA_PATH = '/api/media'
 
@@ -172,7 +173,11 @@ export async function engineHttp(request: EngineHttpRequest): Promise<unknown> {
   try {
     return await engine.http(request)
   } catch (error) {
-    if (error instanceof EngineHttpError && error.status === 404 && isMediaRead(request.path))
+    if (
+      error instanceof EngineHttpError &&
+      error.status === HTTP_STATUS.notFound &&
+      isMediaRead(request.path)
+    )
       return null
     logFailedRequest(request, error)
     throw error

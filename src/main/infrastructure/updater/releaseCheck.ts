@@ -39,9 +39,14 @@ interface Version {
   pre: string | null
 }
 
+// The regex's groups: major, minor and patch (1 to 3), then the pre-release label.
+const PRE_GROUP = 4
+
 function parse(version: string): Version | null {
   const match = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/.exec(version.trim())
-  return match ? { core: match.slice(1, 4).map(Number), pre: match[4] ?? null } : null
+  return match
+    ? { core: match.slice(1, PRE_GROUP).map(Number), pre: match[PRE_GROUP] ?? null }
+    : null
 }
 
 export function isNewerVersion(latest: string, current: string): boolean {

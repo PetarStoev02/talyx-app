@@ -10,12 +10,17 @@ import { ENGINE_INSTALL_SHA256, sha256Hex } from './installPin'
 const RELEASES = 'https://github.com/PetarStoev02/talyx-app/releases'
 const INSTALL_FILE = 'engine-install.json'
 const REQUEST_TIMEOUT_MS = 10_000
-const MAX_FILE_BYTES = 64 * 1024
+const MAX_FILE_BYTES = 65_536
+// A command and a platform's list far above any real install, so a hostile file stays small.
+const COMMAND_MAX = 4096
+const COMMANDS_MAX = 20
 // The install links the engine's own command as talyx-engine (`ln -sf ".../<name>" ".../talyx-engine"`),
 // so that link names the engine without the name ever being written here.
 const LINKED_COMMAND = new RegExp(`/([A-Za-z][A-Za-z0-9]*)"?\\s+"?\\S*/${ENGINE_COMMAND}\\b`)
 
-const PlatformSchema = z.object({ commands: z.array(z.string().min(1).max(4096)).min(1).max(20) })
+const PlatformSchema = z.object({
+  commands: z.array(z.string().min(1).max(COMMAND_MAX)).min(1).max(COMMANDS_MAX)
+})
 const InstallFileSchema = z.object({
   schema: z.literal(1),
   engineVersion: z.string(),

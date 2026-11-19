@@ -4,10 +4,19 @@ import log from 'electron-log'
 import { MCP_CALL_TIMEOUT_MS, MCP_PATH, isMcpTool, mcpToolList } from '@contract/mcp'
 import type { McpAnswer } from '@contract/mcp'
 import type { EventChannels } from '@contract/channels'
+import { HTTP_STATUS } from '../httpStatus'
 
 // The MCP revision this server speaks; a client asking for another gets this one back.
 const PROTOCOL_VERSION = '2025-06-18'
-const MAX_BODY_BYTES = 1024 * 1024
+const MAX_BODY_BYTES = 1_048_576 // 1 MiB
+// JSON-RPC 2.0's error codes.
+const RPC_ERROR = {
+  parse: -32700,
+  invalidRequest: -32600,
+  methodNotFound: -32601,
+  invalidParams: -32602,
+  internal: -32603
+} as const
 
 /** The page that runs tool calls: the Talyx window, or the dev bridge's browser tab. */
 export interface McpPage {
@@ -89,7 +98,7 @@ export function mcpHandler(deps: {
   return (req, res) => {
     void handle(deps, req, res).catch((error: unknown) => {
       log.error('[MCP] Request failed', error)
-      reply(res, 500, rpcError(null, -32603, 'Internal error'))
+      reply(res, HTTP_STATUS.internalError, rpcError(null, RPC_ERROR.internal, 'Internal error'))
     })
   }
 }
@@ -99,21 +108,28 @@ async function handle(
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
-  if (new URL(req.url ?? '/', 'http://localhost').pathname !== MCP_PATH) return reply(res, 404)
-  if (req.headers.origin !== undefined) return reply(res, 403)
-  if (!authorized(req.headers.authorization, deps.token)) return reply(res, 401)
-  if (req.method !== 'POST') return reply(res, 405, undefined, { Allow: 'POST' })
+  if (new URL(req.url ?? '/', 'http://localhost').pathname !== MCP_PATH)
+    return reply(res, HTTP_STATUS.notFound)
+  if (req.headers.origin !== undefined) return reply(res, HTTP_STATUS.forbidden)
+  if (!authorized(req.headers.authorization, deps.token))
+    return reply(res, HTTP_STATUS.unauthorized)
+  if (req.method !== 'POST')
+    return reply(res, HTTP_STATUS.methodNotAllowed, undefined, { Allow: 'POST' })
   let message: JsonRpcRequest
   try {
     message = JSON.parse(await readBody(req)) as JsonRpcRequest
   } catch {
-    return reply(res, 400, rpcError(null, -32700, 'Parse error'))
+    return reply(res, HTTP_STATUS.badRequest, rpcError(null, RPC_ERROR.parse, 'Parse error'))
   }
   if (!message || typeof message.method !== 'string')
-    return reply(res, 400, rpcError(null, -32600, 'Invalid request'))
+    return reply(
+      res,
+      HTTP_STATUS.badRequest,
+      rpcError(null, RPC_ERROR.invalidRequest, 'Invalid request')
+    )
   // A notification (initialized, cancelled) needs no answer.
-  if (message.id === undefined) return reply(res, 202)
-  reply(res, 200, await answer(deps, message))
+  if (message.id === undefined) return reply(res, HTTP_STATUS.accepted)
+  reply(res, HTTP_STATUS.ok, await answer(deps, message))
 }
 
 async function answer(
@@ -136,12 +152,12 @@ async function answer(
       return result({ tools: mcpToolList() })
     case 'tools/call': {
       const name = typeof params?.name === 'string' ? params.name : ''
-      if (!isMcpTool(name)) return rpcError(id, -32602, `Unknown tool: ${name}`)
+      if (!isMcpTool(name)) return rpcError(id, RPC_ERROR.invalidParams, `Unknown tool: ${name}`)
       const { ok, text } = await deps.calls.run(name, params?.arguments ?? {})
       return result({ content: [{ type: 'text', text }], isError: !ok })
     }
     default:
-      return rpcError(id, -32601, `Method not found: ${method}`)
+      return rpcError(id, RPC_ERROR.methodNotFound, `Method not found: ${method}`)
   }
 }
 

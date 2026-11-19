@@ -33,10 +33,12 @@ import icon from '../../resources/talyx-icon.png?asset'
 /** Long enough for the window to settle; short enough to land in the first minute. */
 const STARTUP_UPDATE_CHECK_DELAY_MS = 15_000
 // Talyx has no server to push a release; asking GitHub this often notices one within the hour.
-const UPDATE_CHECK_INTERVAL_MS = 60 * 60_000
-const FOCUS_UPDATE_CHECK_MIN_MS = 15 * 60_000
+const UPDATE_CHECK_INTERVAL_MS = 3_600_000
+const FOCUS_UPDATE_CHECK_MIN_MS = 900_000
 const SPLASH_LOAD_TIMEOUT_MS = 5_000
 const SPLASH_MIN_VISIBLE_MS = 500
+// The dev bridge's port unless TALYX_BRIDGE_PORT names another (two runs side by side).
+const DEFAULT_BRIDGE_PORT = 5175
 
 const isMac = process.platform === 'darwin'
 const rendererUrl = is.dev ? process.env['ELECTRON_RENDERER_URL'] : undefined
@@ -79,7 +81,7 @@ function registerIpc(): void {
   handle('theme:set-native', (_event, theme: unknown) =>
     syncNativeTheme(validateInput(ThemeSchema, theme))
   )
-  const bridgePort = Number(process.env['TALYX_BRIDGE_PORT'] ?? 5175)
+  const bridgePort = Number(process.env['TALYX_BRIDGE_PORT'] ?? DEFAULT_BRIDGE_PORT)
   devBridge
     ?.start(bridgePort)
     .catch((error: unknown) => log.error(bridgeStartFailure(error, bridgePort)))

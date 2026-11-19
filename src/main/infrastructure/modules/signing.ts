@@ -31,14 +31,19 @@ export class ModuleBundleError extends Error {
 }
 
 const LICENSE_PREFIX = 'TALYX-'
+// Sanity bounds far above any real license or bundle.
+const LICENSE_ID_MAX = 100
+const LICENSEE_NAME_MAX = 200
+const MODULES_MAX = 50
+const MODULE_NAME_MAX = 100
 
 export const ModuleIdSchema = z.string().regex(/^[a-z][a-z0-9-]{0,39}$/)
 
 const LicensePayloadSchema = z.object({
   v: z.literal(1),
-  id: z.string().min(1).max(100),
-  name: z.string().min(1).max(200),
-  modules: z.array(ModuleIdSchema).max(50),
+  id: z.string().min(1).max(LICENSE_ID_MAX),
+  name: z.string().min(1).max(LICENSEE_NAME_MAX),
+  modules: z.array(ModuleIdSchema).max(MODULES_MAX),
   expires: z.iso.date().nullable()
 })
 
@@ -72,11 +77,11 @@ export function expiryTime(expires: string): number {
   return Date.parse(expires) + DAY_MS
 }
 
-const DAY_MS = 24 * 60 * 60_000
+const DAY_MS = 86_400_000
 
 const ModuleBundleSchema = z.object({
   id: ModuleIdSchema,
-  name: z.string().min(1).max(100),
+  name: z.string().min(1).max(MODULE_NAME_MAX),
   version: z.string().regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/),
   apiVersion: z.number().int().positive(),
   files: z.object({
