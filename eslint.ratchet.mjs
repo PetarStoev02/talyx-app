@@ -1,8 +1,8 @@
-// Files that still break a rule, from before the rule: optional properties, magic numbers and
-// stores outside a feature's store.ts (eslint.style.mjs). The lists only shrink: fix a file, then
-// delete its line. tests/unit/ratchet.test.ts fails when a listed file is clean, and when a list
-// gains a file that main's copy of this file does not have. A listed file that is renamed or moved
-// counts as a new file: fix it before moving it.
+// Files that still break a rule, from before the rule: optional properties and stores outside a
+// feature's store.ts (eslint.style.mjs). The lists only shrink: fix a file, then delete its line.
+// tests/unit/ratchet.test.ts fails when a listed file is clean, and when a list gains a file that
+// main's copy of this file does not have. A listed file that is renamed or moved counts as a new
+// file: fix it before moving it.
 
 export const RATCHET = {
   optionalProperties: [
@@ -13,7 +13,6 @@ export const RATCHET = {
     'src/shared/mcp.ts',
     'src/shared/moduleHost.ts'
   ],
-  magicNumbers: [],
   stores: [
     'src/renderer/src/features/bots/approvals.ts',
     'src/renderer/src/features/bots/details.ts',
