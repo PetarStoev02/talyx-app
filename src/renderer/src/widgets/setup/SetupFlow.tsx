@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useEngine } from '@features/setup/useEngine'
+import { useEngine } from '@features/setup/store'
 import type { RosterBackend } from '@features/bots/data'
 import type { ModelLists } from '@features/chat/chat'
 import type { SetupBackend } from '@features/setup/install'

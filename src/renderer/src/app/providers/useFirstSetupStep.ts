@@ -3,7 +3,7 @@ import { loadProviders, type ProvidersBackend } from '@features/providers/provid
 import { hasProvider, knownFirstStep, type SetupStep } from '@features/setup/steps'
 import { useSetup } from '@features/setup/store'
 import { reportError } from '@shared/lib/report'
-import { useEngine } from '@features/setup/useEngine'
+import { useEngine } from '@features/setup/store'
 
 /**
  * Where an unfinished setup starts; undefined until known. Reads whether a provider and an own bot

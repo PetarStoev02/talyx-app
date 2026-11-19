@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
 import { useLanguage } from '@shared/lib/i18n'
-import { useEngine } from '@features/setup/useEngine'
+import { useEngine } from '@features/setup/store'
 import { useNavigation } from '@features/modules/useNavigation'
 import { Button } from '@shared/ui/button'
 import { cn } from '@shared/lib/utils'

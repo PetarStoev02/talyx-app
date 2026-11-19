@@ -3,7 +3,7 @@ import type { ProvidersBackend } from '@features/providers/providers'
 import { engineAccess } from '@app/engine/access'
 import { engineProvidersBackend } from '@app/engine/providers'
 import { engineConfigApi, engineUsageApi } from '@shared/api/ipc'
-import { useEngine } from '@features/setup/useEngine'
+import { useEngine } from '@features/setup/store'
 
 /** The providers backend, once the engine is attached: REST, and main for what REST cannot do (a config unset, the usage plugin). */
 export function useProvidersBackend(): ProvidersBackend | null {

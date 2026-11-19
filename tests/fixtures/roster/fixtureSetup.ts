@@ -1,4 +1,4 @@
-import { useEngine } from '../../../src/renderer/src/features/setup/useEngine'
+import { useEngine } from '../../../src/renderer/src/features/setup/store'
 import type { SetupBackend } from '../../../src/renderer/src/features/setup/install'
 import { EXPECTED_ENGINE_VERSION, type EngineStatus } from '../../../src/shared/engine'
 import type { InstallExit, InstallSteps } from '../../../src/shared/setup'

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ChartNoAxesColumn, Settings } from 'lucide-react'
-import { useEngine } from '@features/setup/useEngine'
+import { useEngine } from '@features/setup/store'
 import { useLanguage } from '@shared/lib/i18n'
 import { type AppView, useNavigation } from '@features/modules/useNavigation'
 import { useRoster } from '@features/bots/store'
