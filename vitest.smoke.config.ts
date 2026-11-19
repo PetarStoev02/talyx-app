@@ -14,6 +14,12 @@ export default defineConfig({
     hookTimeout: TEARDOWN_TIMEOUT_MS
   },
   resolve: {
-    alias: { '@contract': resolve('src/shared') }
+    // The core flows run the renderer's use cases, which import through its aliases.
+    alias: {
+      '@shared': resolve('src/renderer/src/shared'),
+      '@app': resolve('src/renderer/src/app'),
+      '@features': resolve('src/renderer/src/features'),
+      '@contract': resolve('src/shared')
+    }
   }
 })

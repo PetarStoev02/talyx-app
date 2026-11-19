@@ -118,9 +118,13 @@ jobs:
       - name: Build
         run: npm run build:linux
 
-      # Proves the shipped install file installs the engine on Linux and Talyx attaches to it.
-      # The suite prints only its summary, never the install file or the engine's name.
+      # Proves the shipped install file installs the engine on Linux and Talyx attaches to it, then
+      # creates a bot, sends it a message and gets a reply. The suite prints only its summary,
+      # never the install file, the key or the engine's name. Without SMOKE_PROVIDER_KEY (an
+      # Anthropic API key) the reply step is skipped and the summary says so.
       - name: Real-engine smoke test
+        env:
+          TALYX_SMOKE_PROVIDER_KEY: ${{ secrets.SMOKE_PROVIDER_KEY }}
         run: TALYX_SMOKE_INSTALL_FILE=engine-install.json npm run test:smoke
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

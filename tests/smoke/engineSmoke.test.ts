@@ -29,9 +29,31 @@ import {
   type EngineHttpRequest,
   type EngineStatus
 } from '../../src/shared/engine'
+import {
+  awaitReply,
+  connectRenderer,
+  disconnectRenderer,
+  sendMessage,
+  pinScratchModel,
+  withScratchBot,
+  type Renderer,
+  type ScratchProvider
+} from './coreFlows'
 import { insideHome, isolatedEnv, isolatedRun, makeTempHome } from './isolation'
 
 const INSTALL_FILE = process.env.TALYX_SMOKE_INSTALL_FILE ?? null
+// The reply flow's provider: an OpenAI-compatible endpoint. The Release workflow passes the
+// SMOKE_PROVIDER_KEY secret for the default, the Anthropic API on the scratch-bot model; a local run
+// can point it at a router instead. Without a key the flow is skipped: the temp home has no
+// provider, so no bot can answer.
+const PROVIDER: ScratchProvider | null = process.env.TALYX_SMOKE_PROVIDER_KEY
+  ? {
+      baseUrl: process.env.TALYX_SMOKE_PROVIDER_URL || 'https://api.anthropic.com/v1',
+      apiKey: process.env.TALYX_SMOKE_PROVIDER_KEY,
+      model: process.env.TALYX_SMOKE_PROVIDER_MODEL || 'claude-haiku-4-5'
+    }
+  : null
+const NO_KEY_REASON = 'skipped: TALYX_SMOKE_PROVIDER_KEY is not set'
 // The `groups.capabilities` protocol_version of the vendored client's last re-sync (observed on
 // engine 0.22.7); update it with the client.
 const ROOMS_PROTOCOL_VERSION = 2
@@ -58,8 +80,9 @@ const CHECKS = [
   'delete throwaway profile',
   'no service unit'
 ] as const
+const FLOW_CHECKS = ['create bot', 'send message'] as const
 
-type Check = (typeof CHECKS)[number]
+type Check = (typeof CHECKS)[number] | (typeof FLOW_CHECKS)[number] | 'get reply'
 type Attached = Extract<EngineStatus, { state: 'attached' }>
 type Rpc = (profile: string, method: string, params: Record<string, unknown>) => Promise<unknown>
 
@@ -163,17 +186,23 @@ let sockets: EngineSockets | null = null
 let installRun: InstallRun | null = null
 let installHash: string | null = null
 let roomsProtocol: number | null = null
+let attached: Attached | null = null
+let attachedEngine: Engine | null = null
+let renderer: Renderer | null = null
 
 describe.skipIf(INSTALL_FILE === null)('real engine smoke', () => {
   afterAll(async () => {
     try {
+      // The renderer's socket goes first, so the teardown waits on nothing of the test's own.
+      if (renderer) disconnectRenderer()
       if (home) await check('teardown', () => tearDown(home!))
     } finally {
       // stderr, not console.log: vitest hides the log of a passing run, and the README asks for
       // this line to be pasted in the PR.
       process.stderr.write(
         `Smoke summary: install file sha256 ${installHash ?? 'unread'}; rooms protocol_version ` +
-          `${roomsProtocol ?? 'unread'}; passed: ${passed.join(', ')}\n`
+          `${roomsProtocol ?? 'unread'}; passed: ${passed.join(', ')}` +
+          `${PROVIDER ? '' : `; get reply ${NO_KEY_REASON}`}\n`
       )
     }
   })
@@ -201,6 +230,8 @@ describe.skipIf(INSTALL_FILE === null)('real engine smoke', () => {
     const status = await check('attach inside the temp home', () =>
       checkAttach(engine, run, enginePath)
     )
+    attached = status
+    attachedEngine = engine
     sockets = new EngineSockets(engine)
     const rpc = await check('socket profiles.list', () => checkProfilesList(sockets!))
     roomsProtocol = await check('rooms protocol', () => checkRoomsProtocol(rpc))
@@ -213,7 +244,35 @@ describe.skipIf(INSTALL_FILE === null)('real engine smoke', () => {
     // A check that did not run is a failure, not a pass.
     expect(passed).toEqual([...CHECKS])
   })
+
+  // The core flows run on the renderer's use cases, with a scratch bot on the cheap model.
+  it('should create a bot and send it a message', async () => {
+    const flows = await rendererFor()
+    await check('create bot', () =>
+      withScratchBot(flows, (profile) => check('send message', () => sendMessage(flows, profile)))
+    )
+    expect(passed).toEqual(expect.arrayContaining([...FLOW_CHECKS]))
+  })
+
+  it.skipIf(PROVIDER === null)('should get a reply (needs TALYX_SMOKE_PROVIDER_KEY)', async () => {
+    const flows = await rendererFor()
+    await check('get reply', () =>
+      withScratchBot(flows, async (profile) => {
+        await pinScratchModel(flows, profile, PROVIDER!)
+        await sendMessage(flows, profile)
+        await awaitReply(flows, profile)
+      })
+    )
+  })
 })
+
+/** The renderer, connected once the main checks attached; a flow before that fails by name. */
+async function rendererFor(): Promise<Renderer> {
+  if (!attachedEngine || !sockets || !attached)
+    throw new SmokeFailure('the main checks did not attach')
+  renderer ??= await connectRenderer(attachedEngine, sockets, attached)
+  return renderer
+}
 
 async function check<T>(name: Check | 'teardown', body: () => Promise<T>): Promise<T> {
   let result: T
@@ -232,7 +291,8 @@ function safeDetail(error: unknown): string {
   if (!(error instanceof Error)) return 'a non-error was thrown'
   if (!engineName) return error.name
   const name = engineName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return error.message.replace(new RegExp(name, 'gi'), 'the engine')
+  const message = error.message.replace(new RegExp(name, 'gi'), 'the engine')
+  return PROVIDER ? message.replaceAll(PROVIDER.apiKey, '[key]') : message
 }
 
 function readInstallFile(path: string): { commands: string[]; version: string; commit: string } {
