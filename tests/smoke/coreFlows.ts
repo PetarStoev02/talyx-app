@@ -166,7 +166,8 @@ export async function withScratchBot(
  * with no provider none does, so the stored message and its answer are the reply flow's to prove.
  */
 export async function sendMessage(renderer: Renderer, profile: string): Promise<void> {
-  if (!(await renderer.chat.send(profile, { text: PROMPT, images: [] })))
+  const draft = { text: PROMPT, images: [], whenBusy: null, replaces: null }
+  if (!(await renderer.chat.send(profile, draft)))
     throw new Error(
       `the send failed: ${useChat.getState().chats[profile]?.error?.key ?? 'unknown'}`
     )
