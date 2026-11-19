@@ -76,6 +76,11 @@ const schedule = z
   })
   .describe('When the routine runs')
 
+/** A tool as listed below; one marked `destructive` asks the user in Talyx before it runs. */
+type McpToolSpec =
+  | { description: string; args: z.ZodType }
+  | { description: string; args: z.ZodType; destructive: boolean }
+
 /** Each tool's arguments. `destructive` tools ask the user in Talyx before they run. */
 export const MCP_TOOLS = {
   list_roster: {
@@ -247,7 +252,7 @@ export const MCP_TOOLS = {
     args: z.object({ profile, routineId: z.string().min(1) }),
     destructive: true
   }
-} satisfies Record<string, { description: string; args: z.ZodType; destructive?: boolean }>
+} satisfies Record<string, McpToolSpec>
 
 export type McpToolName = keyof typeof MCP_TOOLS
 export type McpToolArgs<T extends McpToolName> = z.infer<(typeof MCP_TOOLS)[T]['args']>

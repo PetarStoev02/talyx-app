@@ -4,11 +4,23 @@ export type Platform = 'mac' | 'linux'
 
 /** The keys of a shortcut. `mod` is ⌘ on macOS and Ctrl on Linux. */
 export interface Keys {
-  mod?: true
-  alt?: true
-  shift?: true
+  mod: boolean
+  alt: boolean
+  shift: boolean
   // A `KeyboardEvent.key`, or a word for what is not a key press (`Click`, `1-9`).
   key: string
+}
+
+type Modifier = 'mod' | 'alt' | 'shift'
+
+/** `key` with exactly the `held` modifiers. */
+function press(key: string, ...held: Modifier[]): Keys {
+  return {
+    mod: held.includes('mod'),
+    alt: held.includes('alt'),
+    shift: held.includes('shift'),
+    key
+  }
 }
 
 export type ShortcutId =
@@ -47,29 +59,29 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     label: 'shortcuts.chats',
     shortcuts: [
-      { id: 'newBot', label: 'shortcuts.newBot', keys: { mod: true, key: 'n' } },
-      { id: 'previousChat', label: 'shortcuts.previousChat', keys: { alt: true, key: 'ArrowUp' } },
-      { id: 'nextChat', label: 'shortcuts.nextChat', keys: { alt: true, key: 'ArrowDown' } },
-      { id: 'searchChat', label: 'shortcuts.searchChat', keys: { mod: true, key: 'f' } },
-      { id: 'pickRow', label: 'shortcuts.pickRow', keys: { mod: true, key: 'Click' } },
-      { id: 'pickRange', label: 'shortcuts.pickRange', keys: { shift: true, key: 'Click' } }
+      { id: 'newBot', label: 'shortcuts.newBot', keys: press('n', 'mod') },
+      { id: 'previousChat', label: 'shortcuts.previousChat', keys: press('ArrowUp', 'alt') },
+      { id: 'nextChat', label: 'shortcuts.nextChat', keys: press('ArrowDown', 'alt') },
+      { id: 'searchChat', label: 'shortcuts.searchChat', keys: press('f', 'mod') },
+      { id: 'pickRow', label: 'shortcuts.pickRow', keys: press('Click', 'mod') },
+      { id: 'pickRange', label: 'shortcuts.pickRange', keys: press('Click', 'shift') }
     ]
   },
   {
     label: 'shortcuts.composer',
     shortcuts: [
-      { id: 'focusComposer', label: 'shortcuts.focusComposer', keys: { mod: true, key: 'l' } },
-      { id: 'send', label: 'shortcuts.send', keys: { key: 'Enter' } },
-      { id: 'newLine', label: 'shortcuts.newLine', keys: { shift: true, key: 'Enter' } }
+      { id: 'focusComposer', label: 'shortcuts.focusComposer', keys: press('l', 'mod') },
+      { id: 'send', label: 'shortcuts.send', keys: press('Enter') },
+      { id: 'newLine', label: 'shortcuts.newLine', keys: press('Enter', 'shift') }
     ]
   },
   {
     label: 'shortcuts.app',
     shortcuts: [
-      { id: 'dockPage', label: 'shortcuts.dockPage', keys: { mod: true, key: '1-9' } },
-      { id: 'settings', label: 'shortcuts.settings', keys: { mod: true, key: ',' } },
-      { id: 'leave', label: 'shortcuts.leave', keys: { key: 'Escape' } },
-      { id: 'cheatSheet', label: 'shortcuts.cheatSheet', keys: { mod: true, key: '/' } }
+      { id: 'dockPage', label: 'shortcuts.dockPage', keys: press('1-9', 'mod') },
+      { id: 'settings', label: 'shortcuts.settings', keys: press(',', 'mod') },
+      { id: 'leave', label: 'shortcuts.leave', keys: press('Escape') },
+      { id: 'cheatSheet', label: 'shortcuts.cheatSheet', keys: press('/', 'mod') }
     ]
   }
 ]
@@ -91,9 +103,9 @@ export function shortcutOf(event: KeyPress, platform: Platform): ShortcutId | nu
   if (other || event.isComposing) return null
   const match = SHORTCUTS.find(
     ({ keys }) =>
-      !!keys.mod === mod &&
-      !!keys.alt === event.altKey &&
-      (!!keys.shift === event.shiftKey || shiftTyped(keys.key)) &&
+      keys.mod === mod &&
+      keys.alt === event.altKey &&
+      (keys.shift === event.shiftKey || shiftTyped(keys.key)) &&
       keys.key.toLowerCase() === event.key.toLowerCase()
   )
   return match?.id ?? null

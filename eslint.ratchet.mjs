@@ -9,8 +9,6 @@ export const RATCHET = {
     'src/renderer/src/features/bots/types.ts',
     'src/renderer/src/features/chat/botSearch.ts',
     'src/renderer/src/features/chat/room.ts',
-    'src/renderer/src/features/shortcuts/shortcuts.ts',
-    'src/shared/mcp.ts',
     'src/shared/moduleHost.ts'
   ],
   stores: [
