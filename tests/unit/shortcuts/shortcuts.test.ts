@@ -52,10 +52,10 @@ describe('shortcuts', () => {
     // Pressed as the cheat sheet writes it; `Click` and `1-9` are not one key press.
     const pressOf = ({ keys }: Shortcut, platform: Platform): KeyPress =>
       press(keys.key, {
-        metaKey: platform === 'mac' && !!keys.mod,
-        ctrlKey: platform === 'linux' && !!keys.mod,
-        altKey: !!keys.alt,
-        shiftKey: !!keys.shift
+        metaKey: platform === 'mac' && keys.mod,
+        ctrlKey: platform === 'linux' && keys.mod,
+        altKey: keys.alt,
+        shiftKey: keys.shift
       })
     const pressed = SHORTCUTS.filter(({ keys }) => !['Click', '1-9'].includes(keys.key))
 
