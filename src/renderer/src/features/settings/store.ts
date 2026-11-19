@@ -16,12 +16,12 @@ export const useThemePick = create<ThemePickState>((set) => ({
   reset: () => set({ theme: 'system', picked: false })
 }))
 
-/** The Settings page that shows: SettingsNav sets it, openSettings opens Settings on it. */
 interface SettingsSectionState {
   section: SettingsSection
   open: (section: SettingsSection) => void
 }
 
+/** The Settings page that shows: SettingsNav sets it, openSettings opens Settings on it. */
 export const useSettingsSection = create<SettingsSectionState>((set) => ({
   section: 'general',
   open: (section) => set({ section })
