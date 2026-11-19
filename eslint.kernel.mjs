@@ -5,7 +5,9 @@
 export const KERNEL = [
   'src/renderer/src/shared/hooks/**',
   'src/renderer/src/app/providers/**',
-  'src/renderer/src/shared/engine/**'
+  'src/renderer/src/shared/engine/**',
+  // Plain waits outside a component: sleep and after.
+  'src/renderer/src/shared/lib/timers.ts'
 ]
 export const PRODUCT = ['src/renderer/src/**/*.{js,jsx,ts,tsx}']
 
@@ -19,9 +21,9 @@ const TIMERS = new Set([
 const GLOBAL_OBJECTS = new Set(['window', 'globalThis', 'self', 'global'])
 
 export const EFFECT_MESSAGE =
-  'Effects live in a named hook under shared/hooks. Name what this one does, put it there, and import it.'
+  'Effects live in a named hook under shared/hooks. Name what this one does, put it there, and import it; a feature hook composes those hooks.'
 export const TIMER_MESSAGE =
-  'Timers live in a named hook under shared/hooks (see useNow). Name what this one waits for.'
+  'Timers live in a named hook under shared/hooks (see usePolling, useFlash), or for a wait outside a component in sleep/after from shared/lib/timers. Name what this one waits for.'
 
 function propertyName(node) {
   if (!node.computed && node.property.type === 'Identifier') return node.property.name

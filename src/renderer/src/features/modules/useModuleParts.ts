@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useLoad } from '@shared/hooks/useLoad'
 import { reportError } from '@shared/lib/report'
 import { importModule, type ModuleParts } from './host'
 import type { ModuleSummary } from '@contract/modules'
@@ -8,21 +9,16 @@ import type { ModuleSummary } from '@contract/modules'
  * failed (reported). Tagged with the version, so an update never shows the old parts.
  */
 export function useModuleParts(module: ModuleSummary): ModuleParts | null | undefined {
-  const tag = `${module.id}@${module.version}`
+  const { id, version } = module
+  const tag = `${id}@${version}`
   const [loaded, setLoaded] = useState<{ tag: string; parts: ModuleParts | null } | null>(null)
-
-  useEffect(() => {
-    let live = true
-    importModule(module.id, module.version)
-      .then((parts) => live && setLoaded({ tag, parts }))
-      .catch((error: unknown) => {
-        reportError(`module:${module.id}`, error)
-        if (live) setLoaded({ tag, parts: null })
-      })
-    return () => {
-      live = false
+  const load = useCallback(() => importModule(id, version), [id, version])
+  useLoad(load, {
+    loaded: (parts) => setLoaded({ tag, parts }),
+    failed: (error) => {
+      reportError(`module:${id}`, error)
+      setLoaded({ tag, parts: null })
     }
-  }, [module.id, module.version, tag])
-
+  })
   return loaded?.tag === tag ? loaded.parts : undefined
 }

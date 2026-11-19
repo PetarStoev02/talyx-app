@@ -9,10 +9,7 @@ export const RATCHET = {
   effects: [
     'src/renderer/src/App.tsx',
     'src/renderer/src/features/bots/BotAvatar.tsx',
-    'src/renderer/src/features/bots/useRosterConnection.ts',
-    'src/renderer/src/features/modules/useModuleParts.ts',
     'src/renderer/src/features/setup/InstallOutput.tsx',
-    'src/renderer/src/features/setup/ScreenParts.tsx',
     'src/renderer/src/pages/module/ModulePage.tsx',
     'src/renderer/src/pages/usage/UsagePage.tsx',
     'src/renderer/src/shared/ui/ModelPicker.tsx',
@@ -22,11 +19,7 @@ export const RATCHET = {
     'src/renderer/src/widgets/app-shell/UpdateButton.tsx'
   ],
   timers: [
-    'src/renderer/src/app/engine/providers.ts',
     'src/renderer/src/features/bots/BotAvatar.tsx',
-    'src/renderer/src/features/bots/approvals.ts',
-    'src/renderer/src/features/bots/useRosterConnection.ts',
-    'src/renderer/src/features/setup/ScreenParts.tsx',
     'src/renderer/src/widgets/app-shell/UpdateButton.tsx'
   ],
   optionalProperties: [
@@ -59,10 +52,8 @@ export const RATCHET = {
     'src/renderer/src/features/bots/roster.ts',
     'src/renderer/src/features/bots/routines.ts',
     'src/renderer/src/features/bots/store.ts',
-    'src/renderer/src/features/bots/useRosterConnection.ts',
     'src/renderer/src/features/providers/providers.ts',
     'src/renderer/src/features/providers/usage.ts',
-    'src/renderer/src/features/setup/ScreenParts.tsx',
     'src/renderer/src/features/updates/items.ts'
   ]
 }

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { MCP_APPROVAL_TIMEOUT_MS } from '@contract/mcp'
+import { after } from '@shared/lib/timers'
 import type { ApprovalRequest } from './mcp'
 
 interface Pending extends ApprovalRequest {
@@ -33,9 +34,9 @@ export const useApprovals = create<ApprovalsState>((set, get) => {
       new Promise((resolve) => {
         const id = crypto.randomUUID()
         const wait = Math.min(MCP_APPROVAL_TIMEOUT_MS, request.until - Date.now())
-        const timer = setTimeout(() => settle(id, false), Math.max(0, wait))
+        const cancel = after(Math.max(0, wait), () => settle(id, false))
         const answer = (allowed: boolean): void => {
-          clearTimeout(timer)
+          cancel()
           resolve(allowed)
         }
         set(({ queue }) => ({ queue: [...queue, { ...request, id, answer }] }))
