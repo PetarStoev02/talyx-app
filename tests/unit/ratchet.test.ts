@@ -26,7 +26,7 @@ const RULES = {
   },
   timers: {
     rule: ['kernel/no-timer', 'error'],
-    fix: 'move the new code into a hook under shared/hooks'
+    fix: 'move the new code into a hook under shared/hooks, or use sleep/after from shared/lib/timers'
   },
   optionalProperties: { rule: STYLE_RULES.optionalProperties, fix: 'write `T | null` instead' },
   magicNumbers: { rule: STYLE_RULES.magicNumbers, fix: 'name the number as a constant' }
