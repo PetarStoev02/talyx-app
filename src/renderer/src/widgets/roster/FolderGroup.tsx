@@ -43,7 +43,8 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
   const items = folderItems(snapshot, id)
   const keyed = items.map((item) => ({ item, key: itemKey(itemRef(item)) }))
   const keys = keyed.map(({ key }) => key)
-  const children = snapshot.folders.filter((item) => item.parentId === id)
+  // Unassigned (no folder) holds no folders: a top-level folder's null parent is not it.
+  const children = folder ? snapshot.folders.filter((item) => item.parentId === folder.id) : []
   // A row takes bots and rooms, or several picked rows; `after` is in front of the next row, or
   // last. Picked rows never land inside a picked folder.
   const refused = (rows: RosterDragItem[]): boolean =>
