@@ -1,7 +1,7 @@
 import { BLOCK_SHAPES, type BlockShape } from '@contract/moduleHost'
 import { BLOCK_HUES } from '@shared/ui/blockGeometry'
 import { fnv1a, oklchHue } from '@shared/lib/color'
-import type { Bot, BotMeta } from './types'
+import type { BotMeta } from './types'
 
 export interface AvatarBackend {
   /** Overwrites the profile's avatar image with the block, so the engine's other surfaces show it. */
