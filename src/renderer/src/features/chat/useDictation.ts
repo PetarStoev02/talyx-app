@@ -1,4 +1,5 @@
-import { useEffect, useReducer, useRef } from 'react'
+import { useReducer, useRef } from 'react'
+import { useSubscription } from '@shared/hooks/useSubscription'
 import { problemOf, type Problem } from '@shared/lib/problem'
 
 export type DictationState = 'idle' | 'starting' | 'recording' | 'transcribing'
@@ -38,13 +39,13 @@ export function useDictation(
   const closed = useRef(false)
 
   // Leaving the chat mid-recording releases the microphone and drops the recording.
-  useEffect(() => {
+  useSubscription(() => {
     closed.current = false
     return () => {
       closed.current = true
       if (recorder.current?.state === 'recording') recorder.current.stop()
     }
-  }, [])
+  })
 
   async function start(): Promise<void> {
     move('start')

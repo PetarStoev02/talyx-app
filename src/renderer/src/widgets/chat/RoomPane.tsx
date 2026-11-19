@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import { BotAvatar } from '@features/bots/BotAvatar'
@@ -13,6 +13,8 @@ import { parseAttachmentKey, roomItems } from '@features/chat/roomLog'
 import { useRooms } from '@features/chat/roomStore'
 import type { RoomTask, RoomView } from '@features/chat/types'
 import { useRoomPolling } from '@features/chat/useRoomPolling'
+import { useFocusLater } from '@shared/hooks/useFocusLater'
+import { useOnChange } from '@shared/hooks/useOnChange'
 import { useRefocus } from '@shared/hooks/useRefocus'
 import { listOf } from '@shared/lib/list'
 import { reportError } from '@shared/lib/report'
@@ -60,29 +62,31 @@ export function RoomPane({
   const memberKey = room.members.map((member) => member.profile).join(',')
   const composer = useRef<HTMLTextAreaElement>(null)
   const [seed, setSeed] = useState<{ text: string } | null>(null)
+  const focusComposer = useFocusLater(composer)
   const start = (starter: Starter): void => {
     if (starter.send) return void actions?.send(roomId, { text: starter.text, attachments: [] })
     setSeed({ text: starter.text })
-    requestAnimationFrame(() => {
-      composer.current?.focus()
-      composer.current?.setSelectionRange(starter.text.length, starter.text.length)
-    })
+    focusComposer(starter.text.length)
   }
   useRoomPolling(actions, roomId)
   // A settled card unmounts with focus on it; the composer is where the room goes on.
   useRefocus(composer, view?.tasks.length)
 
   // Read on open and after each round: a member's room session exists from its first answer on.
-  useEffect(() => {
-    if (!actions || working) return
-    const members = memberKey.split(',').map((profile) => ({ profile }))
-    void actions.readModel(roomId, members)
-  }, [actions, roomId, memberKey, working])
+  const modelRead = useMemo(
+    () => (actions && !working ? { actions, memberKey } : null),
+    [actions, memberKey, working]
+  )
+  useOnChange(modelRead, (read) => {
+    if (!read) return
+    const members = read.memberKey.split(',').map((profile) => ({ profile }))
+    void read.actions.readModel(roomId, members)
+  })
 
   // What you read here must not come back as unread once you leave.
-  useEffect(() => {
-    if (lastSeq) useRoster.getState().seeRoom(roomId, lastSeq)
-  }, [roomId, lastSeq])
+  useOnChange(lastSeq, (seq) => {
+    if (seq) useRoster.getState().seeRoom(roomId, seq)
+  })
 
   const memberOf = useCallback((member: string) => roomMember(room, bots, member), [room, bots])
   const nameOf = (member: string): string => memberOf(member).name
