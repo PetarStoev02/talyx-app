@@ -10,6 +10,7 @@ import { RestartHint } from '@features/setup/EngineScreens'
 import { useUpdates } from '@features/updates/store'
 import { timeInWords } from '@features/bots/roster'
 import { useNow } from '@shared/hooks/useNow'
+import { useElapsed } from '@shared/hooks/useElapsed'
 import { AgentAccess } from './AgentAccess'
 
 const STATE_KEYS = {
@@ -52,17 +53,20 @@ export function EngineSection({
   // What a screen reader hears after Check again: the visible line below ages every minute, so it
   // is not a live region itself. Cleared first, so a second check is announced again.
   const [checkNote, setCheckNote] = useState('')
-  const [spinning, setSpinning] = useState(false)
+  const [running, setRunning] = useState(false)
+  const [spinStart, setSpinStart] = useState<number | null>(null)
+  const spun = useElapsed(spinStart, MIN_SPIN_MS)
+  const spinning = running || (spinStart !== null && !spun)
 
   const busy = checking || spinning
 
   async function recheck(): Promise<void> {
     if (busy) return
     setCheckNote('')
-    setSpinning(true)
-    const spin = new Promise((resolve) => setTimeout(resolve, MIN_SPIN_MS))
-    await Promise.all([check(), spin])
-    setSpinning(false)
+    setRunning(true)
+    setSpinStart(Date.now())
+    await check()
+    setRunning(false)
     setCheckNote(t('settings.engineChecked').replace('{when}', t('time.justNow')))
   }
 
@@ -119,7 +123,8 @@ export function EngineSection({
         </p>
       )}
       <p role="status" className="sr-only">
-        {checkNote}
+        {/* Announced once the spin ends, so the line and the icon agree. */}
+        {spinning ? '' : checkNote}
       </p>
       <AgentAccess />
       <div className="space-y-3">

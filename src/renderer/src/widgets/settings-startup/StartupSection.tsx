@@ -1,26 +1,30 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { useLanguage } from '@shared/lib/i18n'
 import { settingsApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
 import { Switch } from '@shared/ui/switch'
+import { useLoad } from '@shared/hooks/useLoad'
 
 // Main registers a login item on these only; elsewhere the switch would do nothing.
 const LOGIN_ITEM_PLATFORMS = ['darwin', 'linux']
+
+// Null where the switch would do nothing, so it stays hidden.
+async function readLaunchAtLogin(): Promise<boolean | null> {
+  if (import.meta.env.DEV || !LOGIN_ITEM_PLATFORMS.includes(window.electron?.platform ?? ''))
+    return null
+  return (await settingsApi.get()).launchAtLogin
+}
 
 /** The switch for starting Talyx at login. A dev run is not the installed app, so it shows nothing. */
 export function StartupSection(): React.JSX.Element | null {
   const t = useLanguage((s) => s.t)
   const [enabled, setEnabled] = useState<boolean | null>(null)
 
-  useEffect(() => {
-    if (import.meta.env.DEV || !LOGIN_ITEM_PLATFORMS.includes(window.electron?.platform ?? ''))
-      return
-    settingsApi
-      .get()
-      .then((settings) => setEnabled(settings.launchAtLogin))
-      .catch((error: unknown) => reportError('settings', error))
-  }, [])
+  useLoad(readLaunchAtLogin, {
+    loaded: setEnabled,
+    failed: (error) => reportError('settings', error)
+  })
 
   async function change(next: boolean): Promise<void> {
     try {
