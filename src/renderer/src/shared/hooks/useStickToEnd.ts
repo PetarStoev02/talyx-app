@@ -4,9 +4,9 @@ import { useLayoutEffect, useRef, useState } from 'react'
 const STICK_DISTANCE_PX = 48
 
 /**
- * Keeps the `scroller` it returns at its end while the reader is there: after each render that changed `content`
- * (a stable value, such as a memo of what the scroller shows), and when `toEnd` brings them back.
- * Scrolling away lets go; `onScroll` goes on the scroller.
+ * Keeps the `scroller` it returns at its end while the reader is there: after each render that
+ * changed `content` (a stable value, such as a memo of what the scroller shows), and when `toEnd`
+ * brings them back. Scrolling away lets go; `onScroll` goes on the scroller.
  */
 export function useStickToEnd<T extends HTMLElement>(
   content: unknown
