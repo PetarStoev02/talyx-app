@@ -3,6 +3,7 @@ import { Dialog as DialogPrimitive } from 'radix-ui'
 import { XIcon } from 'lucide-react'
 
 import { cn } from '@/shared/lib/utils'
+import { focusHandedBack } from './handBack'
 
 function Dialog({
   ...props
@@ -75,7 +76,7 @@ function DialogContent({
           onCloseAutoFocus?.(event)
           if (event.defaultPrevented || !opener.current?.isConnected) return
           event.preventDefault()
-          opener.current.focus()
+          focusHandedBack(opener.current)
         }}
         {...props}
       >

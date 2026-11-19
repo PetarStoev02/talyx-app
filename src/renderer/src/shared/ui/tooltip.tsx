@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Tooltip as TooltipPrimitive } from 'radix-ui'
 
 import { cn } from '@/shared/lib/utils'
+import { handingBack } from './handBack'
 
 function TooltipProvider({
   delayDuration = 0,
@@ -28,9 +29,20 @@ function Tooltip({
 }
 
 function TooltipTrigger({
+  onFocus,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Trigger>): React.JSX.Element {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
+  return (
+    <TooltipPrimitive.Trigger
+      data-slot="tooltip-trigger"
+      onFocus={(event) => {
+        onFocus?.(event)
+        // A prevented focus is one the tooltip skips.
+        if (handingBack()) event.preventDefault()
+      }}
+      {...props}
+    />
+  )
 }
 
 function TooltipContent({
