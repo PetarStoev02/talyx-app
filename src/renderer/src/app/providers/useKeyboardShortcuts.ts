@@ -4,7 +4,7 @@ import { useCreating, useRoster } from '@features/bots/store'
 import { dialogOpen, platformOf, shortcutOf, type ShortcutId } from '@features/shortcuts/shortcuts'
 import { focusComposer } from '@widgets/chat'
 import { switchChat } from '@widgets/roster'
-import { useCheatSheet } from '@widgets/shortcuts'
+import { useCheatSheet } from '@features/shortcuts/store'
 
 const platform = platformOf(navigator.platform)
 

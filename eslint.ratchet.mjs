@@ -10,8 +10,5 @@ export const RATCHET = {
     'src/renderer/src/features/chat/botSearch.ts',
     'src/renderer/src/features/chat/room.ts'
   ],
-  stores: [
-    'src/renderer/src/shared/lib/i18n.ts',
-    'src/renderer/src/widgets/shortcuts/useCheatSheet.ts'
-  ]
+  stores: []
 }

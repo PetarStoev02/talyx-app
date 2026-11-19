@@ -1,7 +1,7 @@
 import { useLanguage } from '@shared/lib/i18n'
 import { SHORTCUT_GROUPS, keyLabels, platformOf } from '@features/shortcuts/shortcuts'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
-import { useCheatSheet } from './useCheatSheet'
+import { useCheatSheet } from '@features/shortcuts/store'
 
 const platform = platformOf(navigator.platform)
 
