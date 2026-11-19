@@ -20,7 +20,7 @@ export const ROOM_PINS_KEY = 'talyx-room-pins'
 export const ITEM_ORDER_KEY = 'talyx-item-order'
 
 /** The record of a bot that holds no field Talyx reads. */
-export const NO_META: BotMeta = {
+export const NO_META: Readonly<BotMeta> = Object.freeze({
   title: null,
   description: null,
   sectionId: null,
@@ -32,7 +32,7 @@ export const NO_META: BotMeta = {
   color: null,
   faces: null,
   usesDefault: null
-}
+})
 
 /** A bot the roster has no record of (a room member whose profile is gone), shown by its name. */
 export function unknownBot(profile: string, displayName: string | null = null): Bot {

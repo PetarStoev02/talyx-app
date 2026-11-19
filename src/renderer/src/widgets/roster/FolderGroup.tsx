@@ -193,7 +193,7 @@ function FolderHeader({
     drops.folder(
       item.id,
       edge === 'before'
-        ? { parentId: folder.parentId ?? null, beforeId: folder.id }
+        ? { parentId: folder.parentId, beforeId: folder.id }
         : { parentId: folder.id, beforeId: null }
     )
   }
