@@ -4,6 +4,7 @@ import type { Problem } from '@shared/lib/problem'
 import { HOURS_PER_DAY, MINUTES_PER_HOUR, MINUTE_MS, SECOND_MS } from '@shared/lib/time'
 import type {
   Bot,
+  BotMeta,
   Folder,
   Room,
   RosterItem,
@@ -17,6 +18,36 @@ export const FOLDERS_KEY = 'talyx-folders'
 export const ROOM_FOLDERS_KEY = 'talyx-room-folders'
 export const ROOM_PINS_KEY = 'talyx-room-pins'
 export const ITEM_ORDER_KEY = 'talyx-item-order'
+
+/** The record of a bot that holds no field Talyx reads. */
+export const NO_META: Readonly<BotMeta> = Object.freeze({
+  title: null,
+  description: null,
+  sectionId: null,
+  sectionName: null,
+  pinned: null,
+  pinnedOrder: null,
+  hidden: null,
+  shape: null,
+  color: null,
+  faces: null,
+  usesDefault: null
+})
+
+/** A bot the roster has no record of (a room member whose profile is gone), shown by its name. */
+export function unknownBot(profile: string, displayName: string | null = null): Bot {
+  return {
+    name: profile,
+    meta: NO_META,
+    display_name: displayName,
+    title: null,
+    description: null,
+    canonical_session: null,
+    last_session: null,
+    ui_meta: null,
+    ui_meta_revisions: null
+  }
+}
 
 // Thrown for a roster problem the user can act on; `key` is its message in i18n.ts.
 export class RosterError extends AppError {
@@ -134,12 +165,17 @@ export function folderCount(snapshot: RosterSnapshot, folderId: string | null): 
     .reduce((total, folder) => total + rows(folder.id), 0)
 }
 
+/** A folder's subfolders. Unassigned (null) holds none: a top-level folder's null parent is not it. */
+export function childFolders(folders: Folder[], folderId: string | null): Folder[] {
+  return folderId === null ? [] : folders.filter((folder) => folder.parentId === folderId)
+}
+
 export function isWithin(folders: Folder[], id: string, ancestorId: string): boolean {
   const byId = new Map(folders.map((folder) => [folder.id, folder]))
-  let cursor: string | undefined = id
+  let cursor: string | null = id
   for (let hops = 0; cursor && hops <= byId.size; hops++) {
     if (cursor === ancestorId) return true
-    cursor = byId.get(cursor)?.parentId
+    cursor = byId.get(cursor)?.parentId ?? null
   }
   return false
 }
@@ -156,7 +192,7 @@ export function normalizeFolders(value: unknown): Folder[] {
     folders.push({
       id: id.trim(),
       name: name.trim(),
-      ...(typeof parentId === 'string' && parentId.trim() ? { parentId: parentId.trim() } : {})
+      parentId: (typeof parentId === 'string' && parentId.trim()) || null
     })
   }
   for (const folder of folders) {
@@ -165,9 +201,17 @@ export function normalizeFolders(value: unknown): Folder[] {
       (!folders.some((item) => item.id === folder.parentId) ||
         isWithin(folders, folder.parentId, folder.id))
     )
-      delete folder.parentId
+      folder.parentId = null
   }
   return folders
+}
+
+/** The folders as the layout stores them: a top-level folder has no parentId field. */
+export function folderRecords(folders: Folder[]): Record<string, string>[] {
+  return folders.map(
+    ({ id, name, parentId }): Record<string, string> =>
+      parentId ? { id, name, parentId } : { id, name }
+  )
 }
 
 /** A folder's name with its parents, for a folder picker. */
@@ -193,7 +237,7 @@ export function moveFolder(folders: Folder[], id: string, parentId: string | nul
   )
     throw new RosterError('roster.errorFolderCycle')
   return folders.map((folder) =>
-    folder.id === id ? { id, name: folder.name, ...(parentId ? { parentId } : {}) } : folder
+    folder.id === id ? { id, name: folder.name, parentId: parentId || null } : folder
   )
 }
 
@@ -273,11 +317,7 @@ export function removeFolder(folders: Folder[], id: string): Folder[] {
     .filter((folder) => folder.id !== id)
     .map((folder) =>
       folder.parentId === id
-        ? {
-            id: folder.id,
-            name: folder.name,
-            ...(gone.parentId ? { parentId: gone.parentId } : {})
-          }
+        ? { id: folder.id, name: folder.name, parentId: gone.parentId }
         : folder
     )
 }

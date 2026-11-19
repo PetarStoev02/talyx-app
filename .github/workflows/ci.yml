@@ -43,10 +43,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # The ratchet test compares the allowlists with main's copy, so it needs main's history.
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
 
       - uses: actions/setup-node@v5
         with:

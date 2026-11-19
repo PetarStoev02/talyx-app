@@ -1,6 +1,6 @@
 // Settings as separate pages, one per row of its sidebar (SettingsNav). The sidebar sets the open
 // page; the Settings page shows only that one.
-import { create } from 'zustand'
+import { useSettingsSection } from './store'
 import type { TranslationKey } from '@shared/lib/i18n'
 
 export type SettingsSection = 'general' | 'providers' | 'engine' | 'modules' | 'about'
@@ -30,16 +30,6 @@ export function settingsPages(licensed: boolean): typeof SETTINGS_SECTIONS {
 export function shownPage(section: SettingsSection, licensed: boolean): SettingsSection {
   return settingsPages(licensed).some((item) => item.key === section) ? section : 'general'
 }
-
-interface SettingsSectionState {
-  section: SettingsSection
-  open: (section: SettingsSection) => void
-}
-
-export const useSettingsSection = create<SettingsSectionState>((set) => ({
-  section: 'general',
-  open: (section) => set({ section })
-}))
 
 /** Opens Settings on one page; `navigate` is the app's (features cannot reach it themselves). */
 export function openSettings(

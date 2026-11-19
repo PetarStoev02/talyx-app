@@ -1,5 +1,4 @@
 // English only. Another language is one more table here.
-import { create } from 'zustand'
 
 const en = {
   'nav.agents': 'Agents',
@@ -871,11 +870,17 @@ export function t(key: TranslationKey, language: string): string {
 }
 
 interface LanguageState {
-  language: string
   t: (key: TranslationKey) => string
 }
 
-export const useLanguage = create<LanguageState>((_set, get) => ({
-  language: 'en',
-  t: (key) => t(key, get().language)
-}))
+const ENGLISH: LanguageState = { t: (key) => t(key, 'en') }
+
+/**
+ * The copy, read the way a store is (`useLanguage((s) => s.t)`, `useLanguage.getState()`). There is
+ * one language and nothing changes it, so there is no store to subscribe to: the language picker
+ * that brings a second table brings the store, and no caller changes.
+ */
+export function useLanguage<T>(select: (state: LanguageState) => T): T {
+  return select(ENGLISH)
+}
+useLanguage.getState = (): LanguageState => ENGLISH

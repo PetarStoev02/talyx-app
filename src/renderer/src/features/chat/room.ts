@@ -1,6 +1,6 @@
 import type { ModelPick } from '@shared/ui/ModelPicker'
 import { replyFinished } from './completionSound'
-import { useRooms } from './roomStore'
+import { useRooms } from './store'
 import type { TranslationKey } from '@shared/lib/i18n'
 import { failureOf } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'
@@ -84,7 +84,7 @@ export interface RoomActions {
 
 export interface RoomMember {
   profile: string
-  member_id?: string
+  member_id: string | null
 }
 
 /** Members by profile: switched, or skipped (answering, waiting on you, or not answered here yet). */

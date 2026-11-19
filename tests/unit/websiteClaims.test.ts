@@ -41,7 +41,7 @@ const RETIRED = [
   /\b(?:qwen|smolvlm|gliner|tesseract)\b/i,
   /taxonom/i,
   /vision credits?/i,
-  /plausible|@vercel\/analytics|datafast/i,
+  /plausible|datafast/i,
   /100% offline|fully offline|works offline/i,
   // The file organizer's claims. Code like `.sort(` or `sortOrder` is not prose.
   /(?<![.\w])sort(?:s|ed|ing)?\b(?!\()/i,

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useApprovals } from '../../../src/renderer/src/features/bots/approvals'
+import { useApprovals } from '../../../src/renderer/src/features/bots/store'
 import { MCP_APPROVAL_TIMEOUT_MS, MCP_CALL_TIMEOUT_MS } from '../../../src/shared/mcp'
 
 const DELETE = {

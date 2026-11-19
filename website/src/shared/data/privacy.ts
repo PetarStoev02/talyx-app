@@ -43,4 +43,4 @@ export const PRIVACY_LEDGER: LedgerEntry[] = [
 
 /** The website's own analytics, said plainly wherever the site talks about privacy. */
 export const SITE_ANALYTICS =
-  'This website counts page views and download clicks with PostHog, hosted in the EU, and measures page speed with Vercel Speed Insights, both without cookies.'
+  'This website counts page views and download clicks with PostHog, hosted in the EU, counts page views with Vercel Web Analytics, and measures page speed with Vercel Speed Insights, all without cookies.'

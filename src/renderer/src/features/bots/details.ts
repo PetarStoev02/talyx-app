@@ -1,4 +1,3 @@
-import { create } from 'zustand'
 import { saveBotMeta } from './data'
 import type { RosterStore } from './data'
 import { exportAvatar, lookMeta, sameLook } from './look'
@@ -7,6 +6,7 @@ import { problemOf } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'
 import { RosterError } from './roster'
 import type { Bot, BotMeta } from './types'
+import { useDetailsRevision } from './store'
 
 export interface ModelChoice {
   provider: string
@@ -74,12 +74,6 @@ type SaveBackend = DetailsBackend & Pick<RosterStore, 'saveBotMeta'> & AvatarBac
 
 /** Talyx's own profile, the manager. Its avatar is the logo, so it never gets an exported image. */
 export const MANAGER = 'default'
-
-/**
- * Counts saves of bot details, so a view that shows them (the chat's intro) reads them again;
- * the details panel and the intro each read their own.
- */
-export const useDetailsRevision = create<{ revision: number }>(() => ({ revision: 0 }))
 
 export function loadDetails(
   backend: Pick<DetailsBackend, 'loadDetails'>,
@@ -160,10 +154,10 @@ function metaChange(bot: Bot, change: DetailsChange): Partial<BotMeta> {
   if (draft.title.trim() !== opening.title.trim()) meta.title = draft.title.trim()
   // Absent rather than false, as on every bot made before this choice.
   if (draft.usesDefault !== opening.usesDefault && !leavesDefault(change))
-    meta.usesDefault = draft.usesDefault || undefined
+    meta.usesDefault = draft.usesDefault || null
   // An older client's description in the metadata would hide the one saved on the profile.
-  if (draft.description.trim() !== opening.description.trim() && bot.meta.description !== undefined)
-    meta.description = undefined
+  if (draft.description.trim() !== opening.description.trim() && bot.meta.description !== null)
+    meta.description = null
   return meta
 }
 
@@ -197,7 +191,7 @@ async function leaveDefaultIfPinned(
 ): Promise<void> {
   const pinned = (await loadDetails(backend, profile)).model
   if (pinned && sameModelChoice(pinned, model))
-    await saveBotMeta(backend, profile, { usesDefault: undefined })
+    await saveBotMeta(backend, profile, { usesDefault: null })
 }
 
 export async function confirmModel(
@@ -208,7 +202,7 @@ export async function confirmModel(
   try {
     await confirmBotModel(backend, profile, model)
     // A confirmed model is the bot's own pick, so the bot no longer follows Talyx's.
-    if (profile !== MANAGER) await saveBotMeta(backend, profile, { usesDefault: undefined })
+    if (profile !== MANAGER) await saveBotMeta(backend, profile, { usesDefault: null })
   } finally {
     detailsChanged()
   }

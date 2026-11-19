@@ -1,4 +1,4 @@
-import { type AppView, useNavigation } from '@features/modules/useNavigation'
+import { type AppView, useNavigation } from '@features/modules/store'
 import { PageGlyph, type PageGlyphName } from './PageGlyph'
 import { IconButton } from '@shared/ui/IconButton'
 

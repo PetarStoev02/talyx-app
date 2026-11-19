@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Theme } from '@contract/channels'
+import type { SettingsSection } from './sections'
 
 interface ThemePickState {
   theme: Theme
@@ -13,4 +14,15 @@ export const useThemePick = create<ThemePickState>((set) => ({
   theme: 'system',
   picked: false,
   reset: () => set({ theme: 'system', picked: false })
+}))
+
+interface SettingsSectionState {
+  section: SettingsSection
+  open: (section: SettingsSection) => void
+}
+
+/** The Settings page that shows: SettingsNav sets it, openSettings opens Settings on it. */
+export const useSettingsSection = create<SettingsSectionState>((set) => ({
+  section: 'general',
+  open: (section) => set({ section })
 }))

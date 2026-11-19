@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm'
 import { useEngine } from '@features/setup/store'
 import { useLanguage } from '@shared/lib/i18n'
 import { BotAvatar } from '@features/bots/BotAvatar'
-import { botTitle } from '@features/bots/roster'
+import { botTitle, unknownBot } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { markdownImage } from '@features/chat/markdownImage'
 import { senderProfile } from '@features/chat/transcript'
@@ -140,7 +140,7 @@ function Sender({ sender }: { sender: { name: string; profile: string } }): Reac
   const bot = useRoster((state) => state.snapshot.bots.find((item) => item.name === profile))
   return (
     <p className="flex items-center gap-2 text-sm font-medium">
-      <BotAvatar bot={bot ?? { name: profile, meta: {} }} place="row" />
+      <BotAvatar bot={bot ?? unknownBot(profile)} place="row" />
       {bot ? botTitle(bot) : sender.name}
     </p>
   )
