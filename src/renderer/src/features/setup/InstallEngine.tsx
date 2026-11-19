@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { useEngine } from '@features/setup/useEngine'
+import { useEngine } from '@features/setup/store'
 import { useLanguage } from '@shared/lib/i18n'
 import { useBeforePaint } from '@shared/hooks/useBeforePaint'
 import { useOnChange } from '@shared/hooks/useOnChange'
@@ -15,7 +15,8 @@ import {
   ProtocolMismatch,
   StepsFailed
 } from './EngineScreens'
-import { useInstall, type SetupBackend } from './install'
+import type { SetupBackend } from './install'
+import { useInstall } from './store'
 import { InstallCommands } from './InstallCommands'
 import { InstallRunning, InstallStopped } from './InstallOutput'
 import { Waiting } from './ScreenParts'

@@ -1,6 +1,6 @@
 import type { SetupBackend } from '@features/setup/install'
 import { setupApi } from '@shared/api/ipc'
-import { useEngine } from '@features/setup/useEngine'
+import { useEngine } from '@features/setup/store'
 
 // One instance for the window: `useInstall` subscribes to each backend once.
 const backend: SetupBackend = {

@@ -1,4 +1,4 @@
-import { useEngine } from '../../../src/renderer/src/features/setup/useEngine'
+import { useEngine } from '../../../src/renderer/src/features/setup/store'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import type { EngineAccess } from '../../../src/renderer/src/app/engine/access'
 import { engineProvidersBackend } from '../../../src/renderer/src/app/engine/providers'

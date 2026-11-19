@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
-import { useEngine } from '@features/setup/useEngine'
+import { useEngine } from '@features/setup/store'
 import { useUpdates } from '@features/updates/store'
 import { appApi, updaterApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
