@@ -1,11 +1,13 @@
 import { z } from 'zod'
 import { metaPatch } from '@shared/engine/botMeta'
+import { listEndpoints } from '@shared/engine/endpoints'
 import type { RosterBackend, RosterStore } from '@features/bots/data'
 import type { Look } from '@features/bots/look'
 import type { RoomsBackend, RoomSeat } from '@features/bots/rooms'
 import { NO_META, RosterError } from '@features/bots/roster'
 import type { RulesBackend } from '@features/bots/rules'
 import type { BotMeta, Room } from '@features/bots/types'
+import { MANAGER } from '@features/bots/details'
 import type { EngineAccess } from './access'
 import { engineDetailsBackend } from './details'
 import { engineMcpBackend } from './mcp'
@@ -127,6 +129,14 @@ export function engineRosterBackend(engine: EngineAccess, host: RosterHost): Ros
         soul,
         ...(description ? { description } : {})
       })
+    },
+    // Read the way the Providers page reads it. `profiles.create` takes a model too, but then
+    // skips copying Talyx's endpoint into the new profile, so a named endpoint would not pin.
+    talyxModel: async () => {
+      const { current } = await listEndpoints(engine.http, MANAGER)
+      return current.provider && current.model
+        ? { provider: current.provider, model: current.model }
+        : null
     }
   }
 }

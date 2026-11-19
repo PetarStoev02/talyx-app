@@ -134,7 +134,17 @@ describe('creating a bot', () => {
       expect((await loadDetails(backend, id)).description).toBe('')
     })
 
-    it('should leave the model to the engine when none is picked', async () => {
+    it("should create a bot made without a model pick on Talyx's current model", async () => {
+      engine.homeModel = 'fresh-model'
+      await createBot(backend, newBot({ model: null }), [])
+      expect(engine.profiles['agro-ops-legal'].model).toEqual({
+        provider: 'custom',
+        model: 'fresh-model'
+      })
+    })
+
+    it('should leave the model to the engine when none is picked and Talyx has none', async () => {
+      engine.homeProvider = ''
       await createBot(backend, newBot({ model: null }), [])
       expect(engine.modelSets).toEqual([])
     })
@@ -228,6 +238,7 @@ describe('createBot over a fake backend', () => {
       }
     const backend = {
       createProfile: step('createProfile'),
+      talyxModel: async (): Promise<null> => null,
       pinAgreedModel: step('pinAgreedModel'),
       saveBotMeta: step('saveBotMeta'),
       setAvatar: step('setAvatar'),
