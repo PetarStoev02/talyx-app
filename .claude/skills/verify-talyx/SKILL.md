@@ -92,6 +92,10 @@ control-talyx stop
   step that sends costs one call. Replies differ between runs, so a replay starts from a fresh
   setup and may still drift. The run's home keeps your own engine and bots apart, but it is not a
   sandbox for the bots: they run tools as you, and only the approval buttons are skipped.
+- CI's `UI` job (`.github/workflows/ci.yml`) runs 100 steps with the run number as the seed, on
+  Linux under Xvfb with no engine, and uploads `evidence/` as the `ui-evidence` artifact. Replay a
+  CI failure with the same seed: `launch --no-engine --seed` with `{"setupDone": true}`, then
+  `fuzz --steps 100 --seed <run number>`.
 - A failure prints the seed, the failed check and the step log, and saves `steps.log`,
   `after.aria.txt` and `after.png` under `evidence/fuzz-<seed>/`. Rerun the same seed on a fresh
   launch to replay it; a pass also saves `steps.log`.
