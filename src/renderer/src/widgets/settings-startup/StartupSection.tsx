@@ -27,7 +27,7 @@ export function StartupSection(): React.JSX.Element | null {
   const t = useLanguage((s) => s.t)
   const [enabled, setEnabled] = useState<boolean | null>(null)
 
-  useLoad(readLaunchAtLogin, { loaded: setEnabled, failed: () => undefined })
+  useLoad(readLaunchAtLogin, { loaded: setEnabled })
 
   async function change(next: boolean): Promise<void> {
     try {

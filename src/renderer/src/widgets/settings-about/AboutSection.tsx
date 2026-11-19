@@ -32,7 +32,7 @@ export function AboutSection(): React.JSX.Element {
   const [check, setCheck] = useState<UpdateCheck | null>(null)
   const requestNotice = useUpdates((s) => s.requestNotice)
 
-  useLoad(readVersion, { loaded: setVersion, failed: () => undefined })
+  useLoad(readVersion, { loaded: setVersion })
 
   async function checkForUpdate(): Promise<void> {
     setChecking(true)

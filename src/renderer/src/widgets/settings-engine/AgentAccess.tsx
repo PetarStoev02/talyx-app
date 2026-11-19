@@ -18,7 +18,7 @@ const readConnection = (): Promise<McpConnection> =>
 export function AgentAccess(): React.JSX.Element | null {
   const t = useLanguage((s) => s.t)
   const [connection, setConnection] = useState<McpConnection | null>(null)
-  useLoad(readConnection, { loaded: setConnection, failed: () => undefined })
+  useLoad(readConnection, { loaded: setConnection })
   if (!connection) return null
   return (
     <div className="space-y-2 text-base">
