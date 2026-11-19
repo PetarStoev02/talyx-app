@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useOnMount } from '@shared/hooks/useSubscription'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
 import { useLanguage } from '@shared/lib/i18n'
 import { settingsApi } from '@shared/api/ipc'
@@ -31,13 +32,13 @@ export function AppShell({
   const t = useLanguage((s) => s.t)
   const [width, setWidth] = useState<number>(SIDEBAR_WIDTH.initial)
 
-  useEffect(() => {
+  useOnMount(() => {
     settingsApi
       .get()
       .then((s) => setWidth(clampSidebarWidth(s.sidebarWidth)))
       // Unreadable settings leave the first width on screen; the log says why.
       .catch((error: unknown) => reportError('settings', error))
-  }, [])
+  })
 
   return (
     <div className="flex h-screen">

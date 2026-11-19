@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { useUsageView } from '../../../src/renderer/src/features/providers/usageView'
+import { useUsageView } from '../../../src/renderer/src/features/providers/store'
+import { loadUsageView } from '../../../src/renderer/src/features/providers/usageView'
 import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/http'
 import { HOME, providersDouble } from './providersDouble'
 import type { ProvidersDouble } from './providersDouble'
@@ -31,9 +32,9 @@ describe('the Usage page', () => {
     }
 
     useUsageView.getState().setDays(7)
-    const old = useUsageView.getState().load(engine.backend)
+    const old = loadUsageView(engine.backend)
     useUsageView.getState().setDays(30)
-    await useUsageView.getState().load(engine.backend)
+    await loadUsageView(engine.backend)
     releaseOld()
     await old
 
@@ -45,7 +46,7 @@ describe('the Usage page', () => {
   })
 
   it('should keep showing the last period while the next one loads, and say it is loading', async () => {
-    await useUsageView.getState().load(engine.backend)
+    await loadUsageView(engine.backend)
     const shown = useUsageView.getState().shown
     let release: () => void = () => {}
     const held = new Promise<void>((resolve) => (release = resolve))
@@ -56,7 +57,7 @@ describe('the Usage page', () => {
     }
 
     useUsageView.getState().setDays(7)
-    const next = useUsageView.getState().load(engine.backend)
+    const next = loadUsageView(engine.backend)
     expect(useUsageView.getState()).toMatchObject({ shown, loading: true })
     release()
     await next
@@ -66,11 +67,11 @@ describe('the Usage page', () => {
 
   it('should keep the problem of a load that failed, and clear it on the next', async () => {
     engine.http = () => Promise.reject(new Error('engine down'))
-    await useUsageView.getState().load(engine.backend)
+    await loadUsageView(engine.backend)
     expect(useUsageView.getState().problem).toBeInstanceOf(Error)
 
     engine = providersDouble()
-    await useUsageView.getState().load(engine.backend)
+    await loadUsageView(engine.backend)
     expect(useUsageView.getState()).toMatchObject({ problem: null, shown: expect.anything() })
   })
 })

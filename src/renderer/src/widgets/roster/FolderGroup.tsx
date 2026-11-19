@@ -17,7 +17,7 @@ import { ROW_AVATAR_BOX, RoomRow } from './RoomRow'
 import type { RosterDrops } from './rosterControls'
 import { ContextMenuArea } from '@shared/ui/menu'
 import type { MenuAction } from '@shared/ui/menu'
-import { useCreating } from './creating'
+import { useCreating } from '@features/bots/store'
 import { Reveal } from '@shared/ui/Reveal'
 import { RosterMenu } from './RosterMenu'
 

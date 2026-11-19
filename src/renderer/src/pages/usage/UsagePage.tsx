@@ -1,11 +1,13 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
+import { useOnChange } from '@shared/hooks/useOnChange'
 import { RotateCw } from 'lucide-react'
 import { useEscape } from '@shared/hooks/useEscape'
 import { useLanguage } from '@shared/lib/i18n'
 import { useNavigation } from '@features/modules/useNavigation'
 import type { ProvidersBackend } from '@features/providers/providers'
-import { USAGE_PERIODS } from '@features/providers/usage'
-import { useUsageView } from '@features/providers/usageView'
+import { USAGE_PERIODS, type UsagePeriod } from '@features/providers/usage'
+import { useUsageView } from '@features/providers/store'
+import { loadUsageView } from '@features/providers/usageView'
 import type { SetupBackend } from '@features/setup/install'
 import { reportError } from '@shared/lib/report'
 import { cn } from '@shared/lib/utils'
@@ -33,14 +35,16 @@ export function UsagePage({
 
   const load = useCallback((): void => {
     if (!providers) return
-    useUsageView
-      .getState()
-      .load(providers)
-      .catch((error: unknown) => reportError('usage', error))
+    loadUsageView(providers).catch((error: unknown) => reportError('usage', error))
   }, [providers])
 
-  // Opening the page and each period load afresh, so the numbers are current.
-  useEffect(load, [load, days])
+  // Opening the page loads afresh, and so does each new period, so the numbers are current.
+  useOnChange(load, (run) => run())
+  function choose(period: UsagePeriod): void {
+    if (period === days) return
+    setDays(period)
+    load()
+  }
 
   // Escape leaves the page, unless a dialog or menu already took it.
   useEscape(leave)
@@ -68,7 +72,7 @@ export function UsagePage({
                   type="button"
                   key={period}
                   aria-pressed={days === period}
-                  onClick={() => setDays(period)}
+                  onClick={() => choose(period)}
                   className={cn(
                     'h-7 rounded-full px-3 text-sm font-medium whitespace-nowrap transition-colors',
                     days === period

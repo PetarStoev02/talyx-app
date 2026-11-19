@@ -11,6 +11,14 @@ export function useSubscription(subscribe: () => () => void): void {
   }, [])
 }
 
+/** Calls `run` once, after the first render: a read the part needs as it appears. */
+export function useOnMount(run: () => void): void {
+  const once = useEffectEvent(run)
+  useEffect(() => {
+    once()
+  }, [])
+}
+
 export function useOnUnmount(run: () => void): void {
   const leave = useEffectEvent(run)
   useEffect(() => () => leave(), [])

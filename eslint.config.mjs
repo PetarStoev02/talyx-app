@@ -14,6 +14,8 @@ import {
   DEFAULT_EXPORT_IGNORES,
   MAGIC_NUMBER_FILES,
   OPTIONAL_PROPERTY_FILES,
+  STORE_FILES,
+  STORE_HOMES,
   STYLE_RULES,
   stylePlugin
 } from './eslint.style.mjs'
@@ -286,16 +288,16 @@ export default defineConfig(
     }
   },
   layerBoundaries,
-  // Effects and timers only in the kernel; listed files wait their turn (tests/unit/ratchet.test.ts).
+  // Effects and timers only in the kernel (tests/unit/ratchet.test.ts).
   {
     files: PRODUCT,
-    ignores: [...KERNEL, ...RATCHET.effects],
+    ignores: KERNEL,
     plugins: { kernel: kernelPlugin },
     rules: { 'kernel/no-effect': 'error' }
   },
   {
     files: PRODUCT,
-    ignores: [...KERNEL, ...RATCHET.timers],
+    ignores: KERNEL,
     plugins: { kernel: kernelPlugin },
     rules: { 'kernel/no-timer': 'error' }
   },
@@ -311,6 +313,12 @@ export default defineConfig(
     ignores: RATCHET.magicNumbers,
     plugins: { style: stylePlugin },
     rules: { [STYLE_RULES.magicNumbers[0]]: STYLE_RULES.magicNumbers[1] }
+  },
+  {
+    files: STORE_FILES,
+    ignores: [...STORE_HOMES, ...RATCHET.stores],
+    plugins: { style: stylePlugin },
+    rules: { [STYLE_RULES.stores[0]]: STYLE_RULES.stores[1] }
   },
   {
     files: ['**/*.{js,mjs,cjs,ts,tsx}'],

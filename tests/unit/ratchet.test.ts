@@ -11,6 +11,7 @@ import { RATCHET } from '../../eslint.ratchet.mjs'
 import {
   DEFAULT_EXPORT_MESSAGE,
   OPTIONAL_PROPERTY_MESSAGE,
+  STORE_MESSAGE,
   STYLE_RULES,
   magicNumberMessage,
   stylePlugin
@@ -20,16 +21,9 @@ const R = 'src/renderer/src'
 const RATCHET_FILE = 'eslint.ratchet.mjs'
 // Each list's rule as the config runs it, and what to do instead of adding a file to the list.
 const RULES = {
-  effects: {
-    rule: ['kernel/no-effect', 'error'],
-    fix: 'move the new code into a hook under shared/hooks'
-  },
-  timers: {
-    rule: ['kernel/no-timer', 'error'],
-    fix: 'move the new code into a hook under shared/hooks, or use sleep/after from shared/lib/timers'
-  },
   optionalProperties: { rule: STYLE_RULES.optionalProperties, fix: 'write `T | null` instead' },
-  magicNumbers: { rule: STYLE_RULES.magicNumbers, fix: 'name the number as a constant' }
+  magicNumbers: { rule: STYLE_RULES.magicNumbers, fix: 'name the number as a constant' },
+  stores: { rule: STYLE_RULES.stores, fix: "move the store into its feature's store.ts" }
 } as const
 type List = keyof typeof RULES
 const LISTS = Object.keys(RULES) as List[]
@@ -252,6 +246,40 @@ describe('style rules', () => {
     expect(await styleErrors('src/main/x.ts', source)).toEqual([])
   })
 
+  it.each([`${R}/features/bots/x.ts`, `${R}/widgets/roster/x.ts`, `${R}/shared/lib/x.ts`])(
+    'should refuse a store outside a feature store.ts: %s',
+    async (filePath) => {
+      expect(await styleErrors(filePath, "import { create } from 'zustand'")).toEqual([
+        STORE_MESSAGE
+      ])
+    }
+  )
+
+  it.each([
+    ['the vanilla entry point', "import { createStore } from 'zustand/vanilla'"],
+    ['a re-export', "export { create } from 'zustand'"],
+    ['a re-export of all of zustand', "export * from 'zustand'"]
+  ])('should refuse a store made another way: %s', async (_name, source) => {
+    expect(await styleErrors(`${R}/widgets/roster/x.ts`, source)).toEqual([STORE_MESSAGE])
+  })
+
+  it.each([`${R}/features/bots/store.ts`, `${R}/app/providers/x.ts`])(
+    'should allow a store in %s',
+    async (filePath) => {
+      expect(await styleErrors(filePath, "import { create } from 'zustand'")).toEqual([])
+    }
+  )
+
+  it.each([
+    ['a type import', "import type { StoreApi } from 'zustand'\nexport type S = StoreApi<number>"],
+    [
+      'an inline type specifier',
+      "import { type StoreApi } from 'zustand'\nexport type S = StoreApi<number>"
+    ]
+  ])('should allow %s from zustand anywhere', async (_name, source) => {
+    expect(await styleErrors(`${R}/widgets/roster/x.ts`, source)).toEqual([])
+  })
+
   it('should leave numbers alone outside main and the features', async () => {
     const source = 'export const f = (n: number): number => n * 60'
     expect(await styleErrors(`${R}/widgets/chat/x.ts`, source)).toEqual([])
@@ -263,15 +291,6 @@ describe('ratchet', () => {
     'should list only files that still break the rule: %s %s (else remove it from the list)',
     (list, file) => {
       expect(stillViolates(file, list)).toBe(true)
-    }
-  )
-
-  it.each(['effects', 'timers'] as const)(
-    'should list no file in the kernel, where %s are allowed anyway',
-    (list) => {
-      const inKernel = (file: string): boolean =>
-        KERNEL.some((glob) => file.startsWith(glob.replace('**', '')))
-      expect(RATCHET[list].filter(inKernel)).toEqual([])
     }
   )
 

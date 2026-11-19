@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ChartNoAxesColumn, Settings } from 'lucide-react'
 import { useEngine } from '@features/setup/useEngine'
 import { useLanguage } from '@shared/lib/i18n'
@@ -11,6 +11,7 @@ import { updateItems } from '@features/updates/items'
 import { useUpdates } from '@features/updates/store'
 import { reportError } from '@shared/lib/report'
 import { IconButton } from '@shared/ui/IconButton'
+import { useOnMount, useWindowEvent } from '@shared/hooks/useSubscription'
 import { ModuleBackground } from './ModuleBackground'
 import { NavButton } from './NavButton'
 import { UpdateButton } from './UpdateButton'
@@ -59,19 +60,16 @@ export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Elem
   // Without a dock, ⌘1 still opens the agents.
   useDockShortcuts(showDock ? sections.map(viewOf) : ['agents'])
 
-  useEffect(() => {
+  useOnMount(() => {
     useModules
       .getState()
       .load()
       .catch((error: unknown) => reportError('modules', error))
-  }, [])
-
-  useEffect(() => {
     useUpdates
       .getState()
       .load()
       .catch((error: unknown) => reportError('updater', error))
-  }, [])
+  })
 
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 pt-2 pb-3">
@@ -98,7 +96,8 @@ export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Elem
       {/* Hidden: a Background draws nothing, and a failed one's notice must not take a cell. */}
       <div hidden>
         {modules.map((module) => (
-          <ModuleBackground key={module.id} module={module} />
+          // Keyed by version too: an update starts its Background afresh, with no dot left over.
+          <ModuleBackground key={`${module.id}@${module.version}`} module={module} />
         ))}
       </div>
       <span className="justify-self-end">
@@ -115,20 +114,13 @@ function viewOf(section: DockSection): AppView {
 /** ⌘1, ⌘2, … (Ctrl on Linux) open `views` in order. */
 function useDockShortcuts(views: AppView[]): void {
   const navigate = useNavigation((s) => s.navigate)
-  // A string, so a new array with the same pages does not re-bind the listener.
-  const key = views.join(' ')
-  useEffect(() => {
-    const pages = key.split(' ') as AppView[]
-    function onKey(event: KeyboardEvent): void {
-      if (!(isMac ? event.metaKey : event.ctrlKey) || dialogOpen()) return
-      const view = dockShortcut(pages, event.key)
-      if (!view) return
-      event.preventDefault()
-      void navigate(view)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [key, navigate])
+  useWindowEvent('keydown', (event) => {
+    if (!(isMac ? event.metaKey : event.ctrlKey) || dialogOpen()) return
+    const view = dockShortcut(views, event.key)
+    if (!view) return
+    event.preventDefault()
+    void navigate(view)
+  })
 }
 
 /** The dock: one glyph per page, the open one on a sliding disc. */

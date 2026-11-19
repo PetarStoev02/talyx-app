@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
+import { useOnUnmount } from '@shared/hooks/useSubscription'
 import { ErrorBoundary } from '@shared/ui/ErrorBoundary'
 import { moduleInvoker } from '@features/modules/host'
 import { useModuleAttention } from '@features/modules/store'
@@ -20,8 +21,8 @@ export function ModuleBackground({ module }: { module: ModuleSummary }): React.J
     }),
     [module.id, setNeedsYou]
   )
-  // A module that stops (or updates) leaves no dot behind.
-  useEffect(() => () => setNeedsYou(module.id, 0), [module.id, module.version, setNeedsYou])
+  // A module that stops (or updates: the footer keys this by version) leaves no dot behind.
+  useOnUnmount(() => setNeedsYou(module.id, 0))
   const Background = parts?.background
   if (!Background) return null
   return (

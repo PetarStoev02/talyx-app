@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Toaster } from 'sonner'
 import { ErrorBoundary } from '@shared/ui/ErrorBoundary'
 import { AppShell, ModuleSidebar } from '@widgets/app-shell'
@@ -9,6 +9,8 @@ import { useProvidersBackend } from '@app/providers/useProvidersBackend'
 import { useSetupBackend } from '@app/providers/useSetupBackend'
 import { useFirstSetupStep } from '@app/providers/useFirstSetupStep'
 import { useTheme } from '@shared/hooks/useTheme'
+import { useOnChange } from '@shared/hooks/useOnChange'
+import { useOnMount } from '@shared/hooks/useSubscription'
 import { useKeyboardShortcuts } from '@app/providers/useKeyboardShortcuts'
 import { CheatSheet } from '@widgets/shortcuts'
 import { reportError } from '@shared/lib/report'
@@ -73,15 +75,15 @@ export function App(): React.JSX.Element {
 
   // A module page whose module stopped, expired or was removed hands back to the agents, so a
   // later key does not jump straight to it.
-  useEffect(() => {
-    if (moduleIdOf(currentView) && !openModule) {
-      // The page is gone, so nothing is left to ask.
-      setLeaveGuard(null)
-      navigate('agents')
-    }
-  }, [currentView, openModule, navigate])
+  // Keyed by the gone page's view, so a second gone module page hands back too.
+  useOnChange(moduleIdOf(currentView) && !openModule ? currentView : null, (gone) => {
+    if (!gone) return
+    // The page is gone, so nothing is left to ask.
+    setLeaveGuard(null)
+    navigate('agents')
+  })
 
-  useEffect(() => {
+  useOnMount(() => {
     useSetup
       .getState()
       .load()
@@ -90,16 +92,16 @@ export function App(): React.JSX.Element {
         // Unreadable settings must not hold the splash; the engine gate still covers a missing engine.
         useSetup.setState({ setupDone: true })
       })
-  }, [])
+  })
 
   // Everything was already done (an existing setup): setup counts as finished without showing.
-  useEffect(() => {
-    if (visibility === 'hidden' && setupDone === false && !inSetup)
+  useOnChange(visibility === 'hidden' && setupDone === false && !inSetup, (finished) => {
+    if (finished)
       useSetup
         .getState()
         .finish()
         .catch((error: unknown) => reportError('setup', error))
-  }, [visibility, setupDone, inSetup])
+  })
 
   function finishSetup(): void {
     // The app opens on Talyx's chat once setup is done.
