@@ -1,5 +1,5 @@
 import { BARE_CUSTOM, namedTwinOfBare, sameBaseUrl } from '@shared/engine/endpoints'
-import type { ModelOptionProvider } from '@shared/engine/gateway-events'
+import type { ModelOptionProvider, SessionLiveInfo } from '@shared/engine/gateway-events'
 import type { CustomEndpoint, SessionMessage } from '@shared/engine/types'
 import { MediaGoneError } from '@features/chat/chat'
 import type { ChatBackend, ChatDraft, ResumeSnapshot } from '@features/chat/chat'
@@ -103,12 +103,14 @@ export function engineChatBackend(engine: EngineAccess): ChatBackend {
     newestMessages: (profile, chatId, limit) =>
       messages(profile, chatId, { limit: String(limit), order: 'latest' }),
 
-    resume: (profile, chatId) =>
-      engine.request<ResumeSnapshot>(profile, 'session.resume', {
-        session_id: chatId,
-        defer_history: true,
-        omit_messages: true
-      }),
+    resume: async (profile, chatId) =>
+      resumeOf(
+        await engine.request<EngineResume>(profile, 'session.resume', {
+          session_id: chatId,
+          defer_history: true,
+          omit_messages: true
+        })
+      ),
 
     submit: async (profile, chatId, draft) => {
       await engine.request(profile, 'prompt.submit', submitParams(chatId, draft))
@@ -164,6 +166,34 @@ export function engineChatBackend(engine: EngineAccess): ChatBackend {
       if (!media) throw new MediaGoneError(path)
       return media.data_url
     }
+  }
+}
+
+// `session.resume` as the engine sends it: any field can be missing.
+interface EngineResume {
+  info?: SessionLiveInfo | null
+  open_requests?: { id: string }[]
+  replay_epoch?: string
+  running?: boolean
+  last_sequence?: number
+  inflight?: { assistant?: string; user?: string; error?: string } | null
+}
+
+function resumeOf(resume: EngineResume): ResumeSnapshot {
+  const { inflight } = resume
+  return {
+    info: resume.info ?? null,
+    open_requests: resume.open_requests ?? null,
+    replay_epoch: resume.replay_epoch ?? null,
+    running: resume.running === true,
+    last_sequence: resume.last_sequence ?? null,
+    inflight: inflight
+      ? {
+          assistant: inflight.assistant ?? null,
+          user: inflight.user ?? null,
+          error: inflight.error ?? null
+        }
+      : null
   }
 }
 

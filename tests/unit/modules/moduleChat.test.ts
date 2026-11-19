@@ -64,7 +64,8 @@ describe('a module page talking to the bots', () => {
     expect(send).toHaveBeenCalledWith('default', {
       text: 'Start a Workflows run for acme/api#7',
       images: [],
-      whenBusy: 'queue'
+      whenBusy: 'queue',
+      replaces: null
     })
   })
 

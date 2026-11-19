@@ -65,7 +65,13 @@ export function ChatPane({
   const [seed, setSeed] = useState<{ text: string } | null>(null)
   const focusComposer = useFocusLater(composer)
   const start = (starter: Starter): void => {
-    if (starter.send) return void actions?.send(bot.name, { text: starter.text, images: [] })
+    if (starter.send)
+      return void actions?.send(bot.name, {
+        text: starter.text,
+        images: [],
+        whenBusy: null,
+        replaces: null
+      })
     setSeed({ text: starter.text })
     // After the composer has the text: the cursor goes to its end, ready to finish the sentence.
     focusComposer(null)
@@ -122,7 +128,9 @@ export function ChatPane({
     send: ({ text, files, paths }) =>
       actions.queue(bot.name, {
         text: draftWith(text, paths),
-        images: files.map((file) => ({ path: file.id, mime: file.mime }))
+        images: files.map((file) => ({ path: file.id, mime: file.mime })),
+        whenBusy: null,
+        replaces: null
       }),
     upload: async (file, dataUrl) => {
       const image = await actions.uploadImage(bot.name, { dataUrl, name: file.name })
