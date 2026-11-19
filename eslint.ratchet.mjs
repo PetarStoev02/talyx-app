@@ -20,7 +20,6 @@ export const RATCHET = {
     'src/renderer/src/widgets/app-shell/ModuleBackground.tsx',
     'src/renderer/src/widgets/app-shell/SidebarFooter.tsx',
     'src/renderer/src/widgets/app-shell/UpdateButton.tsx',
-    'src/renderer/src/widgets/chat/Composer.tsx',
     'src/renderer/src/widgets/settings-about/AboutSection.tsx',
     'src/renderer/src/widgets/settings-engine/AgentAccess.tsx',
     'src/renderer/src/widgets/settings-startup/StartupSection.tsx'
