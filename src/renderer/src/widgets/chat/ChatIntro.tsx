@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useLoad } from '@shared/hooks/useLoad'
+import { useOnChange } from '@shared/hooks/useOnChange'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import type { RosterBackend } from '@features/bots/data'
@@ -39,19 +41,19 @@ export function ChatIntro({
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const [details, setDetails] = useState<ProfileDetails | null>(null)
+  const load = useCallback(
+    () => (roster ? loadDetails(roster, bot.name) : Promise.resolve(null)),
+    [roster, bot.name]
+  )
+  const readAgain = useLoad(load, {
+    loaded: (loaded) => loaded && setDetails(loaded),
+    // The intro still works without them: the roster's description, no model line.
+    failed: (error) => reportError('chat', error)
+  })
   // Read again after a save, so the intro shows what was just saved.
   const revision = useDetailsRevision((s) => s.revision)
-  useEffect(() => {
-    if (!roster) return
-    let live = true
-    loadDetails(roster, bot.name)
-      .then((loaded) => live && setDetails(loaded))
-      // The intro still works without them: the roster's description, no model line.
-      .catch((error: unknown) => reportError('chat', error))
-    return () => {
-      live = false
-    }
-  }, [roster, bot.name, revision])
+  const [openedAt] = useState(revision)
+  useOnChange(revision, (now) => now !== openedAt && readAgain())
 
   // An empty profile description falls back to what the roster knows.
   const description = (details?.description || bot.meta.description || bot.description || '').trim()

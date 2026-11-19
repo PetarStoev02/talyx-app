@@ -1,12 +1,10 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useMemo } from 'react'
 import { ArrowDown } from 'lucide-react'
+import { useStickToEnd } from '@shared/hooks/useStickToEnd'
 import { useLanguage } from '@shared/lib/i18n'
 import type { MessageItem } from '@features/chat/types'
 import { briefsByRef, isQuietReply } from '@features/chat/workflowLines'
 import { MessageBubble } from './MessageBubble'
-
-// How close to the end still counts as reading the newest message.
-const STICK_DISTANCE_PX = 48
 
 /** Newest at the bottom; it follows new text while you are at the end, and offers a way back. */
 export function Transcript({
@@ -19,23 +17,13 @@ export function Transcript({
   loadImage: (path: string) => Promise<string>
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const scroller = useRef<HTMLDivElement>(null)
-  const [atEnd, setAtEnd] = useState(true)
   const briefs = useMemo(
     () => briefsByRef(items.flatMap((item) => (item.kind === 'user' ? [item.text] : []))),
     [items]
   )
 
-  useLayoutEffect(() => {
-    const element = scroller.current
-    if (element && atEnd) element.scrollTop = element.scrollHeight
-  }, [items, children, atEnd])
-
-  function onScroll(): void {
-    const element = scroller.current
-    if (!element) return
-    setAtEnd(element.scrollHeight - element.scrollTop - element.clientHeight < STICK_DISTANCE_PX)
-  }
+  const shown = useMemo(() => [items, children], [items, children])
+  const { scroller, atEnd, onScroll, toEnd } = useStickToEnd<HTMLDivElement>(shown)
 
   return (
     <div className="relative min-h-0 flex-1">
@@ -57,7 +45,7 @@ export function Transcript({
         <button
           type="button"
           aria-label={t('chat.scrollToBottom')}
-          onClick={() => setAtEnd(true)}
+          onClick={toEnd}
           className="absolute bottom-4 left-1/2 inline-flex size-9 -translate-x-1/2 items-center justify-center rounded-full bg-secondary shadow-md hover:bg-foreground/10"
         >
           <ArrowDown size={18} />

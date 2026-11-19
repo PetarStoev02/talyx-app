@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useOnChange } from '@shared/hooks/useOnChange'
 import { useLanguage } from '@shared/lib/i18n'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
@@ -40,10 +40,9 @@ export function SearchResults({
   const rooms = useRoster((s) => s.snapshot.rooms)
 
   // Up and Down keep the row they reach in view.
-  useEffect(() => {
-    if (follow && active >= 0)
-      document.getElementById(`${id}-${active}`)?.scrollIntoView({ block: 'nearest' })
-  }, [id, active, follow])
+  useOnChange(follow && active >= 0 ? `${id}-${active}` : null, (row) => {
+    if (row) document.getElementById(row)?.scrollIntoView({ block: 'nearest' })
+  })
 
   return (
     // Holds pointer focus in the field, so a click on a row does not first close the list.
