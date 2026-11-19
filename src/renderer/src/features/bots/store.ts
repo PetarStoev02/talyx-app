@@ -1,7 +1,7 @@
 import { create } from 'zustand'
+import { SECOND_MS } from '@shared/lib/time'
 import type { RosterProblem } from './roster'
 import type { BotActivity, Room, RosterRowRef, RosterSnapshot, Selection } from './types'
-import { SECOND_MS } from '@shared/lib/time'
 
 export interface RosterState {
   snapshot: RosterSnapshot

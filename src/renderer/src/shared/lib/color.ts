@@ -1,4 +1,4 @@
-// Colour and hash math for avatars, from older clients' stored colours to a name's block.
+// Colour-space and hash math: a stored colour's hue, and a stable hash of a name.
 
 // Below this oklab chroma a colour reads as grey and has no hue to keep.
 const GREY_CHROMA = 0.02

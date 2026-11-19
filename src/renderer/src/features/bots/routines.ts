@@ -1,4 +1,4 @@
-import { HOURS_PER_DAY, MINUTES_PER_HOUR } from '@shared/lib/time'
+import { CLOCK_DIGITS, HOURS_PER_DAY, MINUTES_PER_HOUR } from '@shared/lib/time'
 
 /** A scheduled job in the bot's own cron store; the engine runs it with the app closed. */
 export interface Routine {
@@ -113,8 +113,6 @@ const EVERY_HOURS = /^every (\d+)h$/
 // How the engine stores an interval ("every 2h" comes back as "every 120m"), and a cron step.
 const EVERY_MINUTES = /^every (\d+)m$/
 const CRON_MINUTES = /^\*\/(\d{1,2}) \* \* \* \*$/
-// Cron's fields as the form shows them: two digits each.
-const TIME_DIGITS = 2
 // 2023-01-01 was a Sunday, so day N of that week is cron's weekday N.
 const A_SUNDAY = { year: 2023, month: 0, day: 1 }
 export const MAX_HOURS = 24
@@ -158,7 +156,7 @@ export function describeSchedule(schedule: string): {
     Number(minute) < MINUTES_PER_HOUR &&
     Number(hour) < HOURS_PER_DAY
   ) {
-    const time = `${hour.padStart(TIME_DIGITS, '0')}:${minute.padStart(TIME_DIGITS, '0')}`
+    const time = `${hour.padStart(CLOCK_DIGITS, '0')}:${minute.padStart(CLOCK_DIGITS, '0')}`
     if (days === '*') return { ...none, kind: 'daily', time }
     if (days === '1-5') return { ...none, kind: 'weekdays', time }
     return { ...none, kind: 'weekly', time, weekday: Number(days) }

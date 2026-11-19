@@ -1,6 +1,7 @@
 import type { TranslationKey } from '@shared/lib/i18n'
 import { AppError, problemOf } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'
+import { HOURS_PER_DAY, MINUTES_PER_HOUR, MINUTE_MS, SECOND_MS } from '@shared/lib/time'
 import type {
   Bot,
   Folder,
@@ -11,7 +12,6 @@ import type {
   RosterSnapshot,
   Selection
 } from './types'
-import { HOURS_PER_DAY, MINUTES_PER_HOUR, MINUTE_MS, SECOND_MS } from '@shared/lib/time'
 
 export const FOLDERS_KEY = 'talyx-folders'
 export const ROOM_FOLDERS_KEY = 'talyx-room-folders'

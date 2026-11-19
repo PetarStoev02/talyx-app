@@ -1,9 +1,8 @@
 import { BotAvatar } from './BotAvatar'
 import type { Bot, Room } from './types'
 
+// Two members sit corner to corner; a third sits centred below the pair.
 const PAIR = 2
-// The third member sits centred below the other two.
-const HALF = 2
 
 // A room shows up to three of its members.
 const SHOWN = 3
@@ -57,7 +56,7 @@ export function RoomAvatars({
         : [
             [0, 0],
             [far, 0],
-            [far / HALF, far]
+            [far / PAIR, far]
           ]
   return (
     <span
