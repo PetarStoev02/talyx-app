@@ -6,6 +6,7 @@ const POLL_DELAY_MS = 1500
 /** Every bot's provider and model. */
 export const PROVIDER = 'anthropic'
 export const DEFAULT_MODEL = 'claude-sonnet-4-5'
+const BASE_URL = 'https://api.anthropic.com/v1'
 /** The model the double asks about before pinning, as the engine does for a costly one. */
 export const COSTLY_MODEL = 'claude-opus-4-1'
 
@@ -27,7 +28,7 @@ export function fixtureProviders(profiles: string[]): {
       ...endpoint,
       id: PROVIDER,
       name: 'Anthropic',
-      base_url: 'https://api.anthropic.com/v1',
+      base_url: BASE_URL,
       model: DEFAULT_MODEL,
       models: [DEFAULT_MODEL, COSTLY_MODEL]
     }
@@ -89,7 +90,9 @@ export const fixturePlugins: Pick<MainCalls, 'usageDays'> = {
             const busy = weekday === 0 || weekday === 6 ? 0.2 : 1 + Math.sin(back + bot) / 2
             return {
               day: date.toLocaleDateString('en-CA'),
-              provider: `custom:${PROVIDER}`,
+              model: DEFAULT_MODEL,
+              provider: 'custom',
+              base_url: BASE_URL,
               input_tokens: Math.round(6_000 * busy * (bot + 1)),
               output_tokens: Math.round(800 * busy * (bot + 1)),
               api_calls: Math.round(2 * busy * (bot + 1))

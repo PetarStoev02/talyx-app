@@ -34,7 +34,9 @@ function setup(): ReturnType<typeof usageDays> {
 
 const row = {
   day: '2026-11-15',
+  model: 'm',
   provider: 'custom',
+  base_url: 'http://localhost:20128/v1',
   input_tokens: 9,
   output_tokens: 1,
   api_calls: 2

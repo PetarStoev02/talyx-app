@@ -124,10 +124,16 @@ export interface MembersChange {
   changed: boolean
 }
 
-/** One day of one bot's usage with one billing provider, as Talyx's engine plugin reads it. */
+/**
+ * One day of one bot's usage of one model with one billing provider and base URL, as Talyx's engine
+ * plugin reads it. `base_url` is where a custom endpoint's calls went (empty when the engine recorded
+ * none): the engine bills every custom endpoint as `custom`.
+ */
 export interface BotDayRow {
   day: string
+  model: string
   provider: string | null
+  base_url: string
   input_tokens: number | null
   output_tokens: number | null
   api_calls: number | null
