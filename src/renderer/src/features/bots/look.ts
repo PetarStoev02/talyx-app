@@ -44,8 +44,8 @@ export function lookOf(bot: Pick<Bot, 'name' | 'meta'>): Look {
 }
 
 /** The metadata fields a look is saved as; faces on is the default and is not stored. */
-export function lookMeta(look: Look): Partial<BotMeta> {
-  return { shape: look.shape, color: look.hue, faces: look.faces ? undefined : false }
+export function lookMeta(look: Look): Pick<BotMeta, 'shape' | 'color' | 'faces'> {
+  return { shape: look.shape, color: look.hue, faces: look.faces ? null : false }
 }
 
 export function sameLook(a: Look, b: Look): boolean {
@@ -57,17 +57,17 @@ export function exportAvatar(backend: AvatarBackend, profile: string, look: Look
   return backend.setAvatar(profile, look)
 }
 
-function shapeOf(value: string | undefined): BlockShape | undefined {
+function shapeOf(value: string | null): BlockShape | undefined {
   if (!value) return undefined
   const shape = BLOCK_SHAPES.find((item) => item === value)
   // An older client's shape (a blobatar id, a named outline) keeps one block per value.
   return shape ?? BLOCK_SHAPES[fnv1a(value) % BLOCK_SHAPES.length]
 }
 
-function hueOf(value: number | string | undefined): number | undefined {
+function hueOf(value: number | string | null): number | undefined {
   if (typeof value === 'number')
     return Number.isInteger(value) && value >= 0 && value < BLOCK_HUES.length ? value : undefined
-  const angle = value === undefined ? undefined : oklchHue(value)
+  const angle = typeof value === 'string' ? oklchHue(value) : undefined
   // An unreadable stored colour (NaN) falls back like a missing one.
   if (angle === undefined || Number.isNaN(angle)) return undefined
   const distance = (hue: number): number => {

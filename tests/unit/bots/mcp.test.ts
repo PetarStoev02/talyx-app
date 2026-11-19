@@ -371,7 +371,7 @@ describe('MCP tools', () => {
 
     it('should rename a folder', async () => {
       await ok('rename_folder', { folderId: 'team', name: 'Crew' })
-      expect(roster().folders).toEqual([{ id: 'team', name: 'Crew' }])
+      expect(roster().folders).toEqual([{ id: 'team', name: 'Crew', parentId: null }])
     })
 
     it('should move a folder under another', async () => {
@@ -393,7 +393,7 @@ describe('MCP tools', () => {
         ok: false,
         text: REFUSED
       })
-      expect(roster().folders).toEqual([{ id: 'team', name: 'Team' }])
+      expect(roster().folders).toEqual([{ id: 'team', name: 'Team', parentId: null }])
       expect(metaOf('analyst').sectionId).toBe('team')
     })
   })

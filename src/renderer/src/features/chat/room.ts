@@ -84,7 +84,7 @@ export interface RoomActions {
 
 export interface RoomMember {
   profile: string
-  member_id?: string
+  member_id: string | null
 }
 
 /** Members by profile: switched, or skipped (answering, waiting on you, or not answered here yet). */

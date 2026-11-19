@@ -236,8 +236,10 @@ export function rosterActions(backend: RosterWriter): RosterActions {
       saveLayout((value) => {
         if (parentId && !value.some((folder) => folder.id === parentId))
           throw new RosterError('roster.errorFolderGone')
-        const folder = { id: crypto.randomUUID(), name: name.trim() }
-        return [...value, parentId ? { ...folder, parentId } : folder]
+        return [
+          ...value,
+          { id: crypto.randomUUID(), name: name.trim(), parentId: parentId || null }
+        ]
       }),
     hide: (bot) => saveBotMeta(backend, bot.name, { hidden: !bot.meta.hidden }),
     deleteProfile: (bot) => backend.deleteProfile(bot.name),

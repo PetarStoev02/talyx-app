@@ -88,7 +88,7 @@ describe('roster layout', () => {
         bot('a', { sectionId: 'team', sectionName: 'Team' }),
         bot('b', { sectionId: 'team', sectionName: 'Team' })
       ])
-    ).toEqual([{ id: 'team', name: 'Team' }])
+    ).toEqual([{ id: 'team', name: 'Team', parentId: null }])
   })
   it('should repair malformed, duplicate, orphaned and cyclic folders', () => {
     expect(
@@ -101,20 +101,20 @@ describe('roster layout', () => {
         { id: 'c', name: 'C', parentId: 'absent' }
       ])
     ).toEqual([
-      { id: 'a', name: 'A' },
+      { id: 'a', name: 'A', parentId: null },
       { id: 'b', name: 'B', parentId: 'a' },
-      { id: 'c', name: 'C' }
+      { id: 'c', name: 'C', parentId: null }
     ])
   })
   it('should reject nesting a folder in its own descendant', () => {
     const folders = [
-      { id: 'a', name: 'A' },
+      { id: 'a', name: 'A', parentId: null },
       { id: 'b', name: 'B', parentId: 'a' }
     ]
     expect(() => moveFolder(folders, 'a', 'b')).toThrow('roster.errorFolderCycle')
     expect(moveFolder(folders, 'b', null)).toEqual([
-      { id: 'a', name: 'A' },
-      { id: 'b', name: 'B' }
+      { id: 'a', name: 'A', parentId: null },
+      { id: 'b', name: 'B', parentId: null }
     ])
     expect(folders[1].parentId).toBe('a')
   })

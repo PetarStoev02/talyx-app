@@ -10,12 +10,15 @@ import {
 import {
   FOLDERS_KEY,
   ITEM_ORDER_KEY,
+  NO_META,
   ROOM_FOLDERS_KEY,
   ROOM_PINS_KEY,
   moveFolder
 } from '../../../src/renderer/src/features/bots/roster'
 import { BOT_META_KEY, GROUPS_META_KEY, backendFor, engineDouble } from './engineDouble'
-import type { EngineRequest } from './engineDouble'
+import type { EngineDouble, EngineRequest } from './engineDouble'
+import { lookMeta } from '../../../src/renderer/src/features/bots/look'
+import type { BotMeta, Room } from '../../../src/renderer/src/features/bots/types'
 
 describe('shared roster persistence', () => {
   it('should publish the folders recovered from sectionId as the shared layout', async () => {
@@ -30,18 +33,22 @@ describe('shared roster persistence', () => {
     const engine = engineDouble()
     engine.metadata.default['talyx-folders'] = [{ id: 'empty', name: 'Empty folder' }]
     expect((await readRoster(backendFor(engine))).folders).toEqual([
-      { id: 'empty', name: 'Empty folder' }
+      { id: 'empty', name: 'Empty folder', parentId: null }
     ])
   })
   it('should keep pin and nested folder changes when another client reloads', async () => {
     const engine = engineDouble()
     const initial = await readRoster(backendFor(engine))
-    expect(initial.folders).toEqual([{ id: 'team', name: 'Team' }])
+    expect(initial.folders).toEqual([{ id: 'team', name: 'Team', parentId: null }])
     await saveBotMeta(backendFor(engine), 'analyst', { pinned: true, pinnedOrder: 2 })
     await saveFolders(
       backendFor(engine),
       (folders) =>
-        moveFolder([...folders, { id: 'projects', name: 'Projects' }], 'team', 'projects'),
+        moveFolder(
+          [...folders, { id: 'projects', name: 'Projects', parentId: null }],
+          'team',
+          'projects'
+        ),
       initial.folders
     )
     const otherClient = await readRoster(backendFor(engine))
@@ -57,7 +64,7 @@ describe('shared roster persistence', () => {
     )
     expect(otherClient.folders).toEqual([
       { id: 'team', name: 'Team', parentId: 'projects' },
-      { id: 'projects', name: 'Projects' }
+      { id: 'projects', name: 'Projects', parentId: null }
     ])
     expect(otherClient.rooms[0].room_id).toBe('room')
   })
@@ -101,10 +108,11 @@ describe('shared roster persistence', () => {
     })
     const roster = await readRoster(backendFor(engine))
     expect(roster.bots.find((bot) => bot.name === 'analyst')?.meta).toEqual({
+      ...NO_META,
       pinned: true,
       sectionId: 'team'
     })
-    expect(roster.bots.find((bot) => bot.name === 'writer')?.meta).toEqual({})
+    expect(roster.bots.find((bot) => bot.name === 'writer')?.meta).toEqual(NO_META)
     expect(roster.roomFolders).toEqual({})
     await saveBotMeta(backendFor(engine), 'writer', { hidden: true })
     expect(engine.metadata.writer[BOT_META_KEY]).toEqual({ hidden: true })
@@ -173,11 +181,121 @@ describe('shared roster persistence', () => {
           const stored = (written ?? {}) as Record<string, unknown>
           for (const [field, readable] of Object.entries(FIELDS)) {
             if (readable(stored[field])) expect(bot.meta).toHaveProperty(field, stored[field])
-            else expect(bot.meta[field as keyof typeof bot.meta]).toBeUndefined()
+            else expect(bot.meta[field as keyof typeof bot.meta]).toBeNull()
           }
         }
       })
     )
+  })
+})
+
+describe('the records as the engine receives them', () => {
+  const STORED = {
+    title: 'Analyst',
+    description: 'Old',
+    sectionId: 'team',
+    sectionName: 'Team',
+    color: 4,
+    usesDefault: true,
+    faces: false
+  }
+
+  // The JSON of each profiles.configure call, as the socket sends it.
+  const recording = (
+    engine: EngineDouble
+  ): { request: EngineRequest; sent: Record<string, unknown>[] } => {
+    const sent: Record<string, unknown>[] = []
+    const request: EngineRequest = (profile, method, params) => {
+      if (method === 'profiles.configure') sent.push(JSON.parse(JSON.stringify(params)))
+      return engine.request(profile, method, params)
+    }
+    return { request, sent }
+  }
+
+  const botRecordAfter = async (patch: Partial<BotMeta>): Promise<string> => {
+    const engine = engineDouble({ default: {}, analyst: { [BOT_META_KEY]: STORED } })
+    const { request, sent } = recording(engine)
+    await saveBotMeta(backendFor({ request }), 'analyst', patch)
+    return JSON.stringify((sent[0].ui_meta as Record<string, unknown>)[BOT_META_KEY])
+  }
+
+  it.each<[string, Partial<BotMeta>, Record<string, unknown>]>([
+    ["stops following Talyx's model", { usesDefault: null }, { ...STORED, usesDefault: undefined }],
+    ["follows Talyx's model", { usesDefault: true }, STORED],
+    [
+      "drops an older client's description",
+      { description: null },
+      { ...STORED, description: undefined }
+    ],
+    [
+      'turns its face back on',
+      lookMeta({ shape: 'tower', hue: 7, faces: true }),
+      { ...STORED, color: 7, faces: undefined, shape: 'tower' }
+    ],
+    [
+      'turns its face off',
+      lookMeta({ shape: 'tower', hue: 7, faces: false }),
+      { ...STORED, color: 7, shape: 'tower' }
+    ],
+    [
+      'moves to Unassigned',
+      { pinned: false, sectionId: null, sectionName: null },
+      { ...STORED, sectionId: null, sectionName: null, pinned: false }
+    ],
+    ['is pinned', { pinned: true, pinnedOrder: 3 }, { ...STORED, pinned: true, pinnedOrder: 3 }],
+    ['is unpinned', { pinned: false }, { ...STORED, pinned: false }],
+    ['is hidden', { hidden: true }, { ...STORED, hidden: true }],
+    ['is renamed', { title: 'Lead' }, { ...STORED, title: 'Lead' }]
+  ])(
+    'should send the bot record with a null field removed and a null section kept when the bot %s',
+    async (_change, patch, record) => {
+      expect(await botRecordAfter(patch)).toBe(JSON.stringify(record))
+    }
+  )
+
+  it('should store a top-level folder without a parentId and a nested one with it', async () => {
+    const engine = engineDouble()
+    const { request, sent } = recording(engine)
+    const { folders } = await readRoster(backendFor(engine))
+    await saveFolders(
+      backendFor({ request }),
+      (value) => [...value, { id: 'clients', name: 'Clients', parentId: 'team' }],
+      folders
+    )
+    expect(JSON.stringify((sent[0].ui_meta as Record<string, unknown>)[FOLDERS_KEY])).toBe(
+      '[{"id":"team","name":"Team"},{"id":"clients","name":"Clients","parentId":"team"}]'
+    )
+  })
+
+  it('should read a field another client left out or wrote wrong as null', async () => {
+    const engine = engineDouble(
+      { default: {}, analyst: { [BOT_META_KEY]: { title: 7, pinned: true } } },
+      [
+        {
+          room_id: 'room',
+          name: 'Team room',
+          members: [{ profile: 'analyst' }],
+          latest_seq: -1
+        } as unknown as Room
+      ]
+    )
+    const roster = await readRoster(backendFor(engine))
+    const analyst = roster.bots.find((bot) => bot.name === 'analyst')
+    expect(analyst).toMatchObject({
+      meta: { ...NO_META, pinned: true },
+      display_name: null,
+      canonical_session: null,
+      last_session: null
+    })
+    expect(roster.rooms).toEqual([
+      {
+        room_id: 'room',
+        name: 'Team room',
+        members: [{ profile: 'analyst', member_id: null, handle: null, display_name: null }],
+        disbanded_at: null,
+        latest_seq: null
+      }
+    ])
   })
 })
 

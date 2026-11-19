@@ -98,7 +98,7 @@ describe('roster actions', () => {
       rosterActions(backend).placeFolder({ id: 'team', parentId: 'clients', beforeId: null })
     )
     expect(useRoster.getState().actionError?.key).toBe('roster.errorFolderCycle')
-    expect(roster().folders).toContainEqual({ id: 'team', name: 'Team' })
+    expect(roster().folders).toContainEqual({ id: 'team', name: 'Team', parentId: null })
   })
   it('should put a dragged folder in front of the sibling it was dropped on, or last', async () => {
     await act(() =>
@@ -112,7 +112,7 @@ describe('roster actions', () => {
   })
   it('should rename a folder with the name trimmed', async () => {
     await act(() => rosterActions(backend).renameFolder('team', '  Core team '))
-    expect(roster().folders).toContainEqual({ id: 'team', name: 'Core team' })
+    expect(roster().folders).toContainEqual({ id: 'team', name: 'Core team', parentId: null })
   })
   it('should move a deleted folder’s bots, rooms, subfolders and order up to its parent', async () => {
     await act(() =>
@@ -125,7 +125,7 @@ describe('roster actions', () => {
       )
     )
     await act(() => rosterActions(backend).deleteFolder('clients'))
-    expect(roster().folders).toEqual([{ id: 'team', name: 'Team' }])
+    expect(roster().folders).toEqual([{ id: 'team', name: 'Team', parentId: null }])
     expect(rowKeys('team')).toEqual(['room:team-room', 'room:clients-room', 'bot:support'])
   })
   it('should move a top-level folder’s bots and subfolders to Unassigned when it is deleted', async () => {
@@ -133,7 +133,7 @@ describe('roster actions', () => {
       rosterActions(backend).placeFolder({ id: 'clients', parentId: 'team', beforeId: null })
     )
     await act(() => rosterActions(backend).deleteFolder('team'))
-    expect(roster().folders).toEqual([{ id: 'clients', name: 'Clients' }])
+    expect(roster().folders).toEqual([{ id: 'clients', name: 'Clients', parentId: null }])
     expect(rowKeys(null)).toEqual(['bot:default', 'room:team-room'])
     expect(bot('analyst').meta.sectionId).toBeNull()
     expect(pinNames()).toEqual(['analyst', 'writer', 'planner'])

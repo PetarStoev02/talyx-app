@@ -154,10 +154,10 @@ function metaChange(bot: Bot, change: DetailsChange): Partial<BotMeta> {
   if (draft.title.trim() !== opening.title.trim()) meta.title = draft.title.trim()
   // Absent rather than false, as on every bot made before this choice.
   if (draft.usesDefault !== opening.usesDefault && !leavesDefault(change))
-    meta.usesDefault = draft.usesDefault || undefined
+    meta.usesDefault = draft.usesDefault || null
   // An older client's description in the metadata would hide the one saved on the profile.
-  if (draft.description.trim() !== opening.description.trim() && bot.meta.description !== undefined)
-    meta.description = undefined
+  if (draft.description.trim() !== opening.description.trim() && bot.meta.description !== null)
+    meta.description = null
   return meta
 }
 
@@ -191,7 +191,7 @@ async function leaveDefaultIfPinned(
 ): Promise<void> {
   const pinned = (await loadDetails(backend, profile)).model
   if (pinned && sameModelChoice(pinned, model))
-    await saveBotMeta(backend, profile, { usesDefault: undefined })
+    await saveBotMeta(backend, profile, { usesDefault: null })
 }
 
 export async function confirmModel(
@@ -202,7 +202,7 @@ export async function confirmModel(
   try {
     await confirmBotModel(backend, profile, model)
     // A confirmed model is the bot's own pick, so the bot no longer follows Talyx's.
-    if (profile !== MANAGER) await saveBotMeta(backend, profile, { usesDefault: undefined })
+    if (profile !== MANAGER) await saveBotMeta(backend, profile, { usesDefault: null })
   } finally {
     detailsChanged()
   }

@@ -3,9 +3,9 @@ import { metaPatch } from '@shared/engine/botMeta'
 import type { RosterBackend, RosterStore } from '@features/bots/data'
 import type { Look } from '@features/bots/look'
 import type { RoomsBackend, RoomSeat } from '@features/bots/rooms'
-import { RosterError } from '@features/bots/roster'
+import { NO_META, RosterError } from '@features/bots/roster'
 import type { RulesBackend } from '@features/bots/rules'
-import type { Room } from '@features/bots/types'
+import type { BotMeta, Room } from '@features/bots/types'
 import type { EngineAccess } from './access'
 import { engineDetailsBackend } from './details'
 import { engineMcpBackend } from './mcp'
@@ -35,36 +35,34 @@ export interface RoomMemberRecord {
 
 type RoomFolders = Record<string, string | null>
 
-// Other clients write these records too: a bad field is dropped, never the whole roster.
-const lenient = <T extends z.ZodType>(schema: T): z.ZodCatch<z.ZodOptional<T>> =>
-  schema.optional().catch(undefined)
+// Other clients write these records too: a bad field reads as null, never fails the roster.
+const lenient = <T extends z.ZodType>(schema: T): z.ZodCatch<z.ZodDefault<z.ZodNullable<T>>> =>
+  schema.nullable().default(null).catch(null)
 const jsonObject = z.record(z.string(), z.unknown())
-const preview = z
-  .object({
+const preview = lenient(
+  z.object({
     id: lenient(z.string()),
     resolved_id: lenient(z.string()),
     last_active: lenient(z.number().finite()),
     preview: lenient(z.string())
   })
-  .nullable()
-  .exactOptional()
-  .catch(null)
+)
 const profileSchema = z.object({
   name: z.string().min(1),
   display_name: lenient(z.string()),
-  title: lenient(z.string().nullable()),
+  title: lenient(z.string()),
   description: lenient(z.string()),
   canonical_session: preview,
   last_session: preview,
-  ui_meta: jsonObject.exactOptional(),
-  ui_meta_revisions: z.record(z.string(), z.number().int().nonnegative()).exactOptional()
+  ui_meta: jsonObject.nullable().default(null),
+  ui_meta_revisions: z.record(z.string(), z.number().int().nonnegative()).nullable().default(null)
 })
 const metaSchema = z
   .object({
     title: lenient(z.string()),
     description: lenient(z.string()),
-    sectionId: lenient(z.string().nullable()),
-    sectionName: lenient(z.string().nullable()),
+    sectionId: lenient(z.string()),
+    sectionName: lenient(z.string()),
     pinned: lenient(z.boolean()),
     pinnedOrder: lenient(z.number().finite()),
     hidden: lenient(z.boolean()),
@@ -73,7 +71,9 @@ const metaSchema = z
     faces: lenient(z.boolean()),
     usesDefault: lenient(z.boolean())
   })
-  .catch({})
+  .catch(NO_META)
+// The fields whose null is stored as null: the other clients read a null section as no folder.
+const STORED_NULLS: ReadonlySet<keyof BotMeta> = new Set(['sectionId', 'sectionName'])
 const profilesSchema = z.object({ profiles: z.array(profileSchema) })
 type ProfileRow = z.infer<typeof profileSchema>
 const roomsSchema = z.object({
@@ -84,12 +84,12 @@ const roomsSchema = z.object({
       members: z.array(
         z.object({
           profile: z.string(),
-          member_id: z.string().exactOptional(),
-          handle: z.string().exactOptional(),
-          display_name: z.string().exactOptional()
+          member_id: z.string().nullable().default(null),
+          handle: z.string().nullable().default(null),
+          display_name: z.string().nullable().default(null)
         })
       ),
-      disbanded_at: z.number().nullable().exactOptional(),
+      disbanded_at: z.number().nullable().default(null),
       latest_seq: lenient(z.number().int().nonnegative())
     })
   ),
@@ -147,11 +147,8 @@ function engineRosterStore(engine: EngineAccess, host: RosterHost): RosterStore 
       recoverRoomFolders(manager.ui_meta?.[host.botGroupsMetaKey], rooms),
     saveBotMeta: (profile, patch) =>
       updateMetadata(engine, profile, (meta) => ({
-        [host.botMetaKey]: {
-          // A value no client can read is replaced rather than blocking every later save.
-          ...jsonObject.catch({}).parse(meta[host.botMetaKey]),
-          ...patch
-        }
+        // A value no client can read is replaced rather than blocking every later save.
+        [host.botMetaKey]: patched(jsonObject.catch({}).parse(meta[host.botMetaKey]), patch)
       })),
     updateLayout: (update) => updateMetadata(engine, 'default', update),
     deleteProfile: host.deleteProfile,
@@ -257,6 +254,17 @@ async function updateMetadata(
     if (!result.applied.ui_meta_conflicts) throw new RosterError('roster.errorNotSaved')
   }
   throw new RosterError('roster.errorConflict')
+}
+
+// The stored record with the patch over it: a null removes its field, but for STORED_NULLS.
+function patched(
+  stored: Record<string, unknown>,
+  patch: Partial<BotMeta>
+): Record<string, unknown> {
+  const record: Record<string, unknown> = { ...stored, ...patch }
+  for (const [field, value] of Object.entries(patch))
+    if (value === null && !STORED_NULLS.has(field as keyof BotMeta)) delete record[field]
+  return record
 }
 
 // The CAS read needs only metadata and revisions, so it skips the session previews.
