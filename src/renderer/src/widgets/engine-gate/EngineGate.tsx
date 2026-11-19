@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useEngine } from '@features/setup/useEngine'
+import { useEngine } from '@features/setup/store'
 import { useLanguage } from '@shared/lib/i18n'
 import type { SetupBackend } from '@features/setup/install'
 import { InstallEngine } from '@features/setup/InstallEngine'

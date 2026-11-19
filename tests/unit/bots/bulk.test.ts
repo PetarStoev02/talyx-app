@@ -170,7 +170,7 @@ describe('moving several picked rows', () => {
       expect(useRoster.getState().actionError?.key).toBe('roster.errorFolderCycle')
     }
     expect(engine.configureCalls).toEqual([])
-    expect(roster().folders.find((item) => item.id === 'team')?.parentId).toBeUndefined()
+    expect(roster().folders.find((item) => item.id === 'team')?.parentId).toBeNull()
   })
   it('should leave every bot where it was when the layout save fails', async () => {
     engine.failMetaOnce()

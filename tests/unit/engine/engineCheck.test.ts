@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { useEngine as UseEngine } from '@features/setup/useEngine'
+import type { useEngine as UseEngine } from '@features/setup/store'
 
 const MISSING = { state: 'missing', enginePath: null, version: null, reason: null }
 
@@ -17,7 +17,7 @@ describe('checking for the engine', () => {
         onEngineSocketClosed: () => () => {}
       }
     })
-    return (await import('@features/setup/useEngine')).useEngine
+    return (await import('@features/setup/store')).useEngine
   }
 
   it('should not report a check before the first one', async () => {

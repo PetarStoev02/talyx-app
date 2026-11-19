@@ -10,9 +10,9 @@ import {
   loadDetails,
   refusedSectionProblem,
   saveDetails,
-  setBotModel,
-  useDetailsRevision
+  setBotModel
 } from '../../../src/renderer/src/features/bots/details'
+import { useDetailsRevision } from '../../../src/renderer/src/features/bots/store'
 import type { DetailsDraft } from '../../../src/renderer/src/features/bots/details'
 import { lookOf } from '../../../src/renderer/src/features/bots/look'
 import { BLOCK_HUES } from '../../../src/renderer/src/shared/ui/blockGeometry'

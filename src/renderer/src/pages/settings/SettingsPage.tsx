@@ -7,7 +7,7 @@ import { reportError } from '@shared/lib/report'
 import { themeApi } from '@shared/api/ipc'
 import { useEscape } from '@shared/hooks/useEscape'
 import { useLanguage } from '@shared/lib/i18n'
-import { useNavigation } from '@features/modules/useNavigation'
+import { useNavigation } from '@features/modules/store'
 import { pickTheme } from '@features/settings/theme'
 import { useThemePick } from '@features/settings/store'
 import type { ProvidersBackend } from '@features/providers/providers'
@@ -21,12 +21,8 @@ import { StartupSection } from '@widgets/settings-startup'
 import { SoundSection } from '@widgets/settings-sound'
 import { AboutSection } from '@widgets/settings-about'
 import { ModulesSection } from '@widgets/modules'
-import {
-  SETTINGS_SECTIONS,
-  type SettingsSection,
-  shownPage,
-  useSettingsSection
-} from '@features/settings/sections'
+import { SETTINGS_SECTIONS, type SettingsSection, shownPage } from '@features/settings/sections'
+import { useSettingsSection } from '@features/settings/store'
 import { useModules } from '@features/modules/store'
 import type { SetupBackend } from '@features/setup/install'
 

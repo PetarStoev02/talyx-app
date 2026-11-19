@@ -415,7 +415,7 @@ function rosterView(snapshot: RosterSnapshot): unknown {
     folders: snapshot.folders.map((folder) => ({
       id: folder.id,
       name: folder.name,
-      parentId: folder.parentId ?? null
+      parentId: folder.parentId
     })),
     rooms: snapshot.rooms.map((room) => ({
       roomId: room.room_id,

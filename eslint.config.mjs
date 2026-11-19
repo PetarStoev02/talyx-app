@@ -305,7 +305,7 @@ export default defineConfig(
   // CLAUDE.md style rules; listed files wait their turn (tests/unit/ratchet.test.ts).
   {
     files: OPTIONAL_PROPERTY_FILES,
-    ignores: [...OPTIONAL_PROPERTY_IGNORES, ...RATCHET.optionalProperties],
+    ignores: OPTIONAL_PROPERTY_IGNORES,
     plugins: { style: stylePlugin },
     rules: { [STYLE_RULES.optionalProperties[0]]: STYLE_RULES.optionalProperties[1] }
   },

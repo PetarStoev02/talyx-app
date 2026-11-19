@@ -46,8 +46,8 @@ export interface MessageHit {
 /** A room, as much as a search needs of it. */
 export interface SearchRoom {
   room_id: string
-  members: { profile: string; member_id?: string }[]
-  disbanded_at?: number | null
+  members: { profile: string; member_id: string | null }[]
+  disbanded_at: number | null
 }
 
 export interface RoomLog {

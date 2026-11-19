@@ -1,9 +1,8 @@
 import { useEffect } from 'react'
 import { loadProviders, type ProvidersBackend } from '@features/providers/providers'
 import { hasProvider, knownFirstStep, type SetupStep } from '@features/setup/steps'
-import { useSetup } from '@features/setup/store'
+import { useEngine, useSetup } from '@features/setup/store'
 import { reportError } from '@shared/lib/report'
-import { useEngine } from '@features/setup/useEngine'
 
 /**
  * Where an unfinished setup starts; undefined until known. Reads whether a provider and an own bot

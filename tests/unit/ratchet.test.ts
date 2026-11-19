@@ -21,7 +21,6 @@ const R = 'src/renderer/src'
 const RATCHET_FILE = 'eslint.ratchet.mjs'
 // Each list's rule as the config runs it, and what to do instead of adding a file to the list.
 const RULES = {
-  optionalProperties: { rule: STYLE_RULES.optionalProperties, fix: 'write `T | null` instead' },
   stores: { rule: STYLE_RULES.stores, fix: "move the store into its feature's store.ts" }
 } as const
 type List = keyof typeof RULES

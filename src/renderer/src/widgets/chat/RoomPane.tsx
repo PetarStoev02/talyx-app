@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import { BotAvatar } from '@features/bots/BotAvatar'
+import { unknownBot } from '@features/bots/roster'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
 import { useRoster } from '@features/bots/store'
 import type { Room } from '@features/bots/types'
@@ -10,7 +11,7 @@ import { answering } from '@features/chat/room'
 import type { RoomActions } from '@features/chat/room'
 import { roomText } from '@features/chat/attachments'
 import { parseAttachmentKey, roomItems } from '@features/chat/roomLog'
-import { useRooms } from '@features/chat/roomStore'
+import { useRooms } from '@features/chat/store'
 import type { RoomTask, RoomView } from '@features/chat/types'
 import { useRoomPolling } from '@features/chat/useRoomPolling'
 import { useFocusLater } from '@shared/hooks/useFocusLater'
@@ -79,7 +80,7 @@ export function RoomPane({
   )
   useOnChange(modelRead, (read) => {
     if (!read) return
-    const members = read.memberKey.split(',').map((profile) => ({ profile }))
+    const members = read.memberKey.split(',').map((profile) => ({ profile, member_id: null }))
     void read.actions.readModel(roomId, members)
   })
 
@@ -198,7 +199,7 @@ export function RoomPane({
         {answering(room, view.phases).map((profile) => (
           <BotAvatar
             key={profile}
-            bot={bots.find((item) => item.name === profile) ?? { name: profile, meta: {} }}
+            bot={bots.find((item) => item.name === profile) ?? unknownBot(profile)}
             place="row"
             speaking
           />

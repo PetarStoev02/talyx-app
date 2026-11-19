@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { NO_META } from '../../../src/renderer/src/features/bots/roster'
 import { installFakeEngineApi } from '../engine/fakeEngineApi'
 
 describe('roster engine access', () => {
@@ -24,7 +25,7 @@ describe('roster engine access', () => {
     await host.connect()
     const bots = await backend?.listBots()
     expect(sent.at(-1)).toMatchObject({ method: 'profiles.list', params: { profile: 'default' } })
-    expect(bots?.[0].meta).toEqual({ title: 'Analyst' })
+    expect(bots?.[0].meta).toEqual({ ...NO_META, title: 'Analyst' })
     host.disconnect()
   })
 })

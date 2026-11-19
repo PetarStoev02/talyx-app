@@ -1,4 +1,3 @@
-import { create } from 'zustand'
 import { ENGINE_COMMAND } from '@contract/engine'
 import type { InstallExit, InstallSteps } from '@contract/setup'
 
@@ -12,58 +11,10 @@ export interface SetupBackend {
   recheckEngine: () => Promise<void>
 }
 
-// The output a screen keeps: the tail of a long install, enough to read or copy what went wrong.
-const MAX_OUTPUT_CHARS = 200_000
 // eslint-disable-next-line no-control-regex -- matching terminal escapes is the point
 const ANSI_CSI = /\x1b\[[0-9;?]*[A-Za-z]/g
 // A download the engine's installer gave up on, e.g. a TLS handshake a VPN or proxy broke.
 const DOWNLOAD_ERROR = /SSL:|WRONG_VERSION_NUMBER|urlopen error/
-
-interface InstallState {
-  steps: InstallSteps | null
-  output: string
-  running: boolean
-  exit: InstallExit | null
-  loadSteps: (backend: SetupBackend) => Promise<void>
-  start: (backend: SetupBackend) => Promise<void>
-  cancel: (backend: SetupBackend) => Promise<void>
-}
-
-// The window lives as long as the store does, so the listeners are never unsubscribed.
-const subscribed = new WeakSet<SetupBackend>()
-
-export const useInstall = create<InstallState>((set) => {
-  const subscribe = (backend: SetupBackend): void => {
-    if (subscribed.has(backend)) return
-    subscribed.add(backend)
-    backend.onOutput((_index, text) =>
-      set((state) => ({ output: (state.output + text).slice(-MAX_OUTPUT_CHARS) }))
-    )
-    backend.onExit((exit) => {
-      // Before the exit lands, so the screen shows the check rather than "cannot find the engine".
-      if (exit.kind === 'ok') void backend.recheckEngine()
-      set({ running: false, exit })
-    })
-  }
-  return {
-    steps: null,
-    output: '',
-    running: false,
-    exit: null,
-    loadSteps: async (backend) => set({ steps: await backend.installSteps() }),
-    start: async (backend) => {
-      subscribe(backend)
-      set({ output: '', exit: null, running: true })
-      try {
-        await backend.run()
-      } catch (error) {
-        set({ running: false })
-        throw error
-      }
-    },
-    cancel: (backend) => backend.cancel()
-  }
-})
 
 /**
  * The output as a terminal would show it: colour codes dropped, and a line redrawn with `\r` (a

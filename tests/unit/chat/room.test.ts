@@ -7,7 +7,7 @@ import {
   roomItems
 } from '../../../src/renderer/src/features/chat/roomLog'
 import { sendMentions, showMentions } from '../../../src/renderer/src/features/chat/mentions'
-import { useRooms } from '../../../src/renderer/src/features/chat/roomStore'
+import { useRooms } from '../../../src/renderer/src/features/chat/store'
 import type { RoomEvent, RoomView } from '../../../src/renderer/src/features/chat/types'
 import { t } from '../../../src/renderer/src/shared/lib/i18n'
 import { roomMember } from '../../../src/renderer/src/widgets/chat/roomPeople'

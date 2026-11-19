@@ -1,5 +1,5 @@
 import { LoaderCircle } from 'lucide-react'
-import { useEngine } from '@features/setup/useEngine'
+import { useEngine } from '@features/setup/store'
 import { useLanguage } from '@shared/lib/i18n'
 import { host } from '@shared/engine/host'
 import { useElapsed } from '@shared/hooks/useElapsed'

@@ -1,52 +1,59 @@
-// Undefined: a field another client wrote wrong (read), or a field a change removes (write).
+// Null: a field the bot's record does not hold, or holds in a shape Talyx cannot read (another
+// client wrote it). In a patch to saveBotMeta, null removes the field, except for the section.
 export interface BotMeta {
-  title?: string | undefined
-  description?: string | undefined
-  sectionId?: string | null | undefined
-  sectionName?: string | null | undefined
-  pinned?: boolean | undefined
-  pinnedOrder?: number | undefined
-  hidden?: boolean | undefined
+  title: string | null
+  description: string | null
+  // Stored as null for a bot outside every folder, as older clients read it.
+  sectionId: string | null
+  sectionName: string | null
+  pinned: boolean | null
+  pinnedOrder: number | null
+  hidden: boolean | null
   // The avatar: a block shape name and a hue index. Older clients stored other strings here.
-  shape?: string | undefined
-  color?: number | string | undefined
-  faces?: boolean | undefined
-  // Follows Talyx's model: a change of Talyx's model moves this bot too. Absent: its own model.
-  usesDefault?: boolean | undefined
+  shape: string | null
+  color: number | string | null
+  faces: boolean | null
+  // Follows Talyx's model: a change of Talyx's model moves this bot too. Null: its own model.
+  usesDefault: boolean | null
 }
 
 export interface SessionPreview {
-  id?: string | undefined
-  resolved_id?: string | undefined
-  last_active?: number | undefined
-  preview?: string | undefined
+  id: string | null
+  resolved_id: string | null
+  last_active: number | null
+  preview: string | null
 }
 
 export interface Bot {
   meta: BotMeta
   name: string
-  display_name?: string | undefined
-  title?: string | null | undefined
-  description?: string | undefined
-  canonical_session?: SessionPreview | null
-  last_session?: SessionPreview | null
-  ui_meta?: Record<string, unknown>
-  ui_meta_revisions?: Record<string, number>
+  display_name: string | null
+  title: string | null
+  description: string | null
+  canonical_session: SessionPreview | null
+  last_session: SessionPreview | null
+  ui_meta: Record<string, unknown> | null
+  ui_meta_revisions: Record<string, number> | null
 }
 
 export interface Folder {
   id: string
   name: string
-  parentId?: string
+  parentId: string | null
 }
 
 export interface Room {
   room_id: string
   name: string
-  members: { profile: string; member_id?: string; handle?: string; display_name?: string }[]
-  disbanded_at?: number | null
+  members: {
+    profile: string
+    member_id: string | null
+    handle: string | null
+    display_name: string | null
+  }[]
+  disbanded_at: number | null
   // The seq of the room's newest log row; a higher one than last seen is an unread message.
-  latest_seq?: number | null | undefined
+  latest_seq: number | null
 }
 
 export interface RosterSnapshot {

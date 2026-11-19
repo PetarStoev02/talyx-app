@@ -4,9 +4,9 @@ import {
   displayOutput,
   downloadFailed,
   hideEngineName,
-  useInstall,
   type SetupBackend
 } from '@features/setup/install'
+import { useInstall } from '@features/setup/store'
 
 const ready: InstallSteps = {
   kind: 'ready',
