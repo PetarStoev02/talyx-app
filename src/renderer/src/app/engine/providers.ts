@@ -330,7 +330,7 @@ export function engineProvidersBackend(
       })
       return models.map((row) => ({
         model: row.model,
-        ...billedTo(row.provider),
+        ...billedTo(row.provider, null),
         tokens: (row.input_tokens ?? 0) + (row.output_tokens ?? 0),
         requests: row.api_calls ?? 0
       }))
@@ -345,7 +345,8 @@ export function engineProvidersBackend(
             profile,
             read.rows.map((row) => ({
               day: row.day,
-              ...billedTo(row.provider ?? ''),
+              model: row.model,
+              ...billedTo(row.provider ?? '', row.base_url),
               tokens: (row.input_tokens ?? 0) + (row.output_tokens ?? 0),
               requests: row.api_calls ?? 0
             }))
@@ -413,14 +414,16 @@ function turnEnd(payload: MessageCompletePayload = {}): TurnEnd {
 }
 
 /**
- * The engine bills the bare custom endpoint as `custom` (its id) and a named one as
- * `custom:<name>`; any other value is a provider id, and an empty one is no provider.
+ * The engine bills every custom endpoint, bare or named, as `custom` (the bare one's id), with the
+ * endpoint's base URL beside it when the row has one; a `custom:<name>` row names the endpoint.
+ * Any other value is a provider id, and an empty one is no provider.
  */
-function billedTo(provider: string): Billed {
-  if (provider === BARE_CUSTOM) return { provider: null, endpoint: BARE_CUSTOM }
+function billedTo(provider: string, baseUrl: string | null): Billed {
+  if (provider === BARE_CUSTOM)
+    return { provider: null, endpoint: BARE_CUSTOM, baseUrl: baseUrl || null }
   if (provider.startsWith(`${BARE_CUSTOM}:`))
-    return { provider: null, endpoint: provider.slice(BARE_CUSTOM.length + 1) }
-  return { provider: provider || null, endpoint: null }
+    return { provider: null, endpoint: provider.slice(BARE_CUSTOM.length + 1), baseUrl: null }
+  return { provider: provider || null, endpoint: null, baseUrl: null }
 }
 
 /** Builds the provider key list from the engine's env catalog, one slot per provider. */

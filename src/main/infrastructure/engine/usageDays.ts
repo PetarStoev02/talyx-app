@@ -18,7 +18,9 @@ const BotDaysSchema: z.ZodType<BotDays> = z.union([
     rows: z.array(
       z.object({
         day: z.string(),
+        model: z.string(),
         provider: z.string().nullable(),
+        base_url: z.string(),
         input_tokens: z.number().nullable(),
         output_tokens: z.number().nullable(),
         api_calls: z.number().nullable()

@@ -55,19 +55,21 @@ export interface ProvidersBackend {
   /** What one bot ran over the last `days`, one row per model and provider. */
   usage: (profile: string, days: number) => Promise<ModelUsage[]>
   /**
-   * What each bot used per local day and provider over the last `days`; days with none are left
-   * out, and a bot whose usage could not be read is null.
+   * What each bot used per local day, model and provider over the last `days`; days with none are
+   * left out, and a bot whose usage could not be read is null.
    */
   dailyUsage: (profiles: string[], days: number) => Promise<Record<string, BilledDay[] | null>>
 }
 
 /**
  * Who a usage ran on: a provider (its id, as an account's or a key's `providerId`) or a custom
- * endpoint (its id or name), or neither when the engine recorded no provider.
+ * endpoint (its id or name), or neither when the engine recorded no provider. `baseUrl` is where a
+ * custom endpoint's calls went, when known: the engine bills every endpoint as the bare `custom`.
  */
 export interface Billed {
   provider: string | null
   endpoint: string | null
+  baseUrl: string | null
 }
 
 /** One local day's usage, `day` as YYYY-MM-DD; tokens are input plus output. */
@@ -77,7 +79,7 @@ export interface DayUsage {
   requests: number
 }
 
-export interface BilledDay extends DayUsage, Billed {}
+export interface BilledDay extends DayUsage, ModelUsage {}
 
 /** One model's usage on one bot; tokens are input plus output. */
 export interface ModelUsage extends Billed {

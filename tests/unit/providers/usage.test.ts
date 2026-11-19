@@ -303,6 +303,80 @@ describe('provider usage', () => {
     ])
   })
 
+  describe('an endpoint the engine billed as custom, by its base URL', () => {
+    const NINE = 'http://localhost:20128/v1'
+    const named = (
+      id: string,
+      baseUrl: string
+    ): (typeof engine.profiles)[string]['endpoints'][number] => ({
+      ...ROUTER,
+      id,
+      name: id,
+      base_url: baseUrl,
+      is_current: false,
+      source: 'providers'
+    })
+    const billed = (patch: Partial<DailyRow>): DailyRow => ({
+      day: '2026-11-15',
+      model: 'm',
+      provider: 'custom',
+      base_url: NINE,
+      input_tokens: 90,
+      output_tokens: 10,
+      api_calls: 1,
+      ...patch
+    })
+
+    it('should show its usage under the endpoint, with no custom row', async () => {
+      engine.profiles[HOME].endpoints.push(named('nine-router', NINE))
+      engine.profiles[HOME].daily = [
+        billed({ model: '9-route-provider' }),
+        billed({ model: 'gpt-6-sol', base_url: `${NINE}/`, api_calls: 2 })
+      ]
+
+      const { providers, models } = await usage()
+
+      expect(withoutIds(providers)).toEqual([
+        { name: 'Custom', usage: null },
+        { name: 'nine-router', usage: { tokens: 200, requests: 3 } }
+      ])
+      expect(withoutIds(models).map((model) => [model.model, model.provider])).toEqual([
+        ['gpt-6-sol', 'nine-router'],
+        ['9-route-provider', 'nine-router']
+      ])
+    })
+
+    it('should give two endpoints on different URLs each its own usage', async () => {
+      engine.profiles[HOME].endpoints.push(named('nine-router', NINE))
+      engine.profiles[HOME].endpoints.push(named('lab', 'http://10.0.0.2:8000/v1'))
+      engine.profiles[HOME].daily = [
+        billed({}),
+        billed({ base_url: 'http://10.0.0.2:8000/v1', input_tokens: 5, output_tokens: 5 })
+      ]
+
+      const providers = withoutIds((await usage()).providers)
+
+      expect(providers).toEqual([
+        { name: 'Custom', usage: null },
+        { name: 'nine-router', usage: { tokens: 100, requests: 1 } },
+        { name: 'lab', usage: { tokens: 10, requests: 1 } }
+      ])
+    })
+
+    it('should list usage on a URL no endpoint has as custom, its own row', async () => {
+      engine.profiles[HOME].endpoints.push(named('nine-router', NINE))
+      engine.profiles[HOME].daily = [billed({ base_url: 'http://10.9.9.9/v1' })]
+
+      const providers = withoutIds((await usage()).providers)
+
+      expect(providers).toEqual([
+        { name: 'Custom', usage: null },
+        { name: 'nine-router', usage: null },
+        { name: 'custom', usage: { tokens: 100, requests: 1 } }
+      ])
+    })
+  })
+
   describe('per provider', () => {
     it('should give each provider its own id and its models', async () => {
       engine.profiles[HOME].env.OPENAI_API_KEY = 'sk-openai'
@@ -338,7 +412,9 @@ describe('provider usage', () => {
   describe('per day', () => {
     const day = (patch: Partial<DailyRow>): DailyRow => ({
       day: '2026-11-15',
+      model: ROUTER.model,
       provider: 'custom',
+      base_url: '',
       input_tokens: 90,
       output_tokens: 10,
       api_calls: 1,
@@ -386,14 +462,14 @@ describe('provider usage', () => {
 
     it("should keep a bot's totals when only its days cannot be read, and name it", async () => {
       engine.profiles[HOME].usage = [row()]
-      engine.profiles[HOME].daily = [day({})]
+      engine.profiles[HOME].daily = [day({ input_tokens: 900, output_tokens: 100, api_calls: 2 })]
       engine.profiles.writer.usage = [row({ input_tokens: 40, output_tokens: 0, api_calls: 1 })]
       engine.profiles.writer.daily = null
 
       const report = await usage()
 
       expect(report.total).toEqual({ tokens: 1040, requests: 3 })
-      expect(daysOf(report.days!, null)).toEqual([{ day: '2026-11-15', tokens: 100, requests: 1 }])
+      expect(daysOf(report.days!, null)).toEqual([{ day: '2026-11-15', tokens: 1000, requests: 2 }])
       expect(report.unread).toEqual([])
       expect(report.daysUnread).toEqual(['writer'])
     })

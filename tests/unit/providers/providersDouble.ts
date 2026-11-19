@@ -46,14 +46,17 @@ export interface ProfileConfig {
   model: { provider: string; model: string }
   /** What the bot ran in the period, one row per model and provider; null: its store is unreadable. */
   usage: UsageRow[] | null
-  /** The bot's usage per local day and billing provider, as Talyx's engine plugin reads it; null:
-   *  the plugin cannot read its store. */
+  /** The bot's usage per local day, model, billing provider and base URL, as Talyx's engine plugin
+   *  reads it; empty: one day per `usage` row, as the store behind both would hold; null: the
+   *  plugin cannot read its store. */
   daily: DailyRow[] | null
 }
 
 export interface DailyRow {
   day: string
+  model: string
   provider: string
+  base_url: string
   input_tokens: number
   output_tokens: number
   api_calls: number
@@ -162,6 +165,11 @@ export const ROUTER: CustomEndpoint = {
   api_key_preview: '${ROUTER_API_KEY}',
   is_current: true,
   source: 'direct-config'
+}
+
+// A per-model row as the plugin reads the same store: on one day, under no recorded base URL.
+function asDay(row: UsageRow): DailyRow {
+  return { ...row, day: '2026-11-15', base_url: '' }
 }
 
 // In-memory engine: env keys, custom endpoints and the main model per profile; OAuth on the home.
@@ -541,7 +549,7 @@ export function providersDouble(names = [HOME, 'analyst', 'writer']): ProvidersD
               return [
                 name,
                 config.usage && config.daily
-                  ? { rows: config.daily }
+                  ? { rows: config.daily.length ? config.daily : config.usage.map(asDay) }
                   : { error: 'store unreadable' }
               ]
             })

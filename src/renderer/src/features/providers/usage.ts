@@ -1,4 +1,9 @@
-import { CONFIG_YAML_SOURCE, namedTwinOfBare } from '@shared/engine/endpoints'
+import {
+  BARE_CUSTOM,
+  CONFIG_YAML_SOURCE,
+  namedTwinOfBare,
+  sameBaseUrl
+} from '@shared/engine/endpoints'
 import type {
   Billed,
   BilledDay,
@@ -119,6 +124,8 @@ const ZERO: Counts = { tokens: 0, requests: 0 }
 
 // A bot whose totals cannot be read is left out; one whose days alone cannot be read keeps its
 // totals and is left out of the days. When no day can be read at all, the totals stand alone.
+// A bot's totals are its days summed when they were read: the engine's per-model totals follow the
+// same rules but leave out the base URL, the only thing that tells two custom endpoints apart.
 async function readBots(
   backend: Backend,
   days: number
@@ -148,7 +155,7 @@ async function readBots(
   const read = profiles.filter((profile) => !unread.includes(profile))
   const dayless = perDay.read ? read.filter((profile) => !perDay.read?.[profile]) : []
   return {
-    rows: models.flatMap((model) => model.rows ?? []),
+    rows: models.flatMap(({ profile, rows }) => (rows ? (perDay.read?.[profile] ?? rows) : [])),
     days: perDay.read && read.flatMap((profile) => perDay.read?.[profile] ?? []),
     daysProblem: perDay.problem,
     daysUnread: dayless,
@@ -209,13 +216,16 @@ function sumDays(days: ProviderDay[]): ProviderDay[] {
 // One owner per provider: one with a key and a sign-in, or two sign-ins, shows under the first.
 function listedProviders(overview: ProvidersOverview, twin: string | null): Owner[] {
   const endpoints = overview.endpoints.map((endpoint): Owner => {
-    // The engine bills a named endpoint as its name, lowercased with spaces as dashes.
+    // A row with no base URL names its endpoint: by id, or by name lowercased with dashes.
     const ids = [endpoint.id, endpoint.name.toLowerCase().replace(/ /g, '-')]
     if (twin && endpoint.source === CONFIG_YAML_SOURCE) ids.push(twin)
     return {
       id: `endpoint:${endpoint.id}`,
       name: endpoint.name,
-      owns: (row) => row.endpoint !== null && ids.includes(row.endpoint)
+      owns: (row) =>
+        row.endpoint === BARE_CUSTOM && row.baseUrl !== null
+          ? sameBaseUrl(row.baseUrl, endpoint.base_url)
+          : row.endpoint !== null && ids.includes(row.endpoint)
     }
   })
   const byProvider = new Map<string, Owner>()
