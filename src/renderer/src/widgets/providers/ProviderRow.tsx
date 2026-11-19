@@ -2,7 +2,7 @@ import { X } from 'lucide-react'
 import { useLanguage } from '@shared/lib/i18n'
 
 /** One provider in the list: its name, a badge, its lines, and its actions. */
-export function Row({
+export function ProviderRow({
   title,
   badge = null,
   lines,

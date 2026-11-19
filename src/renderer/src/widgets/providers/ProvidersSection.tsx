@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import {
@@ -32,7 +32,7 @@ import { reportError } from '@shared/lib/report'
 import { cn } from '@shared/lib/utils'
 import { reportFlagged, reportSpread } from '@features/bots/spread'
 import { failureText } from './feedback'
-import { EndpointModels, Row } from './ProviderRow'
+import { EndpointModels, ProviderRow } from './ProviderRow'
 
 const linkClass =
   'text-sm underline underline-offset-4 hover:decoration-2 disabled:opacity-50 disabled:hover:decoration-1'
@@ -78,10 +78,10 @@ export function ProvidersSection({
   const [revealed, setRevealed] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const arrival = useArrival(!overview && !problem)
-  // Each overview that loads, told to the latest callback, so a new one does not reload the list.
-  useOnChange(overview, (loaded) => {
-    if (loaded) onOverview?.(loaded)
-  })
+  // The latest callback, read when a load lands (even after this closed), so a new one each
+  // render does not reload the list.
+  const reportOverview = useRef(onOverview)
+  reportOverview.current = onOverview
 
   const load = useCallback(
     (): Promise<void> =>
@@ -89,6 +89,7 @@ export function ProvidersSection({
         (next) => {
           setOverview(next)
           setProblem(null)
+          reportOverview.current?.(next)
           // A revealed value may be stale now, and every model menu must load the new list.
           setRevealed({})
           chat?.forgetModels()
@@ -107,6 +108,7 @@ export function ProvidersSection({
       (next) => {
         setOverview(next)
         setProblem(null)
+        reportOverview.current?.(next)
       },
       (error: unknown) => reportError('providers', error)
     )
@@ -199,7 +201,7 @@ export function ProvidersSection({
         ) : (
           <ul className={cn('space-y-2', arrival)}>
             {overview.endpoints.map((endpoint) => (
-              <Row
+              <ProviderRow
                 key={`endpoint:${endpoint.id}`}
                 title={endpoint.name}
                 badge={endpoint.is_current ? t('providers.active') : null}
@@ -230,10 +232,10 @@ export function ProvidersSection({
                     {t('providers.remove')}
                   </button>
                 )}
-              </Row>
+              </ProviderRow>
             ))}
             {keys.map((slot) => (
-              <Row
+              <ProviderRow
                 key={`key:${slot.provider}`}
                 title={slot.provider}
                 lines={[
@@ -248,10 +250,10 @@ export function ProvidersSection({
                 <button className={linkClass} onClick={() => setRemoving({ kind: 'key', slot })}>
                   {t('providers.remove')}
                 </button>
-              </Row>
+              </ProviderRow>
             ))}
             {accounts.map((account) => (
-              <Row
+              <ProviderRow
                 key={`account:${account.id}`}
                 title={account.name}
                 badge={t('providers.signedIn')}
@@ -265,7 +267,7 @@ export function ProvidersSection({
                     {t('providers.disconnect')}
                   </button>
                 )}
-              </Row>
+              </ProviderRow>
             ))}
           </ul>
         )}
