@@ -1,30 +1,14 @@
-import { execFileSync } from 'child_process'
-import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
-import { tmpdir } from 'os'
-import path from 'path'
-import { pathToFileURL } from 'url'
-import { ESLint, Linter } from 'eslint'
-import tseslint from 'typescript-eslint'
+import { ESLint } from 'eslint'
 import { describe, expect, it } from 'vitest'
-import { EFFECT_MESSAGE, KERNEL, TIMER_MESSAGE, kernelPlugin } from '../../eslint.kernel.mjs'
-import { RATCHET } from '../../eslint.ratchet.mjs'
+import { EFFECT_MESSAGE, KERNEL, TIMER_MESSAGE } from '../../eslint.kernel.mjs'
 import {
   DEFAULT_EXPORT_MESSAGE,
   OPTIONAL_PROPERTY_MESSAGE,
   STORE_MESSAGE,
-  STYLE_RULES,
-  magicNumberMessage,
-  stylePlugin
+  magicNumberMessage
 } from '../../eslint.style.mjs'
 
 const R = 'src/renderer/src'
-const RATCHET_FILE = 'eslint.ratchet.mjs'
-// Each list's rule as the config runs it, and what to do instead of adding a file to the list.
-const RULES = {
-  stores: { rule: STYLE_RULES.stores, fix: "move the store into its feature's store.ts" }
-} as const
-type List = keyof typeof RULES
-const LISTS = Object.keys(RULES) as List[]
 
 // The whole config, so these cases also prove which paths the rules reach.
 const eslint = new ESLint()
@@ -40,64 +24,6 @@ const kernelErrors = (filePath: string, source: string): Promise<string[]> =>
   errorsOf('kernel', filePath, source)
 const styleErrors = (filePath: string, source: string): Promise<string[]> =>
   errorsOf('style', filePath, source)
-
-/** Whether `file` still breaks `list`'s rule, read without the allowlist that exempts it. */
-function stillViolates(file: string, list: List): boolean {
-  const linter = new Linter({ configType: 'flat' })
-  const messages = linter.verify(
-    readFileSync(file, 'utf8'),
-    [
-      {
-        files: ['**/*.{js,jsx,ts,tsx}'],
-        // A disable comment must not make a listed file look clean.
-        linterOptions: { noInlineConfig: true },
-        languageOptions: {
-          parser: tseslint.parser,
-          parserOptions: { ecmaFeatures: { jsx: true } }
-        },
-        plugins: { kernel: kernelPlugin, style: stylePlugin },
-        rules: { [RULES[list].rule[0]]: RULES[list].rule[1] }
-      }
-    ],
-    file
-  )
-  // Anything but the rule's own report (a parse error, no matching config) must not pass.
-  // Warnings are left out: noInlineConfig warns about each disable comment it ignores.
-  const other = messages.find(
-    (message) => message.severity === 2 && message.ruleId !== RULES[list].rule[0]
-  )
-  if (other) throw new Error(`${file}: ${other.message}`)
-  return messages.some((message) => message.ruleId === RULES[list].rule[0])
-}
-
-function git(...args: string[]): string {
-  return execFileSync('git', args, { encoding: 'utf8' }).trim()
-}
-
-/**
- * The lists as they are where this branch left main; on main itself, as they were one commit
- * before. Null when the base has no ratchet yet (the change that adds it). A missing main ref
- * or base commit fails (a shallow clone): a skipped check would pass any growth.
- */
-async function baseRatchet(): Promise<typeof RATCHET | null> {
-  const forkPoint = git('merge-base', 'HEAD', 'origin/main')
-  const base = forkPoint === git('rev-parse', 'HEAD') ? `${forkPoint}~1` : forkPoint
-  try {
-    git('rev-parse', '--verify', '--quiet', `${base}^{commit}`)
-  } catch {
-    throw new Error(
-      `No commit ${base} in this clone: check out with full history (fetch-depth: 0).`
-    )
-  }
-  try {
-    git('cat-file', '-e', `${base}:${RATCHET_FILE}`)
-  } catch {
-    return null
-  }
-  const copy = path.join(mkdtempSync(path.join(tmpdir(), 'ratchet-')), RATCHET_FILE)
-  writeFileSync(copy, git('show', `${base}:${RATCHET_FILE}`))
-  return ((await import(pathToFileURL(copy).href)) as { RATCHET: typeof RATCHET }).RATCHET
-}
 
 describe('kernel rules', () => {
   it.each([
@@ -284,24 +210,5 @@ describe('style rules', () => {
   it('should leave numbers alone outside main and the features', async () => {
     const source = 'export const f = (n: number): number => n * 60'
     expect(await styleErrors(`${R}/widgets/chat/x.ts`, source)).toEqual([])
-  })
-})
-
-describe('ratchet', () => {
-  it.each(LISTS.flatMap((list) => RATCHET[list].map((file) => [list, file] as const)))(
-    'should list only files that still break the rule: %s %s (else remove it from the list)',
-    (list, file) => {
-      expect(stillViolates(file, list)).toBe(true)
-    }
-  )
-
-  it('should gain no file that the list did not have where this branch left main', async () => {
-    const base = await baseRatchet()
-    for (const list of LISTS) {
-      // A list main does not have yet comes with the change that adds its rule.
-      const baseList = base?.[list]
-      const added = RATCHET[list].filter((file) => baseList && !baseList.includes(file))
-      expect(added, `${list}: ${RULES[list].fix}`).toEqual([])
-    }
   })
 })

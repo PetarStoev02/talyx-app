@@ -9,7 +9,6 @@ import { builtinModules } from 'node:module'
 import path from 'node:path'
 import { VENDORED_ENGINE_FILES } from './eslint.vendored.mjs'
 import { KERNEL, PRODUCT, kernelPlugin } from './eslint.kernel.mjs'
-import { RATCHET } from './eslint.ratchet.mjs'
 import {
   DEFAULT_EXPORT_IGNORES,
   MAGIC_NUMBER_FILES,
@@ -289,7 +288,7 @@ export default defineConfig(
     }
   },
   layerBoundaries,
-  // Effects and timers only in the kernel (tests/unit/ratchet.test.ts).
+  // Effects and timers only in the kernel (tests/unit/lintRules.test.ts).
   {
     files: PRODUCT,
     ignores: KERNEL,
@@ -302,7 +301,7 @@ export default defineConfig(
     plugins: { kernel: kernelPlugin },
     rules: { 'kernel/no-timer': 'error' }
   },
-  // CLAUDE.md style rules; listed files wait their turn (tests/unit/ratchet.test.ts).
+  // CLAUDE.md style rules (tests/unit/lintRules.test.ts).
   {
     files: OPTIONAL_PROPERTY_FILES,
     ignores: OPTIONAL_PROPERTY_IGNORES,
@@ -316,7 +315,7 @@ export default defineConfig(
   },
   {
     files: STORE_FILES,
-    ignores: [...STORE_HOMES, ...RATCHET.stores],
+    ignores: STORE_HOMES,
     plugins: { style: stylePlugin },
     rules: { [STYLE_RULES.stores[0]]: STYLE_RULES.stores[1] }
   },

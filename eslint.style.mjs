@@ -1,5 +1,4 @@
-// CLAUDE.md style rules as lint. Each message names the fix. Files from before a rule wait their
-// turn in eslint.ratchet.mjs (tests/unit/ratchet.test.ts).
+// CLAUDE.md style rules as lint. Each message names the fix (cases in tests/unit/lintRules.test.ts).
 import tseslint from '@electron-toolkit/eslint-config-ts'
 
 export const OPTIONAL_PROPERTY_MESSAGE =
