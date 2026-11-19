@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Search } from 'lucide-react'
 import {
@@ -8,6 +7,7 @@ import {
   SHORTCUTS,
   shortcutOf
 } from '@features/shortcuts/shortcuts'
+import { useWindowEvent } from '@shared/hooks/useSubscription'
 import { IconButton } from '@shared/ui/IconButton'
 
 const platform = platformOf(navigator.platform)
@@ -41,16 +41,11 @@ export function FindSlot({
   children: React.ReactNode
 }): React.JSX.Element | null {
   const open = !!children
-  useEffect(() => {
-    if (open) return
-    function onKey(event: KeyboardEvent): void {
-      if (shortcutOf(event, platform) !== 'searchChat' || dialogOpen()) return
-      event.preventDefault()
-      onOpen()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onOpen])
+  useWindowEvent('keydown', (event) => {
+    if (open || shortcutOf(event, platform) !== 'searchChat' || dialogOpen()) return
+    event.preventDefault()
+    onOpen()
+  })
 
   if (!slot) return null
   return createPortal(

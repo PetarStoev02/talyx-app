@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useClock } from '@shared/hooks/useClock'
 import { useLanguage } from '@shared/lib/i18n'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import { botTitle } from '@features/bots/roster'
@@ -24,15 +25,11 @@ export function ActivityLine({
   wait: string | null
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const [started] = useState(() => Date.now())
-  const [now, setNow] = useState(started)
+  const now = useClock(SECOND_MS)
+  const [started] = useState(now)
   // When the current wait notice came in: its retry time counts from then.
   const [waited, setWaited] = useState({ wait, since: started })
   if (waited.wait !== wait) setWaited({ wait, since: Date.now() })
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), SECOND_MS)
-    return () => clearInterval(timer)
-  }, [])
   const { tool, tools } = activity
   const target = useRoster((state) =>
     tool?.target ? state.snapshot.bots.find((each) => each.name === tool.target) : undefined

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { toast } from 'sonner'
+import { useFlash } from '@shared/hooks/useFlash'
 import { useLanguage } from '@shared/lib/i18n'
 
 const COPIED_MS = 1500
@@ -13,21 +14,12 @@ const COPIED_MS = 1500
 export function CodeBlock({ children }: { children?: React.ReactNode }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const code = useRef<HTMLPreElement>(null)
-  const [copied, setCopied] = useState(false)
-
-  useEffect(() => {
-    if (!copied) return
-    const timer = setTimeout(() => setCopied(false), COPIED_MS)
-    return () => clearTimeout(timer)
-  }, [copied])
+  const [copied, showCopied] = useFlash(COPIED_MS)
 
   function copy(): void {
     // The block ends in the newline that closed its fence; the copy does not.
     const text = (code.current?.textContent ?? '').replace(/\n$/, '')
-    navigator.clipboard.writeText(text).then(
-      () => setCopied(true),
-      () => toast.error(t('chat.copyFailed'))
-    )
+    navigator.clipboard.writeText(text).then(showCopied, () => toast.error(t('chat.copyFailed')))
   }
 
   return (
