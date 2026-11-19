@@ -96,8 +96,7 @@ Each line is the rule; the check's message names the fix.
 - No default exports outside config files: `npm run lint` (`eslint.style.mjs`).
 - A Zustand store lives only in a feature's `store.ts` (or `app/`): `npm run lint`
   (`eslint.style.mjs`, ratchet as above).
-- No magic numbers in `src/main` and `features/`: `npm run lint` (`eslint.style.mjs`, ratchet as
-  above).
+- No magic numbers in `src/main` and `features/`: `npm run lint` (`eslint.style.mjs`).
 - `ipcMain.handle` only inside `handle()`, and channel types only from `src/shared/channels.ts`:
   `npm run lint` and `npm run typecheck`.
 - No em dash (U+2014) outside the vendored engine files: `npm run lint` and

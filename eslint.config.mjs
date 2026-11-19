@@ -310,7 +310,6 @@ export default defineConfig(
   },
   {
     files: MAGIC_NUMBER_FILES,
-    ignores: RATCHET.magicNumbers,
     plugins: { style: stylePlugin },
     rules: { [STYLE_RULES.magicNumbers[0]]: STYLE_RULES.magicNumbers[1] }
   },
