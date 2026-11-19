@@ -11,7 +11,7 @@ import {
   DialogDescription,
   DialogTitle
 } from '@shared/ui/dialog'
-import { useCreating } from './creating'
+import { useCreating } from '@features/bots/store'
 
 // Mounted only while open, so the form starts empty each time and survives a failed create.
 export function CreateBotDialog({

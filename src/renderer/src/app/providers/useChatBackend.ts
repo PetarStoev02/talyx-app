@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRoster } from '@features/bots/store'
 import { chatActions } from '@features/chat/chat'
-import { useCompletionSound } from '@features/chat/completionSound'
+import { loadCompletionSound } from '@features/chat/completionSound'
 import type { ChatActions } from '@features/chat/chat'
 import { activityOf, handleEvent, promptHandler } from '@features/chat/events'
 import type { ChatUpdate } from '@features/chat/events'
@@ -30,10 +30,7 @@ export function useChatBackend(): ChatActions | null {
   useEffect(() => useRoster.subscribe(forgetDeleted), [])
 
   useEffect(() => {
-    useCompletionSound
-      .getState()
-      .load()
-      .catch((error: unknown) => reportError('settings', error))
+    loadCompletionSound().catch((error: unknown) => reportError('settings', error))
   }, [])
 
   const actions = useMemo(

@@ -11,12 +11,15 @@ vi.mock('@shared/api/ipc', () => ({
 
 import { chatActions } from '../../../src/renderer/src/features/chat/chat'
 import type { ChatActions } from '../../../src/renderer/src/features/chat/chat'
-import { useCompletionSound } from '../../../src/renderer/src/features/chat/completionSound'
+import {
+  loadCompletionSound,
+  setCompletionSound
+} from '../../../src/renderer/src/features/chat/completionSound'
 import { handleEvent } from '../../../src/renderer/src/features/chat/events'
 import { roomActions } from '../../../src/renderer/src/features/chat/room'
 import type { RoomActions } from '../../../src/renderer/src/features/chat/room'
 import { useRooms } from '../../../src/renderer/src/features/chat/roomStore'
-import { useChat } from '../../../src/renderer/src/features/chat/store'
+import { useChat, useCompletionSound } from '../../../src/renderer/src/features/chat/store'
 import { playChime } from '../../../src/renderer/src/shared/lib/chime'
 import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/shared'
 import { chatDouble } from './chatDouble'
@@ -50,14 +53,14 @@ beforeEach(async () => {
 describe('completion sound', () => {
   describe('setting', () => {
     it('should be off until the user turns it on', async () => {
-      await useCompletionSound.getState().load()
+      await loadCompletionSound()
       expect(useCompletionSound.getState().enabled).toBe(false)
     })
 
     it('should save the choice so the next launch reads it back', async () => {
-      await useCompletionSound.getState().setEnabled(true)
+      await setCompletionSound(true)
       useCompletionSound.setState({ enabled: false })
-      await useCompletionSound.getState().load()
+      await loadCompletionSound()
       expect(useCompletionSound.getState().enabled).toBe(true)
     })
   })

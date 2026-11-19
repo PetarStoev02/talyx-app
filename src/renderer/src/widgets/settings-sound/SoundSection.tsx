@@ -1,6 +1,7 @@
 import { toast } from 'sonner'
 import { useLanguage } from '@shared/lib/i18n'
-import { useCompletionSound } from '@features/chat/completionSound'
+import { setCompletionSound } from '@features/chat/completionSound'
+import { useCompletionSound } from '@features/chat/store'
 import { reportError } from '@shared/lib/report'
 import { Switch } from '@shared/ui/switch'
 
@@ -11,7 +12,7 @@ export function SoundSection(): React.JSX.Element {
 
   async function change(next: boolean): Promise<void> {
     try {
-      await useCompletionSound.getState().setEnabled(next)
+      await setCompletionSound(next)
     } catch (error) {
       reportError('settings', error)
       toast.error(t('settings.errorCompletionSound'))

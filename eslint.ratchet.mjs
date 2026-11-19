@@ -37,5 +37,16 @@ export const RATCHET = {
     'src/renderer/src/features/providers/providers.ts',
     'src/renderer/src/features/providers/usage.ts',
     'src/renderer/src/features/updates/items.ts'
+  ],
+  stores: [
+    'src/renderer/src/features/bots/approvals.ts',
+    'src/renderer/src/features/bots/details.ts',
+    'src/renderer/src/features/chat/roomStore.ts',
+    'src/renderer/src/features/modules/useNavigation.ts',
+    'src/renderer/src/features/settings/sections.ts',
+    'src/renderer/src/features/setup/install.ts',
+    'src/renderer/src/features/setup/useEngine.ts',
+    'src/renderer/src/shared/lib/i18n.ts',
+    'src/renderer/src/widgets/shortcuts/useCheatSheet.ts'
   ]
 }

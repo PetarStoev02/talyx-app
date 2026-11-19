@@ -6,6 +6,8 @@ export const OPTIONAL_PROPERTY_MESSAGE =
   'No optional properties: write `name: T | null` and set null when there is none.'
 export const DEFAULT_EXPORT_MESSAGE =
   'Use a named export (`export function Name` or `export const name`); only config files export a default.'
+export const STORE_MESSAGE =
+  "A Zustand store lives in its feature's store.ts, and the use cases that load or save it sit in front of it (features/chat/chat.ts). Move it there."
 export const magicNumberMessage = (raw) =>
   `Magic number ${raw}: name it as a constant (\`const WHAT_IT_MEANS = ${raw}\`).`
 
@@ -15,6 +17,9 @@ export const OPTIONAL_PROPERTY_FILES = [
   'src/renderer/src/features/**/*.{ts,tsx}'
 ]
 export const MAGIC_NUMBER_FILES = ['src/main/**/*.ts', 'src/renderer/src/features/**/*.{ts,tsx}']
+// A store's homes: a feature's store.ts, and the app's wiring.
+export const STORE_FILES = ['src/renderer/src/**/*.{ts,tsx}']
+export const STORE_HOMES = ['src/renderer/src/features/*/store.ts', 'src/renderer/src/app/**']
 // An ambient `declare module` mirrors a bundler's default export, so .d.ts files are exempt.
 export const DEFAULT_EXPORT_IGNORES = ['**/*.config.{js,mjs,cjs,ts}', '**/*.d.ts']
 
@@ -61,6 +66,17 @@ export const stylePlugin = {
         }
       }
     },
+    'no-stray-store': {
+      meta: { type: 'suggestion', schema: [] },
+      create(context) {
+        return {
+          // A type from zustand makes no store.
+          'ImportDeclaration[source.value="zustand"][importKind!="type"]'(node) {
+            context.report({ node, message: STORE_MESSAGE })
+          }
+        }
+      }
+    },
     'no-default-export': {
       meta: { type: 'suggestion', schema: [] },
       create(context) {
@@ -87,5 +103,6 @@ export const stylePlugin = {
 
 export const STYLE_RULES = {
   optionalProperties: ['style/no-optional-property', 'error'],
-  magicNumbers: ['style/no-magic-numbers', ['error', MAGIC_NUMBER_OPTIONS]]
+  magicNumbers: ['style/no-magic-numbers', ['error', MAGIC_NUMBER_OPTIONS]],
+  stores: ['style/no-stray-store', 'error']
 }

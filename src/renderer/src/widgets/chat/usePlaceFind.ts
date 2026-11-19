@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
-import type { SearchPlace } from '@features/chat/botSearch'
-import { findIn, useFind } from '@features/chat/findStore'
-import type { FindRequest } from '@features/chat/findStore'
+import { findIn } from '@features/chat/botSearch'
+import type { FindRequest, SearchPlace } from '@features/chat/botSearch'
+import { useFind } from '@features/chat/store'
 
 /** The find open in this chat or room (AgentsPage ends it when another is selected). */
 export function usePlaceFind(

@@ -22,6 +22,17 @@ export function samePlace(a: SearchPlace, b: SearchPlace): boolean {
  * A message that has the query: where it is, its id there, whether you wrote it, its text as the
  * chat shows it, and the first match in that text.
  */
+/** A find to open in a chat or room: the words, and the message to start at (none: the first). */
+export interface FindRequest {
+  place: SearchPlace
+  query: string
+  messageId: string | null
+}
+
+export function findIn(request: FindRequest | null, place: SearchPlace): FindRequest | null {
+  return request && samePlace(request.place, place) ? request : null
+}
+
 export interface MessageHit {
   place: SearchPlace
   messageId: string
