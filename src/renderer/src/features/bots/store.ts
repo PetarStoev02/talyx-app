@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { SECOND_MS } from '@shared/lib/time'
 import type { RosterProblem } from './roster'
 import type { BotActivity, Room, RosterRowRef, RosterSnapshot, Selection } from './types'
 
@@ -117,7 +118,7 @@ function leftAt(
   seen: Record<string, number>
 ): Record<string, number> {
   if (previous?.kind !== 'bot' || (next?.kind === 'bot' && next.id === previous.id)) return seen
-  return { ...seen, [previous.id]: Math.max(seen[previous.id] ?? 0, Date.now() / 1000) }
+  return { ...seen, [previous.id]: Math.max(seen[previous.id] ?? 0, Date.now() / SECOND_MS) }
 }
 
 export type Creating = 'bot' | 'room' | 'folder' | null

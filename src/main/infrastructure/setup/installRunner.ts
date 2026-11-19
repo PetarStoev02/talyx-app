@@ -3,6 +3,9 @@ import { existsSync } from 'node:fs'
 import { basename } from 'node:path'
 import type { InstallExit } from '@contract/setup'
 
+// The shell's exit code for a command that could not start.
+const COMMAND_NOT_FOUND = 127
+
 export type InstallOutputSink = (index: number, text: string) => void
 
 export interface InstallRun {
@@ -68,7 +71,7 @@ export function runInstall(
       }
       child.on('error', (err) => {
         emit(`${err.message}\n`)
-        resolve(127)
+        resolve(COMMAND_NOT_FOUND)
       })
       // 'close', not 'exit': every output chunk has been read by then.
       child.on('close', (code) => {
