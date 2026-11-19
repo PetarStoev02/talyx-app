@@ -4,7 +4,6 @@ import { useLanguage } from '@shared/lib/i18n'
 import type { ChatActions } from '@features/chat/chat'
 import { botHits } from '@features/chat/botSearch'
 import type { SearchPlace } from '@features/chat/botSearch'
-import type { FindRequest } from '@features/chat/findStore'
 import type { RoomActions } from '@features/chat/room'
 import { useChat } from '@features/chat/store'
 import type { SearchFound } from './ChatSearch'
@@ -20,10 +19,7 @@ export function useBotSearch(
   profile: string,
   actions: ChatActions | null,
   rooms: RoomActions | null
-): {
-  request: FindRequest | null
-  open: () => void
-  close: () => void
+): ReturnType<typeof usePlaceFind> & {
   place: SearchPlace
   find: (query: string) => SearchFound
   loadWhole: () => Promise<void>
