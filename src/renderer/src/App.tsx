@@ -75,7 +75,8 @@ export function App(): React.JSX.Element {
 
   // A module page whose module stopped, expired or was removed hands back to the agents, so a
   // later key does not jump straight to it.
-  useOnChange(!!moduleIdOf(currentView) && !openModule, (gone) => {
+  // Keyed by the gone page's view, so a second gone module page hands back too.
+  useOnChange(moduleIdOf(currentView) && !openModule ? currentView : null, (gone) => {
     if (!gone) return
     // The page is gone, so nothing is left to ask.
     setLeaveGuard(null)
