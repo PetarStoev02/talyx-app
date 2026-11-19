@@ -14,7 +14,7 @@ import {
 } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { forgetDeleted } from '../../../src/renderer/src/app/providers/forgetDeleted'
-import { useRooms } from '../../../src/renderer/src/features/chat/roomStore'
+import { useRooms } from '../../../src/renderer/src/features/chat/store'
 import { useChat } from '../../../src/renderer/src/features/chat/store'
 import { BOT_META_KEY, GROUPS_META_KEY, backendFor, engineDouble } from './engineDouble'
 import type { EngineDouble } from './engineDouble'

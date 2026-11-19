@@ -1,7 +1,8 @@
 import { useLanguage } from '@shared/lib/i18n'
-import { useNavigation } from '@features/modules/useNavigation'
+import { useNavigation } from '@features/modules/store'
 import { useModules } from '@features/modules/store'
-import { settingsPages, shownPage, useSettingsSection } from '@features/settings/sections'
+import { settingsPages, shownPage } from '@features/settings/sections'
+import { useSettingsSection } from '@features/settings/store'
 import { cn } from '@shared/lib/utils'
 import { SidebarBack } from '@shared/ui/SidebarBack'
 

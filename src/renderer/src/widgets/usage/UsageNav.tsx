@@ -1,5 +1,5 @@
 import { useLanguage } from '@shared/lib/i18n'
-import { useNavigation } from '@features/modules/useNavigation'
+import { useNavigation } from '@features/modules/store'
 import { useUsageView } from '@features/providers/store'
 import { cn } from '@shared/lib/utils'
 import { SidebarBack } from '@shared/ui/SidebarBack'

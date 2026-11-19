@@ -4,9 +4,9 @@ import {
   openSettings,
   settingsPages,
   shownPage,
-  useSettingsSection,
   type SettingsSection
 } from '../../../src/renderer/src/features/settings/sections'
+import { useSettingsSection } from '../../../src/renderer/src/features/settings/store'
 
 const keys = (licensed: boolean): SettingsSection[] =>
   settingsPages(licensed).map((page) => page.key)

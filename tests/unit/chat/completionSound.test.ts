@@ -13,7 +13,7 @@ import {
 import { handleEvent } from '../../../src/renderer/src/features/chat/events'
 import { roomActions } from '../../../src/renderer/src/features/chat/room'
 import type { RoomActions } from '../../../src/renderer/src/features/chat/room'
-import { useRooms } from '../../../src/renderer/src/features/chat/roomStore'
+import { useRooms } from '../../../src/renderer/src/features/chat/store'
 import { useChat, useCompletionSound } from '../../../src/renderer/src/features/chat/store'
 import { playChime } from '../../../src/renderer/src/shared/lib/chime'
 import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/shared'
