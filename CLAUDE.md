@@ -89,10 +89,10 @@ Each line is the rule; the check's message names the fix.
   `shared/engine`, and `shared/lib/timers.ts` for a wait outside a component). A feature hook
   composes the kernel's hooks. `npm run lint` (`eslint.kernel.mjs`) and
   `tests/unit/ratchet.test.ts`.
-- `string | null`, not optional properties, in `src/shared` and `features/` (React props exempt):
-  `npm run lint` (`eslint.style.mjs`). Files from before a rule wait on `eslint.ratchet.mjs`, whose
-  lists only shrink: an entry that leaves never returns, and a new file is never on one
-  (`tests/unit/ratchet.test.ts`).
+- `string | null`, not optional properties, in `src/shared` and `features/` (React props and
+  `moduleHost.ts` exempt): `npm run lint` (`eslint.style.mjs`). Files from before a rule wait on
+  `eslint.ratchet.mjs`, whose lists only shrink: an entry that leaves never returns, and a new file
+  is never on one (`tests/unit/ratchet.test.ts`).
 - No default exports outside config files: `npm run lint` (`eslint.style.mjs`).
 - A Zustand store lives only in a feature's `store.ts` (or `app/`): `npm run lint`
   (`eslint.style.mjs`, ratchet as above).

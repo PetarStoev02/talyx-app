@@ -207,10 +207,13 @@ describe('style rules', () => {
     ])
   })
 
-  it('should leave optional properties alone outside the contract and the features', async () => {
-    const source = 'export interface Bot {\n  title?: string\n}'
-    expect(await styleErrors(`${R}/widgets/chat/x.ts`, source)).toEqual([])
-  })
+  it.each([`${R}/widgets/chat/x.ts`, 'src/shared/moduleHost.ts'])(
+    'should leave optional properties alone outside the contract and the features: %s',
+    async (filePath) => {
+      const source = 'export interface Bot {\n  title?: string\n}'
+      expect(await styleErrors(filePath, source)).toEqual([])
+    }
+  )
 
   it.each([
     ['a default declaration', 'export default function f(): void {}'],
