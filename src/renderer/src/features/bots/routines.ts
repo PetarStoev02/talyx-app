@@ -115,7 +115,7 @@ const EVERY_MINUTES = /^every (\d+)m$/
 const CRON_MINUTES = /^\*\/(\d{1,2}) \* \* \* \*$/
 // 2023-01-01 was a Sunday, so day N of that week is cron's weekday N.
 const A_SUNDAY = { year: 2023, month: 0, day: 1 }
-export const MAX_HOURS = 24
+export const MAX_HOURS = HOURS_PER_DAY
 
 export function composeSchedule(draft: ScheduleDraft): string {
   const [hour, minute] = draft.time.split(':').map(Number)
