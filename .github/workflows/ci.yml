@@ -113,3 +113,99 @@ jobs:
 
       - name: Build
         run: npx electron-vite build
+
+  # One mapped feature (settings-theme) and a seeded fuzz in the real window, with no engine.
+  # Runs on every push to main, and on a PR that touches the renderer, the driver or this file;
+  # any other PR passes it at once, so the job can be a required check.
+  ui:
+    name: UI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CONTROL: node .claude/skills/verify-talyx/control-talyx.mjs
+      EVIDENCE: /tmp/talyx-verify/evidence
+      DISPLAY: ':99'
+
+    steps:
+      # A PR's HEAD is its merge commit, so HEAD^1 is main and the diff is the PR's own.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Does the PR touch the UI
+        id: scope
+        run: |
+          if [ "${{ github.event_name }}" != pull_request ] || git diff --name-only HEAD^1 HEAD \
+            -- src/renderer src/preload src/shared package-lock.json \
+            .claude/skills/verify-talyx .github/workflows/ci.yml | grep -q .; then
+            echo run=true >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v5
+        if: steps.scope.outputs.run
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/cache@v4
+        if: steps.scope.outputs.run
+        with:
+          path: ~/.cache/electron
+          key: electron-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      # Electron downloads its binary on first use (install-electron), into the cache above.
+      - name: Install dependencies
+        if: steps.scope.outputs.run
+        run: npm ci && npx install-electron
+
+      # Ubuntu's AppArmor blocks the user namespaces Chromium's sandbox needs; Xvfb is the screen.
+      - name: Start a virtual display
+        if: steps.scope.outputs.run
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          Xvfb :99 -screen 0 1280x800x24 &
+
+      - name: Settings theme (features/settings-theme.md)
+        if: steps.scope.outputs.run
+        run: |
+          set -euo pipefail
+          out="$EVIDENCE/settings-theme"
+          mkdir -p "$out"
+          echo '{"setupDone": true}' > /tmp/seed.json
+          $CONTROL launch --no-engine --seed /tmp/seed.json
+          $CONTROL browser click --role button --name Settings --exact
+          $CONTROL browser wait --role heading --name 'Settings: General'
+          $CONTROL browser screenshot --path "$out/before.png"
+          $CONTROL browser click --role button --name Dark --exact
+          $CONTROL browser snapshot --path "$out/after.aria.txt"
+          $CONTROL browser screenshot --path "$out/after.png"
+          $CONTROL settings > "$out/settings.json"
+          grep -F 'button "Dark" [pressed]' "$out/after.aria.txt"
+          # Each command reconnects, which resets the emulated colour scheme: the window must
+          # still paint the pick.
+          test "$($CONTROL browser theme)" = dark
+          node -e 'process.exit(require(process.argv[1]).theme === "dark" ? 0 : 1)' \
+            "$out/settings.json"
+          $CONTROL stop
+
+      # A failing seed replays locally: launch --no-engine with the same seed file, then fuzz.
+      - name: Fuzz (seed = run number)
+        if: steps.scope.outputs.run
+        run: |
+          set -euo pipefail
+          $CONTROL launch --no-engine --seed /tmp/seed.json
+          $CONTROL fuzz --steps 100 --seed ${{ github.run_number }}
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.scope.outputs.run
+        with:
+          name: ui-evidence
+          path: |
+            /tmp/talyx-verify/evidence
+            /tmp/talyx-verify/run/talyx.log
+          if-no-files-found: warn
+
+      # After the upload: stop removes the run directory, log included.
+      - name: Stop the app
+        if: always() && steps.scope.outputs.run
+        run: $CONTROL stop || true

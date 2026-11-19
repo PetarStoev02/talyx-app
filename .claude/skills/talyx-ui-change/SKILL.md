@@ -20,5 +20,6 @@ side effect, not a description. The driver and its rules are the `verify-talyx` 
    engine's own view). Then `control-talyx stop`.
 5. If a handle or journey in the feature file changed, update the file;
    `tests/unit/featureMap.test.ts` checks its names against the app's copy.
-6. In the PR's "How it was tested", attach the before and after screenshots and the side effect,
-   and name the feature id.
+6. In the PR's "Screen evidence" section, attach the before and after screenshots and the side
+   effect, and name the feature id. CI's `UI` job runs `settings-theme` and a seeded fuzz on every
+   PR that touches `src/renderer`; it does not replace this evidence.

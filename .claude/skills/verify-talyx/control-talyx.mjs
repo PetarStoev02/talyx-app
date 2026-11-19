@@ -378,6 +378,12 @@ const browserActions = {
     if (o.path) save(o.path, aria)
     else console.log(aria)
   },
+  // The scheme the window paints (the root's `dark` class), which neither the ARIA tree nor
+  // settings.json shows.
+  async theme(page) {
+    const dark = await page.evaluate(() => document.documentElement.classList.contains('dark'))
+    console.log(dark ? 'dark' : 'light')
+  },
   async screenshot(page, o) {
     const path = o.path ?? join(EVIDENCE, 'screenshot.png')
     mkdirSync(dirname(path), { recursive: true })
