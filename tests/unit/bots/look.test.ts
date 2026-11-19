@@ -67,7 +67,8 @@ describe('bot looks', () => {
     it('should store the shape name and hue index, and the face only when it is off', () => {
       expect(lookMeta({ shape: 'tower', hue: 7, faces: true })).toEqual({
         shape: 'tower',
-        color: 7
+        color: 7,
+        faces: null
       })
       expect(lookMeta({ shape: 'tower', hue: 7, faces: false })).toEqual({
         shape: 'tower',

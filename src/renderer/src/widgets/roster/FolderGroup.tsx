@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
-import { folderCount, folderItems, isWithin, itemKey, itemRef } from '@features/bots/roster'
+import {
+  childFolders,
+  folderCount,
+  folderItems,
+  isWithin,
+  itemKey,
+  itemRef
+} from '@features/bots/roster'
 import { refusesFolder } from '@features/bots/bulk'
 import { useRoster } from '@features/bots/store'
 import { useLanguage } from '@shared/lib/i18n'
@@ -43,7 +50,7 @@ export function FolderGroup(props: FolderGroupProps): React.JSX.Element {
   const items = folderItems(snapshot, id)
   const keyed = items.map((item) => ({ item, key: itemKey(itemRef(item)) }))
   const keys = keyed.map(({ key }) => key)
-  const children = snapshot.folders.filter((item) => item.parentId === id)
+  const children = childFolders(snapshot.folders, id)
   // A row takes bots and rooms, or several picked rows; `after` is in front of the next row, or
   // last. Picked rows never land inside a picked folder.
   const refused = (rows: RosterDragItem[]): boolean =>
@@ -186,7 +193,7 @@ function FolderHeader({
     drops.folder(
       item.id,
       edge === 'before'
-        ? { parentId: folder.parentId ?? null, beforeId: folder.id }
+        ? { parentId: folder.parentId, beforeId: folder.id }
         : { parentId: folder.id, beforeId: null }
     )
   }

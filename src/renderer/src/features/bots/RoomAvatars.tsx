@@ -1,4 +1,5 @@
 import { BotAvatar } from './BotAvatar'
+import { unknownBot } from './roster'
 import type { Bot, Room } from './types'
 
 // Two members sit corner to corner; a third sits centred below the pair.
@@ -28,7 +29,7 @@ export function RoomAvatars({
   const members = room.members.slice(0, SHOWN)
   const avatar = (profile: string, avatarSize: number): React.JSX.Element => (
     <BotAvatar
-      bot={bots.find((bot) => bot.name === profile) ?? { name: profile, meta: {} }}
+      bot={bots.find((bot) => bot.name === profile) ?? unknownBot(profile)}
       place="row"
       size={avatarSize}
       speaking={speaking.includes(profile)}

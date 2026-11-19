@@ -5,6 +5,7 @@ import {
   ROOM_PINS_KEY,
   ITEM_ORDER_KEY,
   RosterError,
+  folderRecords,
   normalizeFolders,
   recoverFolders
 } from './roster'
@@ -162,7 +163,10 @@ export function saveLayout(
       itemOrder: itemOrderSchema.parse(meta[ITEM_ORDER_KEY] ?? {})
     })
     return Object.fromEntries(
-      Object.entries(changes).map(([part, value]) => [LAYOUT_KEYS[part as keyof Layout], value])
+      Object.entries(changes).map(([part, value]) => [
+        LAYOUT_KEYS[part as keyof Layout],
+        part === 'folders' ? folderRecords(value as Folder[]) : value
+      ])
     )
   })
 }

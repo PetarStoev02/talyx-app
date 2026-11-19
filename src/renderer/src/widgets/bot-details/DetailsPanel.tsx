@@ -268,7 +268,7 @@ export function DetailsPanel({
                   <Input
                     value={draft.title}
                     maxLength={100}
-                    placeholder={botTitle({ ...bot, meta: { ...bot.meta, title: undefined } })}
+                    placeholder={botTitle({ ...bot, meta: { ...bot.meta, title: null } })}
                     onChange={(event) => setTitle(event.target.value)}
                   />
                 </label>

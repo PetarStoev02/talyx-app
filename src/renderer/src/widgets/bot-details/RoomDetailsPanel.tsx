@@ -14,7 +14,7 @@ import {
   renameRoom
 } from '@features/bots/rooms'
 import { RoomAvatars } from '@features/bots/RoomAvatars'
-import { botTitle } from '@features/bots/roster'
+import { botTitle, unknownBot } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot, Room } from '@features/bots/types'
 import { Button } from '@shared/ui/button'
@@ -190,11 +190,8 @@ function RoomMembers({
   const seated = room.members.map((member) => member.profile)
   const memberBots = room.members.map(
     (member) =>
-      bots.find((bot) => bot.name === member.profile) ?? {
-        name: member.profile,
-        meta: {},
-        display_name: member.display_name
-      }
+      bots.find((bot) => bot.name === member.profile) ??
+      unknownBot(member.profile, member.display_name)
   )
   const candidates = bots.filter((bot) => !bot.meta.hidden && !seated.includes(bot.name))
   // A member whose bot was deleted cannot be seated again, so any change leaves it out.

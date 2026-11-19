@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   botPreview,
   botTitle,
+  childFolders,
   folderBots,
   folderCount,
   moveFolder,
@@ -31,6 +32,12 @@ const snapshot = (bots: Bot[]): RosterSnapshot => ({
 })
 
 describe('roster layout', () => {
+  it('should nest only subfolders under a folder and no folder under Unassigned', () => {
+    const top: Folder = { id: 'team', name: 'Team', parentId: null }
+    const sub: Folder = { id: 'sub', name: 'Sub', parentId: 'team' }
+    expect(childFolders([top, sub], 'team')).toEqual([sub])
+    expect(childFolders([top, sub], null)).toEqual([])
+  })
   it('should keep a pinned bot out of its folder and restore it when unpinned', () => {
     const item = bot('worker', { pinned: true, sectionId: 'team' })
     expect(folderBots(snapshot([item]), 'team')).toEqual([])
@@ -88,7 +95,7 @@ describe('roster layout', () => {
         bot('a', { sectionId: 'team', sectionName: 'Team' }),
         bot('b', { sectionId: 'team', sectionName: 'Team' })
       ])
-    ).toEqual([{ id: 'team', name: 'Team' }])
+    ).toEqual([{ id: 'team', name: 'Team', parentId: null }])
   })
   it('should repair malformed, duplicate, orphaned and cyclic folders', () => {
     expect(
@@ -101,20 +108,20 @@ describe('roster layout', () => {
         { id: 'c', name: 'C', parentId: 'absent' }
       ])
     ).toEqual([
-      { id: 'a', name: 'A' },
+      { id: 'a', name: 'A', parentId: null },
       { id: 'b', name: 'B', parentId: 'a' },
-      { id: 'c', name: 'C' }
+      { id: 'c', name: 'C', parentId: null }
     ])
   })
   it('should reject nesting a folder in its own descendant', () => {
     const folders = [
-      { id: 'a', name: 'A' },
+      { id: 'a', name: 'A', parentId: null },
       { id: 'b', name: 'B', parentId: 'a' }
     ]
     expect(() => moveFolder(folders, 'a', 'b')).toThrow('roster.errorFolderCycle')
     expect(moveFolder(folders, 'b', null)).toEqual([
-      { id: 'a', name: 'A' },
-      { id: 'b', name: 'B' }
+      { id: 'a', name: 'A', parentId: null },
+      { id: 'b', name: 'B', parentId: null }
     ])
     expect(folders[1].parentId).toBe('a')
   })

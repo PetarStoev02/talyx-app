@@ -4,6 +4,8 @@ import { BlockAvatar } from '@renderer/shared/ui/BlockAvatar'
 import { lookOf } from '@features/bots/look'
 import type { BotMeta } from '@features/bots/types'
 
+type LookMeta = Pick<BotMeta, 'shape' | 'color' | 'faces'>
+
 // The live demo's roster and its Q3 margins exchange (tests/fixtures/roster), drawn statically so
 // the prerendered page and the hydrated one match. Looks come from the app's own rules.
 
@@ -20,7 +22,7 @@ interface Row {
   title: string
   time: string
   preview: string
-  meta?: BotMeta
+  meta?: LookMeta
   marked?: boolean
 }
 
@@ -36,7 +38,7 @@ const ROWS: Row[] = [
     title: 'Designer',
     time: '4m',
     preview: 'Two landing page layouts are ready to compare.',
-    meta: { shape: 'blobatar:fixture1', color: 'hsl(150 68% 58%)' }
+    meta: { shape: 'blobatar:fixture1', color: 'hsl(150 68% 58%)', faces: null }
   },
   {
     name: 'writer',
@@ -58,12 +60,12 @@ const MARK = 'size-2 shrink-0 rounded-full bg-[oklch(0.6_0.15_285)]'
 
 function Avatar({
   name,
-  meta = {},
+  meta = { shape: null, color: null, faces: null },
   size,
   state
 }: {
   name: string
-  meta?: BotMeta
+  meta?: LookMeta
   size: number
   state?: BlockState
 }) {
