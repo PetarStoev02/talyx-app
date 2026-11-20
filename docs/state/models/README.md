@@ -72,8 +72,7 @@ a `message.complete` that arrives live ends the turn and reloads the chat. So on
 into the load's buffer. The model's `HistoryRead` waits for the resume the same way; without that
 wait, TLC breaks `NoMessageLost` again in 9 steps. That order makes another case likely: a reply
 that ends after the resume but before the history read is in the history and in the buffer. So a
-load that buffered a `message.complete` reads again (`LoadReadsAgain` in the model), and its
-snapshot is then past that reply. The model shows the transcript as a set, so it cannot see that
+load that buffered the `message.complete` of a reply past its snapshot reads again (`LoadReadsAgain` in the model), and its new snapshot is then past that reply. A failed reply is never stored, so its frame is kept instead. The model shows the transcript as a set, so it cannot see that
 duplicate itself; `tests/unit/chat/chat.test.ts` ("should show a reply once when it ends while a
 first open reads the history", and "... the resume") checks both cases.
 

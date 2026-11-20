@@ -195,10 +195,11 @@ export function chatActions(backend: ChatBackend): ChatActions {
       })
     if (loads.get(profile) !== token) return
     const current = chatOf(profile)
-    // A reply that ended while the history was on its way may be stored in it too, and its live
-    // frames would show it twice: the load reads again, its snapshot then past that reply.
+    // A reply that ended past the snapshot while the history was on its way may be stored in it
+    // too, and its live frames would show it twice: the load reads again, its snapshot then past
+    // that reply. A failed reply is never stored, so its frame stays to keep the failed turn.
     // ponytail: no cap, a bot ending a turn on every round trip keeps the chat loading.
-    if (current?.pending?.some((event) => event.type === 'message.complete'))
+    if (current?.pending?.some((event) => storedSince(event, resume)))
       return load(profile, sessionId)
     const previous = current?.transcript
       ? { ...current.transcript, prompts: stillOpen(current.transcript, shownCards, resume) }
@@ -530,6 +531,16 @@ function stillOpen(
   if (!open) return transcript.prompts
   const listed = new Set(open.map((request) => request.id))
   return transcript.prompts.filter((card) => !shownBefore.has(card.id) || listed.has(card.id))
+}
+
+// A reply the engine stored after the snapshot: the end of one that did not fail, past the
+// snapshot's sequence or in another replay epoch, as applyEvent would take it.
+function storedSince(event: GatewayEvent, resume: ResumeSnapshot): boolean {
+  if (event.type !== 'message.complete') return false
+  if ((event.payload as { status: unknown } | null)?.status === 'error') return false
+  const epoch = event.replay_epoch ?? event.replayEpoch
+  if (epoch && resume.replay_epoch && epoch !== resume.replay_epoch) return true
+  return typeof event.seq !== 'number' || event.seq > (resume.last_sequence ?? 0)
 }
 
 // A rebuild of the same session keeps its open cards; the stored history plus the turn still in

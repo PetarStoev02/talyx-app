@@ -122,21 +122,25 @@ describe('bot chat', () => {
       })
     })
 
-    // The bot ends one reply right after `call` answers. The engine answers a history read under
+    // The bot ends one reply right after `call` answers; a failed one is never stored. The engine answers a history read under
     // way before it subscribes the chat, and only a subscribed chat gets the reply live.
-    function replyEndsAfter(call: 'history' | 'resume'): ChatBackend {
+    function replyEndsAfter(
+      call: 'history' | 'resume',
+      status: 'complete' | 'error' = 'complete'
+    ): ChatBackend {
       let reading: Promise<unknown> | null = null
       let subscribed = false
       let ended = false
       const endReply = (): void => {
         if (ended) return
         ended = true
-        engine.chats[MANAGER].messages.push({ id: 3, role: 'assistant', content: 'Done' })
+        if (status === 'complete')
+          engine.chats[MANAGER].messages.push({ id: 3, role: 'assistant', content: 'Done' })
         if (!subscribed) return
         for (const [type, seq, payload] of [
           ['message.start', 8, { turn_id: 't1' }],
           ['message.delta', 9, { text: 'Done', turn_id: 't1', segment: 0, offset: 0 }],
-          ['message.complete', 10, { status: 'complete', turn_id: 't1' }]
+          ['message.complete', 10, { status, turn_id: 't1' }]
         ] as const)
           handleEvent(actions, { type, seq, payload, session_id: 'manager-chat' } as GatewayEvent)
       }
@@ -172,6 +176,13 @@ describe('bot chat', () => {
         ])
       }
     )
+
+    it('should keep a failed reply that ends while a first open reads the resume', async () => {
+      actions = chatActions(replyEndsAfter('resume', 'error'))
+      await actions.open(MANAGER, 'manager-chat')
+      expect(chat(MANAGER).transcript?.failed).toHaveLength(1)
+      expect(methods().filter((method) => method === 'GET /api/sessions')).toHaveLength(1)
+    })
 
     it('should stop keeping live events once a reload fails', async () => {
       await actions.open(MANAGER, 'manager-chat')
