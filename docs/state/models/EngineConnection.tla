@@ -267,7 +267,8 @@ SubmitLands ==
 ----
 \* The chat.
 
-\* load(): the REST history read and session.resume on the socket, together; events buffer.
+\* load(): session.resume on the socket, then the REST history read once it answered; events
+\* buffer.
 StartLoad(to) ==
   /\ chat' = to /\ hist' = -1 /\ resumed' = FALSE /\ pending' = {}
   /\ reqs' = Append(reqs, [k |-> "loadResume"])
@@ -286,16 +287,26 @@ Reload ==
   /\ UNCHANGED <<st, wanted, retry, redialed, tracked, dials, drops, eLog, ringFrom, sub, replayed,
                  wire, client, shown, seen, unread, dropped, selected, send, stored>>
 
-\* REST, not the socket: it reads whatever the engine has stored by then.
+\* REST, not the socket: it reads whatever the engine has stored by then. It starts only after
+\* the session.resume answered, so the session is subscribed by then (#246, NoMessageLost).
 HistoryRead ==
-  /\ chat \in {"opening", "loading"} /\ hist = -1 /\ hist' = eLog
+  /\ chat \in {"opening", "loading"} /\ hist = -1 /\ resumed /\ hist' = eLog
   /\ UNCHANGED <<st, wanted, retry, redialed, tracked, dials, drops, eLog, ringFrom, sub, replayed,
                  reqs, wire, client, chat, resumed, pending, shown, reload, seen, unread, dropped,
                  selected, send, stored>>
 
-\* Both answered: the transcript is the history with the buffered events applied over it.
+\* A reply buffered during the load may also be in the history read after it: the load starts
+\* again rather than show it twice. The set union in LoadLands could not see that duplicate.
+LoadReadsAgain ==
+  /\ chat \in {"opening", "loading"} /\ hist >= 0 /\ resumed /\ pending # {} /\ st = "open"
+  /\ StartLoad(chat)
+  /\ UNCHANGED <<st, wanted, retry, redialed, tracked, dials, drops, eLog, ringFrom, sub, replayed,
+                 wire, client, shown, reload, seen, unread, dropped, selected, send, stored>>
+
+\* Both answered and no reply buffered: the transcript is the history with the other buffered
+\* events applied over it. In the model every event is a reply, so the buffer is empty here.
 LoadLands ==
-  /\ chat \in {"opening", "loading"} /\ hist >= 0 /\ resumed
+  /\ chat \in {"opening", "loading"} /\ hist >= 0 /\ resumed /\ pending = {}
   /\ chat' = "loaded" /\ shown' = (1..hist) \cup pending /\ pending' = {}
   /\ seen' = IF selected THEN shown' ELSE seen
   /\ UNCHANGED <<st, wanted, retry, redialed, tracked, dials, drops, eLog, ringFrom, sub, replayed,
@@ -331,7 +342,7 @@ Done == UNCHANGED vars
 Next == Connect \/ RetryNow \/ RedialFires \/ Opens \/ DialFails \/ Drops \/ Disconnect
      \/ EngineReplies \/ EngineEvicts \/ EngineAnswers
      \/ LiveFrame \/ ReplayLands \/ ReplayGivesUp \/ ReplayLandsLate \/ ResumeLands \/ SubmitLands
-     \/ OpenChat \/ Reload \/ HistoryRead \/ LoadLands
+     \/ OpenChat \/ Reload \/ HistoryRead \/ LoadReadsAgain \/ LoadLands
      \/ Select \/ Leave \/ Send \/ Done
 
 Spec == Init /\ [][Next]_vars

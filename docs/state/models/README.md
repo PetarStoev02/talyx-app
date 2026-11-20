@@ -1,11 +1,12 @@
 # TLA+ models of the engine connection and the update flow
 
-These are the models TLC checked for #188 (F2). They model the code on `main` at 1383426, after
-the fixes from the first statechart runs (#190 to #193). `tests/unit/stateModels.test.ts` (F5)
-fails when a model's states or events differ from the TypeScript unions it models
-(`ConnectionState`, `UpdateState`, `UpdateEvent`). It also fails when a guard or a property names
-a state outside them, or when a property in a `.cfg` is missing from this file. The test does not
-run TLC. When you change a flow, change its model, run TLC again and update the results below.
+These are the models TLC checked for #188 (F2). They model the code on `main` at 1383426, after the
+fixes from the first statechart runs (#190 to #193), and with the chat's `load` reading the history
+after `session.resume` (finding 1 below). `tests/unit/stateModels.test.ts` (F5) fails when a model's
+states or events differ from the TypeScript unions it models (`ConnectionState`, `UpdateState`,
+`UpdateEvent`). It also fails when a guard or a property names a state outside them, or when a
+property in a `.cfg` is missing from this file. The test does not run TLC. When you change a flow,
+change its model, run TLC again and update the results below.
 
 | Model                  | Code it models                                                                                                                                                                                                                                                                                          |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -39,25 +40,25 @@ rule, and TLC cannot break it.
 
 ### Engine connection
 
-`MaxMsgs = 3`, `MaxDials = 2`, `MaxDrops = 1`. Without the two properties that break: 1,116,486
-distinct states, no violation.
+`MaxMsgs = 3`, `MaxDials = 2`, `MaxDrops = 1`. Without `NoMessageSkipped`, the one property that
+breaks: 564,748 distinct states, no violation.
 
 | Property                 | Result       | What it says                                                                                                                                      |
 | ------------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `TypeOK`                 | holds        | The connection is always in a `ConnectionState`.                                                                                                  |
 | `RedialWhenWanted`       | holds        | A wanted socket that is closed or in error always has a redial set (checked; #193).                                                               |
-| `NoMessageLost`          | **violated** | A settled chat shows every message the engine stored, and the session stays subscribed. Finding 1 below.                                          |
+| `NoMessageLost`          | holds        | A settled chat shows every message the engine stored, and the session stays subscribed (checked: finding 1 below broke it).                       |
 | `NoMessageSkipped`       | **violated** | Under one replay cursor, the gateway gives the chat every message from the first it gave up to the cursor. Finding 2 below.                       |
 | `NoSendLost`             | holds        | A send that is over is stored by the engine, or the composer has the draft back (checked).                                                        |
 | `NoneShownTwice`         | holds        | The gateway gives each message to the chat once per replay cursor (checked). The transcript also keeps one row per message id (fast-check, #197). |
 | `NoUnreadWithoutMessage` | holds        | An unread mark means the chat has a message that the user did not see. By construction: `handleEvent` marks only a message new to the transcript. |
 
-**Finding 1: a load can miss a reply (to discuss, no issue yet).** TLC's shortest path has 9
-steps. The socket opens. The user opens a bot's chat for the first time in this window. `load`
-reads the history over REST. The bot finishes a reply. Then `load`'s `session.resume` subscribes
-the session on the socket. The reply is not in the history that was read, and it did not come
-live, because the session was not subscribed yet. The engine's catch-up starts only from the
-cursor of a replay on the same connection, and here there is none.
+**Finding 1: a load could miss a reply (fixed).** On the order before the fix, TLC's shortest path
+had 9 steps. The socket opens. The user opens a bot's chat for the first time in this window. `load`
+reads the history over REST. The bot finishes a reply. Then `load`'s `session.resume` subscribes the
+session on the socket. The reply is not in the history that was read, and it did not come live,
+because the session was not subscribed yet. The engine's catch-up starts only from the cursor of a
+replay on the same connection, and here there is none.
 
 The same window opens for any load whose history read lands before the session is subscribed,
 when the client has no replay cursor for that session. Examples: a first open, or the reload after
@@ -66,9 +67,15 @@ steps). The reply then shows only after the next turn ends, after another reconn
 whole history is loaded. Selecting the bot again does not reload, because `open` runs only for a
 chat with no session. In the model a reply is one event. In the code a reply is many events, and
 a `message.complete` that arrives live ends the turn and reloads the chat. So only a reply whose
-`message.complete` lands inside the window is lost. A model where `load` reads the history only
-after the session is subscribed satisfies `NoMessageLost`, `NoSendLost`, `NoneShownTwice`,
-`NoUnreadWithoutMessage` and `RedialWhenWanted` (808,704 states).
+`message.complete` lands inside the window is lost. The fix: `load` now waits for
+`session.resume` and only then reads the history, so a reply that ends between the two comes live
+into the load's buffer. The model's `HistoryRead` waits for the resume the same way; without that
+wait, TLC breaks `NoMessageLost` again in 9 steps. That order makes another case likely: a reply
+that ends after the resume but before the history read is in the history and in the buffer. So a
+load that buffered a `message.complete` reads again (`LoadReadsAgain` in the model), and its
+snapshot is then past that reply. The model shows the transcript as a set, so it cannot see that
+duplicate itself; `tests/unit/chat/chat.test.ts` ("should show a reply once when it ends while a
+first open reads the history", and "... the resume") checks both cases.
 
 **Finding 2: a replay that times out skips the gap (vendored client).** TLC's shortest path has
 18 steps. Message 1 arrives live. The socket drops. Message 2 is stored while it is down. On the

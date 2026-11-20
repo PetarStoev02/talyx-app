@@ -180,16 +180,26 @@ export function chatActions(backend: ChatBackend): ChatActions {
     // Events that land while the history is on its way are kept and replayed over it.
     update(profile, { pending: [] })
     const shownCards = new Set(chatOf(profile)?.transcript?.prompts.map((card) => card.id))
-    const [messages, resume] = await Promise.all([
-      backend.history(profile, sessionId, chatOf(profile)?.whole ? null : HISTORY_LIMIT),
-      backend.resume(profile, sessionId)
-    ]).catch((error: unknown) => {
-      // A failed reload stops buffering; the next reload starts a fresh buffer.
-      if (loads.get(profile) === token) update(profile, { pending: null })
-      throw error
-    })
+    // The resume subscribes the chat before the history is read: a reply that ends between the two
+    // then comes live into the buffer. Read first, it would be in neither (#246, NoMessageLost).
+    const [messages, resume] = await backend
+      .resume(profile, sessionId)
+      .then(async (snapshot) => {
+        const limit = chatOf(profile)?.whole ? null : HISTORY_LIMIT
+        return [await backend.history(profile, sessionId, limit), snapshot] as const
+      })
+      .catch((error: unknown) => {
+        // A failed reload stops buffering; the next reload starts a fresh buffer.
+        if (loads.get(profile) === token) update(profile, { pending: null })
+        throw error
+      })
     if (loads.get(profile) !== token) return
     const current = chatOf(profile)
+    // A reply that ended while the history was on its way may be stored in it too, and its live
+    // frames would show it twice: the load reads again, its snapshot then past that reply.
+    // ponytail: no cap, a bot ending a turn on every round trip keeps the chat loading.
+    if (current?.pending?.some((event) => event.type === 'message.complete'))
+      return load(profile, sessionId)
     const previous = current?.transcript
       ? { ...current.transcript, prompts: stillOpen(current.transcript, shownCards, resume) }
       : null
