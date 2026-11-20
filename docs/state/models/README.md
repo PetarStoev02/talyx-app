@@ -75,6 +75,9 @@ that ends after the resume but before the history read is in the history and in 
 load that buffered the `message.complete` of a reply past its snapshot reads again (`LoadReadsAgain` in the model), and its new snapshot is then past that reply. A failed reply is never stored, so its frame is kept instead. The model shows the transcript as a set, so it cannot see that
 duplicate itself; `tests/unit/chat/chat.test.ts` ("should show a reply once when it ends while a
 first open reads the history", and "... the resume") checks both cases.
+The code reads again at most twice (`MAX_REREADS` in `features/chat/chat.ts`), so a bot that ends a
+reply on every read cannot keep the chat loading; past that the load lands and the buffer may show
+one reply twice. The model's `LoadReadsAgain` is unbounded, which only adds behaviours.
 
 **Finding 2: a replay that times out skips the gap (vendored client).** TLC's shortest path has
 18 steps. Message 1 arrives live. The socket drops. Message 2 is stored while it is down. On the

@@ -184,6 +184,28 @@ describe('bot chat', () => {
       expect(methods().filter((method) => method === 'GET /api/sessions')).toHaveLength(1)
     })
 
+    it('should stop reading again when the bot ends a reply on every read', async () => {
+      let seq = 100
+      actions = chatActions({
+        ...engine.backend,
+        resume: async (...args) => {
+          const snapshot = await engine.backend.resume(...args)
+          seq += 1
+          const payload = { status: 'complete', turn_id: `t${seq}` }
+          handleEvent(actions, {
+            type: 'message.complete',
+            seq,
+            payload,
+            session_id: 'manager-chat'
+          } as GatewayEvent)
+          return snapshot
+        }
+      })
+      await actions.open(MANAGER, 'manager-chat')
+      expect(chat(MANAGER).loading).toBe(false)
+      expect(methods().filter((method) => method === 'GET /api/sessions')).toHaveLength(3)
+    })
+
     it('should stop keeping live events once a reload fails', async () => {
       await actions.open(MANAGER, 'manager-chat')
       engine.failNext('session.resume', 'Gateway restarting')
