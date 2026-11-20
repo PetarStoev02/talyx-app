@@ -10,6 +10,8 @@ import { SENDING_ID } from './turns'
 import type { ApprovalChoice, ChatItem, ChatPrompt, Transcript } from './types'
 
 const HISTORY_LIMIT = 120
+// Past this many second reads a busy bot's chat settles, at worst showing a reply twice.
+const MAX_REREADS = 2
 
 /** A transcript image the engine no longer has on disk. */
 export class MediaGoneError extends Error {
@@ -174,22 +176,32 @@ export function chatActions(backend: ChatBackend): ChatActions {
       }
     }
 
-  async function load(profile: string, sessionId: string): Promise<void> {
+  async function load(profile: string, sessionId: string, rereads = 0): Promise<void> {
     const token = (loads.get(profile) ?? 0) + 1
     loads.set(profile, token)
     // Events that land while the history is on its way are kept and replayed over it.
     update(profile, { pending: [] })
     const shownCards = new Set(chatOf(profile)?.transcript?.prompts.map((card) => card.id))
-    const [messages, resume] = await Promise.all([
-      backend.history(profile, sessionId, chatOf(profile)?.whole ? null : HISTORY_LIMIT),
-      backend.resume(profile, sessionId)
-    ]).catch((error: unknown) => {
-      // A failed reload stops buffering; the next reload starts a fresh buffer.
-      if (loads.get(profile) === token) update(profile, { pending: null })
-      throw error
-    })
+    // The resume subscribes the chat before the history is read: a reply that ends between the two
+    // then comes live into the buffer. Read first, it would be in neither (#246, NoMessageLost).
+    const [messages, resume] = await backend
+      .resume(profile, sessionId)
+      .then(async (snapshot) => {
+        const limit = chatOf(profile)?.whole ? null : HISTORY_LIMIT
+        return [await backend.history(profile, sessionId, limit), snapshot] as const
+      })
+      .catch((error: unknown) => {
+        // A failed reload stops buffering; the next reload starts a fresh buffer.
+        if (loads.get(profile) === token) update(profile, { pending: null })
+        throw error
+      })
     if (loads.get(profile) !== token) return
     const current = chatOf(profile)
+    // A reply that ended past the snapshot while the history was on its way may be stored in it
+    // too, and its live frames would show it twice: the load reads again, its snapshot then past
+    // that reply. A failed reply is never stored, so its frame stays to keep the failed turn.
+    if (rereads < MAX_REREADS && current?.pending?.some((event) => storedSince(event, resume)))
+      return load(profile, sessionId, rereads + 1)
     const previous = current?.transcript
       ? { ...current.transcript, prompts: stillOpen(current.transcript, shownCards, resume) }
       : null
@@ -520,6 +532,16 @@ function stillOpen(
   if (!open) return transcript.prompts
   const listed = new Set(open.map((request) => request.id))
   return transcript.prompts.filter((card) => !shownBefore.has(card.id) || listed.has(card.id))
+}
+
+// A reply the engine stored after the snapshot: the end of one that did not fail, past the
+// snapshot's sequence or in another replay epoch, as applyEvent would take it.
+function storedSince(event: GatewayEvent, resume: ResumeSnapshot): boolean {
+  if (event.type !== 'message.complete') return false
+  if ((event.payload as { status: unknown } | null)?.status === 'error') return false
+  const epoch = event.replay_epoch ?? event.replayEpoch
+  if (epoch && resume.replay_epoch && epoch !== resume.replay_epoch) return true
+  return typeof event.seq !== 'number' || event.seq > (resume.last_sequence ?? 0)
 }
 
 // A rebuild of the same session keeps its open cards; the stored history plus the turn still in
