@@ -135,8 +135,8 @@ Each line is the rule; the check's message names the fix.
   test in the same PR (or a line in #184 to #188), not a new line here.
 - **Screens carry evidence.** A PR that touches a screen carries `control-talyx` evidence (a
   screenshot and the stored side effect): the `talyx-ui-change` skill.
-- **No unattended runs** (overnight, autopilot, cloud agents, auto-merge) until #185's rules are at
-  zero violations and #187's map covers the app. Until then every PR gets one human read.
+- **Every PR gets one human read before it merges.** Unattended runs (overnight, autopilot, cloud
+  agents) may open PRs; nothing auto-merges.
 
 ## Code Style
 
