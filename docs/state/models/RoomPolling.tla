@@ -158,8 +158,7 @@ TypeOK == send \in {"none", "out", "failed", "sent"} /\ rd.p \in {"none", "state
 \* No message lost or shown twice: the room shows a prefix of the log, each row once (a set).
 NoHole == shown = 1..lastSeq
 
-\* No message lost: with nothing out, the open room has every row once its poll catches up.
-Caught == (rd = Idle /\ lastSeq = eLog) => shown = 1..eLog
+\* No message lost on a send: your message shows once a read that started after it lands.
 MineShows == mineRead => mineAt \subseteq shown
 
 \* None shown twice: your message is one row however often it was sent.

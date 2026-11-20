@@ -34,7 +34,8 @@ VARIABLES
   held,
   given,         \* seqs handed to the chat under the current cursor
   twice,         \* a seq was handed to the chat twice under one cursor
-  chat,          \* "none" | "opening" (first load) | "loading" (reload) | "loaded"
+  chat,          \* "none" | "opening" (first load) | "unloaded" (its first load failed)
+                 \* | "loading" (reload) | "loaded"
   hist,          \* the load's REST history read: the seqs it returned (-1: not read yet)
   resumed,       \* the load's session.resume answered
   pending,       \* events buffered while a load is out
@@ -127,8 +128,8 @@ Lose(to) ==
   /\ st' = to /\ sub' = FALSE /\ replayed' = -1 /\ reqs' = <<>> /\ wire' = <<>>
   /\ hold' = FALSE /\ held' = <<>>
   /\ dropped' = (dropped \/ chat # "none")
-  \* A load whose session.resume fails keeps the chat as it was.
-  /\ chat' = CASE chat = "opening" -> "none" [] chat = "loading" -> "loaded" [] OTHER -> chat
+  \* A load whose session.resume fails keeps the chat as it was; a first one keeps its session.
+  /\ chat' = CASE chat = "opening" -> "unloaded" [] chat = "loading" -> "loaded" [] OTHER -> chat
   /\ pending' = IF chat \in {"opening", "loading"} THEN {} ELSE pending
   /\ send' = IF send = "out" THEN "returned" ELSE send
 
@@ -140,7 +141,7 @@ Opens ==
   /\ reqs' = (IF wm > 0 THEN <<[k |-> "since", from |-> wm]>> ELSE <<>>)
              \o (IF redialed /\ tracked THEN <<[k |-> "resume"]>> ELSE <<>>)
   /\ retry' = FALSE /\ redialed' = FALSE
-  /\ reload' = (reload \/ (dropped /\ chat \in {"loading", "loaded"}))
+  /\ reload' = (reload \/ (dropped /\ chat \in {"unloaded", "loading", "loaded"}))
   /\ dropped' = FALSE
   /\ UNCHANGED <<wanted, tracked, dials, drops, eLog, ringFrom, sub, replayed, wire, wm, held,
                  given, twice, chat, hist, resumed, pending, shown, seen, unread, selected, send,
@@ -226,7 +227,7 @@ LiveFrame ==
 \* The replay answers: the gap and then the parked frames dispatch, each only past the cursor.
 \* snapshot_required drops the cursor and dispatches session.replay_gap, which reloads the chat.
 ReplayLands ==
-  /\ wire # <<>> /\ Head(wire).k = "since" /\ wire' = Tail(wire)
+  /\ wire # <<>> /\ Head(wire).k = "since" /\ hold /\ wire' = Tail(wire)
   /\ hold' = FALSE /\ held' = <<>>
   /\ LET a == Head(wire)
          r == IF a.gap THEN Newer(held, 0, {}) ELSE Newer(Seqs(a.from, a.to) \o held, wm, {})
@@ -234,6 +235,19 @@ ReplayLands ==
         /\ IF a.gap THEN Hand(r[2], {}, TRUE) ELSE Give(r[2])
   /\ UNCHANGED <<st, wanted, retry, redialed, tracked, dials, drops, eLog, ringFrom, sub, replayed,
                  reqs, chat, hist, resumed, dropped, selected, send, stored>>
+
+\* The replay gets no answer in time (REPLAY_REQUEST_TIMEOUT_MS) or fails: the error is dropped,
+\* the parked frames dispatch past the cursor, and an answer that comes later is thrown away.
+ReplayGivesUp ==
+  /\ hold /\ hold' = FALSE /\ held' = <<>>
+  /\ LET r == Newer(held, wm, {}) IN wm' = r[1] /\ Give(r[2])
+  /\ UNCHANGED <<st, wanted, retry, redialed, tracked, dials, drops, eLog, ringFrom, sub, replayed,
+                 reqs, wire, chat, hist, resumed, dropped, selected, send, stored>>
+
+ReplayLandsLate ==
+  /\ wire # <<>> /\ Head(wire).k = "since" /\ ~hold /\ wire' = Tail(wire)
+  /\ UNCHANGED <<st, wanted, retry, redialed, tracked, dials, drops, eLog, ringFrom, sub, replayed,
+                 reqs, client, chatVars, dropped, selected, send, stored>>
 
 \* A session.resume answers: the host adds the session to openSessions.
 ResumeLands ==
@@ -266,8 +280,9 @@ OpenChat ==
 
 \* A reload asked for starts once the one before it is over; its resume fails on a closed socket.
 Reload ==
-  /\ reload /\ chat = "loaded" /\ reload' = FALSE
-  /\ IF st = "open" THEN StartLoad("loading") ELSE UNCHANGED <<chat, hist, resumed, pending, reqs>>
+  /\ reload /\ chat \in {"unloaded", "loaded"} /\ reload' = FALSE
+  /\ IF st = "open" THEN StartLoad(IF chat = "loaded" THEN "loading" ELSE "opening")
+     ELSE UNCHANGED <<chat, hist, resumed, pending, reqs>>
   /\ UNCHANGED <<st, wanted, retry, redialed, tracked, dials, drops, eLog, ringFrom, sub, replayed,
                  wire, client, shown, seen, unread, dropped, selected, send, stored>>
 
@@ -315,7 +330,7 @@ Done == UNCHANGED vars
 
 Next == Connect \/ RetryNow \/ RedialFires \/ Opens \/ DialFails \/ Drops \/ Disconnect
      \/ EngineReplies \/ EngineEvicts \/ EngineAnswers
-     \/ LiveFrame \/ ReplayLands \/ ResumeLands \/ SubmitLands
+     \/ LiveFrame \/ ReplayLands \/ ReplayGivesUp \/ ReplayLandsLate \/ ResumeLands \/ SubmitLands
      \/ OpenChat \/ Reload \/ HistoryRead \/ LoadLands
      \/ Select \/ Leave \/ Send \/ Done
 
@@ -324,7 +339,7 @@ Spec == Init /\ [][Next]_vars
 ----
 \* Properties.
 
-TypeOK == st \in States /\ chat \in {"none", "opening", "loading", "loaded"}
+TypeOK == st \in States /\ chat \in {"none", "opening", "unloaded", "loading", "loaded"}
        /\ send \in {"none", "out", "stored", "returned"}
 
 \* Nothing left to happen on an open socket: no call, frame, replay, load or reload outstanding.

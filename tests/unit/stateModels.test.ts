@@ -12,13 +12,17 @@ const read = (file: string): string => readFileSync(join(__dirname, '../..', fil
 
 interface Model {
   name: string
-  /** A set the model declares, the TypeScript union it stands for, and where the model uses it. */
+  /**
+   * A set the model declares, the TypeScript union it stands for, the variable that holds its
+   * members, and where else the model writes them.
+   */
   sets: Array<{
     set: string
     file: string
     union: string
     discriminant: string | null
-    uses: RegExp
+    variable: string
+    elsewhere: RegExp
   }>
 }
 
@@ -32,7 +36,8 @@ const MODELS_UNDER_TEST: Model[] = [
         file: GATEWAY,
         union: 'ConnectionState',
         discriminant: null,
-        uses: /(?:st'? = |Lose\()"([a-z]+)"/g
+        variable: 'st',
+        elsewhere: /Lose\("([a-z]+)"\)/g
       }
     ]
   },
@@ -44,23 +49,26 @@ const MODELS_UNDER_TEST: Model[] = [
         file: 'src/shared/updater.ts',
         union: 'UpdateState',
         discriminant: 'kind',
-        uses: /(?:kind'? = |<<)"([a-z]+)"/g
+        variable: 'kind',
+        elsewhere: /(?:<<|to\[1\] = )"([a-z]+)"/g
       },
       {
         set: 'Events',
         file: UPDATE_STATE,
         union: 'UpdateEvent',
         discriminant: 'kind',
-        uses: /(?:event' = |Apply\()"([a-z]+)"/g
+        variable: 'event',
+        elsewhere: /Apply\("([a-z]+)"/g
       }
     ]
-  }
+  },
+  { name: 'RoomPolling', sets: [] }
 ]
 
 describe('TLA+ models in docs/state/models', () => {
   describe.each(MODELS_UNDER_TEST)('$name', ({ name, sets }) => {
     const spec = read(`${MODELS}/${name}.tla`)
-    const invariants = invariantsOf(read(`${MODELS}/${name}.cfg`))
+    const properties = propertiesOf(read(`${MODELS}/${name}.cfg`))
 
     it.each(sets)('should declare $set as the members of $union', (each) => {
       expect(sorted(declaredSet(spec, each.set))).toEqual(
@@ -68,19 +76,24 @@ describe('TLA+ models in docs/state/models', () => {
       )
     })
 
-    it.each(sets)('should move only between the members of $set, and use each', (each) => {
-      expect(sorted(usedLiterals(spec, each.uses))).toEqual(sorted(declaredSet(spec, each.set)))
+    // A guard or property that names a state outside the set is silently false under TLC.
+    it.each(sets)('should name only the members of $set, and each of them', (each) => {
+      expect(sorted(usedLiterals(spec, each.variable, each.elsewhere))).toEqual(
+        sorted(declaredSet(spec, each.set))
+      )
     })
 
     it('should have TLC check that every state stays inside the declared sets', () => {
-      expect(invariants).toContain('TypeOK')
+      expect(properties).toContain('TypeOK')
       const typeOk = definitionOf(spec, 'TypeOK')
-      for (const { set } of sets) expect(typeOk).toMatch(new RegExp(`\\\\in ${set}\\b`))
+      expect(typeOk).not.toContain('\\/')
+      for (const { set, variable } of sets)
+        expect(typeOk).toMatch(new RegExp(`\\b${variable} \\\\in ${set}\\b`))
     })
 
     it('should record in the README every property TLC checks', () => {
       const readme = read(`${MODELS}/README.md`)
-      for (const invariant of invariants) expect(readme).toContain(`\`${invariant}\``)
+      for (const property of properties) expect(readme).toContain(`\`${property}\``)
     })
   })
 })
@@ -91,10 +104,22 @@ function declaredSet(spec: string, name: string): string[] {
   return [...body.matchAll(/"([^"]+)"/g)].map((match) => match[1])
 }
 
-/** The literals a pattern finds outside the declarations, so the model's steps, not its sets. */
-function usedLiterals(spec: string, pattern: RegExp): string[] {
+/**
+ * The literals the model compares `variable` with or assigns it (`=`, `#`, `\in {...}`), and those
+ * `elsewhere` finds: its steps, guards and properties, not its declarations.
+ */
+function usedLiterals(spec: string, variable: string, elsewhere: RegExp): string[] {
   const steps = spec.replace(/^(States|Events) == .*$/gm, '')
-  return [...steps.matchAll(pattern)].map((match) => match[1])
+  const literals = (text: string): string[] =>
+    [...text.matchAll(/"([a-z]+)"/g)].map((match) => match[1])
+  const compared = new RegExp(`\\b${variable}'?\\s*(?:=|#)\\s*("[a-z]+")`, 'g')
+  const member = new RegExp(`\\b${variable}'?\\s*\\\\in\\s*\\{([^}]*)\\}`, 'g')
+  return [
+    ...[...steps.matchAll(compared), ...steps.matchAll(member)].flatMap((match) =>
+      literals(match[1])
+    ),
+    ...[...steps.matchAll(elsewhere)].map((match) => match[1])
+  ]
 }
 
 /** The right-hand side of `name == ...`, up to the next blank line or definition. */
@@ -106,9 +131,10 @@ function definitionOf(spec: string, name: string): string {
   return match[1].trim()
 }
 
-function invariantsOf(config: string): string[] {
+/** Every invariant and temporal property a config has TLC check. */
+function propertiesOf(config: string): string[] {
   return config
     .split('\n')
-    .filter((line) => line.startsWith('INVARIANT'))
+    .filter((line) => /^(INVARIANTS?|PROPERT(Y|IES))\b/.test(line))
     .flatMap((line) => line.split(/\s+/).slice(1))
 }
