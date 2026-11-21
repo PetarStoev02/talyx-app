@@ -23,7 +23,7 @@ import { UsageNav } from '@widgets/usage'
 import { ActivationDialog } from '@widgets/modules'
 import { TooltipProvider } from '@shared/ui/tooltip'
 import { ApprovalDialog, Roster, RosterAdd, RosterRefresh } from '@widgets/roster'
-import { ConnectionBanner, EngineSplash } from '@widgets/engine-gate'
+import { ConnectionBanner, EngineSplash, EngineWindowGate } from '@widgets/engine-gate'
 import { SetupFlow } from '@widgets/setup'
 import { ProvidersSection } from '@widgets/providers'
 import { MANAGER } from '@features/bots/details'
@@ -62,14 +62,14 @@ export function App(): React.JSX.Element {
   const openModule = modules.find((module) => module.id === moduleIdOf(currentView))
   const page =
     currentView === 'settings' ? (
-      <SettingsPage providers={providers} roster={rosterBackend} chat={chat} setup={setup} />
+      <SettingsPage providers={providers} roster={rosterBackend} chat={chat} />
     ) : currentView === 'usage' ? (
-      <UsagePage providers={providers} setup={setup} />
+      <UsagePage providers={providers} />
     ) : openModule ? (
       <ModulePage module={openModule} />
     ) : (
       // Also a module page whose module stopped or was removed: back to the agents.
-      <AgentsPage chat={chat} roster={rosterBackend} setup={setup} />
+      <AgentsPage chat={chat} roster={rosterBackend} />
     )
 
   // A module page whose module stopped, expired or was removed hands back to the agents, so a
@@ -165,30 +165,33 @@ export function App(): React.JSX.Element {
           onDone={finishSetup}
         />
       ) : (
-        <AppShell
-          titleEnd={
-            currentView === 'settings' || currentView === 'usage'
-              ? null
-              : rosterBackend && <RosterAdd module={openModule ?? null} />
-          }
-          footerEnd={rosterBackend && <RosterRefresh backend={rosterBackend} />}
-          roster={roster}
-          sidebar={
-            openModule ? (
-              <ModuleSidebar module={openModule} />
-            ) : currentView === 'settings' ? (
-              <SettingsNav />
-            ) : currentView === 'usage' ? (
-              <UsageNav />
-            ) : undefined
-          }
-        >
-          <ConnectionBanner />
-          {/* A page you switch to fades in; the one you left is gone at once. */}
-          <main key={currentView} className="animate-arrive min-h-0 flex-1 overflow-hidden">
-            <ErrorBoundary scope={currentView}>{page}</ErrorBoundary>
-          </main>
-        </AppShell>
+        // No sidebar, Settings or Usage until the engine is attached: none of them work without it.
+        <EngineWindowGate setup={setup}>
+          <AppShell
+            titleEnd={
+              currentView === 'settings' || currentView === 'usage'
+                ? null
+                : rosterBackend && <RosterAdd module={openModule ?? null} />
+            }
+            footerEnd={rosterBackend && <RosterRefresh backend={rosterBackend} />}
+            roster={roster}
+            sidebar={
+              openModule ? (
+                <ModuleSidebar module={openModule} />
+              ) : currentView === 'settings' ? (
+                <SettingsNav />
+              ) : currentView === 'usage' ? (
+                <UsageNav />
+              ) : undefined
+            }
+          >
+            <ConnectionBanner />
+            {/* A page you switch to fades in; the one you left is gone at once. */}
+            <main key={currentView} className="animate-arrive min-h-0 flex-1 overflow-hidden">
+              <ErrorBoundary scope={currentView}>{page}</ErrorBoundary>
+            </main>
+          </AppShell>
+        </EngineWindowGate>
       )}
     </TooltipProvider>
   )

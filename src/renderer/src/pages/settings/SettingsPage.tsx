@@ -15,7 +15,6 @@ import type { ModelLists } from '@features/chat/chat'
 import type { RosterBackend } from '@features/bots/data'
 import { reportProvider, useSetup } from '@features/setup/store'
 import { ProvidersSection } from '@widgets/providers'
-import { EngineGate } from '@widgets/engine-gate'
 import { DebugConsole, EngineSection } from '@widgets/settings-engine'
 import { StartupSection } from '@widgets/settings-startup'
 import { SoundSection } from '@widgets/settings-sound'
@@ -24,7 +23,6 @@ import { ModulesSection } from '@widgets/modules'
 import { SETTINGS_SECTIONS, type SettingsSection, shownPage } from '@features/settings/sections'
 import { useSettingsSection } from '@features/settings/store'
 import { useModules } from '@features/modules/store'
-import type { SetupBackend } from '@features/setup/install'
 
 // One column for the header and the page: wide enough to use a big window, narrow enough to read.
 const COLUMN = 'mx-auto w-full max-w-4xl px-8'
@@ -32,13 +30,11 @@ const COLUMN = 'mx-auto w-full max-w-4xl px-8'
 export function SettingsPage({
   providers,
   roster,
-  chat,
-  setup
+  chat
 }: {
   providers: ProvidersBackend | null
   roster: RosterBackend | null
   chat: ModelLists | null
-  setup: SetupBackend
 }): React.JSX.Element {
   const theme = useThemePick((s) => s.theme)
   const t = useLanguage((s) => s.t)
@@ -116,9 +112,9 @@ export function SettingsPage({
         </section>
       </>
     ),
-    // Providers live in the engine: without it attached, say why and how to fix it.
+    // Providers live in the engine, which is attached whenever Settings shows (EngineWindowGate).
     providers: (
-      <EngineGate setup={setup}>
+      <div className="flex h-full min-h-0 flex-1 flex-col">
         {providers && (
           <ProvidersSection
             backend={providers}
@@ -127,14 +123,14 @@ export function SettingsPage({
             onOverview={reportProvider}
           />
         )}
-      </EngineGate>
+      </div>
     ),
     engine: (
       <EngineSection
         debugConsole={
-          <EngineGate setup={setup}>
+          <div className="flex h-full min-h-0 flex-1 flex-col">
             <DebugConsole />
-          </EngineGate>
+          </div>
         }
       />
     ),

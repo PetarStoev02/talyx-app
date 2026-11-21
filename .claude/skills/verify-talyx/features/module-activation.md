@@ -22,7 +22,7 @@ Modules stay hidden until a license is active. With no key, nothing in Talyx men
 
 Preconditions:
 
-- Baseline launch (`--no-engine`, seed `{"setupDone": true}`). No engine is needed. The engine gate shows and the footer is still there.
+- Baseline launch (`--no-engine`, seed `{"setupDone": true}`). The engine gate fills the window, with no sidebar; the dialog opens from the app menu all the same. The Settings steps below need the engine (see [First-run setup](./first-run-setup.md)).
 - `control-talyx settings` has `"licenseKey": null` or no `licenseKey` key.
 
 - **Hidden without a key.** Run `control-talyx browser click --role button --name "Settings" --exact`. The navigation `Settings pages` lists General, Providers, Engine and About, with no Modules row. Run `control-talyx browser snapshot --path /tmp/talyx-verify/evidence/module-activation/before.aria.txt` and check that it does not contain `License and installed modules`.

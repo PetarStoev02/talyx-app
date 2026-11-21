@@ -18,7 +18,7 @@ Settings, About shows which Talyx is running ("Talyx {version}" in a dev run, th
 
 Preconditions:
 
-- Baseline launch (`--no-engine`, seed `{"setupDone": true}`). The engine gate shows and the footer is still there. The engine is not needed.
+- Launch with the engine: without one the engine gate fills the window and there is no sidebar, so no Settings. Do first-run setup in a `--no-engine` run first ([First-run setup](./first-run-setup.md)), or attach the real engine and only look.
 - Network access to GitHub for the update check.
 
 - **Open Settings.** Run `control-talyx browser click --role button --name "Settings" --exact`. The Settings pages sidebar shows.

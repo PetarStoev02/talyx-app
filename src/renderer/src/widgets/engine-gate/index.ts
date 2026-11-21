@@ -1,2 +1,2 @@
-export { EngineGate, EngineSplash } from './EngineGate'
+export { EngineSplash, EngineWindowGate } from './EngineGate'
 export { ConnectionBanner } from './ConnectionBanner'

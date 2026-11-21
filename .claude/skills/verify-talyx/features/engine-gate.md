@@ -1,8 +1,9 @@
 # Engine gate
 
-When Talyx cannot find its engine after setup, the Agents page shows "Talyx needs its engine."
-with three ways out: install it, look again, or point Talyx at the engine's file. The sidebar
-footer stays, so Settings is reachable.
+When Talyx cannot find its engine after setup, the whole window shows "Talyx needs its engine."
+with three ways out: install it, look again, or point Talyx at the engine's file. There is no
+sidebar until the engine is attached: no roster, no Settings, no Usage, as none of them work
+without it.
 
 ## Sub-features
 
@@ -22,9 +23,9 @@ Preconditions:
 
 - Baseline launch (`--no-engine`, seed `{"setupDone": true}`).
 
-- **Gate shows.** Run `control-talyx browser wait --role heading --name "Talyx needs its engine."`. The snapshot has `button "Install the engine"`, `button "Try again"`, `button "Choose file"`, and in the sidebar `button "Settings"` and `button "Usage"`.
+- **Gate shows.** Run `control-talyx browser wait --role heading --name "Talyx needs its engine."`. The snapshot has `button "Install the engine"`, `button "Try again"`, `button "Choose file"`, and no `button "Settings"` or `button "Usage"`.
 - **Try again.** Choose `Try again`. Run `control-talyx browser click --role button --name "Try again" --exact`. The gate stays; `/tmp/talyx-verify/run/talyx.log` gains another `[Engine] Command not found` line.
-- **Install.** Choose `Install the engine`. Run `control-talyx browser click --role button --name "Install the engine"`. The Engine step's screen replaces the gate in place: the sidebar footer stays and there is no `Setup steps` list (that list shows only in the first-run flow). `settings.json` keeps `"setupDone": true`, and Escape stays on the Agents page.
+- **Install.** Choose `Install the engine`. Run `control-talyx browser click --role button --name "Install the engine"`. The Engine step's screen replaces the gate in place, still with no sidebar, and there is no `Setup steps` list (that list shows only in the first-run flow). `settings.json` keeps `"setupDone": true`, and Escape stays on the Agents page.
 - **Proof.** Run `control-talyx browser snapshot --path /tmp/talyx-verify/evidence/engine-gate/after.aria.txt` and `control-talyx browser screenshot --path /tmp/talyx-verify/evidence/engine-gate/after.png`.
 
 ## Gotchas

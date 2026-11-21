@@ -12,15 +12,37 @@ import { reportError } from '@shared/lib/report'
 import { Button } from '@shared/ui/button'
 import { TalyxLogo } from '@shared/ui/TalyxLogo'
 
-// Fills a plain block (the Agents page, Settings' debug console) and centers in it.
+// Fills the window below its drag strip (EngineWindowGate) and centers in it.
 const centered = 'flex h-full flex-1 flex-col items-center justify-center gap-4 px-6 text-center'
 // How long the first socket open may take before the wait is shown as a problem.
 const FIRST_CONNECT_GRACE_MS = 8_000
 // The splash has no title bar; the whole window drags it on macOS.
 const dragRegion = { WebkitAppRegion: 'drag' } as React.CSSProperties
 
+/**
+ * The whole window until the engine is attached and open: why not and how to fix it, under a strip
+ * that drags the window, and no app around it. Then its children, the app.
+ */
+export function EngineWindowGate({
+  setup,
+  children
+}: {
+  setup: SetupBackend
+  children: React.ReactNode
+}): React.JSX.Element {
+  const installing = useUpdates((s) => s.engineInstallRequested)
+  const open = useEngine((s) => s.status?.state === 'attached' && s.everConnected)
+  if (open && !installing) return <>{children}</>
+  return (
+    <div className="flex h-screen flex-col">
+      <div className="h-14 shrink-0" style={dragRegion} />
+      <EngineGate setup={setup}>{children}</EngineGate>
+    </div>
+  )
+}
+
 /** Shows its children once the engine is attached; until then, why not and how to fix it. */
-export function EngineGate({
+function EngineGate({
   setup,
   children
 }: {

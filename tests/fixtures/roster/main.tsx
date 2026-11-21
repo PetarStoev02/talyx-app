@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Toaster } from 'sonner'
+import { EngineWindowGate } from '../../../src/renderer/src/widgets/engine-gate'
 import { SidebarFooter } from '../../../src/renderer/src/widgets/app-shell/SidebarFooter'
 import { Roster } from '../../../src/renderer/src/widgets/roster/Roster'
 import { RosterAdd } from '../../../src/renderer/src/widgets/roster/RosterAdd'
@@ -136,50 +137,57 @@ export function Fixture(): React.JSX.Element {
   const setupBackend = useSetupBackend()
   const online = useRoster((state) => state.online)
   return (
-    <div className="flex h-screen bg-background">
-      <Toaster position="bottom-right" closeButton />
-      <aside className="tone-step flex w-[320px] max-w-[85vw] shrink-0 flex-col">
-        {/* The app puts the roster's `+` at the end of the sidebar's title row. */}
-        <div className="flex items-center justify-between px-5 pt-4 pr-3">
-          <h1 className="text-xl font-semibold">Talyx</h1>
-          <RosterAdd />
-        </div>
-        <span className="px-5 text-xs">Interaction fixture · synthetic data</span>
-        <Roster backend={rosterBackend} models={chat.models} onSelect={() => navigate('agents')} />
-        <button
-          className="m-3 rounded-full px-3 py-2 text-left text-sm hover:bg-accent"
-          aria-pressed={page === 'settings'}
-          onClick={() => navigate(page === 'settings' ? 'agents' : 'settings')}
-        >
-          {page === 'settings' ? 'Back to agents' : 'Settings'}
-        </button>
-        <button
-          className="mx-3 mb-3 rounded-full px-3 py-2 text-left text-sm hover:bg-accent"
-          aria-pressed={!online}
-          onClick={() => useRoster.getState().setOnline(!online)}
-        >
-          {online ? 'Drop the engine socket (offline)' : 'Reconnect the engine socket'}
-        </button>
-        <ExportedAvatar />
-        {/* The app's footer row: its update button takes the refresh button's place. */}
-        <SidebarFooter end={<RosterRefresh backend={rosterBackend} />} />
-      </aside>
-      <main className="min-w-0 flex-1">
-        {page === 'settings' ? (
-          // The settings page's own sections, without Appearance: it needs the desktop bridge.
-          <div className="mx-auto w-full max-w-2xl space-y-4 overflow-y-auto p-6">
-            <ProvidersSection
-              backend={providers}
-              roster={rosterBackend}
-              chat={chat}
-              onOverview={reportProvider}
-            />
+    // As in the app: the whole window waits for the engine, then shows the roster and the page.
+    <EngineWindowGate setup={setupBackend}>
+      <div className="flex h-screen bg-background">
+        <Toaster position="bottom-right" closeButton />
+        <aside className="tone-step flex w-[320px] max-w-[85vw] shrink-0 flex-col">
+          {/* The app puts the roster's `+` at the end of the sidebar's title row. */}
+          <div className="flex items-center justify-between px-5 pt-4 pr-3">
+            <h1 className="text-xl font-semibold">Talyx</h1>
+            <RosterAdd />
           </div>
-        ) : (
-          <AgentsPage chat={chat} roster={rosterBackend} setup={setupBackend} />
-        )}
-      </main>
-    </div>
+          <span className="px-5 text-xs">Interaction fixture · synthetic data</span>
+          <Roster
+            backend={rosterBackend}
+            models={chat.models}
+            onSelect={() => navigate('agents')}
+          />
+          <button
+            className="m-3 rounded-full px-3 py-2 text-left text-sm hover:bg-accent"
+            aria-pressed={page === 'settings'}
+            onClick={() => navigate(page === 'settings' ? 'agents' : 'settings')}
+          >
+            {page === 'settings' ? 'Back to agents' : 'Settings'}
+          </button>
+          <button
+            className="mx-3 mb-3 rounded-full px-3 py-2 text-left text-sm hover:bg-accent"
+            aria-pressed={!online}
+            onClick={() => useRoster.getState().setOnline(!online)}
+          >
+            {online ? 'Drop the engine socket (offline)' : 'Reconnect the engine socket'}
+          </button>
+          <ExportedAvatar />
+          {/* The app's footer row: its update button takes the refresh button's place. */}
+          <SidebarFooter end={<RosterRefresh backend={rosterBackend} />} />
+        </aside>
+        <main className="min-w-0 flex-1">
+          {page === 'settings' ? (
+            // The settings page's own sections, without Appearance: it needs the desktop bridge.
+            <div className="mx-auto w-full max-w-2xl space-y-4 overflow-y-auto p-6">
+              <ProvidersSection
+                backend={providers}
+                roster={rosterBackend}
+                chat={chat}
+                onOverview={reportProvider}
+              />
+            </div>
+          ) : (
+            <AgentsPage chat={chat} roster={rosterBackend} />
+          )}
+        </main>
+      </div>
+    </EngineWindowGate>
   )
 }
 

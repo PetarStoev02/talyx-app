@@ -8,11 +8,9 @@ import type { ProvidersBackend } from '@features/providers/providers'
 import { USAGE_PERIODS, type UsagePeriod } from '@features/providers/usage'
 import { useUsageView } from '@features/providers/store'
 import { loadUsageView } from '@features/providers/usageView'
-import type { SetupBackend } from '@features/setup/install'
 import { reportError } from '@shared/lib/report'
 import { cn } from '@shared/lib/utils'
 import { IconButton } from '@shared/ui/IconButton'
-import { EngineGate } from '@widgets/engine-gate'
 import { UsageBoard } from '@widgets/usage'
 
 // The same column as Settings: wide enough to use a big window, narrow enough to read.
@@ -20,11 +18,9 @@ const COLUMN = 'mx-auto w-full max-w-4xl px-8'
 
 /** What every bot used over a recent period; its sidebar picks all providers or one. */
 export function UsagePage({
-  providers,
-  setup
+  providers
 }: {
   providers: ProvidersBackend | null
-  setup: SetupBackend
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const goBack = useNavigation((s) => s.goBack)
@@ -92,7 +88,9 @@ export function UsagePage({
       </header>
       <div className="scroll-y-stable min-h-0 flex-1">
         <div className={cn(COLUMN, 'py-6')}>
-          <EngineGate setup={setup}>{providers && <UsageBoard onRetry={load} />}</EngineGate>
+          <div className="flex h-full min-h-0 flex-1 flex-col">
+            {providers && <UsageBoard onRetry={load} />}
+          </div>
         </div>
       </div>
     </div>
