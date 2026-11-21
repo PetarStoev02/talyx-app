@@ -50,7 +50,7 @@ Bots can take actions on your computer through the engine. Some actions ask for 
 
 Talyx modules add new kinds of work to the App, such as Workflows. They are optional, are not part of the open source code, and are sold for a one-time price shown on our [pricing page](/pricing).
 
-- **Who sells them.** Petar Georgiev Stoev sells them. The checkout names the payment provider that processes your order.
+- **Who sells them.** Talyx modules are made by Petar Georgiev Stoev. The checkout names the company that takes your payment, and any terms of its own that also apply to your purchase.
 - **Your license key.** After you pay, we email you a license key. It lets you install the modules you bought on your own computers. It is for you, not for sharing or resale.
 - **Updates.** A purchase includes every update we publish for the modules you bought, at no extra cost.
 - **Refunds.** You can ask for a full refund within 30 days of purchase. See the [refund policy](/legal/refund).

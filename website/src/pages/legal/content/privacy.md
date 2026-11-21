@@ -2,7 +2,7 @@
 
 **Last Updated:** November 2026
 
-This policy is published by Petar Georgiev Stoev, who sells Talyx modules.
+This policy is published by Petar Georgiev Stoev, who makes Talyx modules.
 
 ---
 
@@ -89,8 +89,8 @@ Vercel hosts the site and keeps standard server logs of requests, like any web h
 
 Talyx itself is free. If you buy a paid module:
 
-- **Payment.** The payment provider named at checkout collects your payment details, name, email address, country and tax information, under its own privacy notice. We never see your card details.
-- **What we receive.** The payment provider tells us your name, your email address, your country, what you bought and the order's ID. We use them to create your license key, send it to you, answer your questions and handle refunds.
+- **Payment.** The checkout names the company that takes your payment and links to its privacy notice, which covers what it collects. We never see your card details.
+- **What we receive.** The details of your order that this company shares with us, such as your email address and what you bought. We use them only to create your license key, send it to you, answer your questions and handle refunds.
 - **Your license key.** We email the key to you. It carries the modules you bought and is checked by our module server each time the App downloads a module. That check sees the key and your IP address, like any web request.
 - **How long.** We keep order records as long as tax and accounting law requires.
 
