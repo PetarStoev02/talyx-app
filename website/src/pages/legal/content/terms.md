@@ -50,7 +50,7 @@ Bots can take actions on your computer through the engine. Some actions ask for 
 
 Talyx modules add new kinds of work to the App, such as Workflows. They are optional, are not part of the open source code, and are sold for a one-time price shown on our [pricing page](/pricing).
 
-- **Who sells them.** Our order process is conducted by our online reseller Paddle.com. Paddle.com is the Merchant of Record for all our orders. Paddle provides all customer service inquiries and handles returns. Paddle's [buyer terms](https://www.paddle.com/legal/invoiced-consumer-terms) also apply to your purchase.
+- **Who sells them.** Petar Georgiev Stoev sells them. The checkout names the payment provider that processes your order.
 - **Your license key.** After you pay, we email you a license key. It lets you install the modules you bought on your own computers. It is for you, not for sharing or resale.
 - **Updates.** A purchase includes every update we publish for the modules you bought, at no extra cost.
 - **Refunds.** You can ask for a full refund within 30 days of purchase. See the [refund policy](/legal/refund).
@@ -72,7 +72,7 @@ Talyx is provided "as is", without warranty of any kind, express or implied, inc
 
 ## 9. Privacy
 
-See our [Privacy Policy](/legal/privacy) for how data moves between Talyx, the engine, your model providers and GitHub, and for what this website counts. The App has no server of its own; buying a module involves Paddle and our module server, as the Privacy Policy describes.
+See our [Privacy Policy](/legal/privacy) for how data moves between Talyx, the engine, your model providers and GitHub, and for what this website counts. The App has no server of its own; buying a module involves a payment provider and our module server, as the Privacy Policy describes.
 
 ---
 

@@ -170,8 +170,7 @@ export const seoData: Record<string, PageMeta> = {
   },
   '/legal/refund': {
     title: 'Refund Policy: Talyx | 30-Day Refunds on Modules',
-    description:
-      'Talyx modules are sold through Paddle.com, our Merchant of Record. Ask within 30 days of purchase for a full refund, no reason needed.',
+    description: 'Ask within 30 days of buying a Talyx module for a full refund, no reason needed.',
     canonical: '/legal/refund'
   },
   '/pricing': {
