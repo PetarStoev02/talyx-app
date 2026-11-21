@@ -21,7 +21,7 @@ When a Talyx release or an engine update is waiting, the sidebar footer swaps th
 
 Preconditions:
 
-- Baseline launch (`--no-engine`, seed `{"setupDone": true}`). The engine gate shows and the footer is still there. A dev run never checks on a schedule, so the button shows only after the manual check finds a release newer than the package version.
+- Launch with the engine: without one the engine gate fills the window and there is no sidebar, so no Settings. Do first-run setup in a `--no-engine` run first ([First-run setup](./first-run-setup.md)), or attach the real engine and only look. A dev run never checks on a schedule, so the button shows only after the manual check finds a release newer than the package version.
 - Network access to github.com.
 
 - **Open About.** Run `control-talyx browser click --role button --name "Settings" --exact`, then `control-talyx browser click --role button --name "About"`. Then run `control-talyx browser wait --role heading --name "About" --exact`. The page shows `Talyx {version}`, "Engine not found" and `button "Check for updates"`.

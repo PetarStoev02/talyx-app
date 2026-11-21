@@ -111,7 +111,7 @@ jobs:
       - name: Build
         run: npx electron-vite build
 
-  # One mapped feature (settings-theme) and a seeded fuzz in the real window, with no engine.
+  # One mapped feature (engine-gate) and a seeded fuzz in the real window, with no engine.
   # Runs on every push to main, and on a PR that touches the renderer, the driver or this file;
   # any other PR passes it at once, so the job can be a required check.
   ui:
@@ -162,27 +162,20 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           Xvfb :99 -screen 0 1280x800x24 &
 
-      - name: Settings theme (features/settings-theme.md)
+      - name: Engine gate (features/engine-gate.md)
         if: steps.scope.outputs.run
         run: |
           set -euo pipefail
-          out="$EVIDENCE/settings-theme"
+          out="$EVIDENCE/engine-gate"
           mkdir -p "$out"
           echo '{"setupDone": true}' > /tmp/seed.json
           $CONTROL launch --no-engine --seed /tmp/seed.json
-          $CONTROL browser click --role button --name Settings --exact
-          $CONTROL browser wait --role heading --name 'Settings: General'
-          $CONTROL browser screenshot --path "$out/before.png"
-          $CONTROL browser click --role button --name Dark --exact
+          $CONTROL browser wait --role heading --name 'Talyx needs its engine.'
           $CONTROL browser snapshot --path "$out/after.aria.txt"
           $CONTROL browser screenshot --path "$out/after.png"
-          $CONTROL settings > "$out/settings.json"
-          grep -F 'button "Dark" [pressed]' "$out/after.aria.txt"
-          # Each command reconnects, which resets the emulated colour scheme: the window must
-          # still paint the pick.
-          test "$($CONTROL browser theme)" = dark
-          node -e 'process.exit(require(process.argv[1]).theme === "dark" ? 0 : 1)' \
-            "$out/settings.json"
+          grep -F 'button "Install the engine"' "$out/after.aria.txt"
+          # No sidebar without the engine: no Settings, no Usage.
+          ! grep -E 'button "(Settings|Usage)"' "$out/after.aria.txt"
           $CONTROL stop
 
       # A failing seed replays locally: launch --no-engine with the same seed file, then fuzz.

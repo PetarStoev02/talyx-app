@@ -201,14 +201,13 @@ const FUZZ_STEPS = 200
 const SANDBOX_ENGINE = join(HOME, '.local/bin', ENGINE_COMMAND)
 
 // The Agents page: the footer's Settings button shows (not Close Settings, not the setup flow),
-// with no Back (Settings, Usage) and no dialog over it.
+// with no Back (Settings, Usage) and no dialog over it. Without an engine, the engine gate, which
+// fills the window, is home.
 async function atHome(page) {
   const button = (name) => page.getByRole('button', { name, exact: true })
-  return (
-    (await button('Settings').count()) > 0 &&
-    !(await button('Back').count()) &&
-    !(await page.getByRole('dialog').count())
-  )
+  const gate = page.getByRole('heading', { name: 'Talyx needs its engine.', exact: true })
+  const agents = (await button('Settings').count()) > 0 && !(await button('Back').count())
+  return (agents || (await gate.count()) > 0) && !(await page.getByRole('dialog').count())
 }
 
 async function fuzz() {

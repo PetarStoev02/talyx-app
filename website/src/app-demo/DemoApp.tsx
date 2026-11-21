@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import { Toaster } from 'sonner'
 import { AppShell } from '@widgets/app-shell'
 import { AgentsPage } from '@pages/agents'
-import { useSetupBackend } from '@app/providers/useSetupBackend'
 import { Roster, RosterAdd, RosterRefresh } from '@widgets/roster'
 import { TooltipProvider } from '@shared/ui/tooltip'
 import { MANAGER } from '@features/bots/details'
@@ -11,7 +10,7 @@ import { attachDouble, chat, rosterBackend } from '../../../tests/fixtures/roste
 
 export type DemoView = 'chat' | 'cards' | 'details' | 'room'
 
-// Before the first render: the Agents page checks for an engine when it has none.
+// Before the first render: the in-memory engine the demo's Agents page talks to.
 attachDouble()
 
 function showScene(scene: DemoView) {
@@ -25,7 +24,6 @@ function showScene(scene: DemoView) {
 /** The real app shell on the roster fixture's in-memory engine, opened on a landing-page scene. */
 export function DemoApp({ scene }: { scene: DemoView }) {
   useEffect(() => showScene(scene), [scene])
-  const setup = useSetupBackend()
 
   return (
     <TooltipProvider>
@@ -35,7 +33,7 @@ export function DemoApp({ scene }: { scene: DemoView }) {
         roster={<Roster backend={rosterBackend} models={chat.models} onSelect={() => {}} />}
       >
         <main className="min-h-0 flex-1 overflow-hidden">
-          <AgentsPage chat={chat} roster={rosterBackend} setup={setup} />
+          <AgentsPage chat={chat} roster={rosterBackend} />
         </main>
       </AppShell>
       <Toaster position="top-right" closeButton />
