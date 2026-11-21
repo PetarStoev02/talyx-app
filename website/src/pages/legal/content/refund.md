@@ -4,7 +4,7 @@
 
 ---
 
-## 1. Who Sells Talyx Modules
+## 1. Who Makes Talyx Modules
 
 Talyx itself is free. Talyx modules are made by Petar Georgiev Stoev. The checkout names the company that takes your payment.
 
