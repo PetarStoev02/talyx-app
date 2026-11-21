@@ -52,9 +52,7 @@ export function PricingPage() {
         style={STEP.small}
       >
         <p className="max-w-[65ch]">
-          Prices in US dollars. In countries that show prices with tax, such as those in the EU, the
-          price includes VAT; elsewhere any sales tax is added at checkout. The checkout shows the
-          total before you pay. Orders are processed by Paddle.com, our Merchant of Record. 30-day
+          Prices in US dollars. The checkout shows any tax and the total before you pay. 30-day
           refunds: see the{' '}
           <Link to="/legal/$slug" params={{ slug: 'refund' }} className="underline">
             refund policy
