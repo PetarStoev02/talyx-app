@@ -11,12 +11,15 @@ import { MessageBubble } from './MessageBubble'
 export function Transcript({
   items,
   allItems,
+  waiting,
   children,
   loadImage,
   onSurfaceSend
 }: {
   items: MessageItem[]
   allItems: ChatItem[]
+  /** The texts of your messages still waiting to go: a card whose button sent one is answered. */
+  waiting: string[]
   children?: React.ReactNode
   loadImage: (path: string) => Promise<string>
   onSurfaceSend: (text: string) => void
@@ -51,6 +54,7 @@ export function Transcript({
                 <MessageBubble
                   message={item}
                   allItems={allItems}
+                  waiting={waiting}
                   loadImage={loadImage}
                   briefs={briefs}
                   onSurfaceSend={onSurfaceSend}

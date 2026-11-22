@@ -259,6 +259,28 @@ describe('parseA2uiMessages', () => {
     if (!result.ok) expect(result.reason).toContain('Two inputs share')
   })
 
+  it('should refuse an input label that holds the mark between a label and its value', () => {
+    const result = parseA2uiMessages(
+      components('x', [
+        { id: 'root', component: 'TextField', label: 'Name: first', value: { '@path': '/a' } }
+      ])
+    )
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.reason).toContain('must not contain ": "')
+  })
+
+  it('should refuse a button whose label is bound to the data model', () => {
+    const result = parseA2uiMessages(
+      components('x', [
+        { id: 'root', component: 'Column', children: ['go'] },
+        { id: 'label', component: 'Text', text: { '@path': '/label' } },
+        { id: 'go', component: 'Button', child: 'label', action: { event: { name: 'go' } } }
+      ])
+    )
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.reason).toContain('plain text')
+  })
+
   it('should refuse two options of one choice with the same value', () => {
     const result = parseA2uiMessages(
       components('x', [

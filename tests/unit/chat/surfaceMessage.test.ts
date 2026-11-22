@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { UiSurface } from '../../../src/shared/a2uiSurface'
 import {
   surfaceAnswer,
-  surfaceClickMessage,
-  surfaceControlsLocked
+  surfaceClickMessage
 } from '../../../src/renderer/src/features/chat/surfaceMessage'
 import type { ChatItem } from '../../../src/renderer/src/features/chat/types'
 
@@ -41,13 +40,6 @@ const formSurface: UiSurface = {
     }
   ]
 }
-
-describe('surfaceControlsLocked', () => {
-  it('should lock after a click is queued but before the transcript shows the answer', () => {
-    expect(surfaceControlsLocked(false, true)).toBe(true)
-    expect(surfaceControlsLocked(false, false)).toBe(false)
-  })
-})
 
 describe('surfaceClickMessage', () => {
   it('should send only the button label when there are no inputs', () => {
@@ -101,7 +93,7 @@ describe('surfaceAnswer', () => {
   }
 
   it('should be unanswered with no user message after it', () => {
-    expect(surfaceAnswer([surfaceItem], surfaceItem)).toEqual({
+    expect(surfaceAnswer([surfaceItem], surfaceItem, [])).toEqual({
       answered: false,
       pickedButtonId: null,
       values: null
@@ -113,7 +105,7 @@ describe('surfaceAnswer', () => {
       surfaceItem,
       { kind: 'user', id: 'u1', text: 'Wednesday', images: [] }
     ]
-    expect(surfaceAnswer(items, surfaceItem)).toMatchObject({
+    expect(surfaceAnswer(items, surfaceItem, [])).toMatchObject({
       answered: true,
       pickedButtonId: 'btn'
     })
@@ -124,7 +116,7 @@ describe('surfaceAnswer', () => {
       surfaceItem,
       { kind: 'user', id: 'u1', text: 'Something else', images: [] }
     ]
-    expect(surfaceAnswer(items, surfaceItem)).toMatchObject({
+    expect(surfaceAnswer(items, surfaceItem, [])).toMatchObject({
       answered: true,
       pickedButtonId: null
     })
@@ -138,10 +130,24 @@ describe('surfaceAnswer', () => {
       text: 'Create routine\nName: Monthly report\nDay: Wed\nTags: B',
       images: []
     }
-    expect(surfaceAnswer([form, sent], form)).toEqual({
+    expect(surfaceAnswer([form, sent], form, [])).toEqual({
       answered: true,
       pickedButtonId: 'send',
       values: { name: 'Monthly report', day: 'wed', tags: ['b'] }
     })
+  })
+
+  it('should count as answered while its own click still waits to go, and not after it is taken back', () => {
+    const form: ChatItem = { kind: 'surface', id: 'f1', surface: formSurface }
+    const waiting = 'Create routine\nName: Monthly report'
+    expect(surfaceAnswer([form], form, [waiting])).toMatchObject({
+      answered: true,
+      pickedButtonId: 'send',
+      values: { name: 'Monthly report' }
+    })
+    // The send failed or the user took the message back: the card can be answered again.
+    expect(surfaceAnswer([form], form, []).answered).toBe(false)
+    // A message of yours that waits but is not this card's does not settle it.
+    expect(surfaceAnswer([form], form, ['Something else']).answered).toBe(false)
   })
 })

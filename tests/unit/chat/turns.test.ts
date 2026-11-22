@@ -167,6 +167,8 @@ describe('turn outcome', () => {
       surface: { surfaceId: 'pick', components: [], dataModel: {} }
     }
     expect(turnOutcome([user('u1'), ui], false)).toEqual({ kind: 'answered', asked: user('u1') })
+    // Shown live and not stored yet: no "ask again" before the reload puts it in the history.
+    expect(turnOutcome([user('u1'), { ...ui, id: 'live-ui-1' }], false)).toBeNull()
   })
 
   it('should name the message an answered turn answered, so the answer can be asked for again', () => {

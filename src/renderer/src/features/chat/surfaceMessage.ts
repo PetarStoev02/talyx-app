@@ -13,26 +13,37 @@ export type SurfaceAnswer = {
 
 const UNANSWERED: SurfaceAnswer = { answered: false, pickedButtonId: null, values: null }
 
-/** Whether a surface's inputs and buttons stay off after an answer or a queued click. */
-export function surfaceControlsLocked(answered: boolean, queued: boolean): boolean {
-  return answered || queued
-}
-
-/** Whether a user message after this surface has answered it, and which button label matched. */
-export function surfaceAnswer(items: ChatItem[], surface: SurfaceItem): SurfaceAnswer {
+/**
+ * Whether this surface has its answer: a user message after it in the chat, or one of its own
+ * buttons' messages still waiting to go (`waiting`, the texts queued behind the bot's answer). The
+ * state lives in the chat alone, so a send that fails or is taken back frees the card again.
+ */
+export function surfaceAnswer(
+  items: ChatItem[],
+  surface: SurfaceItem,
+  waiting: string[]
+): SurfaceAnswer {
   const at = items.findIndex((item) => item.id === surface.id)
   if (at < 0) return UNANSWERED
   const next = items.slice(at + 1).find((item) => item.kind === 'user')
-  if (!next || next.kind !== 'user') return UNANSWERED
-  const [firstLine = '', ...lines] = next.text.split('\n')
-  const picked = buttonsOf(surface.surface).find(
-    (button) => buttonLabel(surface.surface, button) === firstLine
-  )
-  return {
-    answered: true,
-    pickedButtonId: picked?.id ?? null,
-    values: picked ? sentValues(surface.surface, lines) : null
+  if (next?.kind === 'user') return answerFrom(surface.surface, next.text) ?? TYPED_ANSWER
+  for (const text of waiting) {
+    const answer = answerFrom(surface.surface, text)
+    if (answer) return answer
   }
+  return UNANSWERED
+}
+
+// An answer in the user's own words: the card is settled, no button of it was pressed.
+const TYPED_ANSWER: SurfaceAnswer = { answered: true, pickedButtonId: null, values: null }
+
+/** The answer a message is when one of the surface's buttons sent it; null for any other text. */
+function answerFrom(surface: UiSurface, text: string): SurfaceAnswer | null {
+  const [firstLine = '', ...lines] = text.split('\n')
+  const picked = buttonsOf(surface).find((button) => buttonLabel(surface, button) === firstLine)
+  return picked
+    ? { answered: true, pickedButtonId: picked.id, values: sentValues(surface, lines) }
+    : null
 }
 
 // The inverse of the click message's input lines, so an answered form shows what was sent.

@@ -51,12 +51,14 @@ const urlTransform: UrlTransform = (url, _key, node) =>
 export function MessageBubble({
   message,
   allItems,
+  waiting,
   loadImage,
   briefs,
   onSurfaceSend
 }: {
   message: MessageItem
   allItems: ChatItem[]
+  waiting: string[]
   loadImage: (path: string) => Promise<string>
   // The Workflows briefs in this chat by task, so a status line can name its task and step.
   briefs: Record<string, WorkflowBrief>
@@ -69,6 +71,7 @@ export function MessageBubble({
         id={message.id}
         surface={message.surface}
         items={allItems}
+        waiting={waiting}
         onSend={onSurfaceSend}
       />
     )

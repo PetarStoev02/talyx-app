@@ -1,3 +1,4 @@
+import { LIVE_SURFACE_PREFIX } from './surfaceLive'
 import { LIVE_ID } from './transcript'
 import type { ChatItem, MessageItem } from './types'
 
@@ -63,8 +64,11 @@ export function turnOutcome(items: ChatItem[], running: boolean): TurnOutcome | 
   const sending = asked.id.startsWith(SENDING_ID)
   // An answer is asked for again in the stored message's place, so not before the reload stores it.
   // A reply not stored yet may be another client's turn, whose message has not loaded yet.
-  const stored = !sending && !replies.some((reply) => reply.id.startsWith(LIVE_ID))
   const surfaces = work.filter((item): item is SurfaceItem => item.kind === 'surface')
+  const stored =
+    !sending &&
+    !replies.some((reply) => reply.id.startsWith(LIVE_ID)) &&
+    !surfaces.some((surface) => surface.id.startsWith(LIVE_SURFACE_PREFIX))
   if (replies.some((reply) => reply.text) || surfaces.length > 0)
     return stored ? { kind: 'answered', asked } : null
   if (replies.some((reply) => reply.stopped)) return { kind: 'stopped', asked }

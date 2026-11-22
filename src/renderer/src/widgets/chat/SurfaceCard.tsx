@@ -1,11 +1,7 @@
 import { useId, useMemo, useState } from 'react'
 import type { UiComponent, UiSurface } from '@contract/a2uiSurface'
 import { pathKey, resolveText } from '@contract/a2uiSurface'
-import {
-  surfaceAnswer,
-  surfaceClickMessage,
-  surfaceControlsLocked
-} from '@features/chat/surfaceMessage'
+import { surfaceAnswer, surfaceClickMessage } from '@features/chat/surfaceMessage'
 import type { ChatItem } from '@features/chat/types'
 import { useLanguage } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
@@ -41,18 +37,19 @@ export function SurfaceCard({
   id,
   surface,
   items,
+  waiting,
   onSend
 }: {
   id: string
   surface: UiSurface
   items: ChatItem[]
+  /** The texts of your messages still waiting to go. */
+  waiting: string[]
   onSend: (text: string) => void
 }): React.JSX.Element | null {
   const t = useLanguage((s) => s.t)
   const item = useMemo(() => ({ kind: 'surface' as const, id, surface }), [id, surface])
-  const { answered, pickedButtonId: picked, values: sent } = surfaceAnswer(items, item)
-  const [queued, setQueued] = useState(false)
-  const locked = surfaceControlsLocked(answered, queued)
+  const { answered, pickedButtonId: picked, values: sent } = surfaceAnswer(items, item, waiting)
   const [typed, setValues] = useState<Values>({ ...surface.dataModel })
   // An answered form is a record: it shows what was sent, also after the chat was reopened.
   const values = sent ?? typed
@@ -66,12 +63,9 @@ export function SurfaceCard({
     byId,
     values,
     setValues,
-    answered: locked,
+    answered,
     picked,
-    onButton: (buttonId) => {
-      setQueued(true)
-      onSend(surfaceClickMessage(surface, buttonId, values))
-    }
+    onButton: (buttonId) => onSend(surfaceClickMessage(surface, buttonId, values))
   }
   const pickedButton = picked ? byId.get(picked) : undefined
   return (

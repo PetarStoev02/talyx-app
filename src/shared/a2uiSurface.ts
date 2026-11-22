@@ -384,18 +384,35 @@ function bindingsOf(components: UiComponent[]): string[] {
   ]
 }
 
+/** The text of a button's label: a string, or its binding when the surface bound it. */
+function labelOf(
+  byId: Map<string, UiComponent>,
+  button: Extract<UiComponent, { component: 'Button' }>
+): unknown {
+  const label = byId.get(button.child)
+  return label?.component === 'Text' ? label.text : ''
+}
+
 function buttonLabelText(
   byId: Map<string, UiComponent>,
   button: Extract<UiComponent, { component: 'Button' }>
 ): string {
-  const label = byId.get(button.child)
-  if (label?.component !== 'Text' || typeof label.text !== 'string') return ''
-  return label.text
+  const text = labelOf(byId, button)
+  return typeof text === 'string' ? text : ''
 }
 
 function clickAmbiguity(components: UiComponent[], byId: Map<string, UiComponent>): string | null {
   const inputLabels: string[] = []
   for (const component of components) {
+    // The click message writes an input as "label: value" and is read back by that opening.
+    if (
+      (component.component === 'TextField' || component.component === 'ChoicePicker') &&
+      component.label?.includes(': ')
+    )
+      return `Component "${component.id}": the label "${component.label}" must not contain ": ".`
+    // A button's label is the answer the user sends, so it is fixed text, never a bound value.
+    if (component.component === 'Button' && typeof labelOf(byId, component) !== 'string')
+      return `Component "${component.id}": a button's label must be plain text, not a @path binding.`
     if (component.component === 'TextField') {
       if (lineBreak(component.label))
         return `Component "${component.id}": input labels must not contain a line break.`
