@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { UiComponent } from '@contract/a2uiSurface'
 import { niceCeiling } from '@shared/lib/chartPath'
 import { useLanguage } from '@shared/lib/i18n'
@@ -30,6 +31,8 @@ const DONUT_OUTER = 70
 const DONUT_INNER = 44
 const COMPACT_FROM = 10_000
 const FULL_TURN = Math.PI * 2
+const DIM_OPACITY = 0.35
+const TOOLTIP_EDGE_INSET = 8
 // The series colours, in order and never cycled (theme.css): a chart has four series at most.
 const SERIES = ['text-chart-1', 'text-chart-2', 'text-chart-3', 'text-chart-4'] as const
 
@@ -39,6 +42,7 @@ const plain = new Intl.NumberFormat('en', { maximumFractionDigits: 2 })
 /** A chart a bot put in its answer: bars, a line, an area or a pie, with what a reader needs to name each mark. */
 export function SurfaceChart({ chart }: { chart: Chart }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
+  const [hover, setHover] = useState<number | null>(null)
   const [first] = chart.series
   const peak = Math.max(...chart.series.flatMap((series) => series.values), 0)
   const peakAt = first ? first.values.indexOf(Math.max(...first.values)) : -1
@@ -47,6 +51,14 @@ export function SurfaceChart({ chart }: { chart: Chart }): React.JSX.Element {
     .replace('{label}', chart.labels[peakAt] ?? '')
     .replace('{value}', amount(Math.max(...(first?.values ?? [0])), chart.unit))
   if (chart.kind === 'pie') return <Pie chart={chart} summary={summary} />
+  const slot = slotWidth(chart)
+  const hoverLeft =
+    hover === null
+      ? 0
+      : Math.min(
+          Math.max((slotCentre(chart, hover) / WIDTH) * 100, TOOLTIP_EDGE_INSET),
+          100 - TOOLTIP_EDGE_INSET
+        )
   return (
     <figure className="flex flex-col gap-2">
       {chart.series.length > 1 && (
@@ -62,23 +74,84 @@ export function SurfaceChart({ chart }: { chart: Chart }): React.JSX.Element {
           ))}
         </figcaption>
       )}
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={summary} className="w-full">
-        <Grid top={niceCeiling(peak)} unit={chart.unit} />
-        {chart.kind === 'bar' ? <Bars chart={chart} /> : <Lines chart={chart} />}
-        {chart.labels.map((label, index) => (
-          <text
-            key={index}
-            x={slotCentre(chart, index)}
-            y={HEIGHT - 6}
-            textAnchor="middle"
-            fontSize={TICK_SIZE}
-            className="fill-muted-foreground"
+      <div className="relative">
+        {hover !== null && (
+          <div
+            className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-sm"
+            style={{ left: `${hoverLeft}%` }}
           >
-            {label}
-          </text>
-        ))}
-      </svg>
+            <MarkTooltip chart={chart} index={hover} />
+          </div>
+        )}
+        <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={summary} className="w-full">
+          <Grid top={niceCeiling(peak)} unit={chart.unit} />
+          {chart.kind === 'bar' ? (
+            <Bars chart={chart} hover={hover} />
+          ) : (
+            <Lines chart={chart} hover={hover} />
+          )}
+          {hover !== null && chart.kind !== 'bar' && (
+            <line
+              x1={slotCentre(chart, hover)}
+              x2={slotCentre(chart, hover)}
+              y1={TOP}
+              y2={PLOT_BOTTOM}
+              className="stroke-border"
+              strokeWidth={1}
+              pointerEvents="none"
+            />
+          )}
+          {chart.labels.map((label, index) => (
+            <text
+              key={label}
+              x={slotCentre(chart, index)}
+              y={HEIGHT - 6}
+              textAnchor="middle"
+              fontSize={TICK_SIZE}
+              className="fill-muted-foreground"
+            >
+              {label}
+            </text>
+          ))}
+          <g>
+            {chart.labels.map((_, index) => (
+              <rect
+                key={index}
+                x={LEFT + slot * index}
+                y={TOP}
+                width={slot}
+                height={PLOT_HEIGHT}
+                fill="transparent"
+                onPointerEnter={() => setHover(index)}
+                onPointerLeave={() => setHover(null)}
+              />
+            ))}
+          </g>
+        </svg>
+      </div>
     </figure>
+  )
+}
+
+function MarkTooltip({ chart, index }: { chart: Chart; index: number }): React.JSX.Element {
+  const label = chart.labels[index] ?? ''
+  const many = chart.series.length > 1
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="font-medium">{label}</div>
+      {chart.series.map((series, seriesIndex) => (
+        <div key={series.name} className="flex items-center gap-1.5 tabular-nums">
+          <span
+            aria-hidden="true"
+            className={cn('size-2 shrink-0 rounded-xs bg-current', SERIES[seriesIndex])}
+          />
+          {many && <span className="min-w-0 flex-1 truncate">{series.name}</span>}
+          <span className={many ? '' : 'flex-1'}>
+            {amount(series.values[index] ?? 0, chart.unit)}
+          </span>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -106,12 +179,13 @@ function Grid({ top, unit }: { top: number; unit: string | undefined }): React.J
   )
 }
 
-function Bars({ chart }: { chart: Chart }): React.JSX.Element {
+function Bars({ chart, hover }: { chart: Chart; hover: number | null }): React.JSX.Element {
   const top = niceCeiling(Math.max(...chart.series.flatMap((series) => series.values), 0))
   const slot = slotWidth(chart)
   const count = chart.series.length
   const bar = Math.min(BAR_MAX, (slot * GROUP_SHARE - BAR_GAP * (count - 1)) / count)
   const group = bar * count + BAR_GAP * (count - 1)
+  const dim = hover !== null
   return (
     <g>
       {chart.series.map((series, seriesIndex) => (
@@ -124,9 +198,9 @@ function Bars({ chart }: { chart: Chart }): React.JSX.Element {
                 key={index}
                 d={roundedTop({ x, y: PLOT_BOTTOM - height, width: bar, height })}
                 className="fill-current"
-              >
-                <title>{markTitle(chart, series.name, index)}</title>
-              </path>
+                opacity={dim && hover !== index ? DIM_OPACITY : 1}
+                pointerEvents="none"
+              />
             )
           })}
         </g>
@@ -135,10 +209,10 @@ function Bars({ chart }: { chart: Chart }): React.JSX.Element {
   )
 }
 
-function Lines({ chart }: { chart: Chart }): React.JSX.Element {
+function Lines({ chart, hover }: { chart: Chart; hover: number | null }): React.JSX.Element {
   const top = niceCeiling(Math.max(...chart.series.flatMap((series) => series.values), 0))
   return (
-    <g>
+    <g pointerEvents="none">
       {chart.series.map((series, seriesIndex) => {
         const points = series.values.map((value, index) => ({
           x: slotCentre(chart, index),
@@ -173,10 +247,10 @@ function Lines({ chart }: { chart: Chart }): React.JSX.Element {
                 r={MARKER_RADIUS}
                 strokeWidth={2}
                 className="fill-current stroke-card"
-                opacity={points.length > MARKERS_UP_TO ? 0 : 1}
-              >
-                <title>{markTitle(chart, series.name, index)}</title>
-              </circle>
+                opacity={
+                  points.length > MARKERS_UP_TO ? 0 : hover === null || hover === index ? 1 : 0.4
+                }
+              />
             ))}
           </g>
         )
@@ -187,6 +261,7 @@ function Lines({ chart }: { chart: Chart }): React.JSX.Element {
 
 // A pie's slices are its labels: each gets a series colour, and the list beside it names them.
 function Pie({ chart, summary }: { chart: Chart; summary: string }): React.JSX.Element {
+  const [hover, setHover] = useState<number | null>(null)
   const values = chart.series[0]?.values ?? []
   const total = values.reduce((sum, value) => sum + value, 0)
   const centre = DONUT_SIZE / 2
@@ -196,25 +271,33 @@ function Pie({ chart, summary }: { chart: Chart; summary: string }): React.JSX.E
   )
   return (
     <figure className="flex flex-wrap items-center gap-6">
-      <svg
-        viewBox={`0 0 ${DONUT_SIZE} ${DONUT_SIZE}`}
-        role="img"
-        aria-label={summary}
-        className="size-36 shrink-0"
-      >
-        {values.map((value, index) => {
-          return (
-            <path
-              key={index}
-              d={ring({ centre, from: ends[index - 1] ?? 0, to: ends[index] ?? 0 })}
-              strokeWidth={2}
-              className={cn('fill-current stroke-card', SERIES[index])}
-            >
-              <title>{`${chart.labels[index] ?? ''}: ${amount(value, chart.unit)}`}</title>
-            </path>
-          )
-        })}
-      </svg>
+      <div className="relative shrink-0">
+        {hover !== null && (
+          <div className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-sm">
+            <PieTooltip chart={chart} index={hover} total={total} />
+          </div>
+        )}
+        <svg
+          viewBox={`0 0 ${DONUT_SIZE} ${DONUT_SIZE}`}
+          role="img"
+          aria-label={summary}
+          className="size-36"
+        >
+          {values.map((_, index) => {
+            return (
+              <path
+                key={index}
+                d={ring({ centre, from: ends[index - 1] ?? 0, to: ends[index] ?? 0 })}
+                strokeWidth={2}
+                className={cn('fill-current stroke-card', SERIES[index])}
+                opacity={hover !== null && hover !== index ? DIM_OPACITY : 1}
+                onPointerEnter={() => setHover(index)}
+                onPointerLeave={() => setHover(null)}
+              />
+            )
+          })}
+        </svg>
+      </div>
       <figcaption className="flex min-w-40 flex-1 flex-col gap-1.5 text-sm">
         {values.map((value, index) => (
           <span key={index} className="flex items-center gap-2">
@@ -234,20 +317,33 @@ function Pie({ chart, summary }: { chart: Chart; summary: string }): React.JSX.E
   )
 }
 
+function PieTooltip({
+  chart,
+  index,
+  total
+}: {
+  chart: Chart
+  index: number
+  total: number
+}): React.JSX.Element {
+  const value = chart.series[0]?.values[index] ?? 0
+  const label = chart.labels[index] ?? ''
+  const share = total > 0 ? Math.round((value / total) * 100) : 0
+  return (
+    <div className="flex flex-col gap-0.5 tabular-nums">
+      <div className="font-medium">{label}</div>
+      <div>{amount(value, chart.unit)}</div>
+      <div className="text-muted-foreground">{share}%</div>
+    </div>
+  )
+}
+
 function slotWidth(chart: Chart): number {
   return (WIDTH - LEFT - RIGHT) / chart.labels.length
 }
 
 function slotCentre(chart: Chart, index: number): number {
   return LEFT + slotWidth(chart) * (index + 0.5)
-}
-
-function markTitle(chart: Chart, series: string, index: number): string {
-  const value = chart.series.find((item) => item.name === series)?.values[index] ?? 0
-  const label = chart.labels[index] ?? ''
-  return chart.series.length > 1
-    ? `${series}, ${label}: ${amount(value, chart.unit)}`
-    : `${label}: ${amount(value, chart.unit)}`
 }
 
 // A short unit ("k", "%") closes the number; a word ("tokens") follows it.
