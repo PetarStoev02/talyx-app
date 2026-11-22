@@ -529,6 +529,7 @@ const en = {
   'mcp.refused': 'The user said no in Talyx, so nothing was changed.',
   'mcp.errorManager': 'Talyx’s own bot cannot be deleted.',
   'mcp.errorRoomGone': 'That room no longer exists.',
+  'mcp.errorSend': 'The message was not sent.',
   'mcp.errorRoutineGone': 'That routine no longer exists.',
   'mcp.errorMemoryGone': 'That memory no longer exists.',
   'mcp.errorSkillGone': 'That skill no longer exists.',

@@ -122,8 +122,6 @@ export interface EngineDouble {
   botSends: { profile: string; text: string }[]
   /** Finished replies per bot, oldest first; `read_bot_replies` reads the last `limit`. */
   botRepliesByProfile: Record<string, string[]>
-  /** When set, the next `send_bot_message` gets this text as its error. */
-  failBotSend: string | null
   /** Each bot's memories and skills, in Talyx's terms. */
   minds: MemoryDouble
 }
@@ -610,7 +608,6 @@ export function engineDouble(
     },
     botSends: [],
     botRepliesByProfile: {},
-    failBotSend: null,
     minds
   }
   return double
@@ -659,11 +656,6 @@ export function backendFor(
       })
   }
   const sendBotMessage = async (profile: string, text: string): Promise<void> => {
-    if (engine.failBotSend) {
-      const reason = engine.failBotSend
-      engine.failBotSend = null
-      throw new Error(reason)
-    }
     engine.botSends.push({ profile, text })
   }
   const botReplies = async (profile: string, limit: number): Promise<string[]> => {

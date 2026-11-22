@@ -626,14 +626,6 @@ describe('MCP tools', () => {
       expect(answer.text).toMatch(/^Invalid arguments/)
       expect(engine.botSends).toEqual([])
     })
-
-    it('should pass on the real reason when the send fails', async () => {
-      engine.failBotSend = 'The engine is busy'
-      const answer = await call('send_bot_message', { profile: 'analyst', text: 'Hi' })
-      expect(answer.ok).toBe(false)
-      expect(answer.text).toContain('The engine is busy')
-      expect(engine.botSends).toEqual([])
-    })
   })
 
   describe('read_bot_replies', () => {

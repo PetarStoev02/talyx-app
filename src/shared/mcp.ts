@@ -191,7 +191,7 @@ export const MCP_TOOLS = {
   },
   send_bot_message: {
     description:
-      'Post a message in a bot\u2019s chat as the user, only when the user asks for it. While the bot is answering, the message waits for that answer to end. Never send to your own chat: it starts your own chat again. read_bot_replies shows the replies once the bot has finished them.',
+      'Post a message in a bot\u2019s chat as the user, only when the user asks for it. While the bot is answering, the message waits for that answer to end. Never send to your own chat: the message starts another turn of yours after this one, which can loop. read_bot_replies shows the replies once the bot has finished them.',
     args: z.object({
       profile,
       text: z.string().trim().min(1).max(MCP_TEXT_MAX)
