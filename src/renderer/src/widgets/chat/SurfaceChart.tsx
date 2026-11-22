@@ -31,6 +31,8 @@ const DONUT_OUTER = 70
 const DONUT_INNER = 44
 const COMPACT_FROM = 10_000
 const FULL_TURN = Math.PI * 2
+// Values already given as a percentage need no share beside them.
+const PERCENT = '%'
 const DIM_OPACITY = 0.35
 const TOOLTIP_EDGE_INSET = 8
 // The series colours, in order and never cycled (theme.css): a chart has four series at most.
@@ -308,7 +310,7 @@ function Pie({ chart, summary }: { chart: Chart; summary: string }): React.JSX.E
             <span className="flex-1">{chart.labels[index]}</span>
             <span className="text-muted-foreground tabular-nums">
               {amount(value, chart.unit)}
-              {total > 0 && ` · ${Math.round((value / total) * 100)}%`}
+              {total > 0 && chart.unit !== PERCENT && ` · ${Math.round((value / total) * 100)}%`}
             </span>
           </span>
         ))}

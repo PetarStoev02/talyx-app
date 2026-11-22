@@ -1299,6 +1299,24 @@ describe('bot chat', () => {
       })
       expect(await live.showSurface(MANAGER, surface)).toBe(true)
       expect(remote.calls.some((row) => row.method === 'session.resume')).toBe(true)
+      // Nothing is drawn on a chat this window never loaded: opening it reads the history.
+      expect(chat(MANAGER)).toBeUndefined()
+    })
+
+    it('should believe the engine over a chat that looks idle here', async () => {
+      const remote = chatDouble()
+      const live = chatActions({
+        ...remote.backend,
+        resume: async (profile, chatId) => ({
+          ...(await remote.backend.resume(profile, chatId)),
+          running: true
+        })
+      })
+      await live.open(MANAGER, 'manager-chat')
+      useChat.getState().update(MANAGER, {
+        transcript: { ...chat(MANAGER).transcript!, running: false }
+      })
+      expect(await live.showSurface(MANAGER, surface)).toBe(true)
       expect(chat(MANAGER).transcript?.items.some((item) => item.kind === 'surface')).toBe(true)
     })
   })

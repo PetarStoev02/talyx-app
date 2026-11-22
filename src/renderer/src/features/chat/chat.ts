@@ -494,22 +494,17 @@ export function chatActions(backend: ChatBackend): ChatActions {
 
     showSurface: async (profile, surface) => {
       const chat = chatOf(profile)
-      let sessionId = chat?.sessionId ?? null
-      let running: boolean
-      if (chat?.transcript) {
-        running = chat.transcript.running
-      } else {
-        sessionId = sessionId ?? (await backend.findChat(profile))
-        if (!sessionId) return false
-        running = (await backend.resume(profile, sessionId)).running
-      }
-      if (!running) return false
-      sessionId = sessionId ?? (await backend.findChat(profile))
+      const sessionId = chat?.sessionId ?? (await backend.findChat(profile))
       if (!sessionId) return false
-      const transcript = chat?.transcript ?? fromHistory(sessionId, [], running)
+      const transcript = chat?.transcript ?? null
+      // The engine has the last word on whether the bot is answering in its own chat: this window
+      // may not have opened that chat, or may have missed the start of the turn.
+      if (!transcript?.running && !(await backend.resume(profile, sessionId)).running) return false
+      // A chat this window has not opened has nothing to draw on; its history holds the surface
+      // and shows it when the chat opens.
+      if (!transcript) return true
       const id = liveSurfaceId(crypto.randomUUID())
       update(profile, {
-        sessionId,
         transcript: {
           ...transcript,
           items: [...transcript.items, { kind: 'surface', id, surface, toolCallId: id }]

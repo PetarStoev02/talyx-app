@@ -541,7 +541,7 @@ const en = {
   'mcp.errorLook': 'That look is not one Talyx has; list_looks shows the shapes and hues.',
   'mcp.showUiNoCaller':
     'show_ui runs only from a bot in Talyx (its MCP address names the profile). Outside agents cannot use it.',
-  'mcp.showUiInvalid': '{reason}',
+  'mcp.showUiInvalid': 'That interface cannot be drawn. Correct it and call show_ui again.',
   'mcp.showUiNotOwnChat':
     'You can show an interface only while you answer in your own chat with the user. Here, write your answer as text.',
   'chat.surfacePicked': 'Your answer: {choice}',
