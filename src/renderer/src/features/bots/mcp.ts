@@ -304,8 +304,9 @@ function toolsFor(
     hide_bot: ({ profile, hidden }) =>
       change(async (snapshot) => {
         const bot = botOf(snapshot, profile)
-        if (bot.name === MANAGER && hidden) throw new RosterError('roster.errorKeepTalyx')
-        if (!!bot.meta.hidden !== hidden) await actions.hide(bot)
+        // Hiding is the roster's own hide, so its rule for Talyx's bot is the one that applies.
+        if (hidden && !bot.meta.hidden) await actions.hideRows([{ kind: 'bot', id: profile }])
+        else if (!hidden && bot.meta.hidden) await actions.hide(bot)
         return { profile, hidden }
       }),
     create_room: ({ name, members }) =>

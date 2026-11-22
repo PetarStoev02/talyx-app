@@ -376,6 +376,14 @@ describe('MCP tools', () => {
       expect(engine.configureCalls).toEqual([])
     })
 
+    it('should leave Talyx’s own bot shown when asked to show it', async () => {
+      expect(await ok('hide_bot', { profile: 'default', hidden: false })).toEqual({
+        profile: 'default',
+        hidden: false
+      })
+      expect(engine.configureCalls).toEqual([])
+    })
+
     it('should refuse a bot that does not exist', async () => {
       const answer = await call('hide_bot', { profile: 'ghost', hidden: true })
       expect(answer.ok).toBe(false)
@@ -416,6 +424,15 @@ describe('MCP tools', () => {
         unread: usageReport.unread
       })
       expect(Object.keys(result)).toEqual(['days', 'total', 'providers', 'models', 'unread'])
+    })
+
+    it('should say why when usage cannot be read', async () => {
+      engine.usage = async () => {
+        throw new Error('The usage store is locked')
+      }
+      const answer = await call('read_usage', { days: 7 })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toContain('The usage store is locked')
     })
 
     it('should reject days of 0 as invalid arguments', async () => {
