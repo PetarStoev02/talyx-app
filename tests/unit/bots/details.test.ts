@@ -10,7 +10,8 @@ import {
   loadDetails,
   refusedSectionProblem,
   saveDetails,
-  setBotModel
+  setBotModel,
+  nameManager
 } from '../../../src/renderer/src/features/bots/details'
 import { useDetailsRevision } from '../../../src/renderer/src/features/bots/store'
 import type { DetailsDraft } from '../../../src/renderer/src/features/bots/details'
@@ -56,6 +57,24 @@ async function opening(name: string): Promise<DetailsDraft> {
 }
 
 describe('bot details', () => {
+  describe('nameManager', () => {
+    it("should store the manager's title where the engine reads a bot's name", async () => {
+      expect(await nameManager(backend, bot('default'))).toBe(true)
+      expect((engine.metadata.default[BOT_META_KEY] as { title: string }).title).toBe('Talyx')
+    })
+
+    it('should write nothing once the manager has its title', async () => {
+      await nameManager(backend, bot('default'))
+      await refreshRoster(backend)
+      expect(await nameManager(backend, bot('default'))).toBe(false)
+    })
+
+    it('should leave another bot as it is named', async () => {
+      expect(await nameManager(backend, bot('analyst'))).toBe(false)
+      expect((engine.metadata.analyst[BOT_META_KEY] as { title: string }).title).toBe('Analyst')
+    })
+  })
+
   describe('loadDetails', () => {
     it('should load description, SOUL and model from the engine', async () => {
       expect(await loadDetails(backend, 'analyst')).toEqual({

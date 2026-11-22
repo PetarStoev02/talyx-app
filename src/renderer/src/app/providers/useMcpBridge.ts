@@ -3,6 +3,7 @@ import { useApprovals } from '@features/bots/store'
 import type { RosterBackend } from '@features/bots/data'
 import { mcpTools } from '@features/bots/mcp'
 import type { ShowUiPort } from '@features/bots/mcp'
+import { nameManager } from '@features/bots/details'
 import { registerMcpServer } from '@features/bots/mcpRegistration'
 import { botChatId } from '@features/bots/roster'
 import type { Bot } from '@features/bots/types'
@@ -55,6 +56,8 @@ export function useMcpBridge(backend: RosterBackend | null, chat: ChatActions | 
             // The next start tries again.
             reportError('mcp', error)
           })
+        // What the other bots hear the manager called, set beside what lets them reach Talyx.
+        void nameManager(backend, bot).catch((error: unknown) => reportError('mcp', error))
       }
     }
     register(useRoster.getState().snapshot.bots)
