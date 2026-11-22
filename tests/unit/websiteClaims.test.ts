@@ -70,15 +70,7 @@ const FOOTER = 'website/src/widgets/footer/Footer.tsx'
  */
 const ALLOWED_IN: Record<string, string[]> = {
   [/\$\d/.source]: [PRICING_PAGE, SEO],
-  [/\bpricing\b/i.source]: [
-    PRICING_PAGE,
-    TERMS,
-    SEO,
-    ROUTE_LIST,
-    ROUTER,
-    FOOTER,
-    'website/scripts/llmsTxt.mjs'
-  ],
+  [/\bpricing\b/i.source]: [PRICING_PAGE, TERMS, SEO, ROUTE_LIST, ROUTER, FOOTER],
   [/refund/i.source]: [
     PRICING_PAGE,
     LEGAL_PAGE,

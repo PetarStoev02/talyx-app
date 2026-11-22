@@ -97,9 +97,11 @@ export const INSTALLER_LINKS: NavLink[] = [
   { label: 'Linux, deb', href: DOWNLOADS.deb, asset: ASSETS.deb }
 ]
 
+export const SOURCE_LINK = { label: 'Source on GitHub', href: REPO_URL }
+
 export const DOWNLOAD_GROUP: NavGroup = {
   title: 'Download',
-  links: [...INSTALLER_LINKS, { label: 'Source on GitHub', href: REPO_URL }]
+  links: [...INSTALLER_LINKS, SOURCE_LINK]
 }
 
 /** A page asked for navigation data under a slug that navigation.ts does not list. */

@@ -65,7 +65,7 @@ async function prerender() {
   const {
     render,
     ROUTES: routes,
-    LLMS_DOWNLOAD_LINKS
+    LLMS_LINKS: links
   } = await import(join(distDir, 'server', 'entry-server.js'))
   const template = readFileSync(join(distDir, 'index.html'), 'utf-8')
 
@@ -122,14 +122,8 @@ async function prerender() {
   writeFileSync(join(distDir, 'robots.txt'), robots)
   console.log('  Generated: robots.txt')
 
-  const home = pages.find((page) => page.route === '/')
-  const llms = buildLlmsTxt({
-    baseUrl,
-    summary: home?.description ?? '',
-    pages,
-    downloadLinks: LLMS_DOWNLOAD_LINKS
-  })
-  writeFileSync(join(distDir, 'llms.txt'), llms)
+  const summary = pages.find((page) => page.route === '/').description
+  writeFileSync(join(distDir, 'llms.txt'), buildLlmsTxt({ baseUrl, summary, pages, links }))
   console.log('  Generated: llms.txt')
 
   // Clean up SSR bundle

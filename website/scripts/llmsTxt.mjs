@@ -1,43 +1,35 @@
-const MAIN_TAIL = ['/roadmap', '/press', '/pricing', '/contact']
 const LEGAL_PREFIX = '/legal/'
 
 /**
+ * The site's llms.txt (https://llmstxt.org): what Talyx is and where its pages are, for an agent
+ * that reads the site. Pages keep the order they are given in; an agent may skip `## Optional`.
+ *
  * @param {{
  *   baseUrl: string
  *   summary: string
  *   pages: { route: string, title: string, description: string, canonical: string }[]
- *   downloadLinks: { title: string, href: string, description: string }[]
+ *   links: { label: string, href: string }[]
  * }} input
  * @returns {string}
  */
-export function buildLlmsTxt({ baseUrl, summary, pages, downloadLinks }) {
-  const pageByRoute = new Map(pages.map((page) => [page.route, page]))
+export function buildLlmsTxt({ baseUrl, summary, pages, links }) {
+  const pageLine = ({ title, description, canonical }) =>
+    `- [${title}](${canonical === '/' ? baseUrl : `${baseUrl}${canonical}`}): ${description}`
+  const legal = (page) => page.route.startsWith(LEGAL_PREFIX)
 
-  const absolute = (canonical) => (canonical === '/' ? baseUrl : `${baseUrl}${canonical}`)
-  const line = (title, url, description) => `- [${title}](${url}): ${description}`
-
-  const lines = ['# Talyx', '', `> ${summary}`, '', '## Pages']
-
-  const featureRoutes = pages
-    .filter((page) => page.route.startsWith('/features/'))
-    .map((page) => page.route)
-  const mainRoutes = ['/', ...featureRoutes, ...MAIN_TAIL]
-
-  for (const route of mainRoutes) {
-    const page = pageByRoute.get(route)
-    if (page) lines.push(line(page.title, absolute(page.canonical), page.description))
-  }
-
-  lines.push('', '## Download and source')
-  for (const link of downloadLinks) {
-    lines.push(line(link.title, link.href, link.description))
-  }
-
-  lines.push('', '## Optional')
-  for (const page of pages) {
-    if (!page.route.startsWith(LEGAL_PREFIX)) continue
-    lines.push(line(page.title, absolute(page.canonical), page.description))
-  }
-
-  return `${lines.join('\n')}\n`
+  return [
+    '# Talyx',
+    '',
+    `> ${summary}`,
+    '',
+    '## Pages',
+    ...pages.filter((page) => !legal(page)).map(pageLine),
+    '',
+    '## Download and source',
+    ...links.map(({ label, href }) => `- [${label}](${href})`),
+    '',
+    '## Optional',
+    ...pages.filter(legal).map(pageLine),
+    ''
+  ].join('\n')
 }

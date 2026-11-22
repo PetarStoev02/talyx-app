@@ -1,152 +1,93 @@
 import { describe, it, expect } from 'vitest'
 import { buildLlmsTxt } from '../../website/scripts/llmsTxt.mjs'
 
-const BASE_URL = 'https://talyx.app'
+type LlmsInput = Parameters<typeof buildLlmsTxt>[0]
+type LlmsPage = LlmsInput['pages'][number]
 
-interface LlmsPage {
-  route: string
-  title: string
-  description: string
-  canonical: string
-}
-
-interface LlmsDownloadLink {
-  title: string
-  href: string
-  description: string
-}
-
-interface LlmsInput {
-  summary: string
-  pages: LlmsPage[]
-  downloadLinks: LlmsDownloadLink[]
-}
-
-function llmsInput(overrides: Partial<LlmsInput> = {}): LlmsInput & { baseUrl: string } {
+function llmsInput(overrides: Partial<LlmsInput> = {}): LlmsInput {
   return {
-    baseUrl: BASE_URL,
+    baseUrl: 'https://talyx.app',
     summary: 'Talyx is a free desktop app for your AI bots.',
     pages: [],
-    downloadLinks: [],
+    links: [],
     ...overrides
   }
 }
 
-function page(
-  route: string,
-  title: string,
-  description: string,
-  canonical: string = route
-): LlmsPage {
-  return { route, title, description, canonical }
+/** A page whose title and description are told apart by its route. */
+function page(route: string): LlmsPage {
+  return { route, title: `Title ${route}`, description: `About ${route}.`, canonical: route }
+}
+
+/** The lines under one `## ` heading, up to the next blank line. */
+function section(text: string, heading: string): string[] {
+  const lines = text.split('\n')
+  const start = lines.indexOf(`## ${heading}`) + 1
+  return lines.slice(start, lines.indexOf('', start))
 }
 
 describe('website llms.txt', () => {
   describe('buildLlmsTxt', () => {
-    it('should still produce a valid file with only the name and summary when there are zero pages', () => {
-      const text = buildLlmsTxt(llmsInput({ pages: [] }))
+    it('should name the site and sum it up when there are no pages', () => {
+      const text = buildLlmsTxt(llmsInput())
 
-      expect(text).toMatch(/^# Talyx\n\n> /)
-      expect(text).toContain('> Talyx is a free desktop app for your AI bots.')
-      expect(text).not.toContain('## Pages\n- ')
+      expect(text.startsWith('# Talyx\n\n> Talyx is a free desktop app for your AI bots.\n')).toBe(
+        true
+      )
+      expect(section(text, 'Pages')).toEqual([])
+      expect(section(text, 'Download and source')).toEqual([])
+      expect(section(text, 'Optional')).toEqual([])
     })
 
-    it('should list a single page under Pages', () => {
+    it('should list one page with its title, address and description', () => {
+      const text = buildLlmsTxt(llmsInput({ pages: [page('/roadmap')] }))
+
+      expect(section(text, 'Pages')).toEqual([
+        '- [Title /roadmap](https://talyx.app/roadmap): About /roadmap.'
+      ])
+    })
+
+    it('should keep many pages in the order the site lists them', () => {
+      const routes = ['/', '/features/roster', '/features/manager', '/roadmap', '/pricing']
+      const text = buildLlmsTxt(llmsInput({ pages: routes.map(page) }))
+
+      expect(section(text, 'Pages').map((line) => line.split(']')[0])).toEqual(
+        routes.map((route) => `- [Title ${route}`)
+      )
+    })
+
+    it('should give the home page the bare site address', () => {
+      const text = buildLlmsTxt(llmsInput({ pages: [page('/')] }))
+
+      expect(section(text, 'Pages')).toEqual(['- [Title /](https://talyx.app): About /.'])
+    })
+
+    it('should list the legal pages under Optional and nowhere else', () => {
       const text = buildLlmsTxt(
-        llmsInput({
-          pages: [page('/', 'Talyx home', 'The landing page.')]
-        })
+        llmsInput({ pages: [page('/'), page('/legal/terms'), page('/legal/privacy')] })
       )
 
-      expect(text).toContain('## Pages')
-      expect(text).toContain('- [Talyx home](https://talyx.app): The landing page.')
+      expect(section(text, 'Pages')).toEqual(['- [Title /](https://talyx.app): About /.'])
+      expect(section(text, 'Optional')).toEqual([
+        '- [Title /legal/terms](https://talyx.app/legal/terms): About /legal/terms.',
+        '- [Title /legal/privacy](https://talyx.app/legal/privacy): About /legal/privacy.'
+      ])
     })
 
-    it('should order many pages as home, features, then site pages', () => {
-      const pages = [
-        page('/legal/privacy', 'Privacy Policy', 'Privacy policy copy.', '/legal/privacy'),
-        page('/contact', 'Contact', 'Contact copy.', '/contact'),
-        page('/features/roster', 'Roster', 'Roster copy.', '/features/roster'),
-        page('/', 'Talyx home', 'Home copy.', '/'),
-        page('/roadmap', 'Roadmap', 'Roadmap copy.', '/roadmap'),
-        page('/features/manager', 'Manager', 'Manager copy.', '/features/manager'),
-        page('/press', 'Press', 'Press copy.', '/press'),
-        page('/pricing', 'Pricing', 'Pricing copy.', '/pricing')
-      ]
-      const text = buildLlmsTxt(llmsInput({ pages }))
-
-      const pagesSection = text.split('## Download and source')[0] ?? ''
-      const rosterAt = pagesSection.indexOf('- [Roster]')
-      const managerAt = pagesSection.indexOf('- [Manager]')
-      const roadmapAt = pagesSection.indexOf('- [Roadmap]')
-      const pressAt = pagesSection.indexOf('- [Press]')
-      const pricingAt = pagesSection.indexOf('- [Pricing]')
-      const contactAt = pagesSection.indexOf('- [Contact]')
-      const homeAt = pagesSection.indexOf('- [Talyx home]')
-
-      expect(homeAt).toBeGreaterThan(-1)
-      expect(homeAt).toBeLessThan(rosterAt)
-      expect(rosterAt).toBeLessThan(managerAt)
-      expect(managerAt).toBeLessThan(roadmapAt)
-      expect(roadmapAt).toBeLessThan(pressAt)
-      expect(pressAt).toBeLessThan(pricingAt)
-      expect(pricingAt).toBeLessThan(contactAt)
-    })
-
-    it('should list legal pages only under Optional', () => {
-      const pages = [
-        page('/', 'Home', 'Home copy.'),
-        page('/legal/terms', 'Terms', 'Terms copy.', '/legal/terms'),
-        page('/legal/privacy', 'Privacy', 'Privacy copy.', '/legal/privacy')
-      ]
-      const text = buildLlmsTxt(llmsInput({ pages }))
-      const pagesBlock = text.split('## Download and source')[0] ?? ''
-      const optionalBlock = text.split('## Optional')[1] ?? ''
-
-      expect(pagesBlock).not.toContain('/legal/')
-      expect(optionalBlock).toContain('- [Terms](https://talyx.app/legal/terms): Terms copy.')
-      expect(optionalBlock).toContain('- [Privacy](https://talyx.app/legal/privacy): Privacy copy.')
-    })
-
-    it('should use the site root URL for the home page with no trailing path', () => {
+    it('should list the download and source links by their labels', () => {
       const text = buildLlmsTxt(
-        llmsInput({
-          pages: [page('/', 'Home', 'Home copy.')]
-        })
+        llmsInput({ links: [{ label: 'Source on GitHub', href: 'https://example.com/repo' }] })
       )
 
-      expect(text).toContain('](https://talyx.app):')
-      expect(text).not.toContain('](https://talyx.app/):')
-    })
-
-    it('should use absolute URLs for every link', () => {
-      const text = buildLlmsTxt(
-        llmsInput({
-          pages: [
-            page('/roadmap', 'Roadmap', 'Roadmap copy.'),
-            page('/legal/terms', 'Terms', 'Terms copy.', '/legal/terms')
-          ],
-          downloadLinks: [
-            {
-              title: 'Source on GitHub',
-              href: 'https://github.com/PetarStoev02/talyx-app',
-              description: 'The repository.'
-            }
-          ]
-        })
-      )
-
-      for (const url of text.match(/\]\(([^)]+)\)/g) ?? []) {
-        const href = url.slice(2, -1)
-        expect(href).toMatch(/^https:\/\//)
-      }
+      expect(section(text, 'Download and source')).toEqual([
+        '- [Source on GitHub](https://example.com/repo)'
+      ])
     })
 
     it('should end with exactly one newline', () => {
-      const text = buildLlmsTxt(llmsInput())
+      const text = buildLlmsTxt(llmsInput({ pages: [page('/legal/terms')] }))
 
-      expect(text.endsWith('\n')).toBe(true)
-      expect(text.endsWith('\n\n')).toBe(false)
+      expect(text.endsWith('.\n')).toBe(true)
     })
   })
 })
