@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync } from 'nod
 import { createHash } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { buildLlmsTxt } from './llmsTxt.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const distDir = join(__dirname, '..', 'dist')
@@ -61,14 +62,26 @@ function replaceMeta(template, meta) {
 }
 
 async function prerender() {
-  const { render, ROUTES: routes } = await import(join(distDir, 'server', 'entry-server.js'))
+  const {
+    render,
+    ROUTES: routes,
+    LLMS_DOWNLOAD_LINKS
+  } = await import(join(distDir, 'server', 'entry-server.js'))
   const template = readFileSync(join(distDir, 'index.html'), 'utf-8')
 
   console.log('Pre-rendering static pages...\n')
 
+  const pages = []
+
   for (const route of routes) {
     const url = basepath + (route === '/' ? '/' : route)
     const { html, meta } = await render(url)
+    pages.push({
+      route,
+      title: meta.title,
+      description: meta.description,
+      canonical: meta.canonical
+    })
     // React puts the resources it preloads (the hero's eager images) ahead of the app's markup;
     // inside #root they would not hydrate, so they go to the head.
     const [, hoisted, app] = html.match(/^((?:<link [^>]*>)*)([\s\S]*)$/)
@@ -108,6 +121,16 @@ async function prerender() {
   const robots = `User-agent: *\nAllow: /\n\nSitemap: https://talyx.app/sitemap.xml\n`
   writeFileSync(join(distDir, 'robots.txt'), robots)
   console.log('  Generated: robots.txt')
+
+  const home = pages.find((page) => page.route === '/')
+  const llms = buildLlmsTxt({
+    baseUrl,
+    summary: home?.description ?? '',
+    pages,
+    downloadLinks: LLMS_DOWNLOAD_LINKS
+  })
+  writeFileSync(join(distDir, 'llms.txt'), llms)
+  console.log('  Generated: llms.txt')
 
   // Clean up SSR bundle
   rmSync(join(distDir, 'server'), { recursive: true, force: true })
