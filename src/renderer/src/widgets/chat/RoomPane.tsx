@@ -168,7 +168,12 @@ export function RoomPane({
       </FindSlot>
       <div ref={setTranscriptArea} className={cn('flex min-h-0 flex-1 flex-col', arrival)}>
         {items.length || view.tasks.length ? (
-          <Transcript items={items} loadImage={loadImage}>
+          <Transcript
+            items={items}
+            allItems={items}
+            loadImage={loadImage}
+            onSurfaceSend={() => undefined}
+          >
             {view.tasks.map((task) => (
               <li key={`${task.kind}:${task.task_id}:${task.execution_generation}`}>
                 <TaskCard

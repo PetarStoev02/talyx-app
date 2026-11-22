@@ -3,6 +3,7 @@
 // 'electron': it compiles in both the node and web tsconfigs.
 
 import { z } from 'zod'
+import { MCP_UI_CATALOG, showUiArgsSchema } from './a2uiSurface'
 
 /** The name agents and every bot's profile know the server by. */
 export const MCP_SERVER_NAME = 'talyx'
@@ -18,6 +19,7 @@ export const MCP_APPROVAL_TIMEOUT_MS = 9 * 60_000
 export const MCP_USAGE_MAX_DAYS = 90
 /** The longest text a tool takes: a room message, a memory, a skill's instructions. */
 export const MCP_TEXT_MAX = 20_000
+export { MCP_UI_CATALOG, MCP_SHOW_UI_MAX_BYTES } from './a2uiSurface'
 
 /** How an outside agent reaches the running Talyx. */
 export interface McpConnection {
@@ -35,6 +37,8 @@ export interface McpCall {
   id: string
   tool: string
   args: unknown
+  /** The bot profile from the server address query, when the call came from a bot's profile. */
+  caller: string | null
 }
 
 /** The page's answer: what the tool did, or why it did not. */
@@ -332,6 +336,19 @@ export const MCP_TOOLS = {
       name: z.string().min(1).describe('The skill name, as list_skills shows it')
     }),
     destructive: true
+  },
+  show_ui: {
+    description: [
+      'Draw a small interface inside your own chat for this turn: stats, a chart, a table, buttons, choices or a short form.',
+      'Do not use it for a plain yes/no the user can type.',
+      'Send messages: (1) createSurface with catalogId',
+      `"${MCP_UI_CATALOG}" and surfaceId; (2) updateComponents with the same surfaceId and a flat components list (exactly one id "root"; ids are letters, digits and underscores only); (3) optionally updateDataModel with starting input values.`,
+      'Components: Text (text, variant body|heading|caption); Column/Row (children ids); Divider; Stat (label, value, note, tone up|down); Chart (kind bar|line|area|pie, labels, series[{name, values}], unit); Table (columns[{label, align}], rows); Button (child text id, variant primary, action.event); ChoicePicker (options, value @path, multiple); TextField (label, value @path, placeholder).',
+      'Inputs bind with {"@path":"/key"}; one key level is enough.',
+      "A click becomes the user's next chat message (the button label, plus input lines when the surface has fields). The interface stays in the chat after reload.",
+      `Example: [{"version":"1.0","createSurface":{"surfaceId":"week","catalogId":"${MCP_UI_CATALOG}"}},{"version":"1.0","updateComponents":{"surfaceId":"week","components":[{"id":"root","component":"Column","children":["title","chart","pick","go_label","go"]},{"id":"title","component":"Text","text":"Tokens this week","variant":"heading"},{"id":"chart","component":"Chart","kind":"bar","labels":["Mon","Tue","Wed"],"series":[{"name":"Tokens","values":[120,200,180]}]},{"id":"pick","component":"ChoicePicker","label":"Day","options":[{"label":"Wed","value":"wed"}],"value":{"@path":"/day"}},{"id":"go_label","component":"Text","text":"Send"},{"id":"go","component":"Button","child":"go_label","variant":"primary","action":{"event":{"name":"send"}}}]}}]`
+    ].join(' '),
+    args: showUiArgsSchema
   }
 } satisfies Record<string, McpToolSpec>
 

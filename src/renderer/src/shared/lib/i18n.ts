@@ -539,6 +539,10 @@ const en = {
     'Replace the instructions of the skill “{skill}” of “{name}”. The text it has now is lost.',
   'mcp.deleteSkill': 'Delete the skill “{skill}” of “{name}”. This cannot be undone.',
   'mcp.errorLook': 'That look is not one Talyx has; list_looks shows the shapes and hues.',
+  'mcp.showUiNoCaller':
+    'show_ui runs only from a bot in Talyx (its MCP address names the profile). Outside agents cannot use it.',
+  'mcp.showUiInvalid': '{reason}',
+  'chat.surfacePicked': 'You picked {choice}',
   'details.errorFollowersUnreached':
     'Talyx’s model changed, but the bots on Uses default could not be reached. Pick Talyx’s model again in Settings to move them.',
   'details.errorNotApplied': 'Some changes were not saved. Your edits are still here; save again.',

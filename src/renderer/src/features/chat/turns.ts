@@ -71,9 +71,13 @@ export function turnOutcome(items: ChatItem[], running: boolean): TurnOutcome | 
   return { kind: 'noReply', asked }
 }
 
-// The chat's own bot at work: its replies and its tool calls.
-function isOwnWork(item: ChatItem): item is ToolItem | (BotItem & { sender: null }) {
-  return item.kind === 'tool' || (item.kind === 'bot' && item.sender === null)
+type SurfaceItem = Extract<ChatItem, { kind: 'surface' }>
+
+// The chat's own bot at work: its replies, its tool calls and its drawn surfaces.
+function isOwnWork(item: ChatItem): item is ToolItem | SurfaceItem | (BotItem & { sender: null }) {
+  return (
+    item.kind === 'tool' || item.kind === 'surface' || (item.kind === 'bot' && item.sender === null)
+  )
 }
 
 function turnResult(work: ChatItem[], running: boolean): MessageItem[] {
@@ -85,6 +89,7 @@ function turnResult(work: ChatItem[], running: boolean): MessageItem[] {
   // ends (a stop before any text, an empty answer) the turn's outcome says what happened.
   return work.filter(
     (item, index): item is MessageItem =>
-      item.kind === 'bot' && (item.error !== null || (index === answer && item.text !== ''))
+      item.kind === 'surface' ||
+      (item.kind === 'bot' && (item.error !== null || (index === answer && item.text !== '')))
   )
 }

@@ -86,6 +86,22 @@ describe('Talyx MCP server', () => {
       expect(deleteBot?.inputSchema).toMatchObject({ required: ['profile'] })
     })
 
+    it('should pass the bot profile from the address query on the call', async () => {
+      const page = echoPage(calls)
+      calls.attach(page)
+      await fetch(`${url}?bot=analyst`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${TOKEN}` },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 2,
+          method: 'tools/call',
+          params: { name: 'list_roster', arguments: {} }
+        })
+      })
+      expect(page.sent[0]?.caller).toBe('analyst')
+    })
+
     it('should hand a call to the open page and return its answer', async () => {
       const page = echoPage(calls)
       calls.attach(page)
@@ -117,14 +133,14 @@ describe('Talyx MCP server', () => {
     it('should fail a call the closed page never answered', async () => {
       const page = { send: () => undefined, isDestroyed: () => false }
       calls.attach(page)
-      const pending = calls.run('delete_bot', {})
+      const pending = calls.run('delete_bot', {}, null)
       calls.detach(page)
       expect(await pending).toEqual({ ok: false, text: NO_WINDOW })
     })
 
     it('should drop a call nobody answers in time', async () => {
       calls.attach({ send: () => undefined, isDestroyed: () => false })
-      expect((await calls.run('list_roster', {})).ok).toBe(false)
+      expect((await calls.run('list_roster', {}, null)).ok).toBe(false)
     })
   })
 })

@@ -34,13 +34,14 @@ export async function registerMcpServer(
   const { profile } = bot
   const servers = await backend.listMcpServers(profile)
   const current = servers.find((server) => server.name === MCP_SERVER_NAME)
-  if (current?.url === connection.url) return false
+  const url = `${connection.url}&bot=${encodeURIComponent(profile)}`
+  if (current?.url === url) return false
   // ponytail: the key is not compared (the engine never shows it); a new key (userData wiped)
   // leaves bots on the old one until their `talyx` server is removed, then the next start adds it.
   const add = (): Promise<void> =>
     backend.addMcpServer(profile, {
       name: MCP_SERVER_NAME,
-      url: connection.url,
+      url,
       token: connection.token
     })
   if (current) {

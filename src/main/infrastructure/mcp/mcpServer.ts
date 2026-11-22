@@ -49,7 +49,7 @@ export class McpCalls {
     this.failAll()
   }
 
-  run(tool: string, args: unknown): Promise<McpAnswer> {
+  run(tool: string, args: unknown, caller: string | null): Promise<McpAnswer> {
     const page = this.page
     if (!page || page.isDestroyed()) return Promise.resolve({ ok: false, text: NO_WINDOW })
     const id = randomUUID()
@@ -62,7 +62,7 @@ export class McpCalls {
         clearTimeout(timer)
         resolve(answer)
       })
-      page.send('mcp:call', { id, tool, args })
+      page.send('mcp:call', { id, tool, args, caller })
     })
   }
 
@@ -103,6 +103,12 @@ export function mcpHandler(deps: {
   }
 }
 
+function mcpCaller(req: IncomingMessage): string | null {
+  const bot = new URL(req.url ?? '/', 'http://localhost').searchParams.get('bot')
+  const trimmed = bot?.trim() ?? ''
+  return trimmed.length > 0 ? trimmed : null
+}
+
 async function handle(
   deps: { token: string; version: string; calls: Pick<McpCalls, 'run'> },
   req: IncomingMessage,
@@ -110,6 +116,7 @@ async function handle(
 ): Promise<void> {
   if (new URL(req.url ?? '/', 'http://localhost').pathname !== MCP_PATH)
     return reply(res, HTTP_STATUS.notFound)
+  const caller = mcpCaller(req)
   if (req.headers.origin !== undefined) return reply(res, HTTP_STATUS.forbidden)
   if (!authorized(req.headers.authorization, deps.token))
     return reply(res, HTTP_STATUS.unauthorized)
@@ -129,12 +136,13 @@ async function handle(
     )
   // A notification (initialized, cancelled) needs no answer.
   if (message.id === undefined) return reply(res, HTTP_STATUS.accepted)
-  reply(res, HTTP_STATUS.ok, await answer(deps, message))
+  reply(res, HTTP_STATUS.ok, await answer(deps, message, caller))
 }
 
 async function answer(
   deps: { version: string; calls: Pick<McpCalls, 'run'> },
-  { id, method, params }: JsonRpcRequest
+  { id, method, params }: JsonRpcRequest,
+  caller: string | null
 ): Promise<unknown> {
   const result = (value: unknown): unknown => ({ jsonrpc: '2.0', id, result: value })
   switch (method) {
@@ -153,7 +161,7 @@ async function answer(
     case 'tools/call': {
       const name = typeof params?.name === 'string' ? params.name : ''
       if (!isMcpTool(name)) return rpcError(id, RPC_ERROR.invalidParams, `Unknown tool: ${name}`)
-      const { ok, text } = await deps.calls.run(name, params?.arguments ?? {})
+      const { ok, text } = await deps.calls.run(name, params?.arguments ?? {}, caller)
       return result({ content: [{ type: 'text', text }], isError: !ok })
     }
     default:

@@ -38,12 +38,12 @@ describe('registerMcpServer', () => {
   it('should add Talyx’s server with its key, then load it in the bot’s chat', async () => {
     const { backend, steps, added } = engineWith([{ name: 'github', url: 'https://example.com' }])
     expect(await registerMcpServer(backend, BOT, CONNECTION)).toBe(true)
-    expect(added).toEqual([{ name: 'talyx', url: CONNECTION.url, token: 'secret' }])
+    expect(added).toEqual([{ name: 'talyx', url: `${CONNECTION.url}&bot=scout`, token: 'secret' }])
     expect(steps).toEqual(['add scout', RELOAD])
   })
 
   it('should leave a bot that has the current address alone', async () => {
-    const { backend, steps } = engineWith([{ name: 'talyx', url: CONNECTION.url }])
+    const { backend, steps } = engineWith([{ name: 'talyx', url: `${CONNECTION.url}&bot=scout` }])
     expect(await registerMcpServer(backend, BOT, CONNECTION)).toBe(false)
     expect(steps).toEqual([])
   })

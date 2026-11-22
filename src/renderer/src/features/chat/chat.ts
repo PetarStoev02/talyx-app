@@ -1,3 +1,4 @@
+import type { UiSurface } from '@contract/a2uiSurface'
 import type { SessionMessage } from '@shared/engine/types'
 import type { ModelOptionProvider, SessionLiveInfo } from '@shared/engine/gateway-events'
 import type { GatewayEvent } from '@shared/engine/shared'
@@ -6,6 +7,7 @@ import { failureOf } from '@shared/lib/problem'
 import { useChat } from './store'
 import type { ChatInfo, ChatState } from './store'
 import { applyEvent, fromHistory, settlePrompt, withFailedTurns, withoutTurn } from './transcript'
+import { liveSurfaceId, mergeLiveSurfaces } from './surfaceLive'
 import { SENDING_ID } from './turns'
 import type { ApprovalChoice, ChatItem, ChatPrompt, Transcript } from './types'
 
@@ -118,6 +120,8 @@ export interface ChatActions {
     answers: Record<string, string | string[]>
   ) => Promise<void>
   answerApproval: (profile: string, promptId: string, choice: ApprovalChoice) => void
+  /** Puts a validated show_ui surface on the bot's open transcript at once. */
+  showSurface: (profile: string, surface: UiSurface) => void
   setModel: (profile: string, model: { model: string; provider: string }) => Promise<void>
   setReasoning: (profile: string, level: string) => Promise<void>
   /** The models a profile can pick, loaded once and shared by every menu until forgetModels. */
@@ -206,9 +210,13 @@ export function chatActions(backend: ChatBackend): ChatActions {
       ? { ...current.transcript, prompts: stillOpen(current.transcript, shownCards, resume) }
       : null
     const fresh = rebuilt(previous, sessionId, messages, resume)
+    const merged =
+      previous?.sessionId === sessionId
+        ? { ...fresh, items: mergeLiveSurfaces(fresh.items, previous.items) }
+        : fresh
     update(profile, {
       sessionId,
-      transcript: (current?.pending ?? []).reduce(applyEvent, fresh),
+      transcript: (current?.pending ?? []).reduce(applyEvent, merged),
       pending: null,
       info: infoOf(resume.info, current?.info),
       loading: false,
@@ -482,6 +490,19 @@ export function chatActions(backend: ChatBackend): ChatActions {
       if (!transcript || prompt?.kind !== 'approval') return
       prompt.respond(choice)
       update(profile, { transcript: settlePrompt(transcript, promptId) })
+    },
+
+    showSurface: (profile, surface) => {
+      const chat = chatOf(profile)
+      if (!chat?.sessionId) return
+      const transcript = chat.transcript ?? fromHistory(chat.sessionId, [], false)
+      const id = liveSurfaceId(crypto.randomUUID())
+      update(profile, {
+        transcript: {
+          ...transcript,
+          items: [...transcript.items, { kind: 'surface', id, surface, toolCallId: id }]
+        }
+      })
     },
 
     setModel: guarded(

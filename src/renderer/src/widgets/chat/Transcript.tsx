@@ -2,19 +2,23 @@ import { useMemo } from 'react'
 import { ArrowDown } from 'lucide-react'
 import { useStickToEnd } from '@shared/hooks/useStickToEnd'
 import { useLanguage } from '@shared/lib/i18n'
-import type { MessageItem } from '@features/chat/types'
+import type { ChatItem, MessageItem } from '@features/chat/types'
 import { briefsByRef, isQuietReply } from '@features/chat/workflowLines'
 import { MessageBubble } from './MessageBubble'
 
 /** Newest at the bottom; it follows new text while you are at the end, and offers a way back. */
 export function Transcript({
   items,
+  allItems,
   children,
-  loadImage
+  loadImage,
+  onSurfaceSend
 }: {
   items: MessageItem[]
+  allItems: ChatItem[]
   children?: React.ReactNode
   loadImage: (path: string) => Promise<string>
+  onSurfaceSend: (text: string) => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const briefs = useMemo(
@@ -35,7 +39,13 @@ export function Transcript({
             .filter((item) => !isQuietReply(item))
             .map((item, index) => (
               <li key={item.id || index} data-message-id={item.id} className="flex flex-col">
-                <MessageBubble message={item} loadImage={loadImage} briefs={briefs} />
+                <MessageBubble
+                  message={item}
+                  allItems={allItems}
+                  loadImage={loadImage}
+                  briefs={briefs}
+                  onSurfaceSend={onSurfaceSend}
+                />
               </li>
             ))}
           {children}

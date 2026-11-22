@@ -162,7 +162,19 @@ export function ChatPane({
       </FindSlot>
       <div ref={setTranscriptArea} className={cn('flex min-h-0 flex-1 flex-col', arrival)}>
         {items.length || prompts.length || chat.waiting.length ? (
-          <Transcript items={items} loadImage={loadImage}>
+          <Transcript
+            items={items}
+            allItems={chat.transcript?.items ?? []}
+            loadImage={loadImage}
+            onSurfaceSend={(text) =>
+              void actions.queue(bot.name, {
+                text,
+                images: [],
+                whenBusy: null,
+                replaces: null
+              })
+            }
+          >
             {activity && (
               <li>
                 <ActivityLine bot={bot} activity={activity} wait={chat.transcript?.wait ?? null} />

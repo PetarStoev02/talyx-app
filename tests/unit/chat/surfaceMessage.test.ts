@@ -1,0 +1,102 @@
+import { describe, expect, it } from 'vitest'
+import type { UiSurface } from '../../../src/shared/a2uiSurface'
+import {
+  surfaceAnswer,
+  surfaceClickMessage
+} from '../../../src/renderer/src/features/chat/surfaceMessage'
+import type { ChatItem } from '../../../src/renderer/src/features/chat/types'
+
+const formSurface: UiSurface = {
+  surfaceId: 'form',
+  dataModel: { name: 'Weekly report', day: 'wed', tags: ['a', 'b'] },
+  components: [
+    { id: 'root', component: 'Column', children: ['name', 'day', 'tags', 'lbl', 'send'] },
+    { id: 'name', component: 'TextField', label: 'Name', value: { '@path': '/name' } },
+    {
+      id: 'day',
+      component: 'ChoicePicker',
+      label: 'Day',
+      options: [{ label: 'Wed', value: 'wed' }],
+      value: { '@path': '/day' }
+    },
+    {
+      id: 'tags',
+      component: 'ChoicePicker',
+      label: 'Tags',
+      multiple: true,
+      options: [
+        { label: 'A', value: 'a' },
+        { label: 'B', value: 'b' }
+      ],
+      value: { '@path': '/tags' }
+    },
+    { id: 'lbl', component: 'Text', text: 'Create routine' },
+    {
+      id: 'send',
+      component: 'Button',
+      child: 'lbl',
+      variant: 'primary',
+      action: { event: { name: 'create' } }
+    }
+  ]
+}
+
+describe('surfaceClickMessage', () => {
+  it('should send only the button label when there are no inputs', () => {
+    const surface: UiSurface = {
+      surfaceId: 'pick',
+      dataModel: {},
+      components: [
+        { id: 'root', component: 'Column', children: ['lbl', 'btn'] },
+        { id: 'lbl', component: 'Text', text: 'Move them' },
+        { id: 'btn', component: 'Button', child: 'lbl', action: { event: { name: 'move' } } }
+      ]
+    }
+    expect(surfaceClickMessage(surface, 'btn', {})).toBe('Move them')
+  })
+
+  it('should append input lines for a form', () => {
+    const text = surfaceClickMessage(formSurface, 'send', formSurface.dataModel)
+    expect(text).toBe('Create routine\nName: Weekly report\nDay: Wed\nTags: A, B')
+  })
+})
+
+describe('surfaceAnswer', () => {
+  const surfaceItem: ChatItem = {
+    kind: 'surface',
+    id: 's1',
+    toolCallId: 't1',
+    surface: {
+      surfaceId: 'pick',
+      dataModel: {},
+      components: [
+        { id: 'root', component: 'Column', children: ['btn'] },
+        { id: 'lbl', component: 'Text', text: 'Wednesday' },
+        { id: 'btn', component: 'Button', child: 'lbl', action: { event: { name: 'pick' } } }
+      ]
+    }
+  }
+
+  it('should be unanswered with no user message after it', () => {
+    expect(surfaceAnswer([surfaceItem], surfaceItem)).toEqual({
+      answered: false,
+      pickedButtonId: null
+    })
+  })
+
+  it('should mark the matching button when the user picked it', () => {
+    const items: ChatItem[] = [
+      surfaceItem,
+      { kind: 'user', id: 'u1', text: 'Wednesday', images: [] }
+    ]
+    expect(surfaceAnswer(items, surfaceItem)).toEqual({ answered: true, pickedButtonId: 'btn' })
+  })
+
+  it('should be answered without a button match when the user typed', () => {
+    const items: ChatItem[] = [
+      surfaceItem,
+      { kind: 'user', id: 'u1', text: 'Something else', images: [] }
+    ]
+    expect(surfaceAnswer(items, surfaceItem)).toEqual({ answered: true, pickedButtonId: null })
+  })
+})

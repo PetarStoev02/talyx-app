@@ -1,3 +1,4 @@
+import { parseA2uiMessages, showUiMessagesFromTool } from '@contract/a2uiSurface'
 import type { GatewayEvent } from '@shared/engine/shared'
 import type { SessionMessage } from '@shared/engine/types'
 import { messageText } from '@shared/lib/messageText'
@@ -263,6 +264,8 @@ function historyItem(
     const call = calls.get(message.tool_call_id ?? '')
     const name = message.tool_name ?? message.name ?? call?.name ?? 'tool'
     const args = (message.args as Payload | undefined) ?? call?.args ?? {}
+    const surface = surfaceFromTool(id, name, args, message.tool_call_id ?? id)
+    if (surface) return [surface]
     return [{ ...toolItem(id, name, args, message.labels), done: true }]
   }
   return []
@@ -329,6 +332,19 @@ function toolItem(
 }
 
 // Stored transcripts carry a tool's name and arguments on the assistant row that called it.
+function surfaceFromTool(
+  id: string,
+  name: string,
+  args: Payload,
+  toolCallId: string
+): Extract<ChatItem, { kind: 'surface' }> | null {
+  const messages = showUiMessagesFromTool(name, args)
+  if (!messages) return null
+  const parsed = parseA2uiMessages(messages)
+  if (!parsed.ok) return null
+  return { kind: 'surface', id, surface: parsed.surface, toolCallId }
+}
+
 function toolCalls(messages: SessionMessage[]): Map<string, { name: string; args: Payload }> {
   const calls = new Map<string, { name: string; args: Payload }>()
   for (const message of messages) {
