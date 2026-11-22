@@ -88,6 +88,29 @@ describe('transcript surfaces', () => {
     expect(transcript.items.filter((item) => item.kind === 'surface')).toHaveLength(1)
   })
 
+  it("should read show_ui as the engine serves it: the tool's name on the row, the wrapper on the call", () => {
+    const wrapper = {
+      calls: [{ name: 'mcp__talyx__show_ui', arguments: { messages: messagesPayload } }]
+    }
+    const transcript = fromHistory(
+      'chat-1',
+      [
+        {
+          id: 6,
+          role: 'assistant',
+          content: '',
+          tool_calls: [
+            { id: 'call-9', function: { name: 'tool_call', arguments: JSON.stringify(wrapper) } }
+          ]
+        },
+        { id: 7, role: 'tool', tool_call_id: 'call-9', tool_name: 'mcp__talyx__show_ui' },
+        { id: 8, role: 'assistant', content: 'One comment.' }
+      ] as never,
+      false
+    )
+    expect(transcript.items.map((item) => item.kind)).toEqual(['surface', 'bot'])
+  })
+
   it('should skip a refused surface but keep an ordinary tool row', () => {
     const transcript = fromHistory(
       'chat-1',

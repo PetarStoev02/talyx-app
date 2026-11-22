@@ -1,237 +1,283 @@
 import type { UiComponent } from '@contract/a2uiSurface'
 import { niceCeiling } from '@shared/lib/chartPath'
+import { useLanguage } from '@shared/lib/i18n'
 import { cn } from '@shared/lib/utils'
 
+type Chart = Extract<UiComponent, { component: 'Chart' }>
+
+// The plot in SVG units; the SVG keeps this ratio, so text and corners never stretch.
 const WIDTH = 640
-const HEIGHT = 190
-const AXIS = 36
-const COLORS = [
-  'text-brand',
-  'text-success',
-  'text-destructive-text',
-  'text-muted-foreground'
-] as const
+const HEIGHT = 200
+const LEFT = 44
+const RIGHT = 4
+const TOP = 10
+const BOTTOM = 24
+const PLOT_BOTTOM = HEIGHT - BOTTOM
+const PLOT_HEIGHT = PLOT_BOTTOM - TOP
+const GRID_STEPS = [0, 0.5, 1]
+// A group of bars takes this share of its slot; the rest is the gap to the next group.
+const GROUP_SHARE = 0.62
+const BAR_MAX = 46
+const BAR_GAP = 2
+const BAR_RADIUS = 4
+const MARKER_RADIUS = 3.5
+// Past this many points a marker on each would crowd the line; the line alone reads better.
+const MARKERS_UP_TO = 12
+const AREA_OPACITY = 0.16
+const TICK_SIZE = 11
+const DONUT_SIZE = 148
+const DONUT_OUTER = 70
+const DONUT_INNER = 44
+const COMPACT_FROM = 10_000
+const FULL_TURN = Math.PI * 2
+// The series colours, in order and never cycled (theme.css): a chart has four series at most.
+const SERIES = ['text-chart-1', 'text-chart-2', 'text-chart-3', 'text-chart-4'] as const
 
-type ChartComponent = Extract<UiComponent, { component: 'Chart' }>
+const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
+const plain = new Intl.NumberFormat('en', { maximumFractionDigits: 2 })
 
-export function SurfaceChart({
-  chart,
-  summary
-}: {
-  chart: ChartComponent
-  summary: string
-}): React.JSX.Element {
-  const { labels, series, kind, unit } = chart
-  const peak = Math.max(...series.flatMap((row) => row.values), 0)
-  const top = niceCeiling(peak)
-  const gridY = [0, 0.33, 0.66, 1]
+/** A chart a bot put in its answer: bars, a line, an area or a pie, with what a reader needs to name each mark. */
+export function SurfaceChart({ chart }: { chart: Chart }): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const [first] = chart.series
+  const peak = Math.max(...chart.series.flatMap((series) => series.values), 0)
+  const peakAt = first ? first.values.indexOf(Math.max(...first.values)) : -1
+  const summary = t('chat.surfaceChartSummary')
+    .replace('{series}', chart.series.map((series) => series.name).join(', '))
+    .replace('{label}', chart.labels[peakAt] ?? '')
+    .replace('{value}', amount(Math.max(...(first?.values ?? [0])), chart.unit))
+  if (chart.kind === 'pie') return <Pie chart={chart} summary={summary} />
   return (
-    <div className="w-full">
-      {series.length > 1 && (
-        <div className="mb-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
-          {series.map((row, index) => (
-            <span key={row.name} className="inline-flex items-center gap-1.5">
+    <figure className="flex flex-col gap-2">
+      {chart.series.length > 1 && (
+        <figcaption className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          {chart.series.map((series, index) => (
+            <span key={series.name} className="inline-flex items-center gap-1.5">
               <span
-                className={cn(
-                  'inline-block size-2 rounded-sm bg-current',
-                  COLORS[index % COLORS.length]
-                )}
+                aria-hidden="true"
+                className={cn('size-2 rounded-xs bg-current', SERIES[index])}
               />
-              {row.name}
+              {series.name}
             </span>
           ))}
-        </div>
+        </figcaption>
       )}
-      <svg
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="h-[190px] w-full text-foreground"
-        role="img"
-        aria-label={summary}
-      >
-        {gridY.map((share) => {
-          const y = AXIS + (HEIGHT - AXIS - 20) * (1 - share)
-          return (
-            <g key={share}>
-              <line
-                x1={AXIS}
-                x2={WIDTH - 4}
-                y1={y}
-                y2={y}
-                className="stroke-border"
-                strokeWidth={1}
-              />
-              <text x={0} y={y + 4} className="fill-muted-foreground text-[11px]">
-                {formatTick(top * share, unit)}
-              </text>
-            </g>
-          )
-        })}
-        {kind === 'pie' ? (
-          <PieSlice
-            values={series[0]?.values ?? []}
-            labels={labels}
-            cx={(WIDTH + AXIS) / 2}
-            cy={(HEIGHT + AXIS) / 2}
-            radius={Math.min(WIDTH, HEIGHT) / 2 - AXIS}
-          />
-        ) : (
-          <CartesianSeries
-            kind={kind}
-            labels={labels}
-            series={series}
-            top={top}
-            unit={unit ?? null}
-          />
-        )}
-        {kind !== 'pie' &&
-          labels.map((label, index) => {
-            const count = labels.length
-            const slot = (WIDTH - AXIS - 8) / count
-            const x = AXIS + slot * index + slot / 2
+      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={summary} className="w-full">
+        <Grid top={niceCeiling(peak)} unit={chart.unit} />
+        {chart.kind === 'bar' ? <Bars chart={chart} /> : <Lines chart={chart} />}
+        {chart.labels.map((label, index) => (
+          <text
+            key={index}
+            x={slotCentre(chart, index)}
+            y={HEIGHT - 6}
+            textAnchor="middle"
+            fontSize={TICK_SIZE}
+            className="fill-muted-foreground"
+          >
+            {label}
+          </text>
+        ))}
+      </svg>
+    </figure>
+  )
+}
+
+function Grid({ top, unit }: { top: number; unit: string | undefined }): React.JSX.Element {
+  return (
+    <g>
+      {GRID_STEPS.map((share) => {
+        const y = PLOT_BOTTOM - PLOT_HEIGHT * share
+        return (
+          <g key={share}>
+            <line x1={LEFT} x2={WIDTH - RIGHT} y1={y} y2={y} className="stroke-border" />
+            <text
+              x={LEFT - 8}
+              y={y + TICK_SIZE / 3}
+              textAnchor="end"
+              fontSize={TICK_SIZE}
+              className="fill-muted-foreground tabular-nums"
+            >
+              {amount(top * share, tickUnit(unit))}
+            </text>
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
+function Bars({ chart }: { chart: Chart }): React.JSX.Element {
+  const top = niceCeiling(Math.max(...chart.series.flatMap((series) => series.values), 0))
+  const slot = slotWidth(chart)
+  const count = chart.series.length
+  const bar = Math.min(BAR_MAX, (slot * GROUP_SHARE - BAR_GAP * (count - 1)) / count)
+  const group = bar * count + BAR_GAP * (count - 1)
+  return (
+    <g>
+      {chart.series.map((series, seriesIndex) => (
+        <g key={series.name} className={SERIES[seriesIndex]}>
+          {series.values.map((value, index) => {
+            const height = (value / top) * PLOT_HEIGHT
+            const x = slotCentre(chart, index) - group / 2 + seriesIndex * (bar + BAR_GAP)
             return (
-              <text
-                key={label}
-                x={x}
-                y={HEIGHT - 2}
-                textAnchor="middle"
-                className="fill-muted-foreground text-[11px]"
+              <path
+                key={index}
+                d={roundedTop({ x, y: PLOT_BOTTOM - height, width: bar, height })}
+                className="fill-current"
               >
-                {label}
-              </text>
+                <title>{markTitle(chart, series.name, index)}</title>
+              </path>
             )
           })}
-      </svg>
-    </div>
-  )
-}
-
-function CartesianSeries({
-  kind,
-  labels,
-  series,
-  top,
-  unit
-}: {
-  kind: 'bar' | 'line' | 'area'
-  labels: string[]
-  series: ChartComponent['series']
-  top: number
-  unit: string | null
-}): React.JSX.Element {
-  const plotBottom = HEIGHT - 20
-  const plotTop = AXIS
-  const plotHeight = plotBottom - plotTop
-  const slot = (WIDTH - AXIS - 8) / labels.length
-  const barWidth = Math.min(44, slot * 0.55)
-  return (
-    <g>
-      {series.map((row, seriesIndex) => (
-        <g key={row.name} className={cn(COLORS[seriesIndex % COLORS.length])}>
-          {row.values.map((value, index) => {
-            const height = (value / top) * plotHeight
-            const x =
-              AXIS + slot * index + (slot - barWidth) / 2 + seriesIndex * (barWidth / series.length)
-            const y = plotBottom - height
-            const w = barWidth / series.length
-            if (kind === 'bar')
-              return (
-                <rect
-                  key={`${row.name}-${index}`}
-                  x={x}
-                  y={y}
-                  width={w}
-                  height={height}
-                  rx={6}
-                  className="fill-brand"
-                />
-              )
-            return null
-          })}
-          {kind !== 'bar' &&
-            (() => {
-              const points = row.values.map((value, index) => {
-                const x = AXIS + slot * index + slot / 2
-                const y = plotBottom - (value / top) * plotHeight
-                return `${x},${y}`
-              })
-              const line = points.join(' ')
-              const [first = ''] = points
-              const area =
-                kind === 'area'
-                  ? `${line} ${points.at(-1)?.split(',')[0] ?? 0},${plotBottom} ${first.split(',')[0]},${plotBottom}`
-                  : line
-              return (
-                <g key={`line-${row.name}`}>
-                  {kind === 'area' && (
-                    <polyline points={area} className="fill-brand/15 stroke-none" />
-                  )}
-                  <polyline points={line} fill="none" strokeWidth={2} className="stroke-brand" />
-                </g>
-              )
-            })()}
         </g>
       ))}
-      {unit && (
-        <text x={AXIS + 4} y={plotTop + 12} className="fill-muted-foreground text-[10px]">
-          {unit}
-        </text>
-      )}
     </g>
   )
 }
 
-function pieSlices(
-  values: number[],
-  cx: number,
-  cy: number,
-  radius: number
-): Array<{ d: string; index: number }> {
-  const total = values.reduce((sum, value) => sum + value, 0)
-  let angle = -Math.PI / 2
-  return values.map((value, index) => {
-    const slice = total > 0 ? (value / total) * Math.PI * 2 : 0
-    const x1 = cx + radius * Math.cos(angle)
-    const y1 = cy + radius * Math.sin(angle)
-    angle += slice
-    const x2 = cx + radius * Math.cos(angle)
-    const y2 = cy + radius * Math.sin(angle)
-    const large = slice > Math.PI ? 1 : 0
-    void start
-    return {
-      index,
-      d: `M${cx},${cy} L${x1},${y1} A${radius},${radius} 0 ${large} 1 ${x2},${y2} Z`
-    }
-  })
-}
-
-function PieSlice({
-  values,
-  labels,
-  cx,
-  cy,
-  radius
-}: {
-  values: number[]
-  labels: string[]
-  cx: number
-  cy: number
-  radius: number
-}): React.JSX.Element {
-  const slices = pieSlices(values, cx, cy, radius)
+function Lines({ chart }: { chart: Chart }): React.JSX.Element {
+  const top = niceCeiling(Math.max(...chart.series.flatMap((series) => series.values), 0))
   return (
     <g>
-      {slices.map((slice) => (
-        <path
-          key={labels[slice.index] ?? slice.index}
-          d={slice.d}
-          className={cn('fill-brand', slice.index % 2 === 1 && 'fill-brand/60')}
-        />
-      ))}
+      {chart.series.map((series, seriesIndex) => {
+        const points = series.values.map((value, index) => ({
+          x: slotCentre(chart, index),
+          y: PLOT_BOTTOM - (value / top) * PLOT_HEIGHT
+        }))
+        const line = points.map((point) => `${point.x},${point.y}`).join(' ')
+        const [start] = points
+        const end = points.at(-1)
+        return (
+          <g key={series.name} className={SERIES[seriesIndex]}>
+            {chart.kind === 'area' && start && end && (
+              <polygon
+                points={`${line} ${end.x},${PLOT_BOTTOM} ${start.x},${PLOT_BOTTOM}`}
+                className="fill-current"
+                opacity={AREA_OPACITY}
+              />
+            )}
+            <polyline
+              points={line}
+              fill="none"
+              strokeWidth={2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              className="stroke-current"
+            />
+            {points.map((point, index) => (
+              // The ring in the card's colour keeps a marker apart from a line it sits on.
+              <circle
+                key={index}
+                cx={point.x}
+                cy={point.y}
+                r={MARKER_RADIUS}
+                strokeWidth={2}
+                className="fill-current stroke-card"
+                opacity={points.length > MARKERS_UP_TO ? 0 : 1}
+              >
+                <title>{markTitle(chart, series.name, index)}</title>
+              </circle>
+            ))}
+          </g>
+        )
+      })}
     </g>
   )
 }
 
-function formatTick(value: number, unit: string | undefined): string {
-  const rounded = value >= 1000 ? `${Math.round(value / 1000)}k` : String(Math.round(value))
-  return unit ? `${rounded}${unit === 'k' ? '' : ` ${unit}`}` : rounded
+// A pie's slices are its labels: each gets a series colour, and the list beside it names them.
+function Pie({ chart, summary }: { chart: Chart; summary: string }): React.JSX.Element {
+  const values = chart.series[0]?.values ?? []
+  const total = values.reduce((sum, value) => sum + value, 0)
+  const centre = DONUT_SIZE / 2
+  // Where each slice ends, as a share of the whole; a slice starts where the one before ended.
+  const ends = values.map((_, index) =>
+    total > 0 ? values.slice(0, index + 1).reduce((sum, value) => sum + value, 0) / total : 0
+  )
+  return (
+    <figure className="flex flex-wrap items-center gap-6">
+      <svg
+        viewBox={`0 0 ${DONUT_SIZE} ${DONUT_SIZE}`}
+        role="img"
+        aria-label={summary}
+        className="size-36 shrink-0"
+      >
+        {values.map((value, index) => {
+          return (
+            <path
+              key={index}
+              d={ring({ centre, from: ends[index - 1] ?? 0, to: ends[index] ?? 0 })}
+              strokeWidth={2}
+              className={cn('fill-current stroke-card', SERIES[index])}
+            >
+              <title>{`${chart.labels[index] ?? ''}: ${amount(value, chart.unit)}`}</title>
+            </path>
+          )
+        })}
+      </svg>
+      <figcaption className="flex min-w-40 flex-1 flex-col gap-1.5 text-sm">
+        {values.map((value, index) => (
+          <span key={index} className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className={cn('size-2 rounded-xs bg-current', SERIES[index])}
+            />
+            <span className="flex-1">{chart.labels[index]}</span>
+            <span className="text-muted-foreground tabular-nums">
+              {amount(value, chart.unit)}
+              {total > 0 && ` · ${Math.round((value / total) * 100)}%`}
+            </span>
+          </span>
+        ))}
+      </figcaption>
+    </figure>
+  )
+}
+
+function slotWidth(chart: Chart): number {
+  return (WIDTH - LEFT - RIGHT) / chart.labels.length
+}
+
+function slotCentre(chart: Chart, index: number): number {
+  return LEFT + slotWidth(chart) * (index + 0.5)
+}
+
+function markTitle(chart: Chart, series: string, index: number): string {
+  const value = chart.series.find((item) => item.name === series)?.values[index] ?? 0
+  const label = chart.labels[index] ?? ''
+  return chart.series.length > 1
+    ? `${series}, ${label}: ${amount(value, chart.unit)}`
+    : `${label}: ${amount(value, chart.unit)}`
+}
+
+// A short unit ("k", "%") closes the number; a word ("tokens") follows it.
+function amount(value: number, unit: string | undefined): string {
+  const number = value >= COMPACT_FROM ? compact.format(value) : plain.format(value)
+  if (!unit || value === 0) return number
+  return unit.length <= 2 ? `${number}${unit}` : `${number} ${unit}`
+}
+
+// A scale has room for a short unit only; a word would push the numbers out of the plot.
+function tickUnit(unit: string | undefined): string | undefined {
+  return unit && unit.length <= 2 ? unit : undefined
+}
+
+// A bar is square on the baseline and round at its data end.
+function roundedTop(bar: { x: number; y: number; width: number; height: number }): string {
+  const radius = Math.min(BAR_RADIUS, bar.width / 2, bar.height)
+  const right = bar.x + bar.width
+  const bottom = bar.y + bar.height
+  return `M${bar.x},${bottom} V${bar.y + radius} Q${bar.x},${bar.y} ${bar.x + radius},${bar.y} H${right - radius} Q${right},${bar.y} ${right},${bar.y + radius} V${bottom} Z`
+}
+
+// One slice of the ring, between two shares of a full turn that starts at twelve o'clock.
+function ring(slice: { centre: number; from: number; to: number }): string {
+  // A slice that is the whole ring cannot be drawn as one arc: its ends would meet.
+  const to = Math.min(slice.to, slice.from + 0.9999)
+  const at = (share: number, radius: number): string => {
+    const angle = share * FULL_TURN - Math.PI / 2
+    return `${slice.centre + radius * Math.cos(angle)},${slice.centre + radius * Math.sin(angle)}`
+  }
+  const large = to - slice.from > 0.5 ? 1 : 0
+  return `M${at(slice.from, DONUT_OUTER)} A${DONUT_OUTER},${DONUT_OUTER} 0 ${large} 1 ${at(to, DONUT_OUTER)} L${at(to, DONUT_INNER)} A${DONUT_INNER},${DONUT_INNER} 0 ${large} 0 ${at(slice.from, DONUT_INNER)} Z`
 }

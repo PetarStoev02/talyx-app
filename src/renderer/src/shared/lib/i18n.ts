@@ -542,7 +542,9 @@ const en = {
   'mcp.showUiNoCaller':
     'show_ui runs only from a bot in Talyx (its MCP address names the profile). Outside agents cannot use it.',
   'mcp.showUiInvalid': '{reason}',
-  'chat.surfacePicked': 'You picked {choice}',
+  'chat.surfacePicked': 'Your answer: {choice}',
+  'chat.surfaceChoose': 'Choose',
+  'chat.surfaceChartSummary': 'Chart of {series}. Highest: {label}, {value}.',
   'details.errorFollowersUnreached':
     'Talyx’s model changed, but the bots on Uses default could not be reached. Pick Talyx’s model again in Settings to move them.',
   'details.errorNotApplied': 'Some changes were not saved. Your edits are still here; save again.',

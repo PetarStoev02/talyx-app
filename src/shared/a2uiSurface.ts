@@ -14,7 +14,7 @@ export const MCP_UI_MAX_TABLE_ROWS = 24
 /** Points per chart series (labels length). */
 export const MCP_UI_MAX_CHART_POINTS = 31
 /** Series in one chart (legend when more than one). */
-export const MCP_UI_MAX_CHART_SERIES = 6
+export const MCP_UI_MAX_CHART_SERIES = 4
 /** One string field in a Text, label, cell, or similar. */
 export const MCP_UI_TEXT_MAX = 400
 
@@ -63,7 +63,7 @@ const rawComponent = z.discriminatedUnion('component', [
       .array(
         z.object({
           name: z.string().max(MCP_UI_TEXT_MAX),
-          values: z.array(z.number().finite())
+          values: z.array(z.number().finite().nonnegative())
         })
       )
       .min(1),
@@ -220,6 +220,8 @@ function limitsFor(component: UiComponent): string | null {
       return `Component "${component.id}": too many chart points (${component.labels.length}, limit ${MCP_UI_MAX_CHART_POINTS}).`
     if (component.series.length > MCP_UI_MAX_CHART_SERIES)
       return `Component "${component.id}": too many chart series (${component.series.length}, limit ${MCP_UI_MAX_CHART_SERIES}).`
+    if (component.kind === 'pie' && component.labels.length > MCP_UI_MAX_CHART_SERIES)
+      return `Component "${component.id}": a pie has up to ${MCP_UI_MAX_CHART_SERIES} slices (${component.labels.length} given). Use a bar chart for more.`
     for (const series of component.series) {
       if (series.values.length !== component.labels.length)
         return `Component "${component.id}": labels and values length differ for series "${series.name}".`
@@ -326,21 +328,20 @@ export function showUiMessagesFromTool(
   name: string,
   args: Record<string, unknown>
 ): unknown[] | null {
-  if (isShowUiToolName(name)) {
-    const messages = args.messages
-    return Array.isArray(messages) ? messages : null
-  }
-  if (name !== 'tool_call') return null
-  const calls = unwrapToolCalls(args)
-  const hit = calls.find((call) => isShowUiToolName(call.name))
-  if (!hit) return null
-  const messages = (hit.arguments as Record<string, unknown>).messages
+  if (!isShowUiToolName(name) && name !== ENGINE_TOOL_CALL) return null
+  // The engine stores the call inside its own wrapper even where the tool row carries the tool's
+  // own name, so the messages are looked for in both places.
+  const wrapped = unwrapToolCalls(args).find((call) => isShowUiToolName(call.name))?.arguments
+  const messages = args.messages ?? wrapped?.messages
   return Array.isArray(messages) ? messages : null
 }
 
 export function isShowUiToolName(name: string): boolean {
   return name === 'show_ui' || name.endsWith('__show_ui') || name === 'mcp__talyx__show_ui'
 }
+
+// The engine's own function that carries a call to an MCP tool.
+const ENGINE_TOOL_CALL = 'tool_call'
 
 function unwrapToolCalls(
   args: Record<string, unknown>
