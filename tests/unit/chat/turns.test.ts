@@ -160,6 +160,15 @@ describe('turn outcome', () => {
     expect(kind([user('u1'), reply('b1', 'Half', null)], true)).toBeNull()
   })
 
+  it('should count an interface-only turn as answered', () => {
+    const ui: ChatItem = {
+      kind: 'surface',
+      id: 's1',
+      surface: { surfaceId: 'pick', components: [], dataModel: {} }
+    }
+    expect(turnOutcome([user('u1'), ui], false)).toEqual({ kind: 'answered', asked: user('u1') })
+  })
+
   it('should name the message an answered turn answered, so the answer can be asked for again', () => {
     expect(turnOutcome([user('u1'), tool('t1'), reply('b1', 'Done.')], false)).toEqual({
       kind: 'answered',

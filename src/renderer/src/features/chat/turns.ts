@@ -64,7 +64,9 @@ export function turnOutcome(items: ChatItem[], running: boolean): TurnOutcome | 
   // An answer is asked for again in the stored message's place, so not before the reload stores it.
   // A reply not stored yet may be another client's turn, whose message has not loaded yet.
   const stored = !sending && !replies.some((reply) => reply.id.startsWith(LIVE_ID))
-  if (replies.some((reply) => reply.text)) return stored ? { kind: 'answered', asked } : null
+  const surfaces = work.filter((item): item is SurfaceItem => item.kind === 'surface')
+  if (replies.some((reply) => reply.text) || surfaces.length > 0)
+    return stored ? { kind: 'answered', asked } : null
   if (replies.some((reply) => reply.stopped)) return { kind: 'stopped', asked }
   // Still on its way: the engine has not started its turn yet.
   if (!replies.length && sending) return null

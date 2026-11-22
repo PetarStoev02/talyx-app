@@ -58,8 +58,20 @@ describe('Talyx MCP server', () => {
     })
 
     it('should refuse a request a browser page sent, even with the token', async () => {
-      const response = await post({}, { Origin: 'http://example.com' })
+      const page = echoPage(calls)
+      calls.attach(page)
+      const response = await fetch(`${url}?bot=analyst`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${TOKEN}`, Origin: 'http://example.com' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 3,
+          method: 'tools/call',
+          params: { name: 'list_roster', arguments: {} }
+        })
+      })
       expect(response.status).toBe(403)
+      expect(page.sent).toHaveLength(0)
     })
   })
 

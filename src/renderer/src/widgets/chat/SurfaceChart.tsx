@@ -44,15 +44,36 @@ const plain = new Intl.NumberFormat('en', { maximumFractionDigits: 2 })
 /** A chart a bot put in its answer: bars, a line, an area or a pie, with what a reader needs to name each mark. */
 export function SurfaceChart({ chart }: { chart: Chart }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const [hover, setHover] = useState<number | null>(null)
   const [first] = chart.series
-  const peak = Math.max(...chart.series.flatMap((series) => series.values), 0)
   const peakAt = first ? first.values.indexOf(Math.max(...first.values)) : -1
   const summary = t('chat.surfaceChartSummary')
     .replace('{series}', chart.series.map((series) => series.name).join(', '))
     .replace('{label}', chart.labels[peakAt] ?? '')
     .replace('{value}', amount(Math.max(...(first?.values ?? [0])), chart.unit))
-  if (chart.kind === 'pie') return <Pie chart={chart} summary={summary} />
+  if (chart.kind === 'pie')
+    return (
+      <div className="flex flex-col gap-2">
+        <Pie chart={chart} summary={summary} />
+        <ChartNumbersTable chart={chart} />
+      </div>
+    )
+  return (
+    <figure className="flex flex-col gap-2">
+      <SurfaceCartesianChart chart={chart} summary={summary} />
+      <ChartNumbersTable chart={chart} />
+    </figure>
+  )
+}
+
+function SurfaceCartesianChart({
+  chart,
+  summary
+}: {
+  chart: Chart
+  summary: string
+}): React.JSX.Element {
+  const [hover, setHover] = useState<number | null>(null)
+  const peak = Math.max(...chart.series.flatMap((series) => series.values), 0)
   const slot = slotWidth(chart)
   const hoverLeft =
     hover === null
@@ -62,11 +83,11 @@ export function SurfaceChart({ chart }: { chart: Chart }): React.JSX.Element {
           100 - TOOLTIP_EDGE_INSET
         )
   return (
-    <figure className="flex flex-col gap-2">
+    <>
       {chart.series.length > 1 && (
         <figcaption className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
           {chart.series.map((series, index) => (
-            <span key={series.name} className="inline-flex items-center gap-1.5">
+            <span key={`${series.name}-${index}`} className="inline-flex items-center gap-1.5">
               <span
                 aria-hidden="true"
                 className={cn('size-2 rounded-xs bg-current', SERIES[index])}
@@ -105,7 +126,7 @@ export function SurfaceChart({ chart }: { chart: Chart }): React.JSX.Element {
           )}
           {chart.labels.map((label, index) => (
             <text
-              key={label}
+              key={`${label}-${index}`}
               x={slotCentre(chart, index)}
               y={HEIGHT - 6}
               textAnchor="middle"
@@ -118,7 +139,7 @@ export function SurfaceChart({ chart }: { chart: Chart }): React.JSX.Element {
           <g>
             {chart.labels.map((_, index) => (
               <rect
-                key={index}
+                key={`hover-${index}`}
                 x={LEFT + slot * index}
                 y={TOP}
                 width={slot}
@@ -131,7 +152,53 @@ export function SurfaceChart({ chart }: { chart: Chart }): React.JSX.Element {
           </g>
         </svg>
       </div>
-    </figure>
+    </>
+  )
+}
+
+function ChartNumbersTable({ chart }: { chart: Chart }): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  return (
+    <details className="text-sm">
+      <summary className="w-fit cursor-pointer text-muted-foreground hover:text-foreground">
+        {t('chat.surfaceChartNumbers')}
+      </summary>
+      <table className="mt-2 w-full border-collapse text-left text-sm">
+        <thead className="text-muted-foreground">
+          <tr className="border-b border-border">
+            <th scope="col" className="py-1.5 pr-4 font-normal">
+              {t('chat.surfaceChartRowLabel')}
+            </th>
+            {chart.series.map((series, index) => (
+              <th
+                key={`${series.name}-${index}`}
+                scope="col"
+                className="py-1.5 pr-4 text-right font-normal"
+              >
+                {series.name}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {chart.labels.map((label, rowIndex) => (
+            <tr key={`${label}-${rowIndex}`} className="border-b border-border/50">
+              <th scope="row" className="py-1.5 pr-4 font-normal text-foreground">
+                {label}
+              </th>
+              {chart.series.map((series, columnIndex) => (
+                <td
+                  key={`${series.name}-${columnIndex}-${rowIndex}`}
+                  className="py-1.5 pr-4 text-right tabular-nums"
+                >
+                  {amount(series.values[rowIndex] ?? 0, chart.unit)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
   )
 }
 
@@ -142,7 +209,10 @@ function MarkTooltip({ chart, index }: { chart: Chart; index: number }): React.J
     <div className="flex flex-col gap-1">
       <div className="font-medium">{label}</div>
       {chart.series.map((series, seriesIndex) => (
-        <div key={series.name} className="flex items-center gap-1.5 tabular-nums">
+        <div
+          key={`${series.name}-${seriesIndex}`}
+          className="flex items-center gap-1.5 tabular-nums"
+        >
           <span
             aria-hidden="true"
             className={cn('size-2 shrink-0 rounded-xs bg-current', SERIES[seriesIndex])}
@@ -191,13 +261,13 @@ function Bars({ chart, hover }: { chart: Chart; hover: number | null }): React.J
   return (
     <g>
       {chart.series.map((series, seriesIndex) => (
-        <g key={series.name} className={SERIES[seriesIndex]}>
+        <g key={`${series.name}-${seriesIndex}`} className={SERIES[seriesIndex]}>
           {series.values.map((value, index) => {
             const height = (value / top) * PLOT_HEIGHT
             const x = slotCentre(chart, index) - group / 2 + seriesIndex * (bar + BAR_GAP)
             return (
               <path
-                key={index}
+                key={`${seriesIndex}-${index}`}
                 d={roundedTop({ x, y: PLOT_BOTTOM - height, width: bar, height })}
                 className="fill-current"
                 opacity={dim && hover !== index ? DIM_OPACITY : 1}
@@ -224,7 +294,7 @@ function Lines({ chart, hover }: { chart: Chart; hover: number | null }): React.
         const [start] = points
         const end = points.at(-1)
         return (
-          <g key={series.name} className={SERIES[seriesIndex]}>
+          <g key={`lines-${series.name}-${seriesIndex}`} className={SERIES[seriesIndex]}>
             {chart.kind === 'area' && start && end && (
               <polygon
                 points={`${line} ${end.x},${PLOT_BOTTOM} ${start.x},${PLOT_BOTTOM}`}
@@ -302,7 +372,7 @@ function Pie({ chart, summary }: { chart: Chart; summary: string }): React.JSX.E
       </div>
       <figcaption className="flex min-w-40 flex-1 flex-col gap-1.5 text-sm">
         {values.map((value, index) => (
-          <span key={index} className="flex items-center gap-2">
+          <span key={`${chart.labels[index]}-${index}`} className="flex items-center gap-2">
             <span
               aria-hidden="true"
               className={cn('size-2 rounded-xs bg-current', SERIES[index])}

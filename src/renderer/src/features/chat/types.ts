@@ -28,7 +28,7 @@ export type ChatItem =
   // A line the engine wrote into the chat (a finished job, a model switch), not a message.
   | { kind: 'notice'; id: string; text: string }
   // A bot-drawn interface from show_ui, stored from its tool call or shown live from MCP.
-  | { kind: 'surface'; id: string; surface: UiSurface; toolCallId: string }
+  | { kind: 'surface'; id: string; surface: UiSurface }
 
 /** What the chat shows as a message: everything but a tool call. */
 export type MessageItem = Exclude<ChatItem, { kind: 'tool' }>

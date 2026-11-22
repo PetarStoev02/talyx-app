@@ -116,10 +116,10 @@ async function handle(
 ): Promise<void> {
   if (new URL(req.url ?? '/', 'http://localhost').pathname !== MCP_PATH)
     return reply(res, HTTP_STATUS.notFound)
-  const caller = mcpCaller(req)
   if (req.headers.origin !== undefined) return reply(res, HTTP_STATUS.forbidden)
   if (!authorized(req.headers.authorization, deps.token))
     return reply(res, HTTP_STATUS.unauthorized)
+  const caller = mcpCaller(req)
   if (req.method !== 'POST')
     return reply(res, HTTP_STATUS.methodNotAllowed, undefined, { Allow: 'POST' })
   let message: JsonRpcRequest

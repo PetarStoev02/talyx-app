@@ -1,6 +1,7 @@
 // A2UI v1.0 surfaces for show_ui: one parser the MCP tool and the renderer share.
 
 import { z } from 'zod'
+import { MCP_SERVER_NAME } from './mcpServerName'
 
 /** The catalog every show_ui surface names. */
 export const MCP_UI_CATALOG = 'https://talyx.app/a2ui/catalog/v1'
@@ -17,6 +18,10 @@ export const MCP_UI_MAX_CHART_POINTS = 31
 export const MCP_UI_MAX_CHART_SERIES = 4
 /** One string field in a Text, label, cell, or similar. */
 export const MCP_UI_TEXT_MAX = 400
+/** The largest value a chart series may carry. */
+export const MCP_UI_CHART_VALUE_MAX = 1e12
+
+const DATA_MODEL_FORBIDDEN = new Set(['__proto__', 'constructor', 'prototype'])
 
 const uiId = z
   .string()
@@ -125,39 +130,54 @@ export type UiSurface = {
 
 export type UiParseResult = { ok: true; surface: UiSurface } | { ok: false; reason: string }
 
-const showUiMessagesSchema = z.object({
-  messages: z
-    .array(z.record(z.string(), z.unknown()))
-    .min(2)
-    .max(3)
-    .describe('createSurface, updateComponents, then optionally updateDataModel')
-})
+const messageCount = z
+  .array(z.record(z.string(), z.unknown()))
+  .min(2)
+  .max(3)
+  .describe('createSurface, updateComponents, then optionally updateDataModel')
 
-/** Tool arguments for show_ui. */
-export const showUiArgsSchema = showUiMessagesSchema
+/** The only gate for show_ui messages: count, version on every message, then parse. */
+export function gateShowUiMessages(messages: unknown[]): string | null {
+  if (!Array.isArray(messages)) return 'The messages must be an array.'
+  if (messages.length < 2) return 'Too small: expected array to have >=2 items'
+  if (messages.length > 3) return 'Too big: expected array to have <=3 items'
+  for (const message of messages) {
+    if (!message || typeof message !== 'object') return 'Each message must be an object.'
+    const version = (message as Record<string, unknown>).version
+    if (version !== '1.0') return 'Each message needs version "1.0".'
+  }
+  return null
+}
+
+/** Tool arguments for show_ui (messages array only). */
+export const showUiMessagesSchema = z
+  .object({
+    messages: messageCount
+  })
+  .superRefine((value, ctx) => {
+    const reason = gateShowUiMessages(value.messages)
+    if (reason) ctx.addIssue({ code: 'custom', message: reason })
+  })
 
 export function parseA2uiSurface(raw: unknown): UiParseResult {
-  const bytes = JSON.stringify(raw)
-  if (bytes.length > MCP_SHOW_UI_MAX_BYTES)
-    return {
-      ok: false,
-      reason: `The messages are too large (${bytes.length} bytes, limit ${MCP_SHOW_UI_MAX_BYTES}).`
-    }
-  const args = showUiMessagesSchema.safeParse(raw)
-  if (!args.success)
-    return { ok: false, reason: args.error.issues[0]?.message ?? 'Invalid arguments.' }
-  return parseMessages(args.data.messages)
+  if (!raw || typeof raw !== 'object' || !('messages' in raw)) {
+    return { ok: false, reason: 'Invalid arguments.' }
+  }
+  const messages = (raw as { messages: unknown }).messages
+  return Array.isArray(messages)
+    ? parseA2uiMessages(messages)
+    : { ok: false, reason: 'Invalid arguments.' }
 }
 
 export function parseA2uiMessages(messages: unknown[]): UiParseResult {
-  const bytes = JSON.stringify(messages)
-  if (bytes.length > MCP_SHOW_UI_MAX_BYTES)
+  const gate = gateShowUiMessages(messages)
+  if (gate) return { ok: false, reason: gate }
+  const bytes = new TextEncoder().encode(JSON.stringify(messages)).length
+  if (bytes > MCP_SHOW_UI_MAX_BYTES)
     return {
       ok: false,
-      reason: `The messages are too large (${bytes.length} bytes, limit ${MCP_SHOW_UI_MAX_BYTES}).`
+      reason: `The messages are too large (${bytes} bytes, limit ${MCP_SHOW_UI_MAX_BYTES}).`
     }
-  if (!messages.every((message) => message && typeof message === 'object'))
-    return { ok: false, reason: 'Each message must be an object.' }
   return parseMessages(messages as Record<string, unknown>[])
 }
 
@@ -200,8 +220,33 @@ function parseMessages(messages: Record<string, unknown>[]): UiParseResult {
     if (check) return { ok: false, reason: check }
     components.push(parsed.data)
   }
+  const ids = components.map((component) => component.id)
+  const dupId = ids.find((id, index) => ids.indexOf(id) !== index)
+  if (dupId !== undefined) return { ok: false, reason: `Two components share the id "${dupId}".` }
   const byId = new Map(components.map((component) => [component.id, component]))
   if (!byId.has('root')) return { ok: false, reason: 'No component has the id "root".' }
+  for (const component of components) {
+    if (component.component === 'Column' || component.component === 'Row') {
+      if (new Set(component.children).size !== component.children.length)
+        return {
+          ok: false,
+          reason: `Component "${component.id}" names the same child twice.`
+        }
+    }
+    if (component.component === 'Button') {
+      const child = byId.get(component.child)
+      if (child?.component !== 'Text')
+        return {
+          ok: false,
+          reason: `Component "${component.id}": a Button's child must be a Text.`
+        }
+    }
+    if (component.component === 'TextField' || component.component === 'ChoicePicker') {
+      const key = pathKey(component.value)
+      if (DATA_MODEL_FORBIDDEN.has(key))
+        return { ok: false, reason: `The data model key "${key}" is not allowed.` }
+    }
+  }
   const childIds = childReferences(components)
   for (const child of childIds) {
     if (!byId.has(child)) return { ok: false, reason: `No component has the id "${child}".` }
@@ -210,6 +255,8 @@ function parseMessages(messages: Record<string, unknown>[]): UiParseResult {
   if (cycle) return { ok: false, reason: `A cycle includes component "${cycle}".` }
   const dataModel = readDataModel(model, surfaceId, components)
   if (typeof dataModel === 'string') return { ok: false, reason: dataModel }
+  const labels = clickAmbiguity(components, byId)
+  if (labels) return { ok: false, reason: labels }
   return { ok: true, surface: { surfaceId, components, dataModel } }
 }
 
@@ -217,6 +264,11 @@ function limitsFor(component: UiComponent): string | null {
   if (component.component === 'Table') {
     if (component.rows.length > MCP_UI_MAX_TABLE_ROWS)
       return `Component "${component.id}": too many table rows (${component.rows.length}, limit ${MCP_UI_MAX_TABLE_ROWS}).`
+    const columns = component.columns.length
+    for (const [rowIndex, row] of component.rows.entries()) {
+      if (row.length !== columns)
+        return `Component "${component.id}": row ${rowIndex + 1} has ${row.length} cells, but the table has ${columns} columns.`
+    }
     for (const [columnIndex, column] of component.columns.entries()) {
       if (column.kind !== 'bar') continue
       for (const row of component.rows) {
@@ -231,22 +283,30 @@ function limitsFor(component: UiComponent): string | null {
       return `Component "${component.id}": too many chart points (${component.labels.length}, limit ${MCP_UI_MAX_CHART_POINTS}).`
     if (component.series.length > MCP_UI_MAX_CHART_SERIES)
       return `Component "${component.id}": too many chart series (${component.series.length}, limit ${MCP_UI_MAX_CHART_SERIES}).`
+    if (component.kind === 'pie' && component.series.length > 1)
+      return `Component "${component.id}": a pie chart must have one series.`
     if (component.kind === 'pie' && component.labels.length > MCP_UI_MAX_CHART_SERIES)
       return `Component "${component.id}": a pie has up to ${MCP_UI_MAX_CHART_SERIES} slices (${component.labels.length} given). Use a bar chart for more.`
     for (const series of component.series) {
       if (series.values.length !== component.labels.length)
         return `Component "${component.id}": labels and values length differ for series "${series.name}".`
+      for (const value of series.values) {
+        if (value > MCP_UI_CHART_VALUE_MAX)
+          return `Component "${component.id}": chart values must be at most ${MCP_UI_CHART_VALUE_MAX}.`
+      }
     }
   }
   return null
 }
 
+function childrenOf(component: UiComponent): string[] {
+  if (component.component === 'Column' || component.component === 'Row') return component.children
+  if (component.component === 'Button') return [component.child]
+  return []
+}
+
 function childReferences(components: UiComponent[]): string[] {
-  return components.flatMap((component) => {
-    if (component.component === 'Column' || component.component === 'Row') return component.children
-    if (component.component === 'Button') return [component.child]
-    return []
-  })
+  return components.flatMap((component) => childrenOf(component))
 }
 
 function findCycle(components: UiComponent[]): string | null {
@@ -258,13 +318,7 @@ function findCycle(components: UiComponent[]): string | null {
     if (visiting.has(id)) return id
     visiting.add(id)
     const component = byId.get(id)
-    const children =
-      component?.component === 'Column' || component?.component === 'Row'
-        ? component.children
-        : component?.component === 'Button'
-          ? [component.child]
-          : []
-    for (const child of children) {
+    for (const child of component ? childrenOf(component) : []) {
       const found = walk(child)
       if (found) return found
     }
@@ -281,6 +335,9 @@ function readDataModel(
   components: UiComponent[]
 ): Record<string, string | string[]> | string {
   const bindings = bindingsOf(components)
+  for (const key of bindings) {
+    if (DATA_MODEL_FORBIDDEN.has(key)) return `The data model key "${key}" is not allowed.`
+  }
   if (!message) {
     const dataModel: Record<string, string | string[]> = {}
     for (const key of bindings) dataModel[key] = ''
@@ -291,9 +348,17 @@ function readDataModel(
     return 'updateDataModel.surfaceId must match createSurface.surfaceId.'
   const value = update.value
   if (!value || typeof value !== 'object') return 'updateDataModel needs a value object.'
+  const record = value as Record<string, unknown>
   const dataModel: Record<string, string | string[]> = {}
   for (const key of bindings) {
-    const raw = (value as Record<string, unknown>)[key]
+    if (!Object.hasOwn(record, key)) {
+      const picker = components.find(
+        (component) => component.component === 'ChoicePicker' && pathKey(component.value) === key
+      )
+      dataModel[key] = picker?.component === 'ChoicePicker' && picker.multiple ? [] : ''
+      continue
+    }
+    const raw = record[key]
     const picker = components.find(
       (component) => component.component === 'ChoicePicker' && pathKey(component.value) === key
     )
@@ -302,8 +367,6 @@ function readDataModel(
         return `The data model key "${key}" must be a string array for a multiple choice.`
       dataModel[key] = raw
     } else if (typeof raw === 'string') dataModel[key] = raw
-    else if (raw === undefined)
-      dataModel[key] = picker?.component === 'ChoicePicker' && picker.multiple ? [] : ''
     else return `The data model key "${key}" must be a string.`
   }
   return dataModel
@@ -319,6 +382,62 @@ function bindingsOf(components: UiComponent[]): string[] {
       })
     )
   ]
+}
+
+function buttonLabelText(
+  byId: Map<string, UiComponent>,
+  button: Extract<UiComponent, { component: 'Button' }>
+): string {
+  const label = byId.get(button.child)
+  if (label?.component !== 'Text' || typeof label.text !== 'string') return ''
+  return label.text
+}
+
+function clickAmbiguity(components: UiComponent[], byId: Map<string, UiComponent>): string | null {
+  const inputLabels: string[] = []
+  for (const component of components) {
+    if (component.component === 'TextField') {
+      if (lineBreak(component.label))
+        return `Component "${component.id}": input labels must not contain a line break.`
+      inputLabels.push(component.label)
+    }
+    if (component.component === 'ChoicePicker') {
+      const name = component.label ?? pathKey(component.value)
+      if (lineBreak(name))
+        return `Component "${component.id}": input labels must not contain a line break.`
+      inputLabels.push(name)
+      const seen = new Set<string>()
+      for (const option of component.options) {
+        if (lineBreak(option.label))
+          return `Component "${component.id}": option labels must not contain a line break.`
+        if (option.label.includes(', '))
+          return `Component "${component.id}": option label "${option.label}" must not contain ", ".`
+        if (seen.has(option.label))
+          return `Component "${component.id}": two options share the label "${option.label}".`
+        seen.add(option.label)
+      }
+    }
+    if (component.component === 'Button') {
+      const label = buttonLabelText(byId, component)
+      if (lineBreak(label))
+        return `Component "${component.id}": button labels must not contain a line break.`
+    }
+  }
+  const dupInput = inputLabels.find((label, index) => inputLabels.indexOf(label) !== index)
+  if (dupInput) return `Two inputs share the label "${dupInput}".`
+  const buttonLabels = components
+    .filter(
+      (component): component is Extract<UiComponent, { component: 'Button' }> =>
+        component.component === 'Button'
+    )
+    .map((button) => buttonLabelText(byId, button))
+  const dupButton = buttonLabels.find((label, index) => buttonLabels.indexOf(label) !== index)
+  if (dupButton) return `Two buttons share the label "${dupButton}".`
+  return null
+}
+
+function lineBreak(text: string): boolean {
+  return text.includes('\n') || text.includes('\r')
 }
 
 export function pathKey(binding: { '@path': string }): string {
@@ -340,18 +459,15 @@ export function showUiMessagesFromTool(
   args: Record<string, unknown>
 ): unknown[] | null {
   if (!isShowUiToolName(name) && name !== ENGINE_TOOL_CALL) return null
-  // The engine stores the call inside its own wrapper even where the tool row carries the tool's
-  // own name, so the messages are looked for in both places.
   const wrapped = unwrapToolCalls(args).find((call) => isShowUiToolName(call.name))?.arguments
   const messages = args.messages ?? wrapped?.messages
   return Array.isArray(messages) ? messages : null
 }
 
 export function isShowUiToolName(name: string): boolean {
-  return name === 'show_ui' || name.endsWith('__show_ui') || name === 'mcp__talyx__show_ui'
+  return name === 'show_ui' || name === `mcp__${MCP_SERVER_NAME}__show_ui`
 }
 
-// The engine's own function that carries a call to an MCP tool.
 const ENGINE_TOOL_CALL = 'tool_call'
 
 function unwrapToolCalls(

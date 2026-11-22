@@ -13,6 +13,11 @@ export type SurfaceAnswer = {
 
 const UNANSWERED: SurfaceAnswer = { answered: false, pickedButtonId: null, values: null }
 
+/** Whether a surface's inputs and buttons stay off after an answer or a queued click. */
+export function surfaceControlsLocked(answered: boolean, queued: boolean): boolean {
+  return answered || queued
+}
+
 /** Whether a user message after this surface has answered it, and which button label matched. */
 export function surfaceAnswer(items: ChatItem[], surface: SurfaceItem): SurfaceAnswer {
   const at = items.findIndex((item) => item.id === surface.id)
@@ -83,12 +88,13 @@ function buttonsOf(surface: UiSurface): Extract<UiComponent, { component: 'Butto
 
 function inputLines(surface: UiSurface, dataModel: Record<string, string | string[]>): string[] {
   const lines: string[] = []
+  const byId = new Map(surface.components.map((component) => [component.id, component]))
   const walk = (id: string): void => {
-    const component = surface.components.find((item) => item.id === id)
+    const component = byId.get(id)
     if (!component) return
     if (component.component === 'TextField') {
       const value = dataModel[pathKey(component.value)]
-      const text = typeof value === 'string' ? value : ''
+      const text = typeof value === 'string' ? value.replace(/\r\n|\n|\r/g, ' ') : ''
       if (text.trim()) lines.push(`${component.label}: ${text}`)
       return
     }

@@ -57,6 +57,7 @@ Engine-backed (need `launch` without `--no-engine`; see Real-engine rules in SKI
 
 - [Create a bot](./create-bot.md): the roster's add button, the New bot dialog, the new row. Proven 2026-11-18.
 - [Send a message](./chat-send.md): the composer, the queued turn, the reply in the transcript. Proven 2026-11-18.
+- [Chat interface inside an answer](./chat-interface.md): a bot-drawn card in the transcript, `Your answer: {choice}`, `Show numbers`.
 - [Bot details](./bot-details.md): the name pill's panel: Details, Look, Soul, Memory, routines. Details and Memory proven 2026-11-18.
 - [Roster](./roster.md): folders, pins, hide, unread marks, bulk picks. Pins and folders proven 2026-11-18 on a setup-installed engine.
 - [Rooms](./rooms.md): New room, members, who is answering, pin, delete.

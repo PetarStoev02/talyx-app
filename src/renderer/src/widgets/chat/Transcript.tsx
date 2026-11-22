@@ -3,6 +3,7 @@ import { ArrowDown } from 'lucide-react'
 import { useStickToEnd } from '@shared/hooks/useStickToEnd'
 import { useLanguage } from '@shared/lib/i18n'
 import type { ChatItem, MessageItem } from '@features/chat/types'
+import { surfaceListKey } from '@features/chat/surfaceKeys'
 import { briefsByRef, isQuietReply } from '@features/chat/workflowLines'
 import { MessageBubble } from './MessageBubble'
 
@@ -38,7 +39,15 @@ export function Transcript({
           {items
             .filter((item) => !isQuietReply(item))
             .map((item, index) => (
-              <li key={item.id || index} data-message-id={item.id} className="flex flex-col">
+              <li
+                key={
+                  item.kind === 'surface'
+                    ? surfaceListKey(allItems, item)
+                    : item.id || String(index)
+                }
+                data-message-id={item.id}
+                className="flex flex-col"
+              >
                 <MessageBubble
                   message={item}
                   allItems={allItems}

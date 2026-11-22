@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { UiSurface } from '../../../src/shared/a2uiSurface'
 import {
   surfaceAnswer,
-  surfaceClickMessage
+  surfaceClickMessage,
+  surfaceControlsLocked
 } from '../../../src/renderer/src/features/chat/surfaceMessage'
 import type { ChatItem } from '../../../src/renderer/src/features/chat/types'
 
@@ -41,6 +42,13 @@ const formSurface: UiSurface = {
   ]
 }
 
+describe('surfaceControlsLocked', () => {
+  it('should lock after a click is queued but before the transcript shows the answer', () => {
+    expect(surfaceControlsLocked(false, true)).toBe(true)
+    expect(surfaceControlsLocked(false, false)).toBe(false)
+  })
+})
+
 describe('surfaceClickMessage', () => {
   it('should send only the button label when there are no inputs', () => {
     const surface: UiSurface = {
@@ -55,6 +63,22 @@ describe('surfaceClickMessage', () => {
     expect(surfaceClickMessage(surface, 'btn', {})).toBe('Move them')
   })
 
+  it('should fold line breaks in a text field into spaces', () => {
+    const surface: UiSurface = {
+      surfaceId: 'note',
+      dataModel: { body: 'line one\nline two' },
+      components: [
+        { id: 'root', component: 'Column', children: ['field', 'lbl', 'go'] },
+        { id: 'field', component: 'TextField', label: 'Body', value: { '@path': '/body' } },
+        { id: 'lbl', component: 'Text', text: 'Send' },
+        { id: 'go', component: 'Button', child: 'lbl', action: { event: { name: 'send' } } }
+      ]
+    }
+    expect(surfaceClickMessage(surface, 'go', surface.dataModel)).toBe(
+      'Send\nBody: line one line two'
+    )
+  })
+
   it('should append input lines for a form', () => {
     const text = surfaceClickMessage(formSurface, 'send', formSurface.dataModel)
     expect(text).toBe('Create routine\nName: Weekly report\nDay: Wed\nTags: A, B')
@@ -65,7 +89,6 @@ describe('surfaceAnswer', () => {
   const surfaceItem: ChatItem = {
     kind: 'surface',
     id: 's1',
-    toolCallId: 't1',
     surface: {
       surfaceId: 'pick',
       dataModel: {},
@@ -108,7 +131,7 @@ describe('surfaceAnswer', () => {
   })
 
   it('should show an answered form with what was sent, not what it started with', () => {
-    const form: ChatItem = { kind: 'surface', id: 'f1', toolCallId: 't2', surface: formSurface }
+    const form: ChatItem = { kind: 'surface', id: 'f1', surface: formSurface }
     const sent: ChatItem = {
       kind: 'user',
       id: 'u2',

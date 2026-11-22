@@ -547,6 +547,8 @@ const en = {
   'chat.surfacePicked': 'Your answer: {choice}',
   'chat.surfaceChoose': 'Choose',
   'chat.surfaceChartSummary': 'Chart of {series}. Highest: {label}, {value}.',
+  'chat.surfaceChartNumbers': 'Show numbers',
+  'chat.surfaceChartRowLabel': 'Label',
   'details.errorFollowersUnreached':
     'Talyx’s model changed, but the bots on Uses default could not be reached. Pick Talyx’s model again in Settings to move them.',
   'details.errorNotApplied': 'Some changes were not saved. Your edits are still here; save again.',

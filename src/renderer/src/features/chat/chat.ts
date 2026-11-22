@@ -497,6 +497,9 @@ export function chatActions(backend: ChatBackend): ChatActions {
       const sessionId = chat?.sessionId ?? (await backend.findChat(profile))
       if (!sessionId) return false
       const transcript = chat?.transcript ?? null
+      // ponytail: the MCP address names the bot, not the conversation, so a group room or routine
+      // run can still draw here when that bot's own chat is answering at the same moment; a
+      // conversation id from the engine would close that hole.
       // The engine has the last word on whether the bot is answering in its own chat: this window
       // may not have opened that chat, or may have missed the start of the turn.
       if (!transcript?.running && !(await backend.resume(profile, sessionId)).running) return false
@@ -507,7 +510,7 @@ export function chatActions(backend: ChatBackend): ChatActions {
       update(profile, {
         transcript: {
           ...transcript,
-          items: [...transcript.items, { kind: 'surface', id, surface, toolCallId: id }]
+          items: [...transcript.items, { kind: 'surface', id, surface }]
         }
       })
       return true

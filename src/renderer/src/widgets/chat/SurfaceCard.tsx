@@ -1,7 +1,11 @@
 import { useId, useMemo, useState } from 'react'
 import type { UiComponent, UiSurface } from '@contract/a2uiSurface'
 import { pathKey, resolveText } from '@contract/a2uiSurface'
-import { surfaceAnswer, surfaceClickMessage } from '@features/chat/surfaceMessage'
+import {
+  surfaceAnswer,
+  surfaceClickMessage,
+  surfaceControlsLocked
+} from '@features/chat/surfaceMessage'
 import type { ChatItem } from '@features/chat/types'
 import { useLanguage } from '@shared/lib/i18n'
 import { Button } from '@shared/ui/button'
@@ -45,11 +49,10 @@ export function SurfaceCard({
   onSend: (text: string) => void
 }): React.JSX.Element | null {
   const t = useLanguage((s) => s.t)
-  const item = useMemo(
-    () => ({ kind: 'surface' as const, id, surface, toolCallId: id }),
-    [id, surface]
-  )
+  const item = useMemo(() => ({ kind: 'surface' as const, id, surface }), [id, surface])
   const { answered, pickedButtonId: picked, values: sent } = surfaceAnswer(items, item)
+  const [queued, setQueued] = useState(false)
+  const locked = surfaceControlsLocked(answered, queued)
   const [typed, setValues] = useState<Values>({ ...surface.dataModel })
   // An answered form is a record: it shows what was sent, also after the chat was reopened.
   const values = sent ?? typed
@@ -63,9 +66,12 @@ export function SurfaceCard({
     byId,
     values,
     setValues,
-    answered,
+    answered: locked,
     picked,
-    onButton: (buttonId) => onSend(surfaceClickMessage(surface, buttonId, values))
+    onButton: (buttonId) => {
+      setQueued(true)
+      onSend(surfaceClickMessage(surface, buttonId, values))
+    }
   }
   const pickedButton = picked ? byId.get(picked) : undefined
   return (
@@ -80,6 +86,103 @@ export function SurfaceCard({
         </p>
       )}
     </div>
+  )
+}
+
+function TextPart({
+  component,
+  drawing
+}: {
+  component: Extract<UiComponent, { component: 'Text' }>
+  drawing: Drawing
+}): React.JSX.Element {
+  return (
+    <p
+      className={cn(
+        'text-base',
+        component.variant === 'heading' && 'font-semibold',
+        component.variant === 'caption' && 'text-sm text-muted-foreground'
+      )}
+    >
+      {resolveText(component.text, drawing.values)}
+    </p>
+  )
+}
+
+function StatPart({
+  component
+}: {
+  component: Extract<UiComponent, { component: 'Stat' }>
+}): React.JSX.Element {
+  return (
+    <div className="rounded-2xl bg-secondary px-3.5 py-3">
+      <span className="block text-xl font-semibold tabular-nums">{component.value}</span>
+      <span className="text-sm text-muted-foreground">
+        {component.label}
+        {component.note && (
+          <span
+            className={cn(
+              'ml-1.5',
+              component.tone === 'up' && 'text-success',
+              component.tone === 'down' && 'text-destructive-text'
+            )}
+          >
+            {component.note}
+          </span>
+        )}
+      </span>
+    </div>
+  )
+}
+
+function ButtonPart({
+  component,
+  drawing
+}: {
+  component: Extract<UiComponent, { component: 'Button' }>
+  drawing: Drawing
+}): React.JSX.Element {
+  const picked = drawing.picked === component.id
+  return (
+    <Button
+      type="button"
+      variant={component.variant === 'primary' && !drawing.answered ? 'default' : 'secondary'}
+      disabled={drawing.answered}
+      aria-pressed={drawing.answered ? picked : undefined}
+      className={cn(
+        PILL,
+        component.variant === 'primary' && !drawing.answered
+          ? 'border-primary'
+          : 'border-border bg-card hover:bg-secondary',
+        picked && PICKED
+      )}
+      onClick={() => drawing.onButton(component.id)}
+    >
+      {labelOf(component, drawing)}
+    </Button>
+  )
+}
+
+function TextFieldPart({
+  component,
+  drawing
+}: {
+  component: Extract<UiComponent, { component: 'TextField' }>
+  drawing: Drawing
+}): React.JSX.Element {
+  const key = pathKey(component.value)
+  const value = drawing.values[key]
+  return (
+    <label className="block text-sm text-muted-foreground">
+      {component.label}
+      <Input
+        className="rounded-xl text-foreground"
+        disabled={drawing.answered}
+        placeholder={component.placeholder ?? ''}
+        value={typeof value === 'string' ? value : ''}
+        onChange={(event) => drawing.setValues({ ...drawing.values, [key]: event.target.value })}
+      />
+    </label>
   )
 }
 
@@ -98,82 +201,19 @@ function Part({
     case 'Divider':
       return <hr className="border-border" />
     case 'Text':
-      return (
-        <p
-          className={cn(
-            'text-base',
-            component.variant === 'heading' && 'font-semibold',
-            component.variant === 'caption' && 'text-sm text-muted-foreground'
-          )}
-        >
-          {resolveText(component.text, drawing.values)}
-        </p>
-      )
+      return <TextPart component={component} drawing={drawing} />
     case 'Stat':
-      return (
-        <div className="rounded-2xl bg-secondary px-3.5 py-3">
-          <span className="block text-xl font-semibold tabular-nums">{component.value}</span>
-          <span className="text-sm text-muted-foreground">
-            {component.label}
-            {component.note && (
-              <span
-                className={cn(
-                  'ml-1.5',
-                  component.tone === 'up' && 'text-success',
-                  component.tone === 'down' && 'text-destructive-text'
-                )}
-              >
-                {component.note}
-              </span>
-            )}
-          </span>
-        </div>
-      )
+      return <StatPart component={component} />
     case 'Chart':
       return <SurfaceChart chart={component} />
     case 'Table':
       return <Table table={component} />
-    case 'Button': {
-      const picked = drawing.picked === component.id
-      return (
-        <Button
-          type="button"
-          variant={component.variant === 'primary' && !drawing.answered ? 'default' : 'secondary'}
-          disabled={drawing.answered}
-          aria-pressed={drawing.answered ? picked : undefined}
-          className={cn(
-            PILL,
-            component.variant === 'primary' && !drawing.answered
-              ? 'border-primary'
-              : 'border-border bg-card hover:bg-secondary',
-            picked && PICKED
-          )}
-          onClick={() => drawing.onButton(component.id)}
-        >
-          {labelOf(component, drawing)}
-        </Button>
-      )
-    }
+    case 'Button':
+      return <ButtonPart component={component} drawing={drawing} />
     case 'ChoicePicker':
       return <ChoiceField choice={component} drawing={drawing} />
-    case 'TextField': {
-      const key = pathKey(component.value)
-      const value = drawing.values[key]
-      return (
-        <label className="block text-sm text-muted-foreground">
-          {component.label}
-          <Input
-            className="rounded-xl text-foreground"
-            disabled={drawing.answered}
-            placeholder={component.placeholder ?? ''}
-            value={typeof value === 'string' ? value : ''}
-            onChange={(event) =>
-              drawing.setValues({ ...drawing.values, [key]: event.target.value })
-            }
-          />
-        </label>
-      )
-    }
+    case 'TextField':
+      return <TextFieldPart component={component} drawing={drawing} />
   }
 }
 
@@ -288,8 +328,8 @@ function ChoiceField({ choice, drawing }: { choice: Choice; drawing: Drawing }):
           onChange={(event) => pick(event.target.value)}
         >
           <option value="">{t('chat.surfaceChoose')}</option>
-          {choice.options.map((option) => (
-            <option key={option.value} value={option.value}>
+          {choice.options.map((option, optionIndex) => (
+            <option key={`${option.value}-${optionIndex}`} value={option.value}>
               {option.label}
             </option>
           ))}
@@ -308,11 +348,11 @@ function ChoiceField({ choice, drawing }: { choice: Choice; drawing: Drawing }):
         </span>
       )}
       <div className="flex flex-wrap gap-2">
-        {choice.options.map((option) => {
+        {choice.options.map((option, optionIndex) => {
           const on = chosen.includes(option.value)
           return (
             <Button
-              key={option.value}
+              key={`${option.value}-${optionIndex}`}
               type="button"
               variant="secondary"
               role={choice.multiple ? 'checkbox' : 'radio'}
