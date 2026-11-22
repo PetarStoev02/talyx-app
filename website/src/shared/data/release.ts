@@ -9,6 +9,9 @@ export const SECURITY_REPORT_URL = `${REPO_URL}/security/advisories/new`
 /** The AUR package talyx-bin: written, not yet pushed to the AUR. */
 export const AUR_PACKAGING_URL = `${REPO_URL}/tree/main/packaging/aur`
 
+/** GitHub's page for the newest release. */
+export const LATEST_RELEASE_URL = `${REPO_URL}/releases/latest`
+
 /** GitHub serves the newest release's assets under this stable path. */
 const DOWNLOAD_BASE = `${REPO_URL}/releases/latest/download`
 

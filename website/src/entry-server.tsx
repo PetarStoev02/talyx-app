@@ -3,9 +3,15 @@ import { prerender } from 'react-dom/static'
 import { RouterProvider } from '@tanstack/react-router'
 import { createMemoryHistory } from '@tanstack/react-router'
 import { createAppRouter } from './app/router'
+import { CTA_LABEL } from './shared/data/offer'
+import { SOURCE_LINK } from './shared/data/navigation'
+import { LATEST_RELEASE_URL } from './shared/data/release'
 import { seoData, type PageMeta } from './shared/data/seo'
 
 export { ROUTES } from './shared/data/routes'
+
+/** What llms.txt links to besides the pages, under the names the site gives them. */
+export const LLMS_LINKS = [SOURCE_LINK, { label: CTA_LABEL, href: LATEST_RELEASE_URL }]
 
 /**
  * `prerender` resolves every Suspense boundary before it hands back HTML, so

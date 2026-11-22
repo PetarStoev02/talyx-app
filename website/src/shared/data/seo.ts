@@ -9,7 +9,7 @@ export interface PageMeta {
 
 import { MIN_MACOS } from './offer'
 import { features, type FeatureSlug } from './navigation'
-import { APP_VERSION, REPO_URL } from './release'
+import { APP_VERSION, LATEST_RELEASE_URL, REPO_URL } from './release'
 
 const BASE_URL = 'https://talyx.app'
 const PRODUCT_IMAGE = `${BASE_URL}/og-image.png`
@@ -45,7 +45,7 @@ const softwareJsonLd = {
   codeRepository: REPO_URL,
   description:
     'A free, open-source desktop app for your AI bots: one roster, one chat, and a manager bot that hands work to the other bots and briefs you. The bots run on the engine, which first-run setup installs.',
-  downloadUrl: `${REPO_URL}/releases/latest`
+  downloadUrl: LATEST_RELEASE_URL
 }
 
 /**
