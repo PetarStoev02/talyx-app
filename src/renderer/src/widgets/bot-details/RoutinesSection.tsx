@@ -10,11 +10,10 @@ import type { RosterProblem } from '@features/bots/roster'
 import {
   DEFAULT_SCHEDULE,
   addRoutine,
-  describeSchedule,
   listRoutines,
   removeRoutine,
-  setRoutineActive,
-  weekdayName
+  scheduleWords,
+  setRoutineActive
 } from '@features/bots/routines'
 import type { Routine, RoutineDraft } from '@features/bots/routines'
 import type { Bot } from '@features/bots/types'
@@ -222,29 +221,6 @@ function NewRoutineDialog({
       </DialogContent>
     </Dialog>
   )
-}
-
-function scheduleWords(t: Translate, schedule: string): string {
-  const read = describeSchedule(schedule)
-  const time = read.time ?? ''
-  switch (read.kind) {
-    case 'daily':
-      return t('routines.daily').replace('{time}', time)
-    case 'weekdays':
-      return t('routines.weekdays').replace('{time}', time)
-    case 'weekly':
-      return t('routines.weekly')
-        .replace('{day}', weekdayName(read.weekday ?? 0))
-        .replace('{time}', time)
-    case 'hours':
-      return read.hours === 1
-        ? t('routines.everyHour')
-        : t('routines.everyHours').replace('{hours}', String(read.hours))
-    case 'custom':
-      return read.minutes
-        ? t('routines.everyMinutes').replace('{minutes}', String(read.minutes))
-        : schedule
-  }
 }
 
 function failureText(t: Translate, error: unknown): string {

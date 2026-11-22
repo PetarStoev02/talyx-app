@@ -261,7 +261,8 @@ export const MCP_TOOLS = {
     destructive: true
   },
   read_routine: {
-    description: 'Read one routine in full: its instruction, schedule, runs metadata and status.',
+    description:
+      'Read one routine in full: its instruction, its schedule, when it runs next and how its last run ended.',
     args: z.object({ profile, routineId: z.string().min(1) })
   },
   update_routine: {
@@ -287,7 +288,7 @@ export const MCP_TOOLS = {
   },
   run_routine: {
     description:
-      'Run a routine now. Asks the user in Talyx first, because a run spends the bot’s model tokens. Returns once the run has started; use list_routine_runs for the outcome.',
+      'Run a routine now. Asks the user in Talyx first, because a run uses the bot’s model. Answers `finished` when the run ended within a few seconds, else `running`: list_routine_runs then shows how it ended.',
     args: z.object({ profile, routineId: z.string().min(1) })
   },
   list_routine_runs: {

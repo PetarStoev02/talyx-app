@@ -35,6 +35,7 @@ import { RosterError, botTitle, itemFolder, itemKey, pinnedBots } from './roster
 import {
   DEFAULT_SCHEDULE,
   addRoutine,
+  composeSchedule,
   listRoutineRuns,
   listRoutines,
   loadRoutine,
@@ -42,6 +43,7 @@ import {
   removeRoutine,
   runRoutine,
   saveRoutine,
+  scheduleWords,
   setRoutineActive
 } from './routines'
 import type { RoutineDetails, RoutineDraft, RoutinesBackend } from './routines'
@@ -366,7 +368,7 @@ function toolsFor(
   }
 }
 
-// run_routine only waits this long for an immediate refusal; a longer run keeps going in the engine.
+// How long run_routine waits for the engine to refuse the run or end it.
 const RUN_START_WAIT_MS = 3_000
 
 type RoutineToolName =
@@ -435,15 +437,17 @@ function routineTools(
         schedule: schedule ? { ...DEFAULT_SCHEDULE, ...schedule } : loaded.draft.schedule,
         postsToChat: postsToChat ?? loaded.draft.postsToChat
       }
-      const action =
-        instruction !== undefined
-          ? say('mcp.updateRoutineInstruction', {
-              name: botTitle(bot),
-              routine: after.name,
-              instruction: after.instruction
-            })
-          : say('mcp.updateRoutine', { name: botTitle(bot), routine: after.name })
-      await ask('update_routine', action)
+      // The whole routine as it will be: the user allows what the bot then does on its own.
+      await ask(
+        'update_routine',
+        say('mcp.updateRoutine', {
+          name: botTitle(bot),
+          routine: loaded.draft.name,
+          newName: after.name,
+          schedule: scheduleWords((key) => t(key, 'en'), composeSchedule(after.schedule)),
+          instruction: after.instruction
+        })
+      )
       await saveRoutine(backend, profile, { id: routineId, before: loaded.draft, after })
       return routineView(await loadRoutine(backend, profile, routineId))
     },
@@ -454,17 +458,13 @@ function routineTools(
         'run_routine',
         say('mcp.runRoutine', { name: botTitle(bot), routine: routine.name })
       )
-      const started = runRoutine(backend, profile, routineId)
-      const early = await Promise.race([
-        started.then(
-          () => null,
-          (error: unknown) => error
-        ),
-        sleep(RUN_START_WAIT_MS).then(() => null)
+      // A run can outlast the call, so the tool waits only for a start the engine refuses. The
+      // race handles a run that fails later; its runs list then says how it ended.
+      const state = await Promise.race([
+        runRoutine(backend, profile, routineId).then(() => 'finished' as const),
+        sleep(RUN_START_WAIT_MS).then(() => 'running' as const)
       ])
-      if (early) throw early
-      started.catch(() => undefined)
-      return { routineId, started: true, next: 'list_routine_runs' }
+      return { routineId, state }
     },
     list_routine_runs: async ({ profile, routineId }) => {
       botOf(await fresh(), profile)

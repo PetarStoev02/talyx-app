@@ -798,15 +798,17 @@ describe('MCP tools', () => {
       })
     })
 
-    it('should show the new instruction in the question when it changes', async () => {
+    it('should ask with the routine as it will be, under the name the user knows', async () => {
       await addCash()
       await ok('update_routine', {
         profile: 'analyst',
         routineId: 'job-1',
-        instruction: 'Count reserves'
+        name: 'Reserves',
+        instruction: 'Count reserves',
+        schedule: { kind: 'hours', hours: 2 }
       })
       expect(asked.at(-1)?.action).toBe(
-        'Change the routine “Cash” of “Analyst”. Its new instruction: “Count reserves”'
+        'Change the routine “Cash” of “Analyst”. It runs on its own schedule, also while Talyx is closed. After the change: “Reserves”, Every 2 hours. Its instruction: “Count reserves”'
       )
     })
 
@@ -838,7 +840,7 @@ describe('MCP tools', () => {
         await vi.advanceTimersByTimeAsync(3_500)
         expect(await answerPromise).toEqual({
           ok: true,
-          text: JSON.stringify({ routineId: 'job-1', started: true, next: 'list_routine_runs' })
+          text: JSON.stringify({ routineId: 'job-1', state: 'running' })
         })
         expect(engine.jobs.analyst[0].runs ?? []).toEqual([])
         engine.releaseTrigger()
@@ -866,7 +868,10 @@ describe('MCP tools', () => {
 
     it('should list recent runs newest first after a trigger finishes', async () => {
       await addCash()
-      await ok('run_routine', { profile: 'analyst', routineId: 'job-1' })
+      expect(await ok('run_routine', { profile: 'analyst', routineId: 'job-1' })).toEqual({
+        routineId: 'job-1',
+        state: 'finished'
+      })
       expect(await ok('list_routine_runs', { profile: 'analyst', routineId: 'job-1' })).toEqual({
         runs: [
           {
