@@ -47,8 +47,10 @@ export function SurfaceCard({
     () => ({ kind: 'surface' as const, id, surface, toolCallId: id }),
     [id, surface]
   )
-  const { answered, pickedButtonId: picked } = surfaceAnswer(items, item)
-  const [values, setValues] = useState<Values>({ ...surface.dataModel })
+  const { answered, pickedButtonId: picked, values: sent } = surfaceAnswer(items, item)
+  const [typed, setValues] = useState<Values>({ ...surface.dataModel })
+  // An answered form is a record: it shows what was sent, also after the chat was reopened.
+  const values = sent ?? typed
   const byId = useMemo(
     () => new Map(surface.components.map((component) => [component.id, component])),
     [surface.components]

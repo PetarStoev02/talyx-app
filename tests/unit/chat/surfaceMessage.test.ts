@@ -80,7 +80,8 @@ describe('surfaceAnswer', () => {
   it('should be unanswered with no user message after it', () => {
     expect(surfaceAnswer([surfaceItem], surfaceItem)).toEqual({
       answered: false,
-      pickedButtonId: null
+      pickedButtonId: null,
+      values: null
     })
   })
 
@@ -89,7 +90,10 @@ describe('surfaceAnswer', () => {
       surfaceItem,
       { kind: 'user', id: 'u1', text: 'Wednesday', images: [] }
     ]
-    expect(surfaceAnswer(items, surfaceItem)).toEqual({ answered: true, pickedButtonId: 'btn' })
+    expect(surfaceAnswer(items, surfaceItem)).toMatchObject({
+      answered: true,
+      pickedButtonId: 'btn'
+    })
   })
 
   it('should be answered without a button match when the user typed', () => {
@@ -97,6 +101,24 @@ describe('surfaceAnswer', () => {
       surfaceItem,
       { kind: 'user', id: 'u1', text: 'Something else', images: [] }
     ]
-    expect(surfaceAnswer(items, surfaceItem)).toEqual({ answered: true, pickedButtonId: null })
+    expect(surfaceAnswer(items, surfaceItem)).toMatchObject({
+      answered: true,
+      pickedButtonId: null
+    })
+  })
+
+  it('should show an answered form with what was sent, not what it started with', () => {
+    const form: ChatItem = { kind: 'surface', id: 'f1', toolCallId: 't2', surface: formSurface }
+    const sent: ChatItem = {
+      kind: 'user',
+      id: 'u2',
+      text: 'Create routine\nName: Monthly report\nDay: Wed\nTags: B',
+      images: []
+    }
+    expect(surfaceAnswer([form, sent], form)).toEqual({
+      answered: true,
+      pickedButtonId: 'send',
+      values: { name: 'Monthly report', day: 'wed', tags: ['b'] }
+    })
   })
 })

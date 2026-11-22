@@ -7,19 +7,47 @@ type SurfaceItem = Extract<ChatItem, { kind: 'surface' }>
 export type SurfaceAnswer = {
   answered: boolean
   pickedButtonId: string | null
+  /** What the inputs held when a button of this surface sent them; null for any other answer. */
+  values: Record<string, string | string[]> | null
 }
+
+const UNANSWERED: SurfaceAnswer = { answered: false, pickedButtonId: null, values: null }
 
 /** Whether a user message after this surface has answered it, and which button label matched. */
 export function surfaceAnswer(items: ChatItem[], surface: SurfaceItem): SurfaceAnswer {
   const at = items.findIndex((item) => item.id === surface.id)
-  if (at < 0) return { answered: false, pickedButtonId: null }
+  if (at < 0) return UNANSWERED
   const next = items.slice(at + 1).find((item) => item.kind === 'user')
-  if (!next || next.kind !== 'user') return { answered: false, pickedButtonId: null }
-  const firstLine = next.text.split('\n')[0] ?? ''
+  if (!next || next.kind !== 'user') return UNANSWERED
+  const [firstLine = '', ...lines] = next.text.split('\n')
   const picked = buttonsOf(surface.surface).find(
     (button) => buttonLabel(surface.surface, button) === firstLine
   )
-  return { answered: true, pickedButtonId: picked?.id ?? null }
+  return {
+    answered: true,
+    pickedButtonId: picked?.id ?? null,
+    values: picked ? sentValues(surface.surface, lines) : null
+  }
+}
+
+// The inverse of the click message's input lines, so an answered form shows what was sent.
+function sentValues(surface: UiSurface, lines: string[]): Record<string, string | string[]> {
+  const values: Record<string, string | string[]> = {}
+  for (const component of surface.components) {
+    if (component.component !== 'TextField' && component.component !== 'ChoicePicker') continue
+    const key = pathKey(component.value)
+    const opening = `${component.label ?? key}: `
+    const sent = lines.find((line) => line.startsWith(opening))?.slice(opening.length)
+    if (component.component === 'TextField') values[key] = sent ?? ''
+    else {
+      const chosen = (sent ? sent.split(', ') : []).flatMap((label) => {
+        const option = component.options.find((item) => item.label === label)
+        return option ? [option.value] : []
+      })
+      values[key] = component.multiple ? chosen : (chosen[0] ?? '')
+    }
+  }
+  return values
 }
 
 /** Text the user sends when they click a button on a surface. */
