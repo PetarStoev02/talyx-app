@@ -98,7 +98,7 @@ export type Approve = (request: ApprovalRequest) => Promise<boolean>
 
 /** What show_ui asks of the chat; wired in the app layer. */
 export interface ShowUiPort {
-  show: (profile: string, surface: UiSurface) => void
+  show: (profile: string, surface: UiSurface) => Promise<boolean>
 }
 
 /** The bot that called has no chat address, so show_ui cannot run. */
@@ -106,6 +106,14 @@ export class ShowUiNoCallerError extends RosterError {
   constructor() {
     super('mcp.showUiNoCaller')
     this.name = 'ShowUiNoCallerError'
+  }
+}
+
+/** The bot is not answering in its own chat, so show_ui cannot run. */
+export class ShowUiNotOwnChatError extends RosterError {
+  constructor() {
+    super('mcp.showUiNotOwnChat')
+    this.name = 'ShowUiNotOwnChatError'
   }
 }
 
@@ -425,7 +433,7 @@ function toolsFor(
       if (!profile) throw new ShowUiNoCallerError()
       const parsed = parseA2uiSurface({ messages })
       if (!parsed.ok) throw new RosterError('mcp.showUiInvalid', parsed.reason)
-      showUi.show(profile, parsed.surface)
+      if (!(await showUi.show(profile, parsed.surface))) throw new ShowUiNotOwnChatError()
       return {
         shown: true,
         note: "The interface is visible. The user's click or form values arrive as their next chat message."

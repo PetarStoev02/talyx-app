@@ -25,9 +25,7 @@ export function useMcpBridge(backend: RosterBackend | null, chat: ChatActions | 
   >(null)
   useEffect(() => {
     const showUi: ShowUiPort = {
-      show: (profile, surface) => {
-        chat?.showSurface(profile, surface)
-      }
+      show: async (profile, surface) => (chat ? chat.showSurface(profile, surface) : false)
     }
     run.current = backend ? mcpTools(backend, useApprovals.getState().ask, showUi) : null
   }, [backend, chat])

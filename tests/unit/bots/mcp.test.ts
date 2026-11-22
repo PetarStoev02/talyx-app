@@ -41,7 +41,12 @@ function setUp(): void {
       asked.push(request)
       return allow
     },
-    { show: (profile, surface) => shown.push({ profile, surface }) }
+    {
+      show: async (profile, surface) => {
+        shown.push({ profile, surface })
+        return true
+      }
+    }
   )
   call = (tool, args = {}, caller = null) => run(tool, args, caller)
 }
@@ -1097,6 +1102,15 @@ describe('MCP tools', () => {
       expect(shown).toEqual([
         { profile: 'analyst', surface: expect.objectContaining({ surfaceId: 'pick' }) }
       ])
+    })
+
+    it('should refuse when the chat port does not show the surface', async () => {
+      const refuse = mcpTools(backendFor(engine), async () => allow, { show: async () => false })
+      shown = []
+      const answer = await refuse('show_ui', { messages }, 'analyst')
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toContain('own chat with the user')
+      expect(shown).toEqual([])
     })
   })
 })

@@ -542,6 +542,8 @@ const en = {
   'mcp.showUiNoCaller':
     'show_ui runs only from a bot in Talyx (its MCP address names the profile). Outside agents cannot use it.',
   'mcp.showUiInvalid': '{reason}',
+  'mcp.showUiNotOwnChat':
+    'You can show an interface only while you answer in your own chat with the user. Here, write your answer as text.',
   'chat.surfacePicked': 'Your answer: {choice}',
   'chat.surfaceChoose': 'Choose',
   'chat.surfaceChartSummary': 'Chart of {series}. Highest: {label}, {value}.',

@@ -120,8 +120,8 @@ export interface ChatActions {
     answers: Record<string, string | string[]>
   ) => Promise<void>
   answerApproval: (profile: string, promptId: string, choice: ApprovalChoice) => void
-  /** Puts a validated show_ui surface on the bot's open transcript at once. */
-  showSurface: (profile: string, surface: UiSurface) => void
+  /** Puts a validated show_ui surface on the bot's open transcript when it is answering there. */
+  showSurface: (profile: string, surface: UiSurface) => Promise<boolean>
   setModel: (profile: string, model: { model: string; provider: string }) => Promise<void>
   setReasoning: (profile: string, level: string) => Promise<void>
   /** The models a profile can pick, loaded once and shared by every menu until forgetModels. */
@@ -492,17 +492,30 @@ export function chatActions(backend: ChatBackend): ChatActions {
       update(profile, { transcript: settlePrompt(transcript, promptId) })
     },
 
-    showSurface: (profile, surface) => {
+    showSurface: async (profile, surface) => {
       const chat = chatOf(profile)
-      if (!chat?.sessionId) return
-      const transcript = chat.transcript ?? fromHistory(chat.sessionId, [], false)
+      let sessionId = chat?.sessionId ?? null
+      let running: boolean
+      if (chat?.transcript) {
+        running = chat.transcript.running
+      } else {
+        sessionId = sessionId ?? (await backend.findChat(profile))
+        if (!sessionId) return false
+        running = (await backend.resume(profile, sessionId)).running
+      }
+      if (!running) return false
+      sessionId = sessionId ?? (await backend.findChat(profile))
+      if (!sessionId) return false
+      const transcript = chat?.transcript ?? fromHistory(sessionId, [], running)
       const id = liveSurfaceId(crypto.randomUUID())
       update(profile, {
+        sessionId,
         transcript: {
           ...transcript,
           items: [...transcript.items, { kind: 'surface', id, surface, toolCallId: id }]
         }
       })
+      return true
     },
 
     setModel: guarded(

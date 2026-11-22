@@ -1260,6 +1260,48 @@ describe('bot chat', () => {
       )
     })
   })
+
+  describe('showSurface', () => {
+    const surface = {
+      surfaceId: 'ui',
+      components: [{ id: 'root', component: 'Text' as const, text: 'Hi' }],
+      dataModel: {}
+    }
+
+    it('should show when the open chat is running', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      const transcript = chat(MANAGER).transcript!
+      useChat.getState().update(MANAGER, { transcript: { ...transcript, running: true } })
+      expect(await actions.showSurface(MANAGER, surface)).toBe(true)
+      expect(chat(MANAGER).transcript?.items.some((item) => item.kind === 'surface')).toBe(true)
+    })
+
+    it('should not show when the open chat is idle', async () => {
+      await actions.open(MANAGER, 'manager-chat')
+      const before = chat(MANAGER).transcript!.items.length
+      expect(await actions.showSurface(MANAGER, surface)).toBe(false)
+      expect(chat(MANAGER).transcript?.items.length).toBe(before)
+    })
+
+    it('should ask the engine when this window has not opened the chat', async () => {
+      const remote = chatDouble({
+        'acme-manager': {
+          sessionId: 'manager-chat',
+          messages: [{ id: 1, role: 'user', content: 'Hi' }]
+        }
+      })
+      const live = chatActions({
+        ...remote.backend,
+        resume: async (profile, chatId) => {
+          const snapshot = await remote.backend.resume(profile, chatId)
+          return { ...snapshot, running: true }
+        }
+      })
+      expect(await live.showSurface(MANAGER, surface)).toBe(true)
+      expect(remote.calls.some((row) => row.method === 'session.resume')).toBe(true)
+      expect(chat(MANAGER).transcript?.items.some((item) => item.kind === 'surface')).toBe(true)
+    })
+  })
 })
 
 // Talyx's own rules, over a backend that speaks Talyx's terms and records what it is asked.
