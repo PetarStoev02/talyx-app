@@ -516,9 +516,11 @@ const en = {
     'Delete the folder “{name}”. Its bots, rooms and folders move up a level; none is deleted.',
   'mcp.deleteRoutine': 'Delete the routine “{name}”. This cannot be undone.',
   'mcp.updateRoutine':
-    'Change the routine “{routine}” of “{name}”. It runs on its own schedule, also while Talyx is closed. After the change: “{newName}”, {schedule}. Its instruction: “{instruction}”',
+    'Change the routine “{routine}” of “{name}”. It runs on its own, also while Talyx is closed. After the change it is named “{newName}” and runs on this schedule: {schedule}. {posts} Its instruction: “{instruction}”',
+  'mcp.routinePosts': 'Each run posts its result in the bot’s chat.',
+  'mcp.routineQuiet': 'Its runs post nothing in the chat.',
   'mcp.runRoutine': 'Run the routine “{routine}” of “{name}” now. The run uses the bot’s model.',
-  'mcp.errorRunGone': 'That run no longer exists.',
+  'mcp.errorRunGone': 'That run is not among the routine’s latest runs.',
   'mcp.replaceSoul': 'Replace the SOUL of “{name}”. The text it has now is lost.',
   'mcp.costlyModel': 'Switch “{name}” to {model}. The engine says: {message}',
   'mcp.addRoutine':

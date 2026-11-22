@@ -267,7 +267,7 @@ export const MCP_TOOLS = {
   },
   update_routine: {
     description:
-      'Change a routine’s name, instruction, schedule, or whether it posts to chat. Only the fields given change. Asks the user in Talyx first.',
+      'Change a routine’s name, instruction, schedule, or whether it posts to chat. Give at least one of them; only the fields given change, and a schedule part left out stays as it is. Asks the user in Talyx first.',
     args: z
       .object({
         profile,
@@ -296,7 +296,8 @@ export const MCP_TOOLS = {
     args: z.object({ profile, routineId: z.string().min(1) })
   },
   read_routine_run: {
-    description: 'Read what one routine run produced: its output and any error.',
+    description:
+      'Read what one routine run produced: its output and any error. Only the runs list_routine_runs shows can be read.',
     args: z.object({
       profile,
       routineId: z.string().min(1),

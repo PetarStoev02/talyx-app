@@ -808,8 +808,38 @@ describe('MCP tools', () => {
         schedule: { kind: 'hours', hours: 2 }
       })
       expect(asked.at(-1)?.action).toBe(
-        'Change the routine “Cash” of “Analyst”. It runs on its own schedule, also while Talyx is closed. After the change: “Reserves”, Every 2 hours. Its instruction: “Count reserves”'
+        'Change the routine “Cash” of “Analyst”. It runs on its own, also while Talyx is closed. After the change it is named “Reserves” and runs on this schedule: Every 2 hours. Each run posts its result in the bot’s chat. Its instruction: “Count reserves”'
       )
+    })
+
+    it('should say in the question when the routine stops posting in the chat', async () => {
+      await addCash()
+      await ok('update_routine', { profile: 'analyst', routineId: 'job-1', postsToChat: false })
+      expect(asked.at(-1)?.action).toContain('Its runs post nothing in the chat.')
+      expect(engine.cronWrites.at(-1)?.body).toEqual({ updates: { deliver: 'local' } })
+    })
+
+    it('should keep the time of day when only the day of a schedule is given', async () => {
+      await addCash()
+      await ok('update_routine', {
+        profile: 'analyst',
+        routineId: 'job-1',
+        schedule: { kind: 'weekly', weekday: 3 }
+      })
+      expect(asked.at(-1)?.action).toContain('runs on this schedule: Wednesdays 08:30.')
+      expect(engine.cronWrites.at(-1)?.body).toEqual({ updates: { schedule: '30 8 * * 3' } })
+    })
+
+    it.each([
+      ['read_routine', {}],
+      ['update_routine', { name: 'Other' }],
+      ['run_routine', {}],
+      ['list_routine_runs', {}],
+      ['read_routine_run', { runId: 'cash-run' }]
+    ])('should refuse %s for a routine the bot does not have', async (tool, more) => {
+      const answer = await call(tool, { profile: 'analyst', routineId: 'job-9', ...more })
+      expect(answer).toEqual({ ok: false, text: 'That routine no longer exists. job-9' })
+      expect(asked).toEqual([])
     })
 
     it('should refuse update_routine when no field is given to change', async () => {
@@ -907,7 +937,10 @@ describe('MCP tools', () => {
         routineId: 'job-1',
         runId: 'gone'
       })
-      expect(answer).toEqual({ ok: false, text: 'That run no longer exists. gone' })
+      expect(answer).toEqual({
+        ok: false,
+        text: 'That run is not among the routine’s latest runs. gone'
+      })
     })
 
     it('should refuse routine tools for a bot that does not exist', async () => {

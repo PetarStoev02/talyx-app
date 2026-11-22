@@ -434,7 +434,8 @@ function routineTools(
       const after: RoutineDraft = {
         name: name ?? loaded.draft.name,
         instruction: instruction ?? loaded.draft.instruction,
-        schedule: schedule ? { ...DEFAULT_SCHEDULE, ...schedule } : loaded.draft.schedule,
+        // A part the agent left out stays as the routine has it, not as a new routine starts.
+        schedule: { ...loaded.draft.schedule, ...schedule },
         postsToChat: postsToChat ?? loaded.draft.postsToChat
       }
       // The whole routine as it will be: the user allows what the bot then does on its own.
@@ -445,6 +446,7 @@ function routineTools(
           routine: loaded.draft.name,
           newName: after.name,
           schedule: scheduleWords((key) => t(key, 'en'), composeSchedule(after.schedule)),
+          posts: t(after.postsToChat ? 'mcp.routinePosts' : 'mcp.routineQuiet', 'en'),
           instruction: after.instruction
         })
       )
