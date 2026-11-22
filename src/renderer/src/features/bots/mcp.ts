@@ -18,6 +18,17 @@ import {
 import type { DetailsDraft } from './details'
 import { lookOf, matchName } from './look'
 import type { Look } from './look'
+import {
+  deleteMemory,
+  deleteSkill,
+  editMemory,
+  editSkill,
+  loadMemories,
+  loadSkillText,
+  loadSkills,
+  setSkillEnabled
+} from './memory'
+import type { Memory, MemoryList, Skill } from './memory'
 import { changeRoomMembers, createRoom, renameRoom } from './rooms'
 import { RosterError, botTitle, itemFolder, itemKey, pinnedBots } from './roster'
 import {
@@ -385,6 +396,79 @@ function toolsFor(
     read_usage: async ({ days }) => {
       const { total, providers, models, unread } = await backend.usage(days)
       return { days, total, providers, models, unread }
+    },
+    ...memoryTools(backend, fresh, ask)
+  }
+}
+
+function memoryTools(
+  backend: ToolsBackend,
+  fresh: () => Promise<RosterSnapshot>,
+  ask: (tool: McpToolName, action: string) => Promise<void>
+): Pick<
+  { [T in McpToolName]: Run<T> },
+  | 'list_memories'
+  | 'edit_memory'
+  | 'delete_memory'
+  | 'list_skills'
+  | 'read_skill'
+  | 'set_skill_enabled'
+  | 'edit_skill'
+  | 'delete_skill'
+> {
+  return {
+    list_memories: async ({ profile }) => {
+      botOf(await fresh(), profile)
+      return memoryView(await loadMemories(backend, profile))
+    },
+    edit_memory: async ({ profile, id, text }) => {
+      const bot = botOf(await fresh(), profile)
+      const memory = await memoryOf(backend, profile, id)
+      const trimmed = text.trim()
+      if (!trimmed) throw new RosterError('memory.errorEmpty')
+      await ask(
+        'edit_memory',
+        say('mcp.editMemory', { name: botTitle(bot), current: memory.text, text: trimmed })
+      )
+      return memoryView(await editMemory(backend, profile, { id, text: trimmed }))
+    },
+    delete_memory: async ({ profile, id }) => {
+      botOf(await fresh(), profile)
+      const memory = await memoryOf(backend, profile, id)
+      await ask('delete_memory', say('mcp.deleteMemory', { current: memory.text }))
+      return memoryView(await deleteMemory(backend, profile, id))
+    },
+    list_skills: async ({ profile }) => {
+      botOf(await fresh(), profile)
+      return { skills: await loadSkills(backend, profile) }
+    },
+    read_skill: async ({ profile, name }) => {
+      botOf(await fresh(), profile)
+      await skillOf(backend, profile, name)
+      return { name, text: await loadSkillText(backend, profile, name) }
+    },
+    set_skill_enabled: async ({ profile, name, enabled }) => {
+      botOf(await fresh(), profile)
+      await skillOf(backend, profile, name)
+      await setSkillEnabled(backend, profile, { name, enabled })
+      return { name, enabled }
+    },
+    edit_skill: async ({ profile, name, text }) => {
+      const bot = botOf(await fresh(), profile)
+      await skillOf(backend, profile, name)
+      const trimmed = text.trim()
+      if (!trimmed) throw new RosterError('skills.errorEmpty')
+      await ask('edit_skill', say('mcp.editSkill', { name, bot: botTitle(bot) }))
+      await editSkill(backend, profile, { name, text: trimmed })
+      return { name }
+    },
+    delete_skill: async ({ profile, name }) => {
+      const bot = botOf(await fresh(), profile)
+      const skill = await skillOf(backend, profile, name)
+      if (!skill.removable) throw new RosterError('skills.errorBuiltIn')
+      await ask('delete_skill', say('mcp.deleteSkill', { name, bot: botTitle(bot) }))
+      await deleteSkill(backend, profile, skill)
+      return { deleted: name }
     }
   }
 }
@@ -484,6 +568,28 @@ async function routineOf(
   const routine = (await listRoutines(backend, profile)).find((item) => item.id === routineId)
   if (!routine) throw new RosterError('mcp.errorRoutineGone', routineId)
   return routine
+}
+
+async function memoryOf(backend: ToolsBackend, profile: string, id: string): Promise<Memory> {
+  const memory = (await loadMemories(backend, profile)).memories.find((item) => item.id === id)
+  if (!memory) throw new RosterError('mcp.errorMemoryGone', id)
+  return memory
+}
+
+async function skillOf(backend: ToolsBackend, profile: string, name: string): Promise<Skill> {
+  const skill = (await loadSkills(backend, profile)).find((item) => item.name === name)
+  if (!skill) throw new RosterError('mcp.errorSkillGone', name)
+  return skill
+}
+
+function memoryView(list: MemoryList): {
+  memories: { id: string; text: string; about: 'bot' | 'user' }[]
+  otherStore: string | null
+} {
+  return {
+    memories: list.memories.map(({ id, text, about }) => ({ id, text, about })),
+    otherStore: list.otherStore
+  }
 }
 
 function lookFrom(look: { shape: string; hue: number; faces: boolean }): Look {

@@ -530,6 +530,14 @@ const en = {
   'mcp.errorManager': 'Talyx’s own bot cannot be deleted.',
   'mcp.errorRoomGone': 'That room no longer exists.',
   'mcp.errorRoutineGone': 'That routine no longer exists.',
+  'mcp.errorMemoryGone': 'That memory no longer exists.',
+  'mcp.errorSkillGone': 'That skill no longer exists.',
+  'mcp.editMemory':
+    'Change a memory of “{name}” from “{current}” to “{text}”. The old text is lost.',
+  'mcp.deleteMemory': 'Delete the memory “{current}”. The bot will forget it.',
+  'mcp.editSkill':
+    'Replace the instructions of the skill “{name}” on “{bot}”. The text it has now is lost.',
+  'mcp.deleteSkill': 'Delete the skill “{name}” on “{bot}”. This cannot be undone.',
   'mcp.errorLook': 'That look is not one Talyx has; list_looks shows the shapes and hues.',
   'details.errorFollowersUnreached':
     'Talyx’s model changed, but the bots on Uses default could not be reached. Pick Talyx’s model again in Settings to move them.',

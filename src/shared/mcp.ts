@@ -16,6 +16,8 @@ export const MCP_CALL_TIMEOUT_MS = 10 * 60_000
 export const MCP_APPROVAL_TIMEOUT_MS = 9 * 60_000
 /** The longest period `read_usage` reads, in days: the longest the Usage page offers. */
 export const MCP_USAGE_MAX_DAYS = 90
+/** The longest memory or skill text `edit_memory` and `edit_skill` accept; matches `send_room_message`. */
+export const MCP_EDIT_TEXT_MAX = 20_000
 
 /** How an outside agent reaches the running Talyx. */
 export interface McpConnection {
@@ -269,6 +271,67 @@ export const MCP_TOOLS = {
         .max(MCP_USAGE_MAX_DAYS)
         .describe(`How many days back, up to ${MCP_USAGE_MAX_DAYS}`)
     })
+  },
+  list_memories: {
+    description:
+      'List a bot’s memories (what it keeps about its work and about the user). Memory ids change after any edit or delete, so read the list again before changing one.',
+    args: z.object({ profile })
+  },
+  edit_memory: {
+    description:
+      'Change a memory’s text. The id is as `list_memories` shows it; after an edit every id changes, so read the list again. Asks the user in Talyx first.',
+    args: z.object({
+      profile,
+      id: z.string().min(1).describe('The memory id, as list_memories shows it'),
+      text: z.string().max(MCP_EDIT_TEXT_MAX)
+    })
+  },
+  delete_memory: {
+    description:
+      'Delete a memory. The id is as `list_memories` shows it; after a delete every id changes. Asks the user in Talyx first.',
+    args: z.object({
+      profile,
+      id: z.string().min(1).describe('The memory id, as list_memories shows it')
+    }),
+    destructive: true
+  },
+  list_skills: {
+    description:
+      'List every skill a bot has, the ones turned off included. Names are as shown here.',
+    args: z.object({ profile })
+  },
+  read_skill: {
+    description: 'Read a skill’s instructions file. The name is as `list_skills` shows it.',
+    args: z.object({
+      profile,
+      name: z.string().min(1).describe('The skill name, as list_skills shows it')
+    })
+  },
+  set_skill_enabled: {
+    description: 'Turn a skill on or off. The name is as `list_skills` shows it.',
+    args: z.object({
+      profile,
+      name: z.string().min(1).describe('The skill name, as list_skills shows it'),
+      enabled: z.boolean()
+    })
+  },
+  edit_skill: {
+    description:
+      'Replace a skill’s instructions. The name is as `list_skills` shows it. Asks the user in Talyx first.',
+    args: z.object({
+      profile,
+      name: z.string().min(1).describe('The skill name, as list_skills shows it'),
+      text: z.string().max(MCP_EDIT_TEXT_MAX)
+    })
+  },
+  delete_skill: {
+    description:
+      'Delete a skill the bot made. The name is as `list_skills` shows it; built-in skills cannot be deleted. Asks the user in Talyx first.',
+    args: z.object({
+      profile,
+      name: z.string().min(1).describe('The skill name, as list_skills shows it')
+    }),
+    destructive: true
   }
 } satisfies Record<string, McpToolSpec>
 
