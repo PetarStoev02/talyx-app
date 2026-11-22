@@ -26,7 +26,8 @@ const tool = (id: string, name = 'search_files', target: string | null = null): 
   label: name,
   seconds: null,
   done: true,
-  target
+  target,
+  showUi: null
 })
 
 const ids = (items: ChatItem[]): string[] => items.map((item) => item.id)
@@ -158,6 +159,17 @@ describe('turn outcome', () => {
     expect(kind([])).toBeNull()
     expect(kind([user('u1')], true)).toBeNull()
     expect(kind([user('u1'), reply('b1', 'Half', null)], true)).toBeNull()
+  })
+
+  it('should count an interface-only turn as answered', () => {
+    const ui: ChatItem = {
+      kind: 'surface',
+      id: 's1',
+      surface: { surfaceId: 'pick', components: [], dataModel: {} }
+    }
+    expect(turnOutcome([user('u1'), ui], false)).toEqual({ kind: 'answered', asked: user('u1') })
+    // Shown live and not stored yet: no "ask again" before the reload puts it in the history.
+    expect(turnOutcome([user('u1'), { ...ui, id: 'live-ui-1' }], false)).toBeNull()
   })
 
   it('should name the message an answered turn answered, so the answer can be asked for again', () => {

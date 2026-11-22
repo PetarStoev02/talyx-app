@@ -1,3 +1,4 @@
+import type { UiSurface } from '@contract/a2uiSurface'
 import type { Problem } from '@shared/lib/problem'
 export type ChatItem =
   | { kind: 'user'; id: string; text: string; images: string[] }
@@ -23,9 +24,13 @@ export type ChatItem =
       done: boolean
       // The profile a `message_agent` call asks; null for every other tool.
       target: string | null
+      // The interface a `show_ui` call carries, as text to compare with; null for every other tool.
+      showUi: string | null
     }
   // A line the engine wrote into the chat (a finished job, a model switch), not a message.
   | { kind: 'notice'; id: string; text: string }
+  // A bot-drawn interface from show_ui, stored from its tool call or shown live from MCP.
+  | { kind: 'surface'; id: string; surface: UiSurface }
 
 /** What the chat shows as a message: everything but a tool call. */
 export type MessageItem = Exclude<ChatItem, { kind: 'tool' }>

@@ -16,7 +16,8 @@ const REFUSED = 'The user said no in Talyx, so nothing was changed.'
 let engine: EngineDouble
 let asked: ApprovalRequest[]
 let allow: boolean
-let call: (tool: string, args?: unknown) => Promise<McpAnswer>
+let call: (tool: string, args?: unknown, caller?: string | null) => Promise<McpAnswer>
+let shown: { profile: string; surface: unknown }[]
 
 beforeEach(setUp)
 
@@ -33,11 +34,21 @@ function setUp(): void {
   engine = engineDouble()
   asked = []
   allow = true
-  const run = mcpTools(backendFor(engine), async (request) => {
-    asked.push(request)
-    return allow
-  })
-  call = (tool, args = {}) => run(tool, args)
+  shown = []
+  const run = mcpTools(
+    backendFor(engine),
+    async (request) => {
+      asked.push(request)
+      return allow
+    },
+    {
+      show: async (profile, surface) => {
+        shown.push({ profile, surface })
+        return true
+      }
+    }
+  )
+  call = (tool, args = {}, caller = null) => run(tool, args, caller)
 }
 
 /** The tool's result, which must have succeeded. */
@@ -318,10 +329,15 @@ describe('MCP tools', () => {
             return engine.request(profile, method, params)
           }
         }),
-        async () => true
+        async () => true,
+        { show: () => undefined }
       )
       const next = { provider: 'openai', model: 'gpt-5-mini' }
-      const answer = await run('update_bot', { profile: 'default', soul: '# New', model: next })
+      const answer = await run(
+        'update_bot',
+        { profile: 'default', soul: '# New', model: next },
+        null
+      )
       expect(answer.ok).toBe(false)
       expect(answer.text).toContain('soul')
       expect(answer.text).not.toContain('Gateway socket closed')
@@ -1079,11 +1095,19 @@ describe('MCP tools', () => {
       const [first] = (await ok('list_memories', { profile: 'analyst' })).memories as {
         id: string
       }[]
-      const run = mcpTools(backendFor(engine), async () => {
-        engine.minds.bots.analyst.memories[0].text = 'Reports go out on Tuesdays.'
-        return true
-      })
-      const answer = await run('edit_memory', { profile: 'analyst', id: first.id, text: 'Gone' })
+      const run = mcpTools(
+        backendFor(engine),
+        async () => {
+          engine.minds.bots.analyst.memories[0].text = 'Reports go out on Tuesdays.'
+          return true
+        },
+        { show: () => undefined }
+      )
+      const answer = await run(
+        'edit_memory',
+        { profile: 'analyst', id: first.id, text: 'Gone' },
+        null
+      )
       expect(answer).toEqual({
         ok: false,
         text: 'The bot changed this memory since the list was loaded. The list shows it as it is now.'
@@ -1263,6 +1287,75 @@ describe('MCP tools', () => {
         ok: false,
         text: 'That bot no longer exists. Refresh the roster. ghost'
       })
+    })
+  })
+
+  describe('show_ui', () => {
+    const messages = [
+      {
+        version: '1.0',
+        createSurface: { surfaceId: 'pick', catalogId: 'https://talyx.app/a2ui/catalog/v1' }
+      },
+      {
+        version: '1.0',
+        updateComponents: {
+          surfaceId: 'pick',
+          components: [
+            { id: 'root', component: 'Column', children: ['lbl', 'yes'] },
+            { id: 'lbl', component: 'Text', text: 'Go' },
+            { id: 'yes', component: 'Button', child: 'lbl', action: { event: { name: 'go' } } }
+          ]
+        }
+      }
+    ]
+
+    it('should refuse without a caller', async () => {
+      const answer = await call('show_ui', { messages })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toContain('show_ui runs only')
+      expect(shown).toEqual([])
+    })
+
+    it('should refuse a bad surface with the parse reason', async () => {
+      const answer = await call(
+        'show_ui',
+        {
+          messages: [
+            { version: '1.0', createSurface: { surfaceId: 'x', catalogId: 'bad' } },
+            {
+              version: '1.0',
+              updateComponents: {
+                surfaceId: 'x',
+                components: [{ id: 'root', component: 'Text', text: 'Hi' }]
+              }
+            }
+          ]
+        },
+        'analyst'
+      )
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toContain('catalogId')
+      expect(shown).toEqual([])
+    })
+
+    it('should show a valid surface and answer shown true', async () => {
+      shown = []
+      const answer = await call('show_ui', { messages }, 'analyst')
+      expect(answer.ok, answer.text).toBe(true)
+      const body = JSON.parse(answer.text) as Record<string, unknown>
+      expect(body).toMatchObject({ shown: true })
+      expect(shown).toEqual([
+        { profile: 'analyst', surface: expect.objectContaining({ surfaceId: 'pick' }) }
+      ])
+    })
+
+    it('should refuse when the chat port does not show the surface', async () => {
+      const refuse = mcpTools(backendFor(engine), async () => allow, { show: async () => false })
+      shown = []
+      const answer = await refuse('show_ui', { messages }, 'analyst')
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toContain('own chat with the user')
+      expect(shown).toEqual([])
     })
   })
 })

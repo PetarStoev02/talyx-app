@@ -1,4 +1,6 @@
+import { parseA2uiSurface } from '@contract/a2uiSurface'
 import { MCP_APPROVAL_TIMEOUT_MS, MCP_TOOLS, isMcpTool } from '@contract/mcp'
+import type { UiSurface } from '@contract/a2uiSurface'
 import type { McpAnswer, McpToolArgs, McpToolName } from '@contract/mcp'
 import { sleep } from '@shared/lib/timers'
 import { t, type TranslationKey } from '@shared/lib/i18n'
@@ -110,6 +112,27 @@ export interface ApprovalRequest {
 /** Shows the request in Talyx; true only when the user allowed it. */
 export type Approve = (request: ApprovalRequest) => Promise<boolean>
 
+/** What show_ui asks of the chat; wired in the app layer. */
+export interface ShowUiPort {
+  show: (profile: string, surface: UiSurface) => Promise<boolean>
+}
+
+/** The bot that called has no chat address, so show_ui cannot run. */
+export class ShowUiNoCallerError extends RosterError {
+  constructor() {
+    super('mcp.showUiNoCaller')
+    this.name = 'ShowUiNoCallerError'
+  }
+}
+
+/** The bot is not answering in its own chat, so show_ui cannot run. */
+export class ShowUiNotOwnChatError extends RosterError {
+  constructor() {
+    super('mcp.showUiNotOwnChat')
+    this.name = 'ShowUiNotOwnChatError'
+  }
+}
+
 /** The user said no in Talyx: nothing was changed. */
 export class ApprovalRefusedError extends RosterError {
   constructor() {
@@ -137,11 +160,17 @@ type Run<T extends McpToolName> = (args: McpToolArgs<T>) => Promise<unknown>
  */
 export function mcpTools(
   backend: ToolsBackend,
-  approve: Approve
-): (tool: string, rawArgs: unknown) => Promise<McpAnswer> {
-  return async (tool, rawArgs) => {
+  approve: Approve,
+  showUi: ShowUiPort
+): (tool: string, rawArgs: unknown, caller: string | null) => Promise<McpAnswer> {
+  return async (tool, rawArgs, caller) => {
     const until = Date.now() + MCP_APPROVAL_TIMEOUT_MS
-    const tools = toolsFor(backend, (request) => approve({ ...request, until }))
+    const tools = toolsFor(
+      backend,
+      (request) => approve({ ...request, until }),
+      showUi,
+      () => caller
+    )
     if (!isMcpTool(tool)) return { ok: false, text: `Unknown tool: ${tool}` }
     const args = MCP_TOOLS[tool].args.safeParse(rawArgs ?? {})
     if (!args.success) return { ok: false, text: `Invalid arguments: ${args.error.message}` }
@@ -156,7 +185,9 @@ export function mcpTools(
 
 function toolsFor(
   backend: ToolsBackend,
-  approve: (request: Omit<ApprovalRequest, 'until'>) => Promise<boolean>
+  approve: (request: Omit<ApprovalRequest, 'until'>) => Promise<boolean>,
+  showUi: ShowUiPort,
+  caller: () => string | null
 ): { [T in McpToolName]: Run<T> } {
   const actions = rosterActions(backend)
   const ask = async (tool: McpToolName, action: string): Promise<void> => {
@@ -381,6 +412,17 @@ function toolsFor(
     read_usage: async ({ days }) => {
       const { total, providers, models, unread } = await backend.usage(days)
       return { days, total, providers, models, unread }
+    },
+    show_ui: async ({ messages }) => {
+      const profile = caller()
+      if (!profile) throw new ShowUiNoCallerError()
+      const parsed = parseA2uiSurface({ messages })
+      if (!parsed.ok) throw new RosterError('mcp.showUiInvalid', parsed.reason)
+      if (!(await showUi.show(profile, parsed.surface))) throw new ShowUiNotOwnChatError()
+      return {
+        shown: true,
+        note: "The interface is visible. The user's click or form values arrive as their next chat message."
+      }
     },
     ...memoryTools(backend, fresh, ask)
   }

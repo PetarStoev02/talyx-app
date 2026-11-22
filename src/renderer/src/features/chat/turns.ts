@@ -1,3 +1,4 @@
+import { LIVE_SURFACE_PREFIX } from './surfaceLive'
 import { LIVE_ID } from './transcript'
 import type { ChatItem, MessageItem } from './types'
 
@@ -63,17 +64,26 @@ export function turnOutcome(items: ChatItem[], running: boolean): TurnOutcome | 
   const sending = asked.id.startsWith(SENDING_ID)
   // An answer is asked for again in the stored message's place, so not before the reload stores it.
   // A reply not stored yet may be another client's turn, whose message has not loaded yet.
-  const stored = !sending && !replies.some((reply) => reply.id.startsWith(LIVE_ID))
-  if (replies.some((reply) => reply.text)) return stored ? { kind: 'answered', asked } : null
+  const surfaces = work.filter((item): item is SurfaceItem => item.kind === 'surface')
+  const stored =
+    !sending &&
+    !replies.some((reply) => reply.id.startsWith(LIVE_ID)) &&
+    !surfaces.some((surface) => surface.id.startsWith(LIVE_SURFACE_PREFIX))
+  if (replies.some((reply) => reply.text) || surfaces.length > 0)
+    return stored ? { kind: 'answered', asked } : null
   if (replies.some((reply) => reply.stopped)) return { kind: 'stopped', asked }
   // Still on its way: the engine has not started its turn yet.
   if (!replies.length && sending) return null
   return { kind: 'noReply', asked }
 }
 
-// The chat's own bot at work: its replies and its tool calls.
-function isOwnWork(item: ChatItem): item is ToolItem | (BotItem & { sender: null }) {
-  return item.kind === 'tool' || (item.kind === 'bot' && item.sender === null)
+type SurfaceItem = Extract<ChatItem, { kind: 'surface' }>
+
+// The chat's own bot at work: its replies, its tool calls and its drawn surfaces.
+function isOwnWork(item: ChatItem): item is ToolItem | SurfaceItem | (BotItem & { sender: null }) {
+  return (
+    item.kind === 'tool' || item.kind === 'surface' || (item.kind === 'bot' && item.sender === null)
+  )
 }
 
 function turnResult(work: ChatItem[], running: boolean): MessageItem[] {
@@ -85,6 +95,7 @@ function turnResult(work: ChatItem[], running: boolean): MessageItem[] {
   // ends (a stop before any text, an empty answer) the turn's outcome says what happened.
   return work.filter(
     (item, index): item is MessageItem =>
-      item.kind === 'bot' && (item.error !== null || (index === answer && item.text !== ''))
+      item.kind === 'surface' ||
+      (item.kind === 'bot' && (item.error !== null || (index === answer && item.text !== '')))
   )
 }

@@ -4,7 +4,7 @@ import { exportAvatar, lookMeta, sameLook } from './look'
 import type { AvatarBackend, Look } from './look'
 import { problemOf } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'
-import { RosterError } from './roster'
+import { MANAGER_TITLE, RosterError } from './roster'
 import type { Bot, BotMeta } from './types'
 import { useDetailsRevision } from './store'
 
@@ -74,6 +74,20 @@ type SaveBackend = DetailsBackend & Pick<RosterStore, 'saveBotMeta'> & AvatarBac
 
 /** Talyx's own profile, the manager. Its avatar is the logo, so it never gets an exported image. */
 export const MANAGER = 'default'
+
+/**
+ * Stores the manager bot's title where the engine reads a bot's friendly name. Without it the
+ * engine signs what the manager hands another bot with its own handle, and that bot then calls the
+ * manager by a name the user never sees. True when the title was written.
+ */
+export async function nameManager(
+  backend: Pick<RosterStore, 'saveBotMeta'>,
+  bot: Bot
+): Promise<boolean> {
+  if (bot.name !== MANAGER || bot.meta.title === MANAGER_TITLE) return false
+  await saveBotMeta(backend, MANAGER, { title: MANAGER_TITLE })
+  return true
+}
 
 export function loadDetails(
   backend: Pick<DetailsBackend, 'loadDetails'>,

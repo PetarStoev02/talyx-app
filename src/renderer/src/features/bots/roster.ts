@@ -61,9 +61,12 @@ export class RosterError extends AppError {
 export type RosterProblem = Problem
 export { problemOf }
 
+/** What the roster calls the manager bot, whatever its profile says. */
+export const MANAGER_TITLE = 'Talyx'
+
 export function botTitle(bot: Bot): string {
   return bot.name === 'default'
-    ? 'Talyx'
+    ? MANAGER_TITLE
     : bot.meta.title || bot.title || bot.display_name || bot.name
 }
 

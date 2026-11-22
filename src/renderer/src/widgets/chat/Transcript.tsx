@@ -2,19 +2,27 @@ import { useMemo } from 'react'
 import { ArrowDown } from 'lucide-react'
 import { useStickToEnd } from '@shared/hooks/useStickToEnd'
 import { useLanguage } from '@shared/lib/i18n'
-import type { MessageItem } from '@features/chat/types'
+import type { ChatItem, MessageItem } from '@features/chat/types'
+import { surfaceListKey } from '@features/chat/surfaceKeys'
 import { briefsByRef, isQuietReply } from '@features/chat/workflowLines'
 import { MessageBubble } from './MessageBubble'
 
 /** Newest at the bottom; it follows new text while you are at the end, and offers a way back. */
 export function Transcript({
   items,
+  allItems,
+  busy,
   children,
-  loadImage
+  loadImage,
+  onSurfaceSend
 }: {
   items: MessageItem[]
+  allItems: ChatItem[]
+  /** True while the bot answers or a message of yours waits to go: a card's buttons wait too. */
+  busy: boolean
   children?: React.ReactNode
   loadImage: (path: string) => Promise<string>
+  onSurfaceSend: (text: string) => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const briefs = useMemo(
@@ -34,8 +42,23 @@ export function Transcript({
           {items
             .filter((item) => !isQuietReply(item))
             .map((item, index) => (
-              <li key={item.id || index} data-message-id={item.id} className="flex flex-col">
-                <MessageBubble message={item} loadImage={loadImage} briefs={briefs} />
+              <li
+                key={
+                  item.kind === 'surface'
+                    ? surfaceListKey(allItems, item)
+                    : item.id || String(index)
+                }
+                data-message-id={item.id}
+                className="flex flex-col"
+              >
+                <MessageBubble
+                  message={item}
+                  allItems={allItems}
+                  busy={busy}
+                  loadImage={loadImage}
+                  briefs={briefs}
+                  onSurfaceSend={onSurfaceSend}
+                />
               </li>
             ))}
           {children}

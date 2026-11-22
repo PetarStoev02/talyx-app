@@ -1,7 +1,9 @@
+import { parseA2uiMessages, showUiMessagesFromTool } from '@contract/a2uiSurface'
 import type { GatewayEvent } from '@shared/engine/shared'
 import type { SessionMessage } from '@shared/engine/types'
 import { readDelivery } from '@shared/lib/delivery'
 import { messageText } from '@shared/lib/messageText'
+import { showUiContent } from './surfaceLive'
 import type { ChatItem, ChatPrompt, FailedTurn, StreamCursor, Transcript } from './types'
 
 // Rows the engine writes into the chat itself (a delivery, a finished job, a model switch): no
@@ -262,6 +264,8 @@ function historyItem(
     const call = calls.get(message.tool_call_id ?? '')
     const name = message.tool_name ?? message.name ?? call?.name ?? 'tool'
     const args = (message.args as Payload | undefined) ?? call?.args ?? {}
+    const surface = surfaceFromTool(id, name, args, text)
+    if (surface) return [surface]
     return [{ ...toolItem(id, name, args, message.labels), done: true }]
   }
   return []
@@ -323,11 +327,31 @@ function toolItem(
     name,
     label: typeof label === 'string' && label ? label : name,
     seconds: null,
-    target: name === MESSAGE_AGENT && typeof args.target === 'string' ? args.target : null
+    target: name === MESSAGE_AGENT && typeof args.target === 'string' ? args.target : null,
+    showUi: showUiContent(name, args)
   }
 }
 
 // Stored transcripts carry a tool's name and arguments on the assistant row that called it.
+function showUiToolSucceeded(text: string): boolean {
+  if (/"error"\s*:/.test(text)) return false
+  return /(?:\\?"shown\\?"\s*:\s*\\?true\\?|"shown"\s*:\s*true)/.test(text)
+}
+
+function surfaceFromTool(
+  id: string,
+  name: string,
+  args: Payload,
+  resultText: string
+): Extract<ChatItem, { kind: 'surface' }> | null {
+  const messages = showUiMessagesFromTool(name, args)
+  if (!messages) return null
+  if (!showUiToolSucceeded(resultText)) return null
+  const parsed = parseA2uiMessages(messages)
+  if (!parsed.ok) return null
+  return { kind: 'surface', id, surface: parsed.surface }
+}
+
 function toolCalls(messages: SessionMessage[]): Map<string, { name: string; args: Payload }> {
   const calls = new Map<string, { name: string; args: Payload }>()
   for (const message of messages) {

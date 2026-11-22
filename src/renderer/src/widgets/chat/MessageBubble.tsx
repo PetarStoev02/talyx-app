@@ -10,7 +10,8 @@ import { botTitle, unknownBot } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { markdownImage } from '@features/chat/markdownImage'
 import { senderProfile } from '@features/chat/transcript'
-import type { MessageItem } from '@features/chat/types'
+import type { ChatItem, MessageItem } from '@features/chat/types'
+import { SurfaceCard } from './SurfaceCard'
 import { parseBrief, splitReply } from '@features/chat/workflowLines'
 import type { WorkflowBrief } from '@features/chat/workflowLines'
 import { cn } from '@shared/lib/utils'
@@ -49,15 +50,31 @@ const urlTransform: UrlTransform = (url, _key, node) =>
 
 export function MessageBubble({
   message,
+  allItems,
+  busy,
   loadImage,
-  briefs
+  briefs,
+  onSurfaceSend
 }: {
   message: MessageItem
+  allItems: ChatItem[]
+  busy: boolean
   loadImage: (path: string) => Promise<string>
   // The Workflows briefs in this chat by task, so a status line can name its task and step.
   briefs: Record<string, WorkflowBrief>
+  onSurfaceSend: (text: string) => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
+  if (message.kind === 'surface')
+    return (
+      <SurfaceCard
+        id={message.id}
+        surface={message.surface}
+        items={allItems}
+        busy={busy}
+        onSend={onSurfaceSend}
+      />
+    )
   if (message.kind === 'notice')
     return (
       <p dir="auto" className="text-sm text-muted-foreground whitespace-pre-wrap wrap-anywhere">

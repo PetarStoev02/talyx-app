@@ -49,6 +49,10 @@
   --color-info: var(--info);
   --color-info-subtle: var(--info-subtle);
   --color-destructive-subtle: var(--destructive-subtle);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
 }
 
 :root {
@@ -84,6 +88,12 @@
   --border: oklch(0 0 0 / 0.09);
   --input: oklch(0 0 0 / 0.12);
   --ring: oklch(0 0 0 / 0.6);
+  /* A chart's series, in this order and never cycled: each pair tells apart for colour-blind
+     readers on the card surface. Dark has its own steps of the same four hues. */
+  --chart-1: #6250d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
 }
 
 .dark {
@@ -115,6 +125,10 @@
   --border: oklch(1 0 0 / 0.08);
   --input: oklch(1 0 0 / 0.1);
   --ring: oklch(1 0 0 / 0.6);
+  --chart-1: #9085e9;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
 }
 
 @layer base {

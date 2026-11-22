@@ -58,8 +58,20 @@ describe('Talyx MCP server', () => {
     })
 
     it('should refuse a request a browser page sent, even with the token', async () => {
-      const response = await post({}, { Origin: 'http://example.com' })
+      const page = echoPage(calls)
+      calls.attach(page)
+      const response = await fetch(`${url}?bot=analyst`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${TOKEN}`, Origin: 'http://example.com' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 3,
+          method: 'tools/call',
+          params: { name: 'list_roster', arguments: {} }
+        })
+      })
       expect(response.status).toBe(403)
+      expect(page.sent).toHaveLength(0)
     })
   })
 
@@ -84,6 +96,22 @@ describe('Talyx MCP server', () => {
       const deleteBot = result.tools.find((tool) => tool.name === 'delete_bot')
       expect(deleteBot?.annotations).toEqual({ destructiveHint: true })
       expect(deleteBot?.inputSchema).toMatchObject({ required: ['profile'] })
+    })
+
+    it('should pass the bot profile from the address query on the call', async () => {
+      const page = echoPage(calls)
+      calls.attach(page)
+      await fetch(`${url}?bot=analyst`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${TOKEN}` },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 2,
+          method: 'tools/call',
+          params: { name: 'list_roster', arguments: {} }
+        })
+      })
+      expect(page.sent[0]?.caller).toBe('analyst')
     })
 
     it('should hand a call to the open page and return its answer', async () => {
@@ -117,14 +145,14 @@ describe('Talyx MCP server', () => {
     it('should fail a call the closed page never answered', async () => {
       const page = { send: () => undefined, isDestroyed: () => false }
       calls.attach(page)
-      const pending = calls.run('delete_bot', {})
+      const pending = calls.run('delete_bot', {}, null)
       calls.detach(page)
       expect(await pending).toEqual({ ok: false, text: NO_WINDOW })
     })
 
     it('should drop a call nobody answers in time', async () => {
       calls.attach({ send: () => undefined, isDestroyed: () => false })
-      expect((await calls.run('list_roster', {})).ok).toBe(false)
+      expect((await calls.run('list_roster', {}, null)).ok).toBe(false)
     })
   })
 })

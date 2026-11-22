@@ -6,6 +6,9 @@ import { useChat } from '../../../src/renderer/src/features/chat/store'
 import type { McpAnswer } from '../../../src/shared/mcp'
 import { backendFor, engineDouble } from '../bots/engineDouble'
 
+// These tools show no interface.
+const noSurface = { show: async (): Promise<boolean> => false }
+
 describe("an agent talking to one bot through Talyx's MCP server", () => {
   let send: ReturnType<typeof vi.fn>
   let recent: ReturnType<typeof vi.fn>
@@ -13,13 +16,17 @@ describe("an agent talking to one bot through Talyx's MCP server", () => {
   let call: (tool: string, args: unknown) => Promise<McpAnswer>
 
   beforeEach(() => {
-    send = vi.fn(async () => true)
+    send = vi.fn(async () => true, noSurface)
     recent = vi.fn(async () => ['Cash is above the floor.'])
     open = vi.fn(async () => undefined)
     useChat.setState({ chats: {} } as never)
     const chat = { send, recent, open } as unknown as ChatActions
     // The roster of the bots' tests (Talyx and Analyst), with the app's own wiring to the chat.
-    call = mcpTools({ ...backendFor(engineDouble()), ...botChatBackend(chat) }, async () => true)
+    call = mcpTools(
+      { ...backendFor(engineDouble()), ...botChatBackend(chat) },
+      async () => true,
+      noSurface
+    )
   })
 
   it("should send in the bot's own chat, behind an answer the bot is giving", async () => {
@@ -44,7 +51,11 @@ describe("an agent talking to one bot through Talyx's MCP server", () => {
       return false
     })
     const chat = { send, recent, open } as unknown as ChatActions
-    call = mcpTools({ ...backendFor(engineDouble()), ...botChatBackend(chat) }, async () => true)
+    call = mcpTools(
+      { ...backendFor(engineDouble()), ...botChatBackend(chat) },
+      async () => true,
+      noSurface
+    )
 
     expect(await call('send_bot_message', { profile: 'analyst', text: 'Check cash' })).toEqual({
       ok: false,

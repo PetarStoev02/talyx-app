@@ -1,5 +1,5 @@
 import fc from 'fast-check'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MediaGoneError, chatActions } from '../../../src/renderer/src/features/chat/chat'
 import type { ChatActions, ChatBackend } from '../../../src/renderer/src/features/chat/chat'
 import { useChat } from '../../../src/renderer/src/features/chat/store'
@@ -7,6 +7,7 @@ import { handleEvent } from '../../../src/renderer/src/features/chat/events'
 import { addPrompt } from '../../../src/renderer/src/features/chat/transcript'
 import { turnOutcome, turnView } from '../../../src/renderer/src/features/chat/turns'
 import type { TurnOutcome } from '../../../src/renderer/src/features/chat/turns'
+import { MCP_UI_CATALOG } from '../../../src/shared/a2uiSurface'
 import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/shared'
 import type { SessionMessage } from '../../../src/renderer/src/shared/engine/types'
 import { KEPT_ENDPOINT_PROFILE, chatDouble } from './chatDouble'
@@ -1274,6 +1275,155 @@ describe('bot chat', () => {
       await expect(actions.mediaUrl(MANAGER, '/images/gone.png')).rejects.toBeInstanceOf(
         MediaGoneError
       )
+    })
+  })
+
+  describe('showSurface', () => {
+    const surface = {
+      surfaceId: 'ui',
+      components: [{ id: 'root', component: 'Text' as const, text: 'Hi' }],
+      dataModel: {}
+    }
+    // The same interface as the bot sends it: what the engine's tool start carries.
+    const sentMessages = [
+      { version: '1.0', createSurface: { surfaceId: 'ui', catalogId: MCP_UI_CATALOG } },
+      {
+        version: '1.0',
+        updateComponents: {
+          surfaceId: 'ui',
+          components: [{ id: 'root', component: 'Text', text: 'Hi' }]
+        }
+      }
+    ]
+
+    // The bot's own chat, mid-turn, with the call to show_ui under way as the engine reports it.
+    async function calling(run: ChatActions, name: string, args: unknown): Promise<void> {
+      await run.open(MANAGER, 'manager-chat')
+      const frame = (type: string, payload: unknown): void =>
+        void handleEvent(run, { type, session_id: 'manager-chat', payload } as GatewayEvent)
+      frame('message.start', {})
+      frame('tool.start', { tool_id: 'tool-1', name, args })
+    }
+    const callingShowUi = (run: ChatActions): Promise<void> =>
+      calling(run, 'mcp__talyx__show_ui', { messages: sentMessages })
+
+    it.each([
+      ['another tool', 'terminal', { command: 'ls' }],
+      [
+        "the engine's wrapper around another MCP tool",
+        'tool_call',
+        { calls: [{ name: 'mcp__talyx__list_roster', arguments: {} }] }
+      ],
+      [
+        "the engine's wrapper around another tool, with the interface laid beside it",
+        'tool_call',
+        { calls: [{ name: 'mcp__talyx__list_roster', arguments: {} }], messages: sentMessages }
+      ],
+      [
+        'show_ui with another interface',
+        'mcp__talyx__show_ui',
+        {
+          messages: [
+            sentMessages[0],
+            {
+              version: '1.0',
+              updateComponents: {
+                surfaceId: 'ui',
+                components: [{ id: 'root', component: 'Text', text: 'Other' }]
+              }
+            }
+          ]
+        }
+      ]
+    ])('should refuse when the call under way is %s', async (_, name, args) => {
+      vi.useFakeTimers()
+      try {
+        await calling(actions, name, args)
+        const shown = actions.showSurface(MANAGER, surface)
+        await vi.runAllTimersAsync()
+        expect(await shown).toBe(false)
+        expect(chat(MANAGER).transcript?.items.some((item) => item.kind === 'surface')).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("should show when the call comes through the engine's wrapper", async () => {
+      await calling(actions, 'tool_call', {
+        calls: [{ name: 'mcp__talyx__show_ui', arguments: { messages: sentMessages } }]
+      })
+      expect(await actions.showSurface(MANAGER, surface)).toBe(true)
+    })
+
+    it("should show when the call is under way in the bot's own chat", async () => {
+      await callingShowUi(actions)
+      expect(await actions.showSurface(MANAGER, surface)).toBe(true)
+      expect(chat(MANAGER).transcript?.items.some((item) => item.kind === 'surface')).toBe(true)
+    })
+
+    it('should refuse once the turn is over, though this window never saw the tool end', async () => {
+      vi.useFakeTimers()
+      try {
+        await callingShowUi(actions)
+        useChat.getState().update(MANAGER, {
+          transcript: { ...chat(MANAGER).transcript!, running: false }
+        })
+        const shown = actions.showSurface(MANAGER, surface)
+        await vi.runAllTimersAsync()
+        expect(await shown).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('should refuse a call the own chat is not making, though it is answering', async () => {
+      vi.useFakeTimers()
+      try {
+        await actions.open(MANAGER, 'manager-chat')
+        useChat.getState().update(MANAGER, {
+          transcript: { ...chat(MANAGER).transcript!, running: true }
+        })
+        const shown = actions.showSurface(MANAGER, surface)
+        await vi.runAllTimersAsync()
+        expect(await shown).toBe(false)
+        expect(chat(MANAGER).transcript?.items.some((item) => item.kind === 'surface')).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('should wait a moment for the tool to show when the call arrives first', async () => {
+      vi.useFakeTimers()
+      try {
+        await actions.open(MANAGER, 'manager-chat')
+        const shown = actions.showSurface(MANAGER, surface)
+        await vi.advanceTimersByTimeAsync(300)
+        await callingShowUi(actions)
+        await vi.runAllTimersAsync()
+        expect(await shown).toBe(true)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('should ask the engine when this window has not opened the chat', async () => {
+      const remote = chatDouble({
+        'acme-manager': {
+          sessionId: 'manager-chat',
+          messages: [{ id: 1, role: 'user', content: 'Hi' }]
+        }
+      })
+      const live = chatActions({
+        ...remote.backend,
+        resume: async (profile, chatId) => {
+          const snapshot = await remote.backend.resume(profile, chatId)
+          return { ...snapshot, running: true }
+        }
+      })
+      expect(await live.showSurface(MANAGER, surface)).toBe(true)
+      expect(remote.calls.some((row) => row.method === 'session.resume')).toBe(true)
+      // Nothing is drawn on a chat this window never loaded: opening it reads the history.
+      expect(chat(MANAGER)).toBeUndefined()
     })
   })
 })
