@@ -171,7 +171,7 @@ export function RoomPane({
           <Transcript
             items={items}
             allItems={items}
-            waiting={[]}
+            busy={false}
             loadImage={loadImage}
             onSurfaceSend={() => undefined}
           >

@@ -480,9 +480,18 @@ export function showUiMessagesFromTool(
   name: string,
   args: Record<string, unknown>
 ): unknown[] | null {
-  if (!isShowUiToolName(name) && name !== ENGINE_TOOL_CALL) return null
-  const wrapped = unwrapToolCalls(args).find((call) => isShowUiToolName(call.name))?.arguments
-  const messages = args.messages ?? wrapped?.messages
+  // The tool by its own name carries the messages itself; the engine's wrapper carries them only
+  // inside a wrapped show_ui call, never beside a call to another tool.
+  const from = isShowUiToolName(name)
+    ? args
+    : name === ENGINE_TOOL_CALL
+      ? unwrapToolCalls(args).find((call) => isShowUiToolName(call.name))?.arguments
+      : null
+  // The engine also stores a call by its own name with the wrapper as its arguments.
+  const wrapped = isShowUiToolName(name)
+    ? unwrapToolCalls(args).find((call) => isShowUiToolName(call.name))?.arguments
+    : null
+  const messages = from?.messages ?? wrapped?.messages
   return Array.isArray(messages) ? messages : null
 }
 

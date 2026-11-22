@@ -546,6 +546,7 @@ const en = {
     'You can show an interface only while you answer in your own chat with the user. Here, write your answer as text.',
   'chat.surfacePicked': 'Your answer: {choice}',
   'chat.surfaceChoose': 'Choose',
+  'chat.surfaceWait': 'You can answer when the reply is done.',
   'chat.surfaceChartSummary': 'Chart of {series}. Highest: {label}, {value}.',
   'chat.surfaceChartNumbers': 'Show numbers',
   'chat.surfaceChartRowLabel': 'Label',

@@ -93,10 +93,11 @@ describe('surfaceAnswer', () => {
   }
 
   it('should be unanswered with no user message after it', () => {
-    expect(surfaceAnswer([surfaceItem], surfaceItem, [])).toEqual({
+    expect(surfaceAnswer([surfaceItem], surfaceItem, false)).toEqual({
       answered: false,
       pickedButtonId: null,
-      values: null
+      values: null,
+      open: true
     })
   })
 
@@ -105,7 +106,7 @@ describe('surfaceAnswer', () => {
       surfaceItem,
       { kind: 'user', id: 'u1', text: 'Wednesday', images: [] }
     ]
-    expect(surfaceAnswer(items, surfaceItem, [])).toMatchObject({
+    expect(surfaceAnswer(items, surfaceItem, false)).toMatchObject({
       answered: true,
       pickedButtonId: 'btn'
     })
@@ -116,7 +117,7 @@ describe('surfaceAnswer', () => {
       surfaceItem,
       { kind: 'user', id: 'u1', text: 'Something else', images: [] }
     ]
-    expect(surfaceAnswer(items, surfaceItem, [])).toMatchObject({
+    expect(surfaceAnswer(items, surfaceItem, false)).toMatchObject({
       answered: true,
       pickedButtonId: null
     })
@@ -130,25 +131,22 @@ describe('surfaceAnswer', () => {
       text: 'Create routine\nName: Monthly report\nDay: Wed\nTags: B',
       images: []
     }
-    expect(surfaceAnswer([form, sent], form, [])).toEqual({
+    expect(surfaceAnswer([form, sent], form, false)).toEqual({
       answered: true,
       pickedButtonId: 'send',
-      values: { name: 'Monthly report', day: 'wed', tags: ['b'] }
+      values: { name: 'Monthly report', day: 'wed', tags: ['b'] },
+      open: false
     })
   })
 
-  it('should count as answered while its own click still waits to go, and not after it is taken back', () => {
+  it('should open its buttons only while the chat is quiet', () => {
     const form: ChatItem = { kind: 'surface', id: 'f1', surface: formSurface }
-    const waiting = 'Create routine\nName: Monthly report'
-    expect(surfaceAnswer([form], form, [waiting])).toMatchObject({
-      answered: true,
-      pickedButtonId: 'send',
-      values: { name: 'Monthly report' }
-    })
-    // The send failed or the user took the message back: the card can be answered again.
-    expect(surfaceAnswer([form], form, []).answered).toBe(false)
-    // A message of yours that waits but is not this card's does not settle it.
-    expect(surfaceAnswer([form], form, ['Something else']).answered).toBe(false)
+    // The bot is still answering, or a message of yours waits to go: not yet.
+    expect(surfaceAnswer([form], form, true)).toMatchObject({ answered: false, open: false })
+    expect(surfaceAnswer([form], form, false)).toMatchObject({ answered: false, open: true })
+    // Once answered it stays shut, quiet or not.
+    const sent: ChatItem = { kind: 'user', id: 'u2', text: 'Create routine', images: [] }
+    expect(surfaceAnswer([form, sent], form, false)).toMatchObject({ answered: true, open: false })
   })
 
   it('should give an answer to the card just before it when two cards share a button label', () => {
@@ -166,17 +164,18 @@ describe('surfaceAnswer', () => {
       }
     })
     const [first, second] = [card('first'), card('second')]
-    // Waiting to go: the newer card has it, the older one is only settled.
-    expect(surfaceAnswer([first, second], second, ['Approve']).pickedButtonId).toBe('go')
-    expect(surfaceAnswer([first, second], first, ['Approve'])).toEqual({
+    // Before any answer the newer card is the open one, and the older one is settled.
+    expect(surfaceAnswer([first, second], second, false).open).toBe(true)
+    expect(surfaceAnswer([first, second], first, false)).toEqual({
       answered: true,
       pickedButtonId: null,
-      values: null
+      values: null,
+      open: false
     })
-    // Sent: the same holds once the message is in the chat.
+    // An answer belongs to the card just before it.
     const sent: ChatItem = { kind: 'user', id: 'u1', text: 'Approve', images: [] }
-    expect(surfaceAnswer([first, second, sent], first, []).pickedButtonId).toBeNull()
-    expect(surfaceAnswer([first, second, sent], second, []).pickedButtonId).toBe('go')
+    expect(surfaceAnswer([first, second, sent], first, false).pickedButtonId).toBeNull()
+    expect(surfaceAnswer([first, second, sent], second, false).pickedButtonId).toBe('go')
   })
 
   it('should leave a form live when a card without buttons follows it', () => {
@@ -190,6 +189,6 @@ describe('surfaceAnswer', () => {
         components: [{ id: 'root', component: 'Text', text: 'Numbers' }]
       }
     }
-    expect(surfaceAnswer([form, chartOnly], form, []).answered).toBe(false)
+    expect(surfaceAnswer([form, chartOnly], form, false).answered).toBe(false)
   })
 })

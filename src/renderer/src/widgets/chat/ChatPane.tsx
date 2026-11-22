@@ -165,7 +165,7 @@ export function ChatPane({
           <Transcript
             items={items}
             allItems={chat.transcript?.items ?? []}
-            waiting={chat.waiting.map((message) => message.draft.text)}
+            busy={running || chat.waiting.length > 0}
             loadImage={loadImage}
             onSurfaceSend={(text) =>
               void actions.queue(bot.name, {

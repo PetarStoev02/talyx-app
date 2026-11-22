@@ -25,6 +25,8 @@ interface Drawing {
   values: Values
   setValues: (next: Values) => void
   answered: boolean
+  /** True while a button can be pressed: the card is not settled and the chat is quiet. */
+  open: boolean
   picked: string | null
   onButton: (buttonId: string) => void
 }
@@ -37,19 +39,19 @@ export function SurfaceCard({
   id,
   surface,
   items,
-  waiting,
+  busy,
   onSend
 }: {
   id: string
   surface: UiSurface
   items: ChatItem[]
-  /** The texts of your messages still waiting to go. */
-  waiting: string[]
+  /** True while the bot answers or a message of yours waits to go. */
+  busy: boolean
   onSend: (text: string) => void
 }): React.JSX.Element | null {
   const t = useLanguage((s) => s.t)
   const item = useMemo(() => ({ kind: 'surface' as const, id, surface }), [id, surface])
-  const { answered, pickedButtonId: picked, values: sent } = surfaceAnswer(items, item, waiting)
+  const { answered, pickedButtonId: picked, values: sent, open } = surfaceAnswer(items, item, busy)
   const [typed, setValues] = useState<Values>({ ...surface.dataModel })
   // An answered form is a record: it shows what was sent, also after the chat was reopened.
   const values = sent ?? typed
@@ -64,6 +66,7 @@ export function SurfaceCard({
     values,
     setValues,
     answered,
+    open,
     picked,
     onButton: (buttonId) => onSend(surfaceClickMessage(surface, buttonId, values))
   }
@@ -73,6 +76,9 @@ export function SurfaceCard({
       <div className="w-full rounded-3xl border border-border bg-card p-5">
         <Part component={root} drawing={drawing} />
       </div>
+      {!answered && !open && surface.components.some((part) => part.component === 'Button') && (
+        <p className="px-1 text-sm text-muted-foreground">{t('chat.surfaceWait')}</p>
+      )}
       {pickedButton?.component === 'Button' && (
         <p className="flex items-center gap-1.5 px-1 text-sm text-muted-foreground">
           <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
@@ -141,7 +147,7 @@ function ButtonPart({
     <Button
       type="button"
       variant={component.variant === 'primary' && !drawing.answered ? 'default' : 'secondary'}
-      disabled={drawing.answered}
+      disabled={!drawing.open}
       aria-pressed={drawing.answered ? picked : undefined}
       className={cn(
         PILL,

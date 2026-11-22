@@ -1299,6 +1299,11 @@ describe('bot chat', () => {
         { calls: [{ name: 'mcp__talyx__list_roster', arguments: {} }] }
       ],
       [
+        "the engine's wrapper around another tool, with the interface laid beside it",
+        'tool_call',
+        { calls: [{ name: 'mcp__talyx__list_roster', arguments: {} }], messages: sentMessages }
+      ],
+      [
         'show_ui with another interface',
         'mcp__talyx__show_ui',
         {
@@ -1325,6 +1330,13 @@ describe('bot chat', () => {
       } finally {
         vi.useRealTimers()
       }
+    })
+
+    it("should show when the call comes through the engine's wrapper", async () => {
+      await calling(actions, 'tool_call', {
+        calls: [{ name: 'mcp__talyx__show_ui', arguments: { messages: sentMessages } }]
+      })
+      expect(await actions.showSurface(MANAGER, surface)).toBe(true)
     })
 
     it("should show when the call is under way in the bot's own chat", async () => {
