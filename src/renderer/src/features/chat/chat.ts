@@ -12,6 +12,8 @@ import type { ApprovalChoice, ChatItem, ChatPrompt, Transcript } from './types'
 const HISTORY_LIMIT = 120
 // Past this many second reads a busy bot's chat settles, at worst showing a reply twice.
 const MAX_REREADS = 2
+// How much wider each read for a bot's newest replies is than the one before it.
+const RECENT_WIDEN = 4
 
 /** A transcript image the engine no longer has on disk. */
 export class MediaGoneError extends Error {
@@ -385,10 +387,15 @@ export function chatActions(backend: ChatBackend): ChatActions {
     recent: async (profile, limit) => {
       const sessionId = sessionOf(profile) ?? (await backend.findChat(profile))
       if (!sessionId) return []
-      const messages = await backend.newestMessages(profile, sessionId, limit)
-      return fromHistory(sessionId, messages, false).items.flatMap((item) =>
-        item.kind === 'bot' ? [item.text] : []
-      )
+      // Replies are only some of a chat's stored messages (yours and tool rows are the rest), so
+      // the read widens until it holds `limit` replies or the engine has no more to give.
+      for (let span = limit; ; span *= RECENT_WIDEN) {
+        const messages = await backend.newestMessages(profile, sessionId, span)
+        const replies = fromHistory(sessionId, messages, false).items.flatMap((item) =>
+          item.kind === 'bot' ? [item.text] : []
+        )
+        if (replies.length >= limit || messages.length < span) return replies.slice(-limit)
+      }
     },
 
     rebuild,

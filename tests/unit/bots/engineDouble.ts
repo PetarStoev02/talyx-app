@@ -121,6 +121,10 @@ export interface EngineDouble {
   /** When set, the next cron trigger HTTP call does not finish until `releaseTrigger` runs. */
   holdNextTrigger: () => void
   releaseTrigger: () => void
+  /** Posts into a bot's chat, as `send_bot_message` does through the real chat port. */
+  botSends: { profile: string; text: string }[]
+  /** Finished replies per bot, oldest first; `read_bot_replies` reads the last `limit`. */
+  botRepliesByProfile: Record<string, string[]>
   /** Each bot's memories and skills, in Talyx's terms. */
   minds: MemoryDouble
 }
@@ -620,6 +624,8 @@ export function engineDouble(
       releaseHeld?.()
       releaseHeld = null
     },
+    botSends: [],
+    botRepliesByProfile: {},
     minds
   }
   return double
@@ -667,6 +673,13 @@ export function backendFor(
         throw new Error('Not used')
       })
   }
+  const sendBotMessage = async (profile: string, text: string): Promise<void> => {
+    engine.botSends.push({ profile, text })
+  }
+  const botReplies = async (profile: string, limit: number): Promise<string[]> => {
+    const all = engine.botRepliesByProfile[profile] ?? []
+    return all.slice(-limit)
+  }
   return {
     ...engineRosterBackend(access, {
       botMetaKey: BOT_META_KEY,
@@ -684,7 +697,9 @@ export function backendFor(
       },
       usage: (days) => (engine.usage ?? noUsage)(days)
     }),
-    ...(engine.minds?.backend ?? memoryDouble({}).backend)
+    ...(engine.minds?.backend ?? memoryDouble({}).backend),
+    sendBotMessage,
+    botReplies
   }
 }
 

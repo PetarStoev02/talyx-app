@@ -13,6 +13,7 @@ import type {
   RosterSnapshot,
   Selection
 } from './types'
+import { deliveryPreview } from '@shared/lib/delivery'
 
 export const FOLDERS_KEY = 'talyx-folders'
 export const ROOM_FOLDERS_KEY = 'talyx-room-folders'
@@ -80,7 +81,10 @@ export function botPreview(bot: Bot, t: (key: TranslationKey) => string): string
   if (preview === EMPTY_REPLY_PREVIEW) return t('roster.previewNoReply')
   if (preview && FAILED_TURN_PREVIEWS.some((opening) => preview.startsWith(opening)))
     return t('roster.previewFailed')
-  return preview || bot.meta.description || bot.description || ''
+  // A message another bot delivered shows as its words, as the chat shows it, without the
+  // engine's wrapper around them.
+  const delivered = preview ? deliveryPreview(preview) : null
+  return (delivered ?? preview) || bot.meta.description || bot.description || ''
 }
 
 /** The bot's chat: the profile's canonical session, at the tip of its compression lineage. */
