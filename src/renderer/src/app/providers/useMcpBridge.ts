@@ -14,7 +14,6 @@ import { mcpApi } from '@shared/api/ipc'
 import { t } from '@shared/lib/i18n'
 import { AppError } from '@shared/lib/problem'
 import { reportError } from '@shared/lib/report'
-import type { ChatActions } from '@features/chat/chat'
 import type { McpAnswer } from '@contract/mcp'
 
 /** One bot's chat for the tools: a message goes as a module's page sends it. */
