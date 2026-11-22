@@ -2,6 +2,7 @@ import { expect } from 'vitest'
 import type { EngineAccess } from '../../../src/renderer/src/app/engine/access'
 import { engineRosterBackend } from '../../../src/renderer/src/app/engine/roster'
 import type { RosterBackend } from '../../../src/renderer/src/features/bots/data'
+import { memoryDouble, type MemoryDouble } from './memoryDouble'
 import type { EngineHttp } from '../../../src/renderer/src/shared/engine/http'
 import type { CustomEndpoint } from '../../../src/renderer/src/shared/engine/types'
 import type { ModelChoice } from '../../../src/renderer/src/features/bots/details'
@@ -117,6 +118,8 @@ export interface EngineDouble {
   seatable: string[] | null
   /** What `read_usage` reads; no usage unless a test sets one. */
   usage?: (days: number) => Promise<UsageTotals>
+  /** Each bot's memories and skills, in Talyx's terms. */
+  minds: MemoryDouble
 }
 
 export interface RoomLogRow {
@@ -169,6 +172,31 @@ export function engineDouble(
   },
   rooms: Room[] = [{ room_id: 'room', name: 'Team room', members: [{ profile: 'analyst' }] }]
 ): EngineDouble {
+  const minds = memoryDouble({
+    default: { memories: [], skills: [] },
+    analyst: {
+      memories: [
+        { text: 'Reports go out on Mondays.', about: 'bot' },
+        { text: 'The user prefers euros.', about: 'user' }
+      ],
+      skills: [
+        {
+          name: 'web-search',
+          description: 'Search the web',
+          enabled: true,
+          removable: false,
+          text: '# web-search'
+        },
+        {
+          name: 'cash-report',
+          description: 'Weekly cash position',
+          enabled: false,
+          removable: true,
+          text: '# Cash report'
+        }
+      ]
+    }
+  })
   const revisions: Record<string, Record<string, number>> = Object.fromEntries(
     Object.entries(metadata).map(([name, meta]) => [
       name,
@@ -573,7 +601,8 @@ export function engineDouble(
     },
     failAssetOnce: () => {
       assetFailure = true
-    }
+    },
+    minds
   }
   return double
 }
@@ -620,22 +649,25 @@ export function backendFor(
         throw new Error('Not used')
       })
   }
-  return engineRosterBackend(access, {
-    botMetaKey: BOT_META_KEY,
-    botGroupsMetaKey: GROUPS_META_KEY,
-    deleteProfile: async (profile) => {
-      if (!engine.metadata || !engine.deleted) throw new Error('Not used')
-      delete engine.metadata[profile]
-      engine.deleted.push(profile)
-    },
-    avatarPng: async (look) => pngOf(look),
-    setRoomMembers: async (roomId, members) => {
-      const room = engine.rooms?.find((item) => item.room_id === roomId)
-      if (!room) throw new Error('Room not found')
-      room.members = structuredClone(members)
-    },
-    usage: (days) => (engine.usage ?? noUsage)(days)
-  })
+  return {
+    ...engineRosterBackend(access, {
+      botMetaKey: BOT_META_KEY,
+      botGroupsMetaKey: GROUPS_META_KEY,
+      deleteProfile: async (profile) => {
+        if (!engine.metadata || !engine.deleted) throw new Error('Not used')
+        delete engine.metadata[profile]
+        engine.deleted.push(profile)
+      },
+      avatarPng: async (look) => pngOf(look),
+      setRoomMembers: async (roomId, members) => {
+        const room = engine.rooms?.find((item) => item.room_id === roomId)
+        if (!room) throw new Error('Room not found')
+        room.members = structuredClone(members)
+      },
+      usage: (days) => (engine.usage ?? noUsage)(days)
+    }),
+    ...(engine.minds?.backend ?? memoryDouble({}).backend)
+  }
 }
 
 const noUsage = async (): Promise<UsageTotals> => ({
