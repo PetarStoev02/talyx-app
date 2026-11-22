@@ -350,7 +350,7 @@ describe('MCP tools', () => {
 
     it('should change nothing when the bot already matches the state asked for', async () => {
       await ok('hide_bot', { profile: 'analyst', hidden: true })
-      engine.configureCalls = []
+      engine.configureCalls.length = 0
       expect(await ok('hide_bot', { profile: 'analyst', hidden: true })).toEqual({
         profile: 'analyst',
         hidden: true
