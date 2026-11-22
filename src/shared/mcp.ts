@@ -320,7 +320,8 @@ export const MCP_TOOLS = {
     args: z.object({
       profile,
       name: z.string().min(1).describe('The skill name, as list_skills shows it'),
-      text: z.string().trim().min(1).max(MCP_TEXT_MAX)
+      // Kept as written, like the skill's own editor keeps it: only a blank file is refused.
+      text: z.string().regex(/\S/).max(MCP_TEXT_MAX).describe('The whole instructions file')
     })
   },
   delete_skill: {

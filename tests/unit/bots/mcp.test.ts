@@ -811,12 +811,39 @@ describe('MCP tools', () => {
         text: 'Reports go out on Fridays.'
       })
       expect(asked[0].action).toBe(
-        'Change a memory of “Analyst” from “Reports go out on Mondays.” to “Reports go out on Fridays.”. The old text is lost.'
+        'Change a memory of “Analyst”. The old text is lost. Old text: “Reports go out on Mondays.” New text: “Reports go out on Fridays.”'
       )
       expect((updated.memories as { text: string }[]).map((memory) => memory.text)).toEqual([
         'Reports go out on Fridays.',
         'The user prefers euros.'
       ])
+    })
+
+    it('should show a memory that holds a placeholder as it is written', async () => {
+      engine.minds.bots.analyst.memories[0].text = 'Send {text} to {name}.'
+      const [first] = (await ok('list_memories', { profile: 'analyst' })).memories as {
+        id: string
+      }[]
+      await ok('edit_memory', { profile: 'analyst', id: first.id, text: 'Send nothing.' })
+      expect(asked[0].action).toBe(
+        'Change a memory of “Analyst”. The old text is lost. Old text: “Send {text} to {name}.” New text: “Send nothing.”'
+      )
+    })
+
+    it('should refuse the change when the memory changed while the user was asked', async () => {
+      const [first] = (await ok('list_memories', { profile: 'analyst' })).memories as {
+        id: string
+      }[]
+      const run = mcpTools(backendFor(engine), async () => {
+        engine.minds.bots.analyst.memories[0].text = 'Reports go out on Tuesdays.'
+        return true
+      })
+      const answer = await run('edit_memory', { profile: 'analyst', id: first.id, text: 'Gone' })
+      expect(answer).toEqual({
+        ok: false,
+        text: 'The bot changed this memory since the list was loaded. The list shows it as it is now.'
+      })
+      expect(engine.minds.bots.analyst.memories[0].text).toBe('Reports go out on Tuesdays.')
     })
 
     it('should keep the memory when the user says no', async () => {
@@ -857,7 +884,7 @@ describe('MCP tools', () => {
       }[]
       const updated = await ok('delete_memory', { profile: 'analyst', id: first.id })
       expect(asked.at(-1)?.action).toBe(
-        'Delete a memory of “Analyst”: “Reports go out on Mondays.”. This cannot be undone.'
+        'Delete a memory of “Analyst”. This cannot be undone. The memory: “Reports go out on Mondays.”'
       )
       expect((updated.memories as { text: string }[]).map((memory) => memory.text)).toEqual([
         'The user prefers euros.'
@@ -920,6 +947,13 @@ describe('MCP tools', () => {
       expect(
         engine.minds.bots.analyst.skills.find((skill) => skill.name === 'cash-report')?.text
       ).toBe('# Cash, weekly')
+    })
+
+    it('should keep instructions as they are written, blank lines included', async () => {
+      await ok('edit_skill', { profile: 'analyst', name: 'cash-report', text: '\n# Cash\n' })
+      expect(
+        engine.minds.bots.analyst.skills.find((skill) => skill.name === 'cash-report')?.text
+      ).toBe('\n# Cash\n')
     })
 
     it('should keep the skill when the user says no to an edit', async () => {

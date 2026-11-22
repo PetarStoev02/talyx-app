@@ -533,8 +533,8 @@ const en = {
   'mcp.errorMemoryGone': 'That memory no longer exists.',
   'mcp.errorSkillGone': 'That skill no longer exists.',
   'mcp.editMemory':
-    'Change a memory of “{name}” from “{current}” to “{text}”. The old text is lost.',
-  'mcp.deleteMemory': 'Delete a memory of “{name}”: “{current}”. This cannot be undone.',
+    'Change a memory of “{name}”. The old text is lost. Old text: “{current}” New text: “{text}”',
+  'mcp.deleteMemory': 'Delete a memory of “{name}”. This cannot be undone. The memory: “{current}”',
   'mcp.editSkill':
     'Replace the instructions of the skill “{skill}” of “{name}”. The text it has now is lost.',
   'mcp.deleteSkill': 'Delete the skill “{skill}” of “{name}”. This cannot be undone.',

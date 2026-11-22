@@ -28,7 +28,7 @@ import {
   loadSkills,
   setSkillEnabled
 } from './memory'
-import type { Memory, Skill } from './memory'
+import type { Memory, MemoryBackend, Skill } from './memory'
 import { changeRoomMembers, createRoom, renameRoom } from './rooms'
 import { RosterError, botTitle, itemFolder, itemKey, pinnedBots } from './roster'
 import {
@@ -571,13 +571,13 @@ async function routineOf(
   return routine
 }
 
-async function memoryOf(backend: ToolsBackend, profile: string, id: string): Promise<Memory> {
+async function memoryOf(backend: MemoryBackend, profile: string, id: string): Promise<Memory> {
   const memory = (await loadMemories(backend, profile)).memories.find((item) => item.id === id)
   if (!memory) throw new RosterError('mcp.errorMemoryGone', id)
   return memory
 }
 
-async function skillOf(backend: ToolsBackend, profile: string, name: string): Promise<Skill> {
+async function skillOf(backend: MemoryBackend, profile: string, name: string): Promise<Skill> {
   const skill = (await loadSkills(backend, profile)).find((item) => item.name === name)
   if (!skill) throw new RosterError('mcp.errorSkillGone', name)
   return skill
@@ -589,9 +589,8 @@ function lookFrom(look: { shape: string; hue: number; faces: boolean }): Look {
   return { shape: look.shape as BlockShape, hue: look.hue, faces: look.faces }
 }
 
+// One pass over the question: a value that itself holds `{text}` is shown as written, never
+// filled in a second time, so the user reads what is really there.
 function say(key: TranslationKey, values: Record<string, string>): string {
-  return Object.entries(values).reduce(
-    (text, [name, value]) => text.replaceAll(`{${name}}`, value),
-    t(key, 'en')
-  )
+  return t(key, 'en').replace(/\{(\w+)\}/g, (slot, name: string) => values[name] ?? slot)
 }
