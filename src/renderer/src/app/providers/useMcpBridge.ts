@@ -22,19 +22,15 @@ export function useMcpBridge(backend: RosterBackend | null, chat: ChatActions | 
   // once instead of waiting out main's timeout.
   const run = useRef<((tool: string, args: unknown) => Promise<McpAnswer>) | null>(null)
   useEffect(() => {
-    const talk = chat ? moduleChat(() => chat) : null
-    run.current = backend
-      ? mcpTools(
-          talk
-            ? {
-                ...backend,
-                sendBotMessage: (profile, text) => talk.send(profile, text),
-                botReplies: (profile, limit) => talk.replies(profile, limit)
-              }
-            : backend,
-          useApprovals.getState().ask
-        )
-      : null
+    // The tools talk to one bot as a module's page does: through the chat the app has now.
+    const talk = chat && moduleChat(() => chat)
+    run.current =
+      backend && talk
+        ? mcpTools(
+            { ...backend, sendBotMessage: talk.send, botReplies: talk.replies },
+            useApprovals.getState().ask
+          )
+        : null
   }, [backend, chat])
   useEffect(() => {
     const stop = mcpApi.onCall(({ id, tool, args }) => {

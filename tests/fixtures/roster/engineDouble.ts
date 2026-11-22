@@ -387,11 +387,7 @@ export const rosterBackend = {
     deleteProfile,
     avatarPng: blockPng,
     setRoomMembers,
-    usage: (days) => usageOver(providers, days),
-    sendBotMessage: async () => {
-      throw new Error('Fixture roster: bot chat goes through fixtureChat')
-    },
-    botReplies: async () => []
+    usage: (days) => usageOver(providers, days)
   }),
   // Memories and skills in Talyx's terms; the engine's own routes are covered by unit tests.
   ...fixtureMemory(Object.keys(BOTS)).backend,

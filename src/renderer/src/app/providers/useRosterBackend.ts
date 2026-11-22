@@ -62,14 +62,7 @@ export function rosterBackendFor(keys: {
     setRoomMembers: async (roomId, members) => {
       await window.api.setRoomMembers({ roomId, members })
     },
-    usage: (days) => usageOver(providers, days),
-    // Overridden in useMcpBridge with the live chat; here only so the roster type is complete.
-    sendBotMessage: async () => {
-      throw new Error('Talyx is not connected to its engine yet.')
-    },
-    botReplies: async () => {
-      throw new Error('Talyx is not connected to its engine yet.')
-    }
+    usage: (days) => usageOver(providers, days)
   })
   return { ...roster, room: engineRoomBackend(engineAccess) }
 }

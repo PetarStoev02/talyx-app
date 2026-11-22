@@ -20,7 +20,7 @@ interface LogEvent {
 /** Talyx's MCP server on each profile, and the calls only Talyx's MCP tools make. */
 export function engineMcpBackend(
   engine: EngineAccess
-): McpServersBackend & Omit<McpToolsBackend, 'usage' | 'sendBotMessage' | 'botReplies'> {
+): McpServersBackend & Omit<McpToolsBackend, 'usage'> {
   // REST, not the socket: the socket's `mcp.servers.*` refuse a profile other than the one the
   // socket serves.
   const serversPath = (profile: string): string =>

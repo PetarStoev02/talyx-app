@@ -659,7 +659,6 @@ export function backendFor(
       })
   }
   const sendBotMessage = async (profile: string, text: string): Promise<void> => {
-    if (!engine.metadata[profile]) throw new Error(`Profile not found`)
     if (engine.failBotSend) {
       const reason = engine.failBotSend
       engine.failBotSend = null
@@ -686,11 +685,11 @@ export function backendFor(
         if (!room) throw new Error('Room not found')
         room.members = structuredClone(members)
       },
-      usage: (days) => (engine.usage ?? noUsage)(days),
-      sendBotMessage,
-      botReplies
+      usage: (days) => (engine.usage ?? noUsage)(days)
     }),
-    ...(engine.minds?.backend ?? memoryDouble({}).backend)
+    ...(engine.minds?.backend ?? memoryDouble({}).backend),
+    sendBotMessage,
+    botReplies
   }
 }
 

@@ -66,12 +66,16 @@ export interface McpToolsBackend {
   sendRoomMessage: (roomId: string, text: string) => Promise<void>
   /** The room's messages, oldest first. */
   roomMessages: (roomId: string) => Promise<RoomMessage[]>
+  /** Token and request totals over the last `days`, summed over every bot. */
+  usage: (days: number) => Promise<UsageTotals>
+}
+
+/** A bot's own chat, as much of it as the tools use. The roster has no chat: the app adds it. */
+export interface BotChatBackend {
   /** Posts a message in the bot's chat as the user. */
   sendBotMessage: (profile: string, text: string) => Promise<void>
   /** The bot's newest finished replies as text, oldest first. */
   botReplies: (profile: string, limit: number) => Promise<string[]>
-  /** Token and request totals over the last `days`, summed over every bot. */
-  usage: (days: number) => Promise<UsageTotals>
 }
 
 /** A message in a room: the user's (`memberId` null) or a member's. */
@@ -119,7 +123,8 @@ type ToolsBackend = Omit<
   | 'listRoutineRuns'
   | 'lastRunReply'
   | 'runRoutine'
->
+> &
+  BotChatBackend
 
 // How many messages read_room_history returns when the agent does not say.
 const DEFAULT_HISTORY = 50

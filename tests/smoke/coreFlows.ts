@@ -110,12 +110,6 @@ export async function connectRenderer(
     },
     usage: async () => {
       throw new Error('Smoke: usage is not part of the core flows')
-    },
-    sendBotMessage: async () => {
-      throw new Error('Smoke: bot chat is not part of the core flows')
-    },
-    botReplies: async () => {
-      throw new Error('Smoke: bot chat is not part of the core flows')
     }
   })
   const providers = engineProvidersBackend(engineAccess, {
