@@ -18,6 +18,17 @@ import {
 import type { DetailsDraft } from './details'
 import { lookOf, matchName } from './look'
 import type { Look } from './look'
+import {
+  deleteMemory,
+  deleteSkill,
+  editMemory,
+  editSkill,
+  loadMemories,
+  loadSkillText,
+  loadSkills,
+  setSkillEnabled
+} from './memory'
+import type { Memory, MemoryBackend, Skill } from './memory'
 import { changeRoomMembers, createRoom, renameRoom } from './rooms'
 import { RosterError, botTitle, itemFolder, itemKey, pinnedBots } from './roster'
 import {
@@ -385,6 +396,80 @@ function toolsFor(
     read_usage: async ({ days }) => {
       const { total, providers, models, unread } = await backend.usage(days)
       return { days, total, providers, models, unread }
+    },
+    ...memoryTools(backend, fresh, ask)
+  }
+}
+
+type MemoryToolName =
+  | 'list_memories'
+  | 'edit_memory'
+  | 'delete_memory'
+  | 'list_skills'
+  | 'read_skill'
+  | 'set_skill_enabled'
+  | 'edit_skill'
+  | 'delete_skill'
+
+/** The tools over a bot's memories and skills, the ones its details panel shows. */
+function memoryTools(
+  backend: ToolsBackend,
+  fresh: () => Promise<RosterSnapshot>,
+  ask: (tool: McpToolName, action: string) => Promise<void>
+): { [T in MemoryToolName]: Run<T> } {
+  return {
+    list_memories: async ({ profile }) => {
+      botOf(await fresh(), profile)
+      return loadMemories(backend, profile)
+    },
+    edit_memory: async ({ profile, id, text }) => {
+      const bot = botOf(await fresh(), profile)
+      const memory = await memoryOf(backend, profile, id)
+      await ask(
+        'edit_memory',
+        say('mcp.editMemory', { name: botTitle(bot), current: memory.text, text })
+      )
+      return editMemory(backend, profile, { id, text })
+    },
+    delete_memory: async ({ profile, id }) => {
+      const bot = botOf(await fresh(), profile)
+      const memory = await memoryOf(backend, profile, id)
+      await ask(
+        'delete_memory',
+        say('mcp.deleteMemory', { name: botTitle(bot), current: memory.text })
+      )
+      return deleteMemory(backend, profile, id)
+    },
+    list_skills: async ({ profile }) => {
+      botOf(await fresh(), profile)
+      return { skills: await loadSkills(backend, profile) }
+    },
+    read_skill: async ({ profile, name }) => {
+      botOf(await fresh(), profile)
+      await skillOf(backend, profile, name)
+      return { name, text: await loadSkillText(backend, profile, name) }
+    },
+    set_skill_enabled: async ({ profile, name, enabled }) => {
+      botOf(await fresh(), profile)
+      await skillOf(backend, profile, name)
+      await setSkillEnabled(backend, profile, { name, enabled })
+      return { name, enabled }
+    },
+    edit_skill: async ({ profile, name, text }) => {
+      const bot = botOf(await fresh(), profile)
+      await skillOf(backend, profile, name)
+      await ask('edit_skill', say('mcp.editSkill', { name: botTitle(bot), skill: name }))
+      await editSkill(backend, profile, { name, text })
+      return { name }
+    },
+    delete_skill: async ({ profile, name }) => {
+      const bot = botOf(await fresh(), profile)
+      const skill = await skillOf(backend, profile, name)
+      // Refused here, before the question: the user is never asked to allow what Talyx then refuses.
+      if (!skill.removable) throw new RosterError('skills.errorBuiltIn')
+      await ask('delete_skill', say('mcp.deleteSkill', { name: botTitle(bot), skill: name }))
+      await deleteSkill(backend, profile, skill)
+      return { deleted: name }
     }
   }
 }
@@ -486,15 +571,26 @@ async function routineOf(
   return routine
 }
 
+async function memoryOf(backend: MemoryBackend, profile: string, id: string): Promise<Memory> {
+  const memory = (await loadMemories(backend, profile)).memories.find((item) => item.id === id)
+  if (!memory) throw new RosterError('mcp.errorMemoryGone', id)
+  return memory
+}
+
+async function skillOf(backend: MemoryBackend, profile: string, name: string): Promise<Skill> {
+  const skill = (await loadSkills(backend, profile)).find((item) => item.name === name)
+  if (!skill) throw new RosterError('mcp.errorSkillGone', name)
+  return skill
+}
+
 function lookFrom(look: { shape: string; hue: number; faces: boolean }): Look {
   if (!BLOCK_SHAPES.includes(look.shape as BlockShape) || look.hue >= BLOCK_HUES.length)
     throw new RosterError('mcp.errorLook')
   return { shape: look.shape as BlockShape, hue: look.hue, faces: look.faces }
 }
 
+// One pass over the question: a value that itself holds `{text}` is shown as written, never
+// filled in a second time, so the user reads what is really there.
 function say(key: TranslationKey, values: Record<string, string>): string {
-  return Object.entries(values).reduce(
-    (text, [name, value]) => text.replaceAll(`{${name}}`, value),
-    t(key, 'en')
-  )
+  return t(key, 'en').replace(/\{(\w+)\}/g, (slot, name: string) => values[name] ?? slot)
 }

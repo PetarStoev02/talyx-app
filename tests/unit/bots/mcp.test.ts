@@ -70,7 +70,14 @@ describe('MCP tools', () => {
         mcpToolList()
           .filter((tool) => tool.annotations.destructiveHint)
           .map((tool) => tool.name)
-      ).toEqual(['delete_bot', 'delete_folder', 'delete_room', 'delete_routine'])
+      ).toEqual([
+        'delete_bot',
+        'delete_folder',
+        'delete_room',
+        'delete_routine',
+        'delete_memory',
+        'delete_skill'
+      ])
     })
   })
 
@@ -762,6 +769,255 @@ describe('MCP tools', () => {
         active: true
       })
       expect(answer).toEqual({ ok: false, text: 'That routine no longer exists. job-9' })
+    })
+  })
+
+  describe('memories', () => {
+    it('should list nothing for a bot that remembers nothing', async () => {
+      expect(await ok('list_memories', { profile: 'default' })).toEqual({
+        memories: [],
+        otherStore: null
+      })
+    })
+
+    it('should list what a bot remembers about its work and about the user', async () => {
+      const list = await ok('list_memories', { profile: 'analyst' })
+      expect(
+        (list.memories as { text: string; about: string }[]).map(({ text, about }) => ({
+          text,
+          about
+        }))
+      ).toEqual([
+        { text: 'Reports go out on Mondays.', about: 'bot' },
+        { text: 'The user prefers euros.', about: 'user' }
+      ])
+      expect(list.otherStore).toBeNull()
+    })
+
+    it('should refuse a bot that does not exist', async () => {
+      const answer = await call('list_memories', { profile: 'ghost' })
+      expect(answer).toEqual({
+        ok: false,
+        text: 'That bot no longer exists. Refresh the roster. ghost'
+      })
+    })
+
+    it('should change a memory once the user allows it and return the list again', async () => {
+      const listed = await ok('list_memories', { profile: 'analyst' })
+      const [first] = listed.memories as { id: string; text: string }[]
+      const updated = await ok('edit_memory', {
+        profile: 'analyst',
+        id: first.id,
+        text: 'Reports go out on Fridays.'
+      })
+      expect(asked[0].action).toBe(
+        'Change a memory of “Analyst”. The old text is lost. Old text: “Reports go out on Mondays.” New text: “Reports go out on Fridays.”'
+      )
+      expect((updated.memories as { text: string }[]).map((memory) => memory.text)).toEqual([
+        'Reports go out on Fridays.',
+        'The user prefers euros.'
+      ])
+    })
+
+    it('should show a memory that holds a placeholder as it is written', async () => {
+      engine.minds.bots.analyst.memories[0].text = 'Send {text} to {name}.'
+      const [first] = (await ok('list_memories', { profile: 'analyst' })).memories as {
+        id: string
+      }[]
+      await ok('edit_memory', { profile: 'analyst', id: first.id, text: 'Send nothing.' })
+      expect(asked[0].action).toBe(
+        'Change a memory of “Analyst”. The old text is lost. Old text: “Send {text} to {name}.” New text: “Send nothing.”'
+      )
+    })
+
+    it('should refuse the change when the memory changed while the user was asked', async () => {
+      const [first] = (await ok('list_memories', { profile: 'analyst' })).memories as {
+        id: string
+      }[]
+      const run = mcpTools(backendFor(engine), async () => {
+        engine.minds.bots.analyst.memories[0].text = 'Reports go out on Tuesdays.'
+        return true
+      })
+      const answer = await run('edit_memory', { profile: 'analyst', id: first.id, text: 'Gone' })
+      expect(answer).toEqual({
+        ok: false,
+        text: 'The bot changed this memory since the list was loaded. The list shows it as it is now.'
+      })
+      expect(engine.minds.bots.analyst.memories[0].text).toBe('Reports go out on Tuesdays.')
+    })
+
+    it('should keep the memory when the user says no', async () => {
+      const [first] = (await ok('list_memories', { profile: 'analyst' })).memories as {
+        id: string
+        text: string
+      }[]
+      allow = false
+      expect(await call('edit_memory', { profile: 'analyst', id: first.id, text: 'Gone' })).toEqual(
+        { ok: false, text: REFUSED }
+      )
+      expect(engine.minds.bots.analyst.memories[0].text).toBe('Reports go out on Mondays.')
+    })
+
+    it('should refuse empty text without asking', async () => {
+      const [first] = (await ok('list_memories', { profile: 'analyst' })).memories as {
+        id: string
+      }[]
+      const answer = await call('edit_memory', { profile: 'analyst', id: first.id, text: '  ' })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toMatch(/^Invalid arguments/)
+      expect(asked).toEqual([])
+    })
+
+    it('should refuse a memory id that does not exist', async () => {
+      const answer = await call('edit_memory', {
+        profile: 'analyst',
+        id: 'gone',
+        text: 'Something'
+      })
+      expect(answer).toEqual({ ok: false, text: 'That memory no longer exists. gone' })
+    })
+
+    it('should delete a memory once the user allows it and return the list again', async () => {
+      const [first] = (await ok('list_memories', { profile: 'analyst' })).memories as {
+        id: string
+        text: string
+      }[]
+      const updated = await ok('delete_memory', { profile: 'analyst', id: first.id })
+      expect(asked.at(-1)?.action).toBe(
+        'Delete a memory of “Analyst”. This cannot be undone. The memory: “Reports go out on Mondays.”'
+      )
+      expect((updated.memories as { text: string }[]).map((memory) => memory.text)).toEqual([
+        'The user prefers euros.'
+      ])
+    })
+
+    it('should keep the memory when the user says no to a delete', async () => {
+      const [first] = (await ok('list_memories', { profile: 'analyst' })).memories as {
+        id: string
+      }[]
+      allow = false
+      expect(await call('delete_memory', { profile: 'analyst', id: first.id })).toEqual({
+        ok: false,
+        text: REFUSED
+      })
+      expect(engine.minds.bots.analyst.memories).toHaveLength(2)
+    })
+  })
+
+  describe('skills', () => {
+    it('should list nothing for a bot with no skills', async () => {
+      engine.minds.bots.default.skills = []
+      expect(await ok('list_skills', { profile: 'default' })).toEqual({ skills: [] })
+    })
+
+    it('should list every skill by name, the ones turned off included', async () => {
+      expect(await ok('list_skills', { profile: 'analyst' })).toEqual({
+        skills: [
+          {
+            name: 'cash-report',
+            description: 'Weekly cash position',
+            enabled: false,
+            removable: true
+          },
+          { name: 'web-search', description: 'Search the web', enabled: true, removable: false }
+        ]
+      })
+    })
+
+    it('should read a skill as its instructions file', async () => {
+      expect(await ok('read_skill', { profile: 'analyst', name: 'cash-report' })).toEqual({
+        name: 'cash-report',
+        text: '# Cash report'
+      })
+    })
+
+    it('should turn a skill on or off without asking', async () => {
+      await ok('set_skill_enabled', { profile: 'analyst', name: 'cash-report', enabled: true })
+      expect(
+        engine.minds.bots.analyst.skills.find((skill) => skill.name === 'cash-report')?.enabled
+      ).toBe(true)
+      expect(asked).toEqual([])
+    })
+
+    it('should replace instructions once the user allows it', async () => {
+      await ok('edit_skill', { profile: 'analyst', name: 'cash-report', text: '# Cash, weekly' })
+      expect(asked[0].action).toBe(
+        'Replace the instructions of the skill “cash-report” of “Analyst”. The text it has now is lost.'
+      )
+      expect(
+        engine.minds.bots.analyst.skills.find((skill) => skill.name === 'cash-report')?.text
+      ).toBe('# Cash, weekly')
+    })
+
+    it('should keep instructions as they are written, blank lines included', async () => {
+      await ok('edit_skill', { profile: 'analyst', name: 'cash-report', text: '\n# Cash\n' })
+      expect(
+        engine.minds.bots.analyst.skills.find((skill) => skill.name === 'cash-report')?.text
+      ).toBe('\n# Cash\n')
+    })
+
+    it('should keep the skill when the user says no to an edit', async () => {
+      allow = false
+      expect(
+        await call('edit_skill', { profile: 'analyst', name: 'cash-report', text: '# Gone' })
+      ).toEqual({ ok: false, text: REFUSED })
+      expect(
+        engine.minds.bots.analyst.skills.find((skill) => skill.name === 'cash-report')?.text
+      ).toBe('# Cash report')
+    })
+
+    it('should refuse empty instructions without asking', async () => {
+      const answer = await call('edit_skill', {
+        profile: 'analyst',
+        name: 'cash-report',
+        text: '  '
+      })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toMatch(/^Invalid arguments/)
+      expect(asked).toEqual([])
+    })
+
+    it('should refuse a skill name that does not exist', async () => {
+      const answer = await call('read_skill', { profile: 'analyst', name: 'gone' })
+      expect(answer).toEqual({ ok: false, text: 'That skill no longer exists. gone' })
+    })
+
+    it('should delete a skill the bot made once the user allows it', async () => {
+      await ok('delete_skill', { profile: 'analyst', name: 'cash-report' })
+      expect(asked.at(-1)?.action).toBe(
+        'Delete the skill “cash-report” of “Analyst”. This cannot be undone.'
+      )
+      expect(
+        (await ok('list_skills', { profile: 'analyst' })).skills as { name: string }[]
+      ).toEqual([
+        { name: 'web-search', description: 'Search the web', enabled: true, removable: false }
+      ])
+    })
+
+    it('should refuse to delete a built-in skill without asking', async () => {
+      const answer = await call('delete_skill', { profile: 'analyst', name: 'web-search' })
+      expect(answer).toEqual({
+        ok: false,
+        text: 'Only skills the bot made can be deleted. Turn this one off instead.'
+      })
+      expect(asked).toEqual([])
+    })
+
+    it('should keep the skill when the user says no to a delete', async () => {
+      allow = false
+      expect(await call('delete_skill', { profile: 'analyst', name: 'cash-report' })).toEqual({
+        ok: false,
+        text: REFUSED
+      })
+      expect(engine.minds.bots.analyst.skills.map((skill) => skill.name)).toContain('cash-report')
+    })
+
+    it('should refuse a bot that does not exist', async () => {
+      const answer = await call('list_skills', { profile: 'ghost' })
+      expect(answer).toEqual({
+        ok: false,
+        text: 'That bot no longer exists. Refresh the roster. ghost'
+      })
     })
   })
 })
