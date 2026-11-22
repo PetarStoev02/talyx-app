@@ -42,6 +42,7 @@ During `npm run dev` the interface also runs in a browser at `http://localhost:5
 
 - Talyx is a client of the agent engine. Orchestration (bot-to-bot messages, group rooms, routines) belongs in the engine, not in the app.
 - The website lives in `website/` (`cd website && npm ci && npm run dev`).
+- Coding agents use [Modern Web Guidance](https://github.com/GoogleChrome/modern-web-guidance) for web platform practice when they write the interface or the website. `.claude/settings.json` turns it on for Claude Code: install it once with `claude plugin marketplace add GoogleChrome/modern-web-guidance`, then `claude plugin install modern-web-guidance@googlechrome --scope project`. For another agent, run `npx modern-web-guidance@latest install`.
 
 ## Licence and the contributor agreement
 
