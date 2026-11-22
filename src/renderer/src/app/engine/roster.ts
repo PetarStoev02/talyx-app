@@ -6,6 +6,7 @@ import type { Look } from '@features/bots/look'
 import type { RoomsBackend, RoomSeat } from '@features/bots/rooms'
 import { NO_META, RosterError } from '@features/bots/roster'
 import type { RulesBackend } from '@features/bots/rules'
+import type { UsageTotals } from '@features/bots/mcp'
 import type { BotMeta, Room } from '@features/bots/types'
 import { MANAGER } from '@features/bots/details'
 import type { EngineAccess } from './access'
@@ -24,6 +25,8 @@ export interface RosterHost {
   setRoomMembers: (roomId: string, members: RoomMemberRecord[]) => Promise<void>
   /** The block as a PNG data URL, for the profile's avatar image. */
   avatarPng: (look: Look) => Promise<string>
+  /** Token and request totals over the last `days`, summed over every bot. */
+  usage: (days: number) => Promise<UsageTotals>
 }
 
 /** A room member as the engine stores it, the shape `groups.create` takes. */
@@ -116,6 +119,7 @@ export function engineRosterBackend(engine: EngineAccess, host: RosterHost): Ros
     ...engineRoutinesBackend(engine),
     ...engineMemoryBackend(engine),
     ...engineMcpBackend(engine),
+    usage: host.usage,
     setAvatar: async (profile, look) => {
       await engine.request(profile, 'profiles.set_asset', {
         name: profile,

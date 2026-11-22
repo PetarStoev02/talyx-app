@@ -144,7 +144,7 @@ async function answer(
         capabilities: { tools: {} },
         serverInfo: { name: 'talyx', version: deps.version },
         instructions:
-          'Operate the Talyx app: its bots, folders, pins, rooms and bot settings. Talyx must be open.'
+          'Operate the Talyx app: its bots, folders, pins, rooms, usage and bot settings. Talyx must be open.'
       })
     case 'ping':
       return result({})

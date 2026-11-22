@@ -4,6 +4,7 @@ import type { EngineAccess } from '../../../src/renderer/src/app/engine/access'
 import { engineProvidersBackend } from '../../../src/renderer/src/app/engine/providers'
 import { engineRoomBackend } from '../../../src/renderer/src/app/engine/room'
 import { engineRosterBackend } from '../../../src/renderer/src/app/engine/roster'
+import { usageOver } from '../../../src/renderer/src/features/providers/usage'
 import type { EngineApiRequest } from '../../../src/renderer/src/shared/engine/http'
 import { blockPng } from '../../../src/renderer/src/shared/ui/blockPng'
 import { EXPECTED_ENGINE_VERSION, type EngineStatus } from '../../../src/shared/engine'
@@ -385,7 +386,8 @@ export const rosterBackend = {
     botGroupsMetaKey: GROUPS_META_KEY,
     deleteProfile,
     avatarPng: blockPng,
-    setRoomMembers
+    setRoomMembers,
+    usage: (days) => usageOver(providers, days)
   }),
   // Memories and skills in Talyx's terms; the engine's own routes are covered by unit tests.
   ...fixtureMemory(Object.keys(BOTS)).backend,

@@ -4,7 +4,8 @@ import {
   USAGE_PERIODS,
   dailySeries,
   daysOf,
-  loadUsage
+  loadUsage,
+  usageOver
 } from '../../../src/renderer/src/features/providers/usage'
 import { HOME, ROUTER, providersDouble } from './providersDouble'
 import type { DailyRow, ProvidersDouble, UsageRow } from './providersDouble'
@@ -40,6 +41,13 @@ describe('provider usage', () => {
   async function usage(days = 30): Promise<Awaited<ReturnType<typeof loadUsage>>> {
     return loadUsage(engine.backend, { overview: await loadProviders(engine.backend), days })
   }
+
+  it('should load providers then usage for the period', async () => {
+    engine.profiles[HOME].usage = [row()]
+    const direct = await usage(30)
+    const over = await usageOver(engine.backend, 30)
+    expect(over).toEqual(direct)
+  })
 
   it('should say every configured provider reported no usage when no bot ran', async () => {
     const report = await usage()

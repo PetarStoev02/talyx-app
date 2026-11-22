@@ -1,7 +1,6 @@
-import { loadProviders } from './providers'
 import type { ProvidersBackend } from './providers'
 import { useUsageView } from './store'
-import { loadUsage } from './usage'
+import { usageOver } from './usage'
 
 let latest = 0
 
@@ -11,8 +10,7 @@ export async function loadUsageView(backend: ProvidersBackend): Promise<void> {
   const { days } = useUsageView.getState()
   useUsageView.setState({ loading: true, problem: null })
   try {
-    const overview = await loadProviders(backend)
-    const report = await loadUsage(backend, { overview, days })
+    const report = await usageOver(backend, days)
     if (request === latest) useUsageView.setState({ shown: { report, days }, loading: false })
   } catch (problem) {
     if (request === latest) useUsageView.setState({ problem, loading: false })

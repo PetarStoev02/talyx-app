@@ -4,6 +4,7 @@ import {
   namedTwinOfBare,
   sameBaseUrl
 } from '@shared/engine/endpoints'
+import { loadProviders } from './providers'
 import type {
   Billed,
   BilledDay,
@@ -66,6 +67,12 @@ interface Owner {
 }
 
 type Backend = Pick<ProvidersBackend, 'home' | 'profiles' | 'endpoints' | 'usage' | 'dailyUsage'>
+
+/** The report for the last `days`, with the providers as Settings lists them now. */
+export async function usageOver(backend: ProvidersBackend, days: number): Promise<UsageReport> {
+  const overview = await loadProviders(backend)
+  return loadUsage(backend, { overview, days })
+}
 
 /**
  * Each provider's usage over the last `days`, summed over every bot. The providers Settings lists
