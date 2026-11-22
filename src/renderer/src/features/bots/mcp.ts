@@ -2,6 +2,7 @@ import { parseA2uiSurface } from '@contract/a2uiSurface'
 import { MCP_APPROVAL_TIMEOUT_MS, MCP_TOOLS, isMcpTool } from '@contract/mcp'
 import type { UiSurface } from '@contract/a2uiSurface'
 import type { McpAnswer, McpToolArgs, McpToolName } from '@contract/mcp'
+import { sleep } from '@shared/lib/timers'
 import { t, type TranslationKey } from '@shared/lib/i18n'
 import { problemOf, problemText } from '@shared/lib/problem'
 import { BLOCK_SHAPES, type BlockShape } from '@contract/moduleHost'
@@ -36,11 +37,18 @@ import { RosterError, botTitle, itemFolder, itemKey, pinnedBots } from './roster
 import {
   DEFAULT_SCHEDULE,
   addRoutine,
+  composeSchedule,
+  listRoutineRuns,
   listRoutines,
+  loadRoutine,
+  openRoutineRun,
   removeRoutine,
+  runRoutine,
+  saveRoutine,
+  scheduleWords,
   setRoutineActive
 } from './routines'
-import type { RoutinesBackend } from './routines'
+import type { RoutineDetails, RoutineDraft, RoutinesBackend } from './routines'
 import { useRoster } from './store'
 import type { Bot, Room, RosterSnapshot } from './types'
 
@@ -70,6 +78,14 @@ export interface McpToolsBackend {
   roomMessages: (roomId: string) => Promise<RoomMessage[]>
   /** Token and request totals over the last `days`, summed over every bot. */
   usage: (days: number) => Promise<UsageTotals>
+}
+
+/** A bot's own chat, as much of it as the tools use. The roster has no chat: the app adds it. */
+export interface BotChatBackend {
+  /** Posts a message in the bot's chat as the user. */
+  sendBotMessage: (profile: string, text: string) => Promise<void>
+  /** The bot's newest finished replies as text, oldest first. */
+  botReplies: (profile: string, limit: number) => Promise<string[]>
 }
 
 /** A message in a room: the user's (`memberId` null) or a member's. */
@@ -125,20 +141,12 @@ export class ApprovalRefusedError extends RosterError {
   }
 }
 
-// The tools neither register MCP servers nor open a routine's runs or details.
+// The tools neither register MCP servers nor seat bots at rooms.
 type ToolsBackend = Omit<
   RosterBackend,
-  | 'listMcpServers'
-  | 'addMcpServer'
-  | 'removeMcpServer'
-  | 'reloadMcp'
-  | 'seatableProfiles'
-  | 'loadRoutine'
-  | 'updateRoutine'
-  | 'listRoutineRuns'
-  | 'lastRunReply'
-  | 'runRoutine'
->
+  'listMcpServers' | 'addMcpServer' | 'removeMcpServer' | 'reloadMcp' | 'seatableProfiles'
+> &
+  BotChatBackend
 
 // How many messages read_room_history returns when the agent does not say.
 const DEFAULT_HISTORY = 50
@@ -351,6 +359,15 @@ function toolsFor(
         else if (!hidden && bot.meta.hidden) await actions.hide(bot)
         return { profile, hidden }
       }),
+    send_bot_message: async ({ profile, text }) => {
+      botOf(await fresh(), profile)
+      await backend.sendBotMessage(profile, text)
+      return { profile, sent: true }
+    },
+    read_bot_replies: async ({ profile, limit }) => {
+      botOf(await fresh(), profile)
+      return { replies: await backend.botReplies(profile, limit ?? DEFAULT_HISTORY) }
+    },
     create_room: ({ name, members }) =>
       change(async (snapshot) => ({
         roomId: await createRoom(backend, {
@@ -390,6 +407,48 @@ function toolsFor(
       })
       return { deleted: roomId }
     },
+    ...routineTools(backend, fresh, ask),
+    // The backend's report may carry more (the Usage page's days): an agent gets the totals only.
+    read_usage: async ({ days }) => {
+      const { total, providers, models, unread } = await backend.usage(days)
+      return { days, total, providers, models, unread }
+    },
+    show_ui: async ({ messages }) => {
+      const profile = caller()
+      if (!profile) throw new ShowUiNoCallerError()
+      const parsed = parseA2uiSurface({ messages })
+      if (!parsed.ok) throw new RosterError('mcp.showUiInvalid', parsed.reason)
+      if (!(await showUi.show(profile, parsed.surface))) throw new ShowUiNotOwnChatError()
+      return {
+        shown: true,
+        note: "The interface is visible. The user's click or form values arrive as their next chat message."
+      }
+    },
+    ...memoryTools(backend, fresh, ask)
+  }
+}
+
+// How long run_routine waits for the engine to refuse the run or end it.
+const RUN_START_WAIT_MS = 3_000
+
+type RoutineToolName =
+  | 'list_routines'
+  | 'add_routine'
+  | 'set_routine_active'
+  | 'delete_routine'
+  | 'read_routine'
+  | 'update_routine'
+  | 'run_routine'
+  | 'list_routine_runs'
+  | 'read_routine_run'
+
+/** The tools over a bot's routines, the ones its Routines screen uses. */
+function routineTools(
+  backend: ToolsBackend,
+  fresh: () => Promise<RosterSnapshot>,
+  ask: (tool: McpToolName, action: string) => Promise<void>
+): { [T in RoutineToolName]: Run<T> } {
+  return {
     list_routines: async ({ profile }) => {
       botOf(await fresh(), profile)
       return { routines: await listRoutines(backend, profile) }
@@ -423,23 +482,75 @@ function toolsFor(
       await removeRoutine(backend, profile, routineId)
       return { deleted: routineId }
     },
-    // The backend's report may carry more (the Usage page's days): an agent gets the totals only.
-    read_usage: async ({ days }) => {
-      const { total, providers, models, unread } = await backend.usage(days)
-      return { days, total, providers, models, unread }
+    read_routine: async ({ profile, routineId }) => {
+      botOf(await fresh(), profile)
+      await routineOf(backend, profile, routineId)
+      return routineView(await loadRoutine(backend, profile, routineId))
     },
-    show_ui: async ({ messages }) => {
-      const profile = caller()
-      if (!profile) throw new ShowUiNoCallerError()
-      const parsed = parseA2uiSurface({ messages })
-      if (!parsed.ok) throw new RosterError('mcp.showUiInvalid', parsed.reason)
-      if (!(await showUi.show(profile, parsed.surface))) throw new ShowUiNotOwnChatError()
+    update_routine: async ({ profile, routineId, name, instruction, schedule, postsToChat }) => {
+      const bot = botOf(await fresh(), profile)
+      await routineOf(backend, profile, routineId)
+      const loaded = await loadRoutine(backend, profile, routineId)
+      const after: RoutineDraft = {
+        name: name ?? loaded.draft.name,
+        instruction: instruction ?? loaded.draft.instruction,
+        // A part the agent left out stays as the routine has it, not as a new routine starts.
+        schedule: { ...loaded.draft.schedule, ...schedule },
+        postsToChat: postsToChat ?? loaded.draft.postsToChat
+      }
+      // The whole routine as it will be: the user allows what the bot then does on its own.
+      await ask(
+        'update_routine',
+        say('mcp.updateRoutine', {
+          name: botTitle(bot),
+          routine: loaded.draft.name,
+          newName: after.name,
+          schedule: scheduleWords((key) => t(key, 'en'), composeSchedule(after.schedule)),
+          posts: t(after.postsToChat ? 'mcp.routinePosts' : 'mcp.routineQuiet', 'en'),
+          instruction: after.instruction
+        })
+      )
+      await saveRoutine(backend, profile, { id: routineId, before: loaded.draft, after })
+      return routineView(await loadRoutine(backend, profile, routineId))
+    },
+    run_routine: async ({ profile, routineId }) => {
+      const bot = botOf(await fresh(), profile)
+      const routine = await routineOf(backend, profile, routineId)
+      await ask(
+        'run_routine',
+        say('mcp.runRoutine', { name: botTitle(bot), routine: routine.name })
+      )
+      // A run can outlast the call, so the tool waits only for a start the engine refuses. The
+      // race handles a run that fails later; its runs list then says how it ended.
+      const state = await Promise.race([
+        runRoutine(backend, profile, routineId).then(() => 'finished' as const),
+        sleep(RUN_START_WAIT_MS).then(() => 'running' as const)
+      ])
+      return { routineId, state }
+    },
+    list_routine_runs: async ({ profile, routineId }) => {
+      botOf(await fresh(), profile)
+      await routineOf(backend, profile, routineId)
+      const runs = await listRoutineRuns(backend, profile, routineId)
       return {
-        shown: true,
-        note: "The interface is visible. The user's click or form values arrive as their next chat message."
+        runs: runs.map((run) => ({
+          id: run.id,
+          startedAt: run.startedAt,
+          state: run.state,
+          reason: run.reason
+        }))
       }
     },
-    ...memoryTools(backend, fresh, ask)
+    read_routine_run: async ({ profile, routineId, runId }) => {
+      botOf(await fresh(), profile)
+      await routineOf(backend, profile, routineId)
+      const run = (await listRoutineRuns(backend, profile, routineId)).find(
+        (item) => item.id === runId
+      )
+      if (!run) throw new RosterError('mcp.errorRunGone', runId)
+      const { output, error } = await openRoutineRun(backend, profile, run)
+      return { runId, output, error }
+    }
   }
 }
 
@@ -611,6 +722,21 @@ async function routineOf(
   const routine = (await listRoutines(backend, profile)).find((item) => item.id === routineId)
   if (!routine) throw new RosterError('mcp.errorRoutineGone', routineId)
   return routine
+}
+
+function routineView(details: RoutineDetails): unknown {
+  return {
+    routineId: details.id,
+    name: details.draft.name,
+    instruction: details.draft.instruction,
+    schedule: details.draft.schedule,
+    postsToChat: details.draft.postsToChat,
+    active: details.active,
+    nextRunAt: details.nextRunAt,
+    lastRunAt: details.lastRunAt,
+    lastStatus: details.lastStatus,
+    lastError: details.lastError
+  }
 }
 
 async function memoryOf(backend: MemoryBackend, profile: string, id: string): Promise<Memory> {

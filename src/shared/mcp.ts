@@ -193,6 +193,28 @@ export const MCP_TOOLS = {
       'Hide a bot from the roster, or show it again. A hidden bot keeps everything it has.',
     args: z.object({ profile, hidden: z.boolean() })
   },
+  send_bot_message: {
+    description:
+      'Post a message in a bot\u2019s chat as the user, only when the user asks for it. While the bot is answering, the message waits for that answer to end. Never send to your own chat: the message starts another turn of yours after this one, which can loop. read_bot_replies shows the replies once the bot has finished them.',
+    args: z.object({
+      profile,
+      text: z.string().trim().min(1).max(MCP_TEXT_MAX)
+    })
+  },
+  read_bot_replies: {
+    description:
+      'Read a bot\u2019s newest finished replies as text, oldest first. A reply shows only after the bot has finished it.',
+    args: z.object({
+      profile,
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(200)
+        .optional()
+        .describe('How many replies; 50 when absent')
+    })
+  },
   create_room: {
     description: 'Create a group room with two to six bots.',
     args: z.object({
@@ -263,6 +285,50 @@ export const MCP_TOOLS = {
     description: 'Delete a routine. Asks the user in Talyx first.',
     args: z.object({ profile, routineId: z.string().min(1) }),
     destructive: true
+  },
+  read_routine: {
+    description:
+      'Read one routine in full: its instruction, its schedule, when it runs next and how its last run ended.',
+    args: z.object({ profile, routineId: z.string().min(1) })
+  },
+  update_routine: {
+    description:
+      'Change a routine’s name, instruction, schedule, or whether it posts to chat. Give at least one of them; only the fields given change, and a schedule part left out stays as it is. Asks the user in Talyx first.',
+    args: z
+      .object({
+        profile,
+        routineId: z.string().min(1),
+        name: z.string().trim().min(1).optional(),
+        instruction: z.string().trim().min(1).optional(),
+        schedule: schedule.optional(),
+        postsToChat: z.boolean().optional()
+      })
+      .refine(
+        (args) =>
+          args.name !== undefined ||
+          args.instruction !== undefined ||
+          args.schedule !== undefined ||
+          args.postsToChat !== undefined,
+        { message: 'Give at least one field to change besides profile and routineId' }
+      )
+  },
+  run_routine: {
+    description:
+      'Run a routine now. Asks the user in Talyx first, because a run uses the bot’s model. Answers `finished` when the run ended within a few seconds, else `running`: list_routine_runs then shows how it ended.',
+    args: z.object({ profile, routineId: z.string().min(1) })
+  },
+  list_routine_runs: {
+    description: 'List the most recent runs of a routine, newest first.',
+    args: z.object({ profile, routineId: z.string().min(1) })
+  },
+  read_routine_run: {
+    description:
+      'Read what one routine run produced: its output and any error. Only the runs list_routine_runs shows can be read.',
+    args: z.object({
+      profile,
+      routineId: z.string().min(1),
+      runId: z.string().min(1)
+    })
   },
   read_usage: {
     description:

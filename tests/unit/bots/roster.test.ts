@@ -156,6 +156,21 @@ describe('roster previews', () => {
     expect(botPreview(bot('a', { description: 'Analyst' }), english)).toBe('Analyst')
     expect(botPreview(bot('a'), english)).toBe('')
   })
+
+  it("should show a message another bot delivered as its words, without the engine's wrapper", () => {
+    const delivered = { preview: 'Message from 🤖 manager (@manager): Check cash' }
+    expect(botPreview({ ...bot('a'), canonical_session: delivered }, english)).toBe('Check cash')
+  })
+
+  // The engine cuts a preview at 60 characters and ends it with three dots.
+  it.each([
+    ['inside the sender', 'Message from 🤖 Agro Ops Chief Financial Officer (@agro-ops-c...'],
+    ['before the words begin', 'Message from 🤖 Agro Ops Finance Lead (@agro-ops-finance): ...']
+  ])("should fall back to the bot's description when the cut is %s", (_, preview) => {
+    const cut = { ...bot('a', { description: 'Analyst' }), last_session: { preview } }
+    expect(botPreview(cut, english)).toBe('Analyst')
+  })
+
   it.each([
     [
       'Your request was not processed. Send it again if you still want me to carry it o...',

@@ -76,6 +76,22 @@ describe('bot chat', () => {
       })
     })
 
+    it('should read as many replies as asked for, past your own messages between them', async () => {
+      engine = chatDouble({
+        [MANAGER]: {
+          sessionId: 'manager-chat',
+          messages: Array.from({ length: 12 }, (_, index) => ({
+            id: index + 1,
+            role: index % 2 ? 'assistant' : 'user',
+            content: index % 2 ? `Reply ${(index + 1) / 2}` : 'Next'
+          }))
+        }
+      })
+      actions = chatActions(engine.backend)
+
+      expect(await actions.recent(MANAGER, 3)).toEqual(['Reply 4', 'Reply 5', 'Reply 6'])
+    })
+
     it('should have no replies, and create no chat, for a bot never chatted with', async () => {
       expect(await actions.recent(WORKER, 40)).toEqual([])
       expect(methods()).not.toContain('session.create')

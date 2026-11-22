@@ -1,3 +1,4 @@
+import type { TranslationKey } from '@shared/lib/i18n'
 import { CLOCK_DIGITS, HOURS_PER_DAY, MINUTES_PER_HOUR } from '@shared/lib/time'
 
 /** A scheduled job in the bot's own cron store; the engine runs it with the app closed. */
@@ -173,6 +174,30 @@ export function scheduleDraft(schedule: string): ScheduleDraft {
     weekday: read.weekday ?? DEFAULT_SCHEDULE.weekday,
     hours: read.hours ?? DEFAULT_SCHEDULE.hours,
     custom: read.kind === 'custom' ? schedule : ''
+  }
+}
+
+/** A schedule in the app's words ("Daily 08:30"); one the form cannot show stays its own line. */
+export function scheduleWords(t: (key: TranslationKey) => string, schedule: string): string {
+  const read = describeSchedule(schedule)
+  const time = read.time ?? ''
+  switch (read.kind) {
+    case 'daily':
+      return t('routines.daily').replace('{time}', time)
+    case 'weekdays':
+      return t('routines.weekdays').replace('{time}', time)
+    case 'weekly':
+      return t('routines.weekly')
+        .replace('{day}', weekdayName(read.weekday ?? 0))
+        .replace('{time}', time)
+    case 'hours':
+      return read.hours === 1
+        ? t('routines.everyHour')
+        : t('routines.everyHours').replace('{hours}', String(read.hours))
+    case 'custom':
+      return read.minutes
+        ? t('routines.everyMinutes').replace('{minutes}', String(read.minutes))
+        : schedule
   }
 }
 

@@ -18,6 +18,8 @@ const MAX_REREADS = 2
 // How long a show_ui call waits for its own tool to show as under way in the bot's chat.
 const OWN_CALL_WAIT_MS = 1_500
 const OWN_CALL_STEP_MS = 100
+// How much wider each read for a bot's newest replies is than the one before it.
+const RECENT_WIDEN = 4
 
 /** A transcript image the engine no longer has on disk. */
 export class MediaGoneError extends Error {
@@ -412,10 +414,15 @@ export function chatActions(backend: ChatBackend): ChatActions {
     recent: async (profile, limit) => {
       const sessionId = sessionOf(profile) ?? (await backend.findChat(profile))
       if (!sessionId) return []
-      const messages = await backend.newestMessages(profile, sessionId, limit)
-      return fromHistory(sessionId, messages, false).items.flatMap((item) =>
-        item.kind === 'bot' ? [item.text] : []
-      )
+      // Replies are only some of a chat's stored messages (yours and tool rows are the rest), so
+      // the read widens until it holds `limit` replies or the engine has no more to give.
+      for (let span = limit; ; span *= RECENT_WIDEN) {
+        const messages = await backend.newestMessages(profile, sessionId, span)
+        const replies = fromHistory(sessionId, messages, false).items.flatMap((item) =>
+          item.kind === 'bot' ? [item.text] : []
+        )
+        if (replies.length >= limit || messages.length < span) return replies.slice(-limit)
+      }
     },
 
     rebuild,

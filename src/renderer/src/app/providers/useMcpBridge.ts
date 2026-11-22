@@ -1,18 +1,33 @@
 import { useEffect, useRef } from 'react'
 import { useApprovals } from '@features/bots/store'
 import type { RosterBackend } from '@features/bots/data'
+import type { ChatActions } from '@features/chat/chat'
 import { mcpTools } from '@features/bots/mcp'
-import type { ShowUiPort } from '@features/bots/mcp'
 import { nameManager } from '@features/bots/details'
+import type { BotChatBackend, ShowUiPort } from '@features/bots/mcp'
+import { sendToBot } from '@app/providers/moduleChat'
 import { registerMcpServer } from '@features/bots/mcpRegistration'
 import { botChatId } from '@features/bots/roster'
 import type { Bot } from '@features/bots/types'
 import { useRoster } from '@features/bots/store'
 import { mcpApi } from '@shared/api/ipc'
 import { t } from '@shared/lib/i18n'
+import { AppError } from '@shared/lib/problem'
 import { reportError } from '@shared/lib/report'
 import type { ChatActions } from '@features/chat/chat'
 import type { McpAnswer } from '@contract/mcp'
+
+/** One bot's chat for the tools: a message goes as a module's page sends it. */
+export function botChatBackend(chat: ChatActions): BotChatBackend {
+  return {
+    sendBotMessage: async (profile, text) => {
+      const problem = await sendToBot(chat, profile, text)
+      // The chat words its problem for the composer ("back in the box"): an agent gets the cause.
+      if (problem) throw new AppError('mcp.errorSend', problem.detail)
+    },
+    botReplies: chat.recent
+  }
+}
 
 /**
  * Runs the tool calls agents send Talyx's MCP server, and adds the server to every bot's profile,
@@ -28,7 +43,10 @@ export function useMcpBridge(backend: RosterBackend | null, chat: ChatActions | 
     const showUi: ShowUiPort = {
       show: async (profile, surface) => (chat ? chat.showSurface(profile, surface) : false)
     }
-    run.current = backend ? mcpTools(backend, useApprovals.getState().ask, showUi) : null
+    run.current =
+      backend && chat
+        ? mcpTools({ ...backend, ...botChatBackend(chat) }, useApprovals.getState().ask, showUi)
+        : null
   }, [backend, chat])
   useEffect(() => {
     const stop = mcpApi.onCall(({ id, tool, args, caller }) => {
