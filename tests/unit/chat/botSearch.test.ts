@@ -112,7 +112,8 @@ describe("searching a bot's messages", () => {
       label: 'Reading',
       seconds: 1,
       done: true,
-      target: null
+      target: null,
+      showUi: null
     }
     const turn = [
       said('u1', 'Check the budget.'),

@@ -14,9 +14,11 @@ export type SurfaceAnswer = {
 const UNANSWERED: SurfaceAnswer = { answered: false, pickedButtonId: null, values: null }
 
 /**
- * Whether this surface has its answer: a user message after it in the chat, or one of its own
- * buttons' messages still waiting to go (`waiting`, the texts queued behind the bot's answer). The
- * state lives in the chat alone, so a send that fails or is taken back frees the card again.
+ * Whether this surface has its answer. One card asks at a time: a user message after it settles
+ * it, and so does a later card that has buttons of its own, so an answer always belongs to the
+ * card just before it. `waiting` are the texts of your messages still queued behind the bot's
+ * answer: one of this card's buttons among them counts too. The state lives in the chat alone, so
+ * a send that fails or is taken back frees the card again.
  */
 export function surfaceAnswer(
   items: ChatItem[],
@@ -25,8 +27,13 @@ export function surfaceAnswer(
 ): SurfaceAnswer {
   const at = items.findIndex((item) => item.id === surface.id)
   if (at < 0) return UNANSWERED
-  const next = items.slice(at + 1).find((item) => item.kind === 'user')
-  if (next?.kind === 'user') return answerFrom(surface.surface, next.text) ?? TYPED_ANSWER
+  const after = items.slice(at + 1)
+  const userAt = after.findIndex((item) => item.kind === 'user')
+  const before = userAt < 0 ? after : after.slice(0, userAt)
+  if (before.some((item) => item.kind === 'surface' && buttonsOf(item.surface).length > 0))
+    return SETTLED
+  const next = after[userAt]
+  if (next?.kind === 'user') return answerFrom(surface.surface, next.text) ?? SETTLED
   for (const text of waiting) {
     const answer = answerFrom(surface.surface, text)
     if (answer) return answer
@@ -34,8 +41,8 @@ export function surfaceAnswer(
   return UNANSWERED
 }
 
-// An answer in the user's own words: the card is settled, no button of it was pressed.
-const TYPED_ANSWER: SurfaceAnswer = { answered: true, pickedButtonId: null, values: null }
+// Settled without one of its buttons: you answered in your own words, or a newer card took over.
+const SETTLED: SurfaceAnswer = { answered: true, pickedButtonId: null, values: null }
 
 /** The answer a message is when one of the surface's buttons sent it; null for any other text. */
 function answerFrom(surface: UiSurface, text: string): SurfaceAnswer | null {

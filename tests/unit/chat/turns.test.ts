@@ -26,7 +26,8 @@ const tool = (id: string, name = 'search_files', target: string | null = null): 
   label: name,
   seconds: null,
   done: true,
-  target
+  target,
+  showUi: null
 })
 
 const ids = (items: ChatItem[]): string[] => items.map((item) => item.id)

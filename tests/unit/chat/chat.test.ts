@@ -7,6 +7,7 @@ import { handleEvent } from '../../../src/renderer/src/features/chat/events'
 import { addPrompt } from '../../../src/renderer/src/features/chat/transcript'
 import { turnOutcome, turnView } from '../../../src/renderer/src/features/chat/turns'
 import type { TurnOutcome } from '../../../src/renderer/src/features/chat/turns'
+import { MCP_UI_CATALOG } from '../../../src/shared/a2uiSurface'
 import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/shared'
 import type { SessionMessage } from '../../../src/renderer/src/shared/engine/types'
 import { KEPT_ENDPOINT_PROFILE, chatDouble } from './chatDouble'
@@ -1267,21 +1268,84 @@ describe('bot chat', () => {
       components: [{ id: 'root', component: 'Text' as const, text: 'Hi' }],
       dataModel: {}
     }
+    // The same interface as the bot sends it: what the engine's tool start carries.
+    const sentMessages = [
+      { version: '1.0', createSurface: { surfaceId: 'ui', catalogId: MCP_UI_CATALOG } },
+      {
+        version: '1.0',
+        updateComponents: {
+          surfaceId: 'ui',
+          components: [{ id: 'root', component: 'Text', text: 'Hi' }]
+        }
+      }
+    ]
 
     // The bot's own chat, mid-turn, with the call to show_ui under way as the engine reports it.
-    async function callingShowUi(run: ChatActions): Promise<void> {
+    async function calling(run: ChatActions, name: string, args: unknown): Promise<void> {
       await run.open(MANAGER, 'manager-chat')
-      handleEvent(run, {
-        type: 'tool.start',
-        session_id: 'manager-chat',
-        payload: { tool_id: 'tool-1', name: 'mcp__talyx__show_ui' }
-      } as GatewayEvent)
+      const frame = (type: string, payload: unknown): void =>
+        void handleEvent(run, { type, session_id: 'manager-chat', payload } as GatewayEvent)
+      frame('message.start', {})
+      frame('tool.start', { tool_id: 'tool-1', name, args })
     }
+    const callingShowUi = (run: ChatActions): Promise<void> =>
+      calling(run, 'mcp__talyx__show_ui', { messages: sentMessages })
+
+    it.each([
+      ['another tool', 'terminal', { command: 'ls' }],
+      [
+        "the engine's wrapper around another MCP tool",
+        'tool_call',
+        { calls: [{ name: 'mcp__talyx__list_roster', arguments: {} }] }
+      ],
+      [
+        'show_ui with another interface',
+        'mcp__talyx__show_ui',
+        {
+          messages: [
+            sentMessages[0],
+            {
+              version: '1.0',
+              updateComponents: {
+                surfaceId: 'ui',
+                components: [{ id: 'root', component: 'Text', text: 'Other' }]
+              }
+            }
+          ]
+        }
+      ]
+    ])('should refuse when the call under way is %s', async (_, name, args) => {
+      vi.useFakeTimers()
+      try {
+        await calling(actions, name, args)
+        const shown = actions.showSurface(MANAGER, surface)
+        await vi.runAllTimersAsync()
+        expect(await shown).toBe(false)
+        expect(chat(MANAGER).transcript?.items.some((item) => item.kind === 'surface')).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
 
     it("should show when the call is under way in the bot's own chat", async () => {
       await callingShowUi(actions)
       expect(await actions.showSurface(MANAGER, surface)).toBe(true)
       expect(chat(MANAGER).transcript?.items.some((item) => item.kind === 'surface')).toBe(true)
+    })
+
+    it('should refuse once the turn is over, though this window never saw the tool end', async () => {
+      vi.useFakeTimers()
+      try {
+        await callingShowUi(actions)
+        useChat.getState().update(MANAGER, {
+          transcript: { ...chat(MANAGER).transcript!, running: false }
+        })
+        const shown = actions.showSurface(MANAGER, surface)
+        await vi.runAllTimersAsync()
+        expect(await shown).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('should refuse a call the own chat is not making, though it is answering', async () => {

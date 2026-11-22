@@ -24,6 +24,8 @@ export type ChatItem =
       done: boolean
       // The profile a `message_agent` call asks; null for every other tool.
       target: string | null
+      // The interface a `show_ui` call carries, as text to compare with; null for every other tool.
+      showUi: string | null
     }
   // A line the engine wrote into the chat (a finished job, a model switch), not a message.
   | { kind: 'notice'; id: string; text: string }

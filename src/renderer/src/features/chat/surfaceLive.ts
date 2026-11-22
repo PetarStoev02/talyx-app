@@ -1,3 +1,4 @@
+import { parseA2uiMessages, showUiMessagesFromTool } from '@contract/a2uiSurface'
 import type { UiSurface } from '@contract/a2uiSurface'
 import type { ChatItem } from './types'
 
@@ -7,8 +8,16 @@ export function liveSurfaceId(sourceId: string): string {
   return `${LIVE_SURFACE_PREFIX}${sourceId}`
 }
 
-function surfaceContentKey(surface: UiSurface): string {
+/** A surface as text, so two copies of one interface compare equal. */
+export function surfaceContentKey(surface: UiSurface): string {
   return JSON.stringify(surface)
+}
+
+/** The interface a tool call carries when it is a show_ui call Talyx would draw; null otherwise. */
+export function showUiContent(name: string, args: Record<string, unknown>): string | null {
+  const messages = showUiMessagesFromTool(name, args)
+  const parsed = messages ? parseA2uiMessages(messages) : null
+  return parsed?.ok ? surfaceContentKey(parsed.surface) : null
 }
 
 /** Drop live surfaces once an equal stored surface is in history. */

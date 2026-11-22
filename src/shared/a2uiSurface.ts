@@ -486,14 +486,6 @@ export function showUiMessagesFromTool(
   return Array.isArray(messages) ? messages : null
 }
 
-/**
- * True for a tool call under way that may be Talyx's show_ui: the tool by its own name, or the
- * engine's wrapper around a call to an MCP tool.
- */
-export function mayBeShowUiCall(name: string): boolean {
-  return isShowUiToolName(name) || name === ENGINE_TOOL_CALL
-}
-
 export function isShowUiToolName(name: string): boolean {
   return name === 'show_ui' || name === `mcp__${MCP_SERVER_NAME}__show_ui`
 }

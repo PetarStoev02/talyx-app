@@ -60,7 +60,8 @@ describe('chat transcript', () => {
           label: 'message_agent',
           seconds: null,
           done: true,
-          target: 'cfo'
+          target: 'cfo',
+          showUi: null
         },
         {
           kind: 'bot',
@@ -352,7 +353,8 @@ describe('chat transcript', () => {
           label: 'terminal',
           seconds: 2,
           done: true,
-          target: null
+          target: null,
+          showUi: null
         }
       ])
     })

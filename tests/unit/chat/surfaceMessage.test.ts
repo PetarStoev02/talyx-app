@@ -150,4 +150,46 @@ describe('surfaceAnswer', () => {
     // A message of yours that waits but is not this card's does not settle it.
     expect(surfaceAnswer([form], form, ['Something else']).answered).toBe(false)
   })
+
+  it('should give an answer to the card just before it when two cards share a button label', () => {
+    const card = (id: string): ChatItem => ({
+      kind: 'surface',
+      id,
+      surface: {
+        surfaceId: id,
+        dataModel: {},
+        components: [
+          { id: 'root', component: 'Column', children: ['go'] },
+          { id: 'label', component: 'Text', text: 'Approve' },
+          { id: 'go', component: 'Button', child: 'label', action: { event: { name: 'ok' } } }
+        ]
+      }
+    })
+    const [first, second] = [card('first'), card('second')]
+    // Waiting to go: the newer card has it, the older one is only settled.
+    expect(surfaceAnswer([first, second], second, ['Approve']).pickedButtonId).toBe('go')
+    expect(surfaceAnswer([first, second], first, ['Approve'])).toEqual({
+      answered: true,
+      pickedButtonId: null,
+      values: null
+    })
+    // Sent: the same holds once the message is in the chat.
+    const sent: ChatItem = { kind: 'user', id: 'u1', text: 'Approve', images: [] }
+    expect(surfaceAnswer([first, second, sent], first, []).pickedButtonId).toBeNull()
+    expect(surfaceAnswer([first, second, sent], second, []).pickedButtonId).toBe('go')
+  })
+
+  it('should leave a form live when a card without buttons follows it', () => {
+    const form: ChatItem = { kind: 'surface', id: 'f1', surface: formSurface }
+    const chartOnly: ChatItem = {
+      kind: 'surface',
+      id: 'c1',
+      surface: {
+        surfaceId: 'c1',
+        dataModel: {},
+        components: [{ id: 'root', component: 'Text', text: 'Numbers' }]
+      }
+    }
+    expect(surfaceAnswer([form, chartOnly], form, []).answered).toBe(false)
+  })
 })

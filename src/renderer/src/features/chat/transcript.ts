@@ -2,6 +2,7 @@ import { parseA2uiMessages, showUiMessagesFromTool } from '@contract/a2uiSurface
 import type { GatewayEvent } from '@shared/engine/shared'
 import type { SessionMessage } from '@shared/engine/types'
 import { messageText } from '@shared/lib/messageText'
+import { showUiContent } from './surfaceLive'
 import type { ChatItem, ChatPrompt, FailedTurn, StreamCursor, Transcript } from './types'
 
 // A message another bot delivered: `Message from 🤖 <name> (@<handle>): <text>`.
@@ -327,7 +328,8 @@ function toolItem(
     name,
     label: typeof label === 'string' && label ? label : name,
     seconds: null,
-    target: name === MESSAGE_AGENT && typeof args.target === 'string' ? args.target : null
+    target: name === MESSAGE_AGENT && typeof args.target === 'string' ? args.target : null,
+    showUi: showUiContent(name, args)
   }
 }
 
