@@ -339,6 +339,121 @@ describe('MCP tools', () => {
     })
   })
 
+  describe('hide_bot', () => {
+    it('should hide a shown bot', async () => {
+      expect(await ok('hide_bot', { profile: 'analyst', hidden: true })).toEqual({
+        profile: 'analyst',
+        hidden: true
+      })
+      expect(metaOf('analyst').hidden).toBe(true)
+    })
+
+    it('should change nothing when the bot already matches the state asked for', async () => {
+      await ok('hide_bot', { profile: 'analyst', hidden: true })
+      engine.configureCalls.length = 0
+      expect(await ok('hide_bot', { profile: 'analyst', hidden: true })).toEqual({
+        profile: 'analyst',
+        hidden: true
+      })
+      expect(engine.configureCalls).toEqual([])
+    })
+
+    it('should show a hidden bot again', async () => {
+      await ok('hide_bot', { profile: 'analyst', hidden: true })
+      expect(await ok('hide_bot', { profile: 'analyst', hidden: false })).toEqual({
+        profile: 'analyst',
+        hidden: false
+      })
+      expect(metaOf('analyst').hidden).toBeFalsy()
+    })
+
+    it('should never hide Talyx’s own bot', async () => {
+      const answer = await call('hide_bot', { profile: 'default', hidden: true })
+      expect(answer).toEqual({
+        ok: false,
+        text: 'Talyx’s own bot cannot be hidden or deleted.'
+      })
+      expect(engine.configureCalls).toEqual([])
+    })
+
+    it('should leave Talyx’s own bot shown when asked to show it', async () => {
+      expect(await ok('hide_bot', { profile: 'default', hidden: false })).toEqual({
+        profile: 'default',
+        hidden: false
+      })
+      expect(engine.configureCalls).toEqual([])
+    })
+
+    it('should refuse a bot that does not exist', async () => {
+      const answer = await call('hide_bot', { profile: 'ghost', hidden: true })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toContain('ghost')
+    })
+  })
+
+  describe('read_usage', () => {
+    const usageReport = {
+      total: { tokens: 12, requests: 3 },
+      providers: [{ id: 'p1', name: 'Custom', usage: { tokens: 12, requests: 3 } }],
+      models: [
+        {
+          model: 'm',
+          providerId: 'p1',
+          provider: 'Custom',
+          tokens: 12,
+          requests: 3
+        }
+      ],
+      unread: ['gone'],
+      days: null,
+      daysProblem: new Error('days'),
+      daysUnread: ['quiet']
+    }
+
+    beforeEach(() => {
+      engine.usage = async () => usageReport
+    })
+
+    it('should return only days, total, providers, models and unread', async () => {
+      const result = await ok('read_usage', { days: 7 })
+      expect(result).toEqual({
+        days: 7,
+        total: usageReport.total,
+        providers: usageReport.providers,
+        models: usageReport.models,
+        unread: usageReport.unread
+      })
+      expect(Object.keys(result)).toEqual(['days', 'total', 'providers', 'models', 'unread'])
+    })
+
+    it('should say why when usage cannot be read', async () => {
+      engine.usage = async () => {
+        throw new Error('The usage store is locked')
+      }
+      const answer = await call('read_usage', { days: 7 })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toContain('The usage store is locked')
+    })
+
+    it('should reject days of 0 as invalid arguments', async () => {
+      const answer = await call('read_usage', { days: 0 })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toMatch(/^Invalid arguments/)
+    })
+
+    it('should reject days of 91 as invalid arguments', async () => {
+      const answer = await call('read_usage', { days: 91 })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toMatch(/^Invalid arguments/)
+    })
+
+    it('should reject a non-integer days value as invalid arguments', async () => {
+      const answer = await call('read_usage', { days: 2.5 })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toMatch(/^Invalid arguments/)
+    })
+  })
+
   describe('delete_bot', () => {
     it('should delete the bot once the user allows it', async () => {
       expect(await ok('delete_bot', { profile: 'analyst' })).toEqual({ deleted: 'analyst' })

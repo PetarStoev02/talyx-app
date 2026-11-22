@@ -107,6 +107,9 @@ export async function connectRenderer(
     avatarPng: async () => TINY_PNG,
     setRoomMembers: async () => {
       throw new Error('Smoke: rooms are not part of the core flows')
+    },
+    usage: async () => {
+      throw new Error('Smoke: usage is not part of the core flows')
     }
   })
   const providers = engineProvidersBackend(engineAccess, {

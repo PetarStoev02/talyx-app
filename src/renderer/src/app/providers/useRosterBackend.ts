@@ -7,6 +7,8 @@ import { useRoster } from '@features/bots/store'
 import { engineAccess } from '@app/engine/access'
 import { engineRoomBackend } from '@app/engine/room'
 import { engineRosterBackend } from '@app/engine/roster'
+import { usageOver } from '@features/providers/usage'
+import { providersBackend } from './useProvidersBackend'
 import { useEngine } from '@features/setup/store'
 
 // The open room's view reads and acts on the room through `room`.
@@ -49,6 +51,7 @@ export function rosterBackendFor(keys: {
 }): RosterAndRooms | null {
   const { botMetaKey, botGroupsMetaKey } = keys
   if (!botMetaKey || !botGroupsMetaKey) return null
+  const providers = providersBackend()
   const roster = engineRosterBackend(engineAccess, {
     botMetaKey,
     botGroupsMetaKey,
@@ -58,7 +61,8 @@ export function rosterBackendFor(keys: {
     avatarPng: blockPng,
     setRoomMembers: async (roomId, members) => {
       await window.api.setRoomMembers({ roomId, members })
-    }
+    },
+    usage: (days) => usageOver(providers, days)
   })
   return { ...roster, room: engineRoomBackend(engineAccess) }
 }
