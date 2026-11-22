@@ -156,6 +156,16 @@ describe('roster previews', () => {
     expect(botPreview(bot('a', { description: 'Analyst' }), english)).toBe('Analyst')
     expect(botPreview(bot('a'), english)).toBe('')
   })
+
+  it("should show a message another bot delivered as its words, without the engine's wrapper", () => {
+    const delivered = { preview: 'Message from 🤖 manager (@manager): Check cash' }
+    expect(botPreview({ ...bot('a'), canonical_session: delivered }, english)).toBe('Check cash')
+    // The engine cut the preview before the words began: the bot's description stands in.
+    const cut = { preview: 'Message from 🤖 manager (@manager):' }
+    expect(
+      botPreview({ ...bot('a', { description: 'Analyst' }), last_session: cut }, english)
+    ).toBe('Analyst')
+  })
   it.each([
     [
       'Your request was not processed. Send it again if you still want me to carry it o...',
