@@ -1,4 +1,6 @@
+import { mayBeShowUiCall } from '@contract/a2uiSurface'
 import type { UiSurface } from '@contract/a2uiSurface'
+import { sleep } from '@shared/lib/timers'
 import type { SessionMessage } from '@shared/engine/types'
 import type { ModelOptionProvider, SessionLiveInfo } from '@shared/engine/gateway-events'
 import type { GatewayEvent } from '@shared/engine/shared'
@@ -14,6 +16,9 @@ import type { ApprovalChoice, ChatItem, ChatPrompt, Transcript } from './types'
 const HISTORY_LIMIT = 120
 // Past this many second reads a busy bot's chat settles, at worst showing a reply twice.
 const MAX_REREADS = 2
+// How long a show_ui call waits for its own tool to show as under way in the bot's chat.
+const OWN_CALL_WAIT_MS = 1_500
+const OWN_CALL_STEP_MS = 100
 
 /** A transcript image the engine no longer has on disk. */
 export class MediaGoneError extends Error {
@@ -250,6 +255,18 @@ export function chatActions(backend: ChatBackend): ChatActions {
       picked.catch(() => undefined)
     )
     return picked
+  }
+
+  // The tool's start reaches this window on the socket and the call itself through Talyx's MCP
+  // server, in no fixed order: a call that arrives first waits a moment for its tool to show.
+  async function ownCallUnderWay(profile: string): Promise<boolean> {
+    for (let waited = 0; waited <= OWN_CALL_WAIT_MS; waited += OWN_CALL_STEP_MS) {
+      const items = chatOf(profile)?.transcript?.items ?? []
+      if (items.some((item) => item.kind === 'tool' && !item.done && mayBeShowUiCall(item.name)))
+        return true
+      await sleep(OWN_CALL_STEP_MS)
+    }
+    return false
   }
 
   const rebuild = guarded('chat.errorLoad', async (profile) => {
@@ -496,16 +513,17 @@ export function chatActions(backend: ChatBackend): ChatActions {
       const chat = chatOf(profile)
       const sessionId = chat?.sessionId ?? (await backend.findChat(profile))
       if (!sessionId) return false
-      const transcript = chat?.transcript ?? null
-      // ponytail: the MCP address names the bot, not the conversation, so a group room or routine
-      // run can still draw here when that bot's own chat is answering at the same moment; a
-      // conversation id from the engine would close that hole.
-      // The engine has the last word on whether the bot is answering in its own chat: this window
-      // may not have opened that chat, or may have missed the start of the turn.
-      if (!transcript?.running && !(await backend.resume(profile, sessionId)).running) return false
-      // A chat this window has not opened has nothing to draw on; its history holds the surface
-      // and shows it when the chat opens.
-      if (!transcript) return true
+      // A chat this window has not opened has nothing to draw on: its history holds the surface
+      // and shows it when the chat opens. Whether the bot is answering there is the engine's word.
+      if (!chat?.transcript) return (await backend.resume(profile, sessionId)).running
+      // The MCP address names the bot, not the conversation. The bot's own chat shows the call
+      // under way as a tool that has not ended, so a call from a group room or a routine run finds
+      // none here and is refused.
+      // ponytail: two conversations of one bot calling at the same instant still pass; a
+      // conversation id from the engine would tell them apart.
+      if (!(await ownCallUnderWay(profile))) return false
+      const transcript = chatOf(profile)?.transcript
+      if (!transcript) return false
       const id = liveSurfaceId(crypto.randomUUID())
       update(profile, {
         transcript: {

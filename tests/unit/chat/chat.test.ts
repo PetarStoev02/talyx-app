@@ -1,5 +1,5 @@
 import fc from 'fast-check'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MediaGoneError, chatActions } from '../../../src/renderer/src/features/chat/chat'
 import type { ChatActions, ChatBackend } from '../../../src/renderer/src/features/chat/chat'
 import { useChat } from '../../../src/renderer/src/features/chat/store'
@@ -1268,19 +1268,50 @@ describe('bot chat', () => {
       dataModel: {}
     }
 
-    it('should show when the open chat is running', async () => {
-      await actions.open(MANAGER, 'manager-chat')
-      const transcript = chat(MANAGER).transcript!
-      useChat.getState().update(MANAGER, { transcript: { ...transcript, running: true } })
+    // The bot's own chat, mid-turn, with the call to show_ui under way as the engine reports it.
+    async function callingShowUi(run: ChatActions): Promise<void> {
+      await run.open(MANAGER, 'manager-chat')
+      handleEvent(run, {
+        type: 'tool.start',
+        session_id: 'manager-chat',
+        payload: { tool_id: 'tool-1', name: 'mcp__talyx__show_ui' }
+      } as GatewayEvent)
+    }
+
+    it("should show when the call is under way in the bot's own chat", async () => {
+      await callingShowUi(actions)
       expect(await actions.showSurface(MANAGER, surface)).toBe(true)
       expect(chat(MANAGER).transcript?.items.some((item) => item.kind === 'surface')).toBe(true)
     })
 
-    it('should not show when the open chat is idle', async () => {
-      await actions.open(MANAGER, 'manager-chat')
-      const before = chat(MANAGER).transcript!.items.length
-      expect(await actions.showSurface(MANAGER, surface)).toBe(false)
-      expect(chat(MANAGER).transcript?.items.length).toBe(before)
+    it('should refuse a call the own chat is not making, though it is answering', async () => {
+      vi.useFakeTimers()
+      try {
+        await actions.open(MANAGER, 'manager-chat')
+        useChat.getState().update(MANAGER, {
+          transcript: { ...chat(MANAGER).transcript!, running: true }
+        })
+        const shown = actions.showSurface(MANAGER, surface)
+        await vi.runAllTimersAsync()
+        expect(await shown).toBe(false)
+        expect(chat(MANAGER).transcript?.items.some((item) => item.kind === 'surface')).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('should wait a moment for the tool to show when the call arrives first', async () => {
+      vi.useFakeTimers()
+      try {
+        await actions.open(MANAGER, 'manager-chat')
+        const shown = actions.showSurface(MANAGER, surface)
+        await vi.advanceTimersByTimeAsync(300)
+        await callingShowUi(actions)
+        await vi.runAllTimersAsync()
+        expect(await shown).toBe(true)
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('should ask the engine when this window has not opened the chat', async () => {
@@ -1301,23 +1332,6 @@ describe('bot chat', () => {
       expect(remote.calls.some((row) => row.method === 'session.resume')).toBe(true)
       // Nothing is drawn on a chat this window never loaded: opening it reads the history.
       expect(chat(MANAGER)).toBeUndefined()
-    })
-
-    it('should believe the engine over a chat that looks idle here', async () => {
-      const remote = chatDouble()
-      const live = chatActions({
-        ...remote.backend,
-        resume: async (profile, chatId) => ({
-          ...(await remote.backend.resume(profile, chatId)),
-          running: true
-        })
-      })
-      await live.open(MANAGER, 'manager-chat')
-      useChat.getState().update(MANAGER, {
-        transcript: { ...chat(MANAGER).transcript!, running: false }
-      })
-      expect(await live.showSurface(MANAGER, surface)).toBe(true)
-      expect(chat(MANAGER).transcript?.items.some((item) => item.kind === 'surface')).toBe(true)
     })
   })
 })

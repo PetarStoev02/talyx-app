@@ -407,7 +407,12 @@ function clickAmbiguity(components: UiComponent[], byId: Map<string, UiComponent
         return `Component "${component.id}": input labels must not contain a line break.`
       inputLabels.push(name)
       const seen = new Set<string>()
+      const values = new Set<string>()
       for (const option of component.options) {
+        // Two options with one value would both show as chosen, and the answer would name one.
+        if (values.has(option.value))
+          return `Component "${component.id}": two options share the value "${option.value}".`
+        values.add(option.value)
         if (lineBreak(option.label))
           return `Component "${component.id}": option labels must not contain a line break.`
         if (option.label.includes(', '))
@@ -462,6 +467,14 @@ export function showUiMessagesFromTool(
   const wrapped = unwrapToolCalls(args).find((call) => isShowUiToolName(call.name))?.arguments
   const messages = args.messages ?? wrapped?.messages
   return Array.isArray(messages) ? messages : null
+}
+
+/**
+ * True for a tool call under way that may be Talyx's show_ui: the tool by its own name, or the
+ * engine's wrapper around a call to an MCP tool.
+ */
+export function mayBeShowUiCall(name: string): boolean {
+  return isShowUiToolName(name) || name === ENGINE_TOOL_CALL
 }
 
 export function isShowUiToolName(name: string): boolean {

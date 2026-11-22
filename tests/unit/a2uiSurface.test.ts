@@ -259,6 +259,24 @@ describe('parseA2uiMessages', () => {
     if (!result.ok) expect(result.reason).toContain('Two inputs share')
   })
 
+  it('should refuse two options of one choice with the same value', () => {
+    const result = parseA2uiMessages(
+      components('x', [
+        {
+          id: 'root',
+          component: 'ChoicePicker',
+          options: [
+            { label: 'A', value: 'x' },
+            { label: 'B', value: 'x' }
+          ],
+          value: { '@path': '/pick' }
+        }
+      ])
+    )
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.reason).toContain('two options share the value "x"')
+  })
+
   it('should match only Talyx show_ui tool names', () => {
     expect(isShowUiToolName('show_ui')).toBe(true)
     expect(isShowUiToolName('mcp__talyx__show_ui')).toBe(true)
