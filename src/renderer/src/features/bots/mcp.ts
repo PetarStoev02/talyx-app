@@ -33,7 +33,7 @@ import type { Bot, Room, RosterSnapshot } from './types'
 
 type UsageCounts = { tokens: number; requests: number }
 
-/** Token and request totals an agent reads from usage, without the Usage page's extra fields. */
+/** Usage as an agent reads it: the totals, without the days the Usage page draws. */
 export interface UsageTotals {
   total: UsageCounts
   providers: { id: string; name: string | null; usage: UsageCounts | null }[]
@@ -380,9 +380,9 @@ function toolsFor(
       await removeRoutine(backend, profile, routineId)
       return { deleted: routineId }
     },
+    // The backend's report may carry more (the Usage page's days): an agent gets the totals only.
     read_usage: async ({ days }) => {
-      const report = await backend.usage(days)
-      const { total, providers, models, unread } = report
+      const { total, providers, models, unread } = await backend.usage(days)
       return { days, total, providers, models, unread }
     }
   }

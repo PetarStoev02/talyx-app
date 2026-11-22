@@ -108,12 +108,9 @@ export async function connectRenderer(
     setRoomMembers: async () => {
       throw new Error('Smoke: rooms are not part of the core flows')
     },
-    usage: async () => ({
-      total: { tokens: 0, requests: 0 },
-      providers: [],
-      models: [],
-      unread: []
-    })
+    usage: async () => {
+      throw new Error('Smoke: usage is not part of the core flows')
+    }
   })
   const providers = engineProvidersBackend(engineAccess, {
     removeEndpointModel: async () => undefined,

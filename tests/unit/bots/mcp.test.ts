@@ -403,7 +403,7 @@ describe('MCP tools', () => {
     }
 
     beforeEach(() => {
-      engine.usage = async () => ({ ...usageReport })
+      engine.usage = async () => usageReport
     })
 
     it('should return only days, total, providers, models and unread', async () => {

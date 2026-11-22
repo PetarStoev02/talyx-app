@@ -6,6 +6,7 @@ import type { EngineHttp } from '../../../src/renderer/src/shared/engine/http'
 import type { CustomEndpoint } from '../../../src/renderer/src/shared/engine/types'
 import type { ModelChoice } from '../../../src/renderer/src/features/bots/details'
 import type { Look } from '../../../src/renderer/src/features/bots/look'
+import type { UsageTotals } from '../../../src/renderer/src/features/bots/mcp'
 import type { Room } from '../../../src/renderer/src/features/bots/types'
 
 /** A socket request to the engine, as the double answers it. */
@@ -114,26 +115,8 @@ export interface EngineDouble {
   failAssetOnce: () => void
   // What groups.capabilities says the engine will seat; null when it does not say.
   seatable: string[] | null
-  /** When set, `read_usage` reads totals through the roster backend. */
-  usage?: (days: number) => Promise<{
-    total: { tokens: number; requests: number }
-    providers: {
-      id: string
-      name: string | null
-      usage: { tokens: number; requests: number } | null
-    }[]
-    models: {
-      model: string
-      providerId: string
-      provider: string | null
-      tokens: number
-      requests: number
-    }[]
-    unread: string[]
-    days?: null
-    daysProblem?: null
-    daysUnread?: string[]
-  }>
+  /** What `read_usage` reads; no usage unless a test sets one. */
+  usage?: (days: number) => Promise<UsageTotals>
 }
 
 export interface RoomLogRow {
@@ -651,13 +634,13 @@ export function backendFor(
       if (!room) throw new Error('Room not found')
       room.members = structuredClone(members)
     },
-    usage: async (days) => (engine.usage ?? emptyUsage)(days)
+    usage: (days) => (engine.usage ?? noUsage)(days)
   })
 }
 
-const emptyUsage = (): Promise<{
-  total: { tokens: number; requests: number }
-  providers: []
-  models: []
+const noUsage = async (): Promise<UsageTotals> => ({
+  total: { tokens: 0, requests: 0 },
+  providers: [],
+  models: [],
   unread: []
-}> => Promise.resolve({ total: { tokens: 0, requests: 0 }, providers: [], models: [], unread: [] })
+})

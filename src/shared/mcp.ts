@@ -11,11 +11,11 @@ export const MCP_DEFAULT_PORT = 47816
 export const MCP_PATH = '/mcp'
 /** How long main waits for the page to answer a call: the user may be deciding on an approval. */
 export const MCP_CALL_TIMEOUT_MS = 10 * 60_000
-/** The longest period `read_usage` accepts, in days. */
-export const MCP_USAGE_MAX_DAYS = 90
 /** An unanswered approval counts as a no before main gives up on the call, so a late yes can
  *  never change anything after the agent was told the call was dropped. */
 export const MCP_APPROVAL_TIMEOUT_MS = 9 * 60_000
+/** The longest period `read_usage` reads, in days: the longest the Usage page offers. */
+export const MCP_USAGE_MAX_DAYS = 90
 
 /** How an outside agent reaches the running Talyx. */
 export interface McpConnection {
@@ -260,14 +260,14 @@ export const MCP_TOOLS = {
   },
   read_usage: {
     description:
-      'Read how many tokens and requests each provider and model used over the last days, summed over every bot.',
+      'Read how many tokens and requests each provider and each model used in the last days, summed over every bot.',
     args: z.object({
       days: z
         .number()
         .int()
         .min(1)
         .max(MCP_USAGE_MAX_DAYS)
-        .describe('How many days back, from 1 to 90')
+        .describe(`How many days back, up to ${MCP_USAGE_MAX_DAYS}`)
     })
   }
 } satisfies Record<string, McpToolSpec>
