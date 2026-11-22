@@ -118,6 +118,9 @@ export interface EngineDouble {
   seatable: string[] | null
   /** What `read_usage` reads; no usage unless a test sets one. */
   usage?: (days: number) => Promise<UsageTotals>
+  /** When set, the next cron trigger HTTP call does not finish until `releaseTrigger` runs. */
+  holdNextTrigger: () => void
+  releaseTrigger: () => void
   /** Posts into a bot's chat, as `send_bot_message` does through the real chat port. */
   botSends: { profile: string; text: string }[]
   /** Finished replies per bot, oldest first; `read_bot_replies` reads the last `limit`. */
@@ -229,6 +232,8 @@ export function engineDouble(
   let cronFailure: string | null = null
   let cronRefusal: string | null = null
   const cronWrites: EngineDouble['cronWrites'] = []
+  let holdTrigger = false
+  let releaseHeld: (() => void) | null = null
   const runMessages: EngineDouble['runMessages'] = {}
   let metaFailure = false
   let listFailure = false
@@ -287,7 +292,7 @@ export function engineDouble(
       if (agent?.reasoning_effort !== undefined) reasoning[profile] = agent.reasoning_effort
       return { ok: true } as T
     }
-    if (request.path.startsWith('/api/cron/jobs/')) return cronRest(profile, request) as T
+    if (request.path.startsWith('/api/cron/jobs/')) return (await cronRest(profile, request)) as T
     if (request.path.startsWith('/api/sessions/')) return sessionMessages(request.path) as T
     if (request.path.startsWith('/api/providers/custom-endpoints')) {
       const custom = double.homeProvider === 'custom' && profile === 'default'
@@ -420,10 +425,10 @@ export function engineDouble(
   }
 
   // As the engine's cron REST: a job's schedule comes back as its stored shape, not as typed.
-  function cronRest(
+  async function cronRest(
     profile: string,
     request: { path: string; method?: string; body?: unknown }
-  ): unknown {
+  ): Promise<unknown> {
     const method = request.method ?? 'GET'
     const [id, action] = new URL(request.path, 'http://engine').pathname
       .replace('/api/cron/jobs/', '')
@@ -439,6 +444,12 @@ export function engineDouble(
     if (!job) throw new Error('Job not found')
     if (action === 'runs') return { runs: structuredClone(job.runs ?? []), limit: 5 }
     if (action === 'trigger') {
+      if (holdTrigger) {
+        holdTrigger = false
+        await new Promise<void>((resolve) => {
+          releaseHeld = resolve
+        })
+      }
       job.last_run_at = '2026-11-07T10:00:00+00:00'
       job.last_status = 'ok'
       job.last_error = null
@@ -605,6 +616,13 @@ export function engineDouble(
     },
     failAssetOnce: () => {
       assetFailure = true
+    },
+    holdNextTrigger: () => {
+      holdTrigger = true
+    },
+    releaseTrigger: () => {
+      releaseHeld?.()
+      releaseHeld = null
     },
     botSends: [],
     botRepliesByProfile: {},
