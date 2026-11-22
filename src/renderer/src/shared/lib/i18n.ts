@@ -515,6 +515,12 @@ const en = {
   'mcp.deleteFolder':
     'Delete the folder “{name}”. Its bots, rooms and folders move up a level; none is deleted.',
   'mcp.deleteRoutine': 'Delete the routine “{name}”. This cannot be undone.',
+  'mcp.updateRoutine': 'Change the routine “{routine}” of “{name}”.',
+  'mcp.updateRoutineInstruction':
+    'Change the routine “{routine}” of “{name}”. Its new instruction: “{instruction}”',
+  'mcp.runRoutine':
+    'Run the routine “{routine}” of “{name}” now. It spends the bot’s model tokens.',
+  'mcp.errorRunGone': 'That run no longer exists.',
   'mcp.replaceSoul': 'Replace the SOUL of “{name}”. The text it has now is lost.',
   'mcp.costlyModel': 'Switch “{name}” to {model}. The engine says: {message}',
   'mcp.addRoutine':

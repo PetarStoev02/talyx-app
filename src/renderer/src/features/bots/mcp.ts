@@ -1,5 +1,6 @@
 import { MCP_APPROVAL_TIMEOUT_MS, MCP_TOOLS, isMcpTool } from '@contract/mcp'
 import type { McpAnswer, McpToolArgs, McpToolName } from '@contract/mcp'
+import { sleep } from '@shared/lib/timers'
 import { t, type TranslationKey } from '@shared/lib/i18n'
 import { problemOf, problemText } from '@shared/lib/problem'
 import { BLOCK_SHAPES, type BlockShape } from '@contract/moduleHost'
@@ -34,11 +35,16 @@ import { RosterError, botTitle, itemFolder, itemKey, pinnedBots } from './roster
 import {
   DEFAULT_SCHEDULE,
   addRoutine,
+  listRoutineRuns,
   listRoutines,
+  loadRoutine,
+  openRoutineRun,
   removeRoutine,
+  runRoutine,
+  saveRoutine,
   setRoutineActive
 } from './routines'
-import type { RoutinesBackend } from './routines'
+import type { RoutineDetails, RoutineDraft, RoutinesBackend } from './routines'
 import { useRoster } from './store'
 import type { Bot, Room, RosterSnapshot } from './types'
 
@@ -102,19 +108,10 @@ export class ApprovalRefusedError extends RosterError {
   }
 }
 
-// The tools neither register MCP servers nor open a routine's runs or details.
+// The tools neither register MCP servers nor seat bots at rooms.
 type ToolsBackend = Omit<
   RosterBackend,
-  | 'listMcpServers'
-  | 'addMcpServer'
-  | 'removeMcpServer'
-  | 'reloadMcp'
-  | 'seatableProfiles'
-  | 'loadRoutine'
-  | 'updateRoutine'
-  | 'listRoutineRuns'
-  | 'lastRunReply'
-  | 'runRoutine'
+  'listMcpServers' | 'addMcpServer' | 'removeMcpServer' | 'reloadMcp' | 'seatableProfiles'
 >
 
 // How many messages read_room_history returns when the agent does not say.
@@ -359,6 +356,37 @@ function toolsFor(
       })
       return { deleted: roomId }
     },
+    ...routineTools(backend, fresh, ask),
+    // The backend's report may carry more (the Usage page's days): an agent gets the totals only.
+    read_usage: async ({ days }) => {
+      const { total, providers, models, unread } = await backend.usage(days)
+      return { days, total, providers, models, unread }
+    },
+    ...memoryTools(backend, fresh, ask)
+  }
+}
+
+// run_routine only waits this long for an immediate refusal; a longer run keeps going in the engine.
+const RUN_START_WAIT_MS = 3_000
+
+type RoutineToolName =
+  | 'list_routines'
+  | 'add_routine'
+  | 'set_routine_active'
+  | 'delete_routine'
+  | 'read_routine'
+  | 'update_routine'
+  | 'run_routine'
+  | 'list_routine_runs'
+  | 'read_routine_run'
+
+/** The tools over a bot's routines, the ones its Routines screen uses. */
+function routineTools(
+  backend: ToolsBackend,
+  fresh: () => Promise<RosterSnapshot>,
+  ask: (tool: McpToolName, action: string) => Promise<void>
+): { [T in RoutineToolName]: Run<T> } {
+  return {
     list_routines: async ({ profile }) => {
       botOf(await fresh(), profile)
       return { routines: await listRoutines(backend, profile) }
@@ -392,12 +420,75 @@ function toolsFor(
       await removeRoutine(backend, profile, routineId)
       return { deleted: routineId }
     },
-    // The backend's report may carry more (the Usage page's days): an agent gets the totals only.
-    read_usage: async ({ days }) => {
-      const { total, providers, models, unread } = await backend.usage(days)
-      return { days, total, providers, models, unread }
+    read_routine: async ({ profile, routineId }) => {
+      botOf(await fresh(), profile)
+      await routineOf(backend, profile, routineId)
+      return routineView(await loadRoutine(backend, profile, routineId))
     },
-    ...memoryTools(backend, fresh, ask)
+    update_routine: async ({ profile, routineId, name, instruction, schedule, postsToChat }) => {
+      const bot = botOf(await fresh(), profile)
+      await routineOf(backend, profile, routineId)
+      const loaded = await loadRoutine(backend, profile, routineId)
+      const after: RoutineDraft = {
+        name: name ?? loaded.draft.name,
+        instruction: instruction ?? loaded.draft.instruction,
+        schedule: schedule ? { ...DEFAULT_SCHEDULE, ...schedule } : loaded.draft.schedule,
+        postsToChat: postsToChat ?? loaded.draft.postsToChat
+      }
+      const action =
+        instruction !== undefined
+          ? say('mcp.updateRoutineInstruction', {
+              name: botTitle(bot),
+              routine: after.name,
+              instruction: after.instruction
+            })
+          : say('mcp.updateRoutine', { name: botTitle(bot), routine: after.name })
+      await ask('update_routine', action)
+      await saveRoutine(backend, profile, { id: routineId, before: loaded.draft, after })
+      return routineView(await loadRoutine(backend, profile, routineId))
+    },
+    run_routine: async ({ profile, routineId }) => {
+      const bot = botOf(await fresh(), profile)
+      const routine = await routineOf(backend, profile, routineId)
+      await ask(
+        'run_routine',
+        say('mcp.runRoutine', { name: botTitle(bot), routine: routine.name })
+      )
+      const started = runRoutine(backend, profile, routineId)
+      const early = await Promise.race([
+        started.then(
+          () => null,
+          (error: unknown) => error
+        ),
+        sleep(RUN_START_WAIT_MS).then(() => null)
+      ])
+      if (early) throw early
+      started.catch(() => undefined)
+      return { routineId, started: true, next: 'list_routine_runs' }
+    },
+    list_routine_runs: async ({ profile, routineId }) => {
+      botOf(await fresh(), profile)
+      await routineOf(backend, profile, routineId)
+      const runs = await listRoutineRuns(backend, profile, routineId)
+      return {
+        runs: runs.map((run) => ({
+          id: run.id,
+          startedAt: run.startedAt,
+          state: run.state,
+          reason: run.reason
+        }))
+      }
+    },
+    read_routine_run: async ({ profile, routineId, runId }) => {
+      botOf(await fresh(), profile)
+      await routineOf(backend, profile, routineId)
+      const run = (await listRoutineRuns(backend, profile, routineId)).find(
+        (item) => item.id === runId
+      )
+      if (!run) throw new RosterError('mcp.errorRunGone', runId)
+      const { output, error } = await openRoutineRun(backend, profile, run)
+      return { runId, output, error }
+    }
   }
 }
 
@@ -569,6 +660,21 @@ async function routineOf(
   const routine = (await listRoutines(backend, profile)).find((item) => item.id === routineId)
   if (!routine) throw new RosterError('mcp.errorRoutineGone', routineId)
   return routine
+}
+
+function routineView(details: RoutineDetails): unknown {
+  return {
+    routineId: details.id,
+    name: details.draft.name,
+    instruction: details.draft.instruction,
+    schedule: details.draft.schedule,
+    postsToChat: details.draft.postsToChat,
+    active: details.active,
+    nextRunAt: details.nextRunAt,
+    lastRunAt: details.lastRunAt,
+    lastStatus: details.lastStatus,
+    lastError: details.lastError
+  }
 }
 
 async function memoryOf(backend: MemoryBackend, profile: string, id: string): Promise<Memory> {

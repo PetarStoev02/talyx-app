@@ -1,5 +1,5 @@
 import fc from 'fast-check'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mcpTools } from '../../../src/renderer/src/features/bots/mcp'
 import type { ApprovalRequest } from '../../../src/renderer/src/features/bots/mcp'
 import { lookOf } from '../../../src/renderer/src/features/bots/look'
@@ -769,6 +769,148 @@ describe('MCP tools', () => {
         active: true
       })
       expect(answer).toEqual({ ok: false, text: 'That routine no longer exists. job-9' })
+    })
+
+    it('should read one routine in full', async () => {
+      await addCash()
+      expect(await ok('read_routine', { profile: 'analyst', routineId: 'job-1' })).toMatchObject({
+        routineId: 'job-1',
+        name: 'Cash',
+        instruction: 'Check cash',
+        schedule: { kind: 'daily', time: '08:30' },
+        postsToChat: true,
+        active: true
+      })
+    })
+
+    it('should change only the fields given once the user allows it', async () => {
+      await addCash()
+      engine.cronWrites.splice(0)
+      await ok('update_routine', {
+        profile: 'analyst',
+        routineId: 'job-1',
+        name: 'Cash check'
+      })
+      expect(engine.cronWrites.at(-1)?.body).toEqual({ updates: { name: 'Cash check' } })
+      expect(await ok('read_routine', { profile: 'analyst', routineId: 'job-1' })).toMatchObject({
+        name: 'Cash check',
+        instruction: 'Check cash'
+      })
+    })
+
+    it('should show the new instruction in the question when it changes', async () => {
+      await addCash()
+      await ok('update_routine', {
+        profile: 'analyst',
+        routineId: 'job-1',
+        instruction: 'Count reserves'
+      })
+      expect(asked.at(-1)?.action).toBe(
+        'Change the routine “Cash” of “Analyst”. Its new instruction: “Count reserves”'
+      )
+    })
+
+    it('should refuse update_routine when no field is given to change', async () => {
+      await addCash()
+      const answer = await call('update_routine', { profile: 'analyst', routineId: 'job-1' })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toMatch(/^Invalid arguments/)
+    })
+
+    it('should keep the routine when the user says no to an update', async () => {
+      await addCash()
+      allow = false
+      const answer = await call('update_routine', {
+        profile: 'analyst',
+        routineId: 'job-1',
+        name: 'Other'
+      })
+      expect(answer).toEqual({ ok: false, text: REFUSED })
+      expect(engine.jobs.analyst[0].name).toBe('Cash')
+    })
+
+    it('should run a routine once the user allows it and return without waiting', async () => {
+      vi.useFakeTimers()
+      try {
+        await addCash()
+        engine.holdNextTrigger()
+        const answerPromise = call('run_routine', { profile: 'analyst', routineId: 'job-1' })
+        await vi.advanceTimersByTimeAsync(3_500)
+        expect(await answerPromise).toEqual({
+          ok: true,
+          text: JSON.stringify({ routineId: 'job-1', started: true, next: 'list_routine_runs' })
+        })
+        expect(engine.jobs.analyst[0].runs ?? []).toEqual([])
+        engine.releaseTrigger()
+        await vi.runAllTimersAsync()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('should report a run the engine refuses at once', async () => {
+      await addCash()
+      engine.refuseCronOnce('Job is already running or was claimed by another scheduler')
+      const answer = await call('run_routine', { profile: 'analyst', routineId: 'job-1' })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toContain('The engine could not run the routine.')
+    })
+
+    it('should keep the routine unrun when the user says no to run now', async () => {
+      await addCash()
+      allow = false
+      const answer = await call('run_routine', { profile: 'analyst', routineId: 'job-1' })
+      expect(answer).toEqual({ ok: false, text: REFUSED })
+      expect(engine.jobs.analyst[0].runs ?? []).toEqual([])
+    })
+
+    it('should list recent runs newest first after a trigger finishes', async () => {
+      await addCash()
+      await ok('run_routine', { profile: 'analyst', routineId: 'job-1' })
+      expect(await ok('list_routine_runs', { profile: 'analyst', routineId: 'job-1' })).toEqual({
+        runs: [
+          {
+            id: 'cash-run',
+            startedAt: 1_794_045_600,
+            state: 'finished',
+            reason: ''
+          }
+        ]
+      })
+    })
+
+    it('should read what one run produced', async () => {
+      await addCash()
+      await ok('run_routine', { profile: 'analyst', routineId: 'job-1' })
+      expect(
+        await ok('read_routine_run', {
+          profile: 'analyst',
+          routineId: 'job-1',
+          runId: 'cash-run'
+        })
+      ).toEqual({
+        runId: 'cash-run',
+        output: 'Cash is above the floor.',
+        error: null
+      })
+    })
+
+    it('should refuse a run id that is not in the recent list', async () => {
+      await addCash()
+      const answer = await call('read_routine_run', {
+        profile: 'analyst',
+        routineId: 'job-1',
+        runId: 'gone'
+      })
+      expect(answer).toEqual({ ok: false, text: 'That run no longer exists. gone' })
+    })
+
+    it('should refuse routine tools for a bot that does not exist', async () => {
+      const answer = await call('read_routine', { profile: 'ghost', routineId: 'job-1' })
+      expect(answer).toEqual({
+        ok: false,
+        text: 'That bot no longer exists. Refresh the roster. ghost'
+      })
     })
   })
 

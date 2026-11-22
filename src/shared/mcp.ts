@@ -260,6 +260,48 @@ export const MCP_TOOLS = {
     args: z.object({ profile, routineId: z.string().min(1) }),
     destructive: true
   },
+  read_routine: {
+    description: 'Read one routine in full: its instruction, schedule, runs metadata and status.',
+    args: z.object({ profile, routineId: z.string().min(1) })
+  },
+  update_routine: {
+    description:
+      'Change a routine’s name, instruction, schedule, or whether it posts to chat. Only the fields given change. Asks the user in Talyx first.',
+    args: z
+      .object({
+        profile,
+        routineId: z.string().min(1),
+        name: z.string().trim().min(1).optional(),
+        instruction: z.string().trim().min(1).optional(),
+        schedule: schedule.optional(),
+        postsToChat: z.boolean().optional()
+      })
+      .refine(
+        (args) =>
+          args.name !== undefined ||
+          args.instruction !== undefined ||
+          args.schedule !== undefined ||
+          args.postsToChat !== undefined,
+        { message: 'Give at least one field to change besides profile and routineId' }
+      )
+  },
+  run_routine: {
+    description:
+      'Run a routine now. Asks the user in Talyx first, because a run spends the bot’s model tokens. Returns once the run has started; use list_routine_runs for the outcome.',
+    args: z.object({ profile, routineId: z.string().min(1) })
+  },
+  list_routine_runs: {
+    description: 'List the most recent runs of a routine, newest first.',
+    args: z.object({ profile, routineId: z.string().min(1) })
+  },
+  read_routine_run: {
+    description: 'Read what one routine run produced: its output and any error.',
+    args: z.object({
+      profile,
+      routineId: z.string().min(1),
+      runId: z.string().min(1)
+    })
+  },
   read_usage: {
     description:
       'Read how many tokens and requests each provider and each model used in the last days, summed over every bot.',
