@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { useApprovals } from '@features/bots/store'
 import type { RosterBackend } from '@features/bots/data'
+import type { ChatActions } from '@features/chat/chat'
 import { mcpTools } from '@features/bots/mcp'
+import { moduleChat } from '@app/providers/moduleChat'
 import { registerMcpServer } from '@features/bots/mcpRegistration'
 import { botChatId } from '@features/bots/roster'
 import type { Bot } from '@features/bots/types'
@@ -15,13 +17,25 @@ import type { McpAnswer } from '@contract/mcp'
  * Runs the tool calls agents send Talyx's MCP server, and adds the server to every bot's profile,
  * also to bots created later (here, by an agent, or on another client).
  */
-export function useMcpBridge(backend: RosterBackend | null): void {
+export function useMcpBridge(backend: RosterBackend | null, chat: ChatActions | null): void {
   // One listener for the page's life: while the engine is not connected, a call is answered at
   // once instead of waiting out main's timeout.
   const run = useRef<((tool: string, args: unknown) => Promise<McpAnswer>) | null>(null)
   useEffect(() => {
-    run.current = backend ? mcpTools(backend, useApprovals.getState().ask) : null
-  }, [backend])
+    const talk = chat ? moduleChat(() => chat) : null
+    run.current = backend
+      ? mcpTools(
+          talk
+            ? {
+                ...backend,
+                sendBotMessage: (profile, text) => talk.send(profile, text),
+                botReplies: (profile, limit) => talk.replies(profile, limit)
+              }
+            : backend,
+          useApprovals.getState().ask
+        )
+      : null
+  }, [backend, chat])
   useEffect(() => {
     const stop = mcpApi.onCall(({ id, tool, args }) => {
       const answered = run.current

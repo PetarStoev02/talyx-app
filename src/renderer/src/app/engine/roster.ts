@@ -27,6 +27,10 @@ export interface RosterHost {
   avatarPng: (look: Look) => Promise<string>
   /** Token and request totals over the last `days`, summed over every bot. */
   usage: (days: number) => Promise<UsageTotals>
+  /** Posts a message in the bot's chat as the user. */
+  sendBotMessage: (profile: string, text: string) => Promise<void>
+  /** The bot's newest finished replies as text, oldest first. */
+  botReplies: (profile: string, limit: number) => Promise<string[]>
 }
 
 /** A room member as the engine stores it, the shape `groups.create` takes. */
@@ -120,6 +124,8 @@ export function engineRosterBackend(engine: EngineAccess, host: RosterHost): Ros
     ...engineMemoryBackend(engine),
     ...engineMcpBackend(engine),
     usage: host.usage,
+    sendBotMessage: host.sendBotMessage,
+    botReplies: host.botReplies,
     setAvatar: async (profile, look) => {
       await engine.request(profile, 'profiles.set_asset', {
         name: profile,

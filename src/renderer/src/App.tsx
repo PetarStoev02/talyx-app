@@ -43,9 +43,9 @@ export function App(): React.JSX.Element {
   const navigate = useNavigation((s) => s.navigate)
   const rosterBackend = useRosterBackend()
   // Agents operate Talyx through its MCP server whatever page is open.
-  useMcpBridge(rosterBackend)
-  // Here, not in the page: replies keep marking bots unread while another page is open.
   const chat = useChatBackend()
+  useMcpBridge(rosterBackend, chat)
+  // Here, not in the page: replies keep marking bots unread while another page is open.
   // A module's page sends to the bots through the same chat as the page you type in.
   useModuleChat(chat)
   const providers = useProvidersBackend()

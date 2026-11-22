@@ -189,6 +189,28 @@ export const MCP_TOOLS = {
       'Hide a bot from the roster, or show it again. A hidden bot keeps everything it has.',
     args: z.object({ profile, hidden: z.boolean() })
   },
+  send_bot_message: {
+    description:
+      'Post a message in a bot\u2019s chat as the user, only when the user asks for it. While the bot is answering, the message waits for that answer to end. Never send to your own chat: it starts your own chat again. read_bot_replies shows the replies once the bot has finished them.',
+    args: z.object({
+      profile,
+      text: z.string().trim().min(1).max(MCP_TEXT_MAX)
+    })
+  },
+  read_bot_replies: {
+    description:
+      'Read a bot\u2019s newest finished replies as text, oldest first. A reply shows only after the bot has finished it.',
+    args: z.object({
+      profile,
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(200)
+        .optional()
+        .describe('How many replies; 50 when absent')
+    })
+  },
   create_room: {
     description: 'Create a group room with two to six bots.',
     args: z.object({

@@ -66,6 +66,10 @@ export interface McpToolsBackend {
   sendRoomMessage: (roomId: string, text: string) => Promise<void>
   /** The room's messages, oldest first. */
   roomMessages: (roomId: string) => Promise<RoomMessage[]>
+  /** Posts a message in the bot's chat as the user. */
+  sendBotMessage: (profile: string, text: string) => Promise<void>
+  /** The bot's newest finished replies as text, oldest first. */
+  botReplies: (profile: string, limit: number) => Promise<string[]>
   /** Token and request totals over the last `days`, summed over every bot. */
   usage: (days: number) => Promise<UsageTotals>
 }
@@ -320,6 +324,15 @@ function toolsFor(
         else if (!hidden && bot.meta.hidden) await actions.hide(bot)
         return { profile, hidden }
       }),
+    send_bot_message: async ({ profile, text }) => {
+      botOf(await fresh(), profile)
+      await backend.sendBotMessage(profile, text)
+      return { profile, sent: true }
+    },
+    read_bot_replies: async ({ profile, limit }) => {
+      botOf(await fresh(), profile)
+      return { replies: await backend.botReplies(profile, limit ?? DEFAULT_HISTORY) }
+    },
     create_room: ({ name, members }) =>
       change(async (snapshot) => ({
         roomId: await createRoom(backend, {

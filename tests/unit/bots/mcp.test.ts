@@ -6,7 +6,7 @@ import { lookOf } from '../../../src/renderer/src/features/bots/look'
 import { botTitle, pinnedBots } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { t } from '../../../src/renderer/src/shared/lib/i18n'
-import { mcpToolList } from '../../../src/shared/mcp'
+import { MCP_TEXT_MAX, mcpToolList } from '../../../src/shared/mcp'
 import type { McpAnswer } from '../../../src/shared/mcp'
 import { BOT_META_KEY, backendFor, engineDouble, pngOf } from './engineDouble'
 import type { EngineDouble } from './engineDouble'
@@ -587,6 +587,79 @@ describe('MCP tools', () => {
     it('should refuse a room that does not exist', async () => {
       const answer = await call('move_item', { kind: 'room', id: 'gone', folderId: null })
       expect(answer).toEqual({ ok: false, text: 'That room no longer exists. gone' })
+    })
+  })
+
+  describe('send_bot_message', () => {
+    it('should post a message in a bot chat as the user', async () => {
+      expect(await ok('send_bot_message', { profile: 'analyst', text: ' Plan the week ' })).toEqual(
+        {
+          profile: 'analyst',
+          sent: true
+        }
+      )
+      expect(engine.botSends).toEqual([{ profile: 'analyst', text: 'Plan the week' }])
+    })
+
+    it('should refuse a bot that does not exist, sending nothing', async () => {
+      const answer = await call('send_bot_message', { profile: 'ghost', text: 'Hi' })
+      expect(answer).toEqual({
+        ok: false,
+        text: 'That bot no longer exists. Refresh the roster. ghost'
+      })
+      expect(engine.botSends).toEqual([])
+    })
+
+    it('should refuse blank text without sending', async () => {
+      const answer = await call('send_bot_message', { profile: 'analyst', text: '  ' })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toMatch(/^Invalid arguments/)
+      expect(engine.botSends).toEqual([])
+    })
+
+    it('should refuse text that is too long', async () => {
+      const answer = await call('send_bot_message', {
+        profile: 'analyst',
+        text: 'x'.repeat(MCP_TEXT_MAX + 1)
+      })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toMatch(/^Invalid arguments/)
+      expect(engine.botSends).toEqual([])
+    })
+
+    it('should pass on the real reason when the send fails', async () => {
+      engine.failBotSend = 'The engine is busy'
+      const answer = await call('send_bot_message', { profile: 'analyst', text: 'Hi' })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toContain('The engine is busy')
+      expect(engine.botSends).toEqual([])
+    })
+  })
+
+  describe('read_bot_replies', () => {
+    it('should read the newest replies, oldest first, with the default limit', async () => {
+      engine.botRepliesByProfile.analyst = Array.from(
+        { length: 60 },
+        (_, index) => `Reply ${index + 1}`
+      )
+      expect(await ok('read_bot_replies', { profile: 'analyst' })).toEqual({
+        replies: Array.from({ length: 50 }, (_, index) => `Reply ${index + 11}`)
+      })
+    })
+
+    it('should read only as many replies as the limit names', async () => {
+      engine.botRepliesByProfile.analyst = ['One', 'Two', 'Three', 'Four']
+      expect(await ok('read_bot_replies', { profile: 'analyst', limit: 2 })).toEqual({
+        replies: ['Three', 'Four']
+      })
+    })
+
+    it('should refuse a bot that does not exist', async () => {
+      const answer = await call('read_bot_replies', { profile: 'ghost' })
+      expect(answer).toEqual({
+        ok: false,
+        text: 'That bot no longer exists. Refresh the roster. ghost'
+      })
     })
   })
 
