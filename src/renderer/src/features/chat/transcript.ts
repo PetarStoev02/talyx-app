@@ -1,10 +1,9 @@
 import type { GatewayEvent } from '@shared/engine/shared'
 import type { SessionMessage } from '@shared/engine/types'
+import { readDelivery } from '@shared/lib/delivery'
 import { messageText } from '@shared/lib/messageText'
 import type { ChatItem, ChatPrompt, FailedTurn, StreamCursor, Transcript } from './types'
 
-// A message another bot delivered: `Message from 🤖 <name> (@<handle>): <text>`.
-const DELIVERY = /^Message from 🤖 (.+?) \(@([^\s)]+)\):\s*([\s\S]*)$/
 // Rows the engine writes into the chat itself (a delivery, a finished job, a model switch): no
 // one typed them, so they show as one quiet line.
 const NOTICE_KINDS = new Set([
@@ -221,17 +220,17 @@ function historyItem(
   const id = String(message.row_id ?? message.id ?? '')
   const text = messageText(message.display_content ?? message.content)
   if (message.role === 'user') {
-    const [, name, profile, body] = DELIVERY.exec(text) ?? []
-    if (name !== undefined && profile !== undefined && body !== undefined) {
+    const delivery = readDelivery(text)
+    if (delivery) {
       return [
         {
           kind: 'bot',
           id,
-          text: body,
+          text: delivery.body,
           streaming: false,
           error: null,
           stopped: false,
-          sender: { name, profile }
+          sender: { name: delivery.name, profile: delivery.profile }
         }
       ]
     }

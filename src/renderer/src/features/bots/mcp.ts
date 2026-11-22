@@ -70,6 +70,14 @@ export interface McpToolsBackend {
   usage: (days: number) => Promise<UsageTotals>
 }
 
+/** A bot's own chat, as much of it as the tools use. The roster has no chat: the app adds it. */
+export interface BotChatBackend {
+  /** Posts a message in the bot's chat as the user. */
+  sendBotMessage: (profile: string, text: string) => Promise<void>
+  /** The bot's newest finished replies as text, oldest first. */
+  botReplies: (profile: string, limit: number) => Promise<string[]>
+}
+
 /** A message in a room: the user's (`memberId` null) or a member's. */
 export interface RoomMessage {
   seq: number
@@ -115,7 +123,8 @@ type ToolsBackend = Omit<
   | 'listRoutineRuns'
   | 'lastRunReply'
   | 'runRoutine'
->
+> &
+  BotChatBackend
 
 // How many messages read_room_history returns when the agent does not say.
 const DEFAULT_HISTORY = 50
@@ -320,6 +329,15 @@ function toolsFor(
         else if (!hidden && bot.meta.hidden) await actions.hide(bot)
         return { profile, hidden }
       }),
+    send_bot_message: async ({ profile, text }) => {
+      botOf(await fresh(), profile)
+      await backend.sendBotMessage(profile, text)
+      return { profile, sent: true }
+    },
+    read_bot_replies: async ({ profile, limit }) => {
+      botOf(await fresh(), profile)
+      return { replies: await backend.botReplies(profile, limit ?? DEFAULT_HISTORY) }
+    },
     create_room: ({ name, members }) =>
       change(async (snapshot) => ({
         roomId: await createRoom(backend, {
