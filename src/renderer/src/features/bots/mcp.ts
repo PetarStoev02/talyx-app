@@ -28,7 +28,7 @@ import {
   loadSkills,
   setSkillEnabled
 } from './memory'
-import type { Memory, MemoryList, Skill } from './memory'
+import type { Memory, Skill } from './memory'
 import { changeRoomMembers, createRoom, renameRoom } from './rooms'
 import { RosterError, botTitle, itemFolder, itemKey, pinnedBots } from './roster'
 import {
@@ -401,12 +401,7 @@ function toolsFor(
   }
 }
 
-function memoryTools(
-  backend: ToolsBackend,
-  fresh: () => Promise<RosterSnapshot>,
-  ask: (tool: McpToolName, action: string) => Promise<void>
-): Pick<
-  { [T in McpToolName]: Run<T> },
+type MemoryToolName =
   | 'list_memories'
   | 'edit_memory'
   | 'delete_memory'
@@ -415,28 +410,35 @@ function memoryTools(
   | 'set_skill_enabled'
   | 'edit_skill'
   | 'delete_skill'
-> {
+
+/** The tools over a bot's memories and skills, the ones its details panel shows. */
+function memoryTools(
+  backend: ToolsBackend,
+  fresh: () => Promise<RosterSnapshot>,
+  ask: (tool: McpToolName, action: string) => Promise<void>
+): { [T in MemoryToolName]: Run<T> } {
   return {
     list_memories: async ({ profile }) => {
       botOf(await fresh(), profile)
-      return memoryView(await loadMemories(backend, profile))
+      return loadMemories(backend, profile)
     },
     edit_memory: async ({ profile, id, text }) => {
       const bot = botOf(await fresh(), profile)
       const memory = await memoryOf(backend, profile, id)
-      const trimmed = text.trim()
-      if (!trimmed) throw new RosterError('memory.errorEmpty')
       await ask(
         'edit_memory',
-        say('mcp.editMemory', { name: botTitle(bot), current: memory.text, text: trimmed })
+        say('mcp.editMemory', { name: botTitle(bot), current: memory.text, text })
       )
-      return memoryView(await editMemory(backend, profile, { id, text: trimmed }))
+      return editMemory(backend, profile, { id, text })
     },
     delete_memory: async ({ profile, id }) => {
-      botOf(await fresh(), profile)
+      const bot = botOf(await fresh(), profile)
       const memory = await memoryOf(backend, profile, id)
-      await ask('delete_memory', say('mcp.deleteMemory', { current: memory.text }))
-      return memoryView(await deleteMemory(backend, profile, id))
+      await ask(
+        'delete_memory',
+        say('mcp.deleteMemory', { name: botTitle(bot), current: memory.text })
+      )
+      return deleteMemory(backend, profile, id)
     },
     list_skills: async ({ profile }) => {
       botOf(await fresh(), profile)
@@ -456,17 +458,16 @@ function memoryTools(
     edit_skill: async ({ profile, name, text }) => {
       const bot = botOf(await fresh(), profile)
       await skillOf(backend, profile, name)
-      const trimmed = text.trim()
-      if (!trimmed) throw new RosterError('skills.errorEmpty')
-      await ask('edit_skill', say('mcp.editSkill', { name, bot: botTitle(bot) }))
-      await editSkill(backend, profile, { name, text: trimmed })
+      await ask('edit_skill', say('mcp.editSkill', { name: botTitle(bot), skill: name }))
+      await editSkill(backend, profile, { name, text })
       return { name }
     },
     delete_skill: async ({ profile, name }) => {
       const bot = botOf(await fresh(), profile)
       const skill = await skillOf(backend, profile, name)
+      // Refused here, before the question: the user is never asked to allow what Talyx then refuses.
       if (!skill.removable) throw new RosterError('skills.errorBuiltIn')
-      await ask('delete_skill', say('mcp.deleteSkill', { name, bot: botTitle(bot) }))
+      await ask('delete_skill', say('mcp.deleteSkill', { name: botTitle(bot), skill: name }))
       await deleteSkill(backend, profile, skill)
       return { deleted: name }
     }
@@ -580,16 +581,6 @@ async function skillOf(backend: ToolsBackend, profile: string, name: string): Pr
   const skill = (await loadSkills(backend, profile)).find((item) => item.name === name)
   if (!skill) throw new RosterError('mcp.errorSkillGone', name)
   return skill
-}
-
-function memoryView(list: MemoryList): {
-  memories: { id: string; text: string; about: 'bot' | 'user' }[]
-  otherStore: string | null
-} {
-  return {
-    memories: list.memories.map(({ id, text, about }) => ({ id, text, about })),
-    otherStore: list.otherStore
-  }
 }
 
 function lookFrom(look: { shape: string; hue: number; faces: boolean }): Look {

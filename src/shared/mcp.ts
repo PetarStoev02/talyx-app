@@ -16,8 +16,8 @@ export const MCP_CALL_TIMEOUT_MS = 10 * 60_000
 export const MCP_APPROVAL_TIMEOUT_MS = 9 * 60_000
 /** The longest period `read_usage` reads, in days: the longest the Usage page offers. */
 export const MCP_USAGE_MAX_DAYS = 90
-/** The longest memory or skill text `edit_memory` and `edit_skill` accept; matches `send_room_message`. */
-export const MCP_EDIT_TEXT_MAX = 20_000
+/** The longest text a tool takes: a room message, a memory, a skill's instructions. */
+export const MCP_TEXT_MAX = 20_000
 
 /** How an outside agent reaches the running Talyx. */
 export interface McpConnection {
@@ -215,7 +215,7 @@ export const MCP_TOOLS = {
       'Post a message in a group room as the user, only when the user asks for it. Every bot in the room answers it, so never post in a room you are answering in yourself: it starts the room again. read_room_history shows the replies.',
     args: z.object({
       roomId: z.string().min(1),
-      text: z.string().trim().min(1).max(20_000)
+      text: z.string().trim().min(1).max(MCP_TEXT_MAX)
     })
   },
   read_room_history: {
@@ -283,7 +283,7 @@ export const MCP_TOOLS = {
     args: z.object({
       profile,
       id: z.string().min(1).describe('The memory id, as list_memories shows it'),
-      text: z.string().max(MCP_EDIT_TEXT_MAX)
+      text: z.string().trim().min(1).max(MCP_TEXT_MAX)
     })
   },
   delete_memory: {
@@ -296,8 +296,7 @@ export const MCP_TOOLS = {
     destructive: true
   },
   list_skills: {
-    description:
-      'List every skill a bot has, the ones turned off included. Names are as shown here.',
+    description: 'List every skill a bot has, the ones turned off included.',
     args: z.object({ profile })
   },
   read_skill: {
@@ -321,7 +320,7 @@ export const MCP_TOOLS = {
     args: z.object({
       profile,
       name: z.string().min(1).describe('The skill name, as list_skills shows it'),
-      text: z.string().max(MCP_EDIT_TEXT_MAX)
+      text: z.string().trim().min(1).max(MCP_TEXT_MAX)
     })
   },
   delete_skill: {

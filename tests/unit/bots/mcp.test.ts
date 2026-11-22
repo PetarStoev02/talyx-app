@@ -836,10 +836,8 @@ describe('MCP tools', () => {
         id: string
       }[]
       const answer = await call('edit_memory', { profile: 'analyst', id: first.id, text: '  ' })
-      expect(answer).toEqual({
-        ok: false,
-        text: 'A memory needs some text. To remove it, delete it.'
-      })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toMatch(/^Invalid arguments/)
       expect(asked).toEqual([])
     })
 
@@ -859,7 +857,7 @@ describe('MCP tools', () => {
       }[]
       const updated = await ok('delete_memory', { profile: 'analyst', id: first.id })
       expect(asked.at(-1)?.action).toBe(
-        'Delete the memory “Reports go out on Mondays.”. The bot will forget it.'
+        'Delete a memory of “Analyst”: “Reports go out on Mondays.”. This cannot be undone.'
       )
       expect((updated.memories as { text: string }[]).map((memory) => memory.text)).toEqual([
         'The user prefers euros.'
@@ -917,7 +915,7 @@ describe('MCP tools', () => {
     it('should replace instructions once the user allows it', async () => {
       await ok('edit_skill', { profile: 'analyst', name: 'cash-report', text: '# Cash, weekly' })
       expect(asked[0].action).toBe(
-        'Replace the instructions of the skill “cash-report” on “Analyst”. The text it has now is lost.'
+        'Replace the instructions of the skill “cash-report” of “Analyst”. The text it has now is lost.'
       )
       expect(
         engine.minds.bots.analyst.skills.find((skill) => skill.name === 'cash-report')?.text
@@ -940,10 +938,8 @@ describe('MCP tools', () => {
         name: 'cash-report',
         text: '  '
       })
-      expect(answer).toEqual({
-        ok: false,
-        text: 'A skill needs instructions. To stop using it, turn it off.'
-      })
+      expect(answer.ok).toBe(false)
+      expect(answer.text).toMatch(/^Invalid arguments/)
       expect(asked).toEqual([])
     })
 
@@ -955,7 +951,7 @@ describe('MCP tools', () => {
     it('should delete a skill the bot made once the user allows it', async () => {
       await ok('delete_skill', { profile: 'analyst', name: 'cash-report' })
       expect(asked.at(-1)?.action).toBe(
-        'Delete the skill “cash-report” on “Analyst”. This cannot be undone.'
+        'Delete the skill “cash-report” of “Analyst”. This cannot be undone.'
       )
       expect(
         (await ok('list_skills', { profile: 'analyst' })).skills as { name: string }[]
