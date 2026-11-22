@@ -114,6 +114,26 @@ export interface EngineDouble {
   failAssetOnce: () => void
   // What groups.capabilities says the engine will seat; null when it does not say.
   seatable: string[] | null
+  /** When set, `read_usage` reads totals through the roster backend. */
+  usage?: (days: number) => Promise<{
+    total: { tokens: number; requests: number }
+    providers: {
+      id: string
+      name: string | null
+      usage: { tokens: number; requests: number } | null
+    }[]
+    models: {
+      model: string
+      providerId: string
+      provider: string | null
+      tokens: number
+      requests: number
+    }[]
+    unread: string[]
+    days?: null
+    daysProblem?: null
+    daysUnread?: string[]
+  }>
 }
 
 export interface RoomLogRow {
@@ -630,6 +650,14 @@ export function backendFor(
       const room = engine.rooms?.find((item) => item.room_id === roomId)
       if (!room) throw new Error('Room not found')
       room.members = structuredClone(members)
-    }
+    },
+    usage: async (days) => (engine.usage ?? emptyUsage)(days)
   })
 }
+
+const emptyUsage = (): Promise<{
+  total: { tokens: number; requests: number }
+  providers: []
+  models: []
+  unread: []
+}> => Promise.resolve({ total: { tokens: 0, requests: 0 }, providers: [], models: [], unread: [] })

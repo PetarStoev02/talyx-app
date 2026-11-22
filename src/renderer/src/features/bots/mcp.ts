@@ -31,6 +31,22 @@ import type { RoutinesBackend } from './routines'
 import { useRoster } from './store'
 import type { Bot, Room, RosterSnapshot } from './types'
 
+type UsageCounts = { tokens: number; requests: number }
+
+/** Token and request totals an agent reads from usage, without the Usage page's extra fields. */
+export interface UsageTotals {
+  total: UsageCounts
+  providers: { id: string; name: string | null; usage: UsageCounts | null }[]
+  models: {
+    model: string
+    providerId: string
+    provider: string | null
+    tokens: number
+    requests: number
+  }[]
+  unread: string[]
+}
+
 /** What only the MCP tools ask of the engine; the rest goes through the roster's use cases. */
 export interface McpToolsBackend {
   /** The profile's default reasoning level for new turns. */
@@ -39,6 +55,8 @@ export interface McpToolsBackend {
   sendRoomMessage: (roomId: string, text: string) => Promise<void>
   /** The room's messages, oldest first. */
   roomMessages: (roomId: string) => Promise<RoomMessage[]>
+  /** Token and request totals over the last `days`, summed over every bot. */
+  usage: (days: number) => Promise<UsageTotals>
 }
 
 /** A message in a room: the user's (`memberId` null) or a member's. */
@@ -283,6 +301,13 @@ function toolsFor(
         }
         return { kind, id, pinned }
       }),
+    hide_bot: ({ profile, hidden }) =>
+      change(async (snapshot) => {
+        const bot = botOf(snapshot, profile)
+        if (bot.name === MANAGER && hidden) throw new RosterError('roster.errorKeepTalyx')
+        if (!!bot.meta.hidden !== hidden) await actions.hide(bot)
+        return { profile, hidden }
+      }),
     create_room: ({ name, members }) =>
       change(async (snapshot) => ({
         roomId: await createRoom(backend, {
@@ -354,6 +379,11 @@ function toolsFor(
       await ask('delete_routine', say('mcp.deleteRoutine', { name: routine.name }))
       await removeRoutine(backend, profile, routineId)
       return { deleted: routineId }
+    },
+    read_usage: async ({ days }) => {
+      const report = await backend.usage(days)
+      const { total, providers, models, unread } = report
+      return { days, total, providers, models, unread }
     }
   }
 }

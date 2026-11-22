@@ -385,7 +385,13 @@ export const rosterBackend = {
     botGroupsMetaKey: GROUPS_META_KEY,
     deleteProfile,
     avatarPng: blockPng,
-    setRoomMembers
+    setRoomMembers,
+    usage: async () => ({
+      total: { tokens: 0, requests: 0 },
+      providers: [],
+      models: [],
+      unread: []
+    })
   }),
   // Memories and skills in Talyx's terms; the engine's own routes are covered by unit tests.
   ...fixtureMemory(Object.keys(BOTS)).backend,

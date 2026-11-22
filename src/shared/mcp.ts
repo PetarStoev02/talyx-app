@@ -11,6 +11,8 @@ export const MCP_DEFAULT_PORT = 47816
 export const MCP_PATH = '/mcp'
 /** How long main waits for the page to answer a call: the user may be deciding on an approval. */
 export const MCP_CALL_TIMEOUT_MS = 10 * 60_000
+/** The longest period `read_usage` accepts, in days. */
+export const MCP_USAGE_MAX_DAYS = 90
 /** An unanswered approval counts as a no before main gives up on the call, so a late yes can
  *  never change anything after the agent was told the call was dropped. */
 export const MCP_APPROVAL_TIMEOUT_MS = 9 * 60_000
@@ -180,6 +182,11 @@ export const MCP_TOOLS = {
         .describe('For a bot being pinned: the pinned bot\u2019s profile id to go in front of')
     })
   },
+  hide_bot: {
+    description:
+      'Hide a bot from the roster, or show it again. A hidden bot keeps everything it has.',
+    args: z.object({ profile, hidden: z.boolean() })
+  },
   create_room: {
     description: 'Create a group room with two to six bots.',
     args: z.object({
@@ -250,6 +257,18 @@ export const MCP_TOOLS = {
     description: 'Delete a routine. Asks the user in Talyx first.',
     args: z.object({ profile, routineId: z.string().min(1) }),
     destructive: true
+  },
+  read_usage: {
+    description:
+      'Read how many tokens and requests each provider and model used over the last days, summed over every bot.',
+    args: z.object({
+      days: z
+        .number()
+        .int()
+        .min(1)
+        .max(MCP_USAGE_MAX_DAYS)
+        .describe('How many days back, from 1 to 90')
+    })
   }
 } satisfies Record<string, McpToolSpec>
 
