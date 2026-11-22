@@ -75,7 +75,8 @@ const rawComponent = z.discriminatedUnion('component', [
     columns: z.array(
       z.object({
         label: z.string().max(MCP_UI_TEXT_MAX),
-        align: z.enum(['left', 'right']).optional()
+        align: z.enum(['left', 'right']).optional(),
+        kind: z.enum(['bar']).optional()
       })
     ),
     rows: z.array(z.array(z.union([z.string().max(MCP_UI_TEXT_MAX), z.number().finite()])))
@@ -213,8 +214,18 @@ function parseMessages(messages: Record<string, unknown>[]): UiParseResult {
 }
 
 function limitsFor(component: UiComponent): string | null {
-  if (component.component === 'Table' && component.rows.length > MCP_UI_MAX_TABLE_ROWS)
-    return `Component "${component.id}": too many table rows (${component.rows.length}, limit ${MCP_UI_MAX_TABLE_ROWS}).`
+  if (component.component === 'Table') {
+    if (component.rows.length > MCP_UI_MAX_TABLE_ROWS)
+      return `Component "${component.id}": too many table rows (${component.rows.length}, limit ${MCP_UI_MAX_TABLE_ROWS}).`
+    for (const [columnIndex, column] of component.columns.entries()) {
+      if (column.kind !== 'bar') continue
+      for (const row of component.rows) {
+        const cell = row[columnIndex]
+        if (typeof cell !== 'number' || !Number.isFinite(cell) || cell < 0 || cell > 100)
+          return `Component "${component.id}": column "${column.label}" must be a percentage from 0 to 100.`
+      }
+    }
+  }
   if (component.component === 'Chart') {
     if (component.labels.length > MCP_UI_MAX_CHART_POINTS)
       return `Component "${component.id}": too many chart points (${component.labels.length}, limit ${MCP_UI_MAX_CHART_POINTS}).`

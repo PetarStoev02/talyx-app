@@ -339,11 +339,11 @@ export const MCP_TOOLS = {
   },
   show_ui: {
     description: [
-      'Draw a small interface inside your own chat for this turn: stats, a chart, a table, buttons, choices or a short form.',
+      'Draw a small interface inside your own chat for this turn: stats, a chart, a table, buttons, choices or a short form. Works only in your own chat with the user, not in a group room or a routine run.',
       'Do not use it for a plain yes/no the user can type.',
       'Send messages: (1) createSurface with catalogId',
       `"${MCP_UI_CATALOG}" and surfaceId; (2) updateComponents with the same surfaceId and a flat components list (exactly one id "root"; ids are letters, digits and underscores only); (3) optionally updateDataModel with starting input values.`,
-      'Components: Text (text, variant body|heading|caption); Column/Row (children ids); Divider; Stat (label, value, note, tone up|down); Chart (kind bar|line|area|pie, labels, series[{name, values}], unit); Table (columns[{label, align}], rows); Button (child text id, variant primary, action.event); ChoicePicker (options, value @path, multiple); TextField (label, value @path, placeholder).',
+      'Components: Text (text, variant body|heading|caption); Column/Row (children ids); Divider; Stat (label, value, note, tone up|down); Chart (kind bar|line|area|pie, labels, series[{name, values}], unit); Table (columns[{label, align, kind bar}], rows); Button (child text id, variant primary, action.event); ChoicePicker (options, value @path, multiple); TextField (label, value @path, placeholder).',
       'Inputs bind with {"@path":"/key"}; one key level is enough.',
       "A click becomes the user's next chat message (the button label, plus input lines when the surface has fields). The interface stays in the chat after reload.",
       `Example: [{"version":"1.0","createSurface":{"surfaceId":"week","catalogId":"${MCP_UI_CATALOG}"}},{"version":"1.0","updateComponents":{"surfaceId":"week","components":[{"id":"root","component":"Column","children":["title","chart","pick","go_label","go"]},{"id":"title","component":"Text","text":"Tokens this week","variant":"heading"},{"id":"chart","component":"Chart","kind":"bar","labels":["Mon","Tue","Wed"],"series":[{"name":"Tokens","values":[120,200,180]}]},{"id":"pick","component":"ChoicePicker","label":"Day","options":[{"label":"Wed","value":"wed"}],"value":{"@path":"/day"}},{"id":"go_label","component":"Text","text":"Send"},{"id":"go","component":"Button","child":"go_label","variant":"primary","action":{"event":{"name":"send"}}}]}}]`

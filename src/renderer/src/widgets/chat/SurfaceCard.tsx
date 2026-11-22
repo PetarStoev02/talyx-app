@@ -16,6 +16,8 @@ type Choice = Extract<UiComponent, { component: 'ChoicePicker' }>
 const PILL_OPTIONS = 4
 const PILL = 'h-auto rounded-full border px-4 py-2 text-sm font-medium'
 const PICKED = 'border-brand bg-brand/15 hover:bg-brand/15 disabled:opacity-100'
+const SHARE_BAR_MIN = 'min-w-20'
+const SHARE_BAR_HEIGHT = 'h-1.5'
 
 /** What every part of a surface draws with: its components, the inputs' values, and its state. */
 interface Drawing {
@@ -200,6 +202,21 @@ function Row({ parts, drawing }: { parts: UiComponent[]; drawing: Drawing }): Re
   return <div className="flex flex-wrap items-center gap-2">{body}</div>
 }
 
+function ShareBar({ percent }: { percent: number }): React.JSX.Element {
+  return (
+    <div
+      role="img"
+      aria-label={`${Math.round(percent)}%`}
+      className={cn('w-full rounded-full bg-brand/20', SHARE_BAR_MIN, SHARE_BAR_HEIGHT)}
+    >
+      <div
+        className={cn('h-full rounded-full bg-brand', SHARE_BAR_HEIGHT)}
+        style={{ width: `${percent}%` }}
+      />
+    </div>
+  )
+}
+
 function Table({
   table
 }: {
@@ -234,7 +251,11 @@ function Table({
                   table.columns[cellIndex]?.align === 'right' && 'text-right'
                 )}
               >
-                {cell}
+                {table.columns[cellIndex]?.kind === 'bar' && typeof cell === 'number' ? (
+                  <ShareBar percent={cell} />
+                ) : (
+                  cell
+                )}
               </td>
             ))}
           </tr>

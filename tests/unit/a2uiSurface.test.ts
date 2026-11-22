@@ -68,6 +68,42 @@ describe('parseA2uiMessages', () => {
     if (!result.ok) expect(result.reason).toContain('missing')
   })
 
+  it('should accept a table column of share bars', () => {
+    const result = parseA2uiMessages(
+      components('share', [
+        {
+          id: 'root',
+          component: 'Table',
+          columns: [{ label: 'Name' }, { label: 'Share', kind: 'bar' as const }],
+          rows: [
+            ['Alpha', 45],
+            ['Beta', 100]
+          ]
+        }
+      ])
+    )
+    expect(result.ok).toBe(true)
+  })
+
+  it('should refuse a bar column that is not a percentage', () => {
+    const result = parseA2uiMessages(
+      components('share', [
+        {
+          id: 'root',
+          component: 'Table',
+          columns: [{ label: 'Share', kind: 'bar' as const }],
+          rows: [['x']]
+        }
+      ])
+    )
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.reason).toContain('root')
+      expect(result.reason).toContain('Share')
+      expect(result.reason).toContain('0 to 100')
+    }
+  })
+
   it('should refuse labels and values of different lengths', () => {
     const result = parseA2uiMessages(
       components('x', [
