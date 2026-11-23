@@ -190,6 +190,7 @@ describe('roster actions', () => {
     engine.metadata.default = {}
     await refreshRoster(backend)
     expect(pinNames()).toEqual(['default', 'analyst', 'writer', 'planner'])
+    expect(engine.metadata.default).toEqual({})
     await act(() => rosterActions(backend).pin(bot('default')))
     await refreshRoster(backend)
     expect(pinNames()).toEqual(['analyst', 'writer', 'planner'])
