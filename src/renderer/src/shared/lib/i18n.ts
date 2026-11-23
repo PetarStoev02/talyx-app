@@ -187,6 +187,8 @@ const en = {
   'chat.replied': '{name} replied',
   'chat.replyFailedAnnounce': '{name}’s reply failed',
   'chat.replyFailed': 'This reply did not finish.',
+  'chat.replyNoProvider':
+    'This bot has no model provider. Add one in Settings, Providers, then send your message again.',
   'chat.noReply': '{name} ended without a reply.',
   'chat.regenerate': 'Regenerate',
   'chat.regenerateLabel': 'Regenerate: answer again, in place of this answer: {text}',

@@ -1,11 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { InstallExit, InstallSteps } from '../../../src/shared/setup'
-import {
-  displayOutput,
-  downloadFailed,
-  hideEngineName,
-  type SetupBackend
-} from '@features/setup/install'
+import { displayOutput, downloadFailed, type SetupBackend } from '@features/setup/install'
+import { hideEngineName } from '@shared/lib/engineName'
 import { useInstall } from '@features/setup/store'
 
 const ready: InstallSteps = {
