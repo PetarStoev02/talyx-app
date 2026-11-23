@@ -123,7 +123,12 @@ export function ContextMenuArea({
       <ContextMenu.Trigger
         asChild
         disabled={disabled}
+        onContextMenu={(event) => {
+          // Skips Radix's handler, which honours a prevented event.
+          if (fromPortal(event)) event.preventDefault()
+        }}
         onKeyDown={(event) => {
+          if (fromPortal(event)) return
           if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
           event.preventDefault()
           const box = event.currentTarget.getBoundingClientRect()
@@ -168,4 +173,13 @@ export function CheckItem({
       <span className="min-w-0 flex-1 truncate">{label}</span>
     </DropdownMenu.CheckboxItem>
   )
+}
+
+/**
+ * Whether an event bubbled here through React from a portal, such as the row's own dropdown: a
+ * right-click in it would open this menu over that one, and two menu roots open at once leave the
+ * page ignoring clicks after both close.
+ */
+function fromPortal(event: React.SyntheticEvent<HTMLElement>): boolean {
+  return !(event.target instanceof Node && event.currentTarget.contains(event.target))
 }
