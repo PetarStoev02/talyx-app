@@ -59,6 +59,9 @@ const roomFoldersSchema = z.record(z.string(), z.string().nullable())
 const roomPinsSchema = z.array(z.string()).catch([])
 const itemOrderSchema = z.record(z.string(), z.array(z.string())).catch({})
 
+// Before the first pin a user orders, which is 0.
+const FIRST_PIN = -1
+
 export async function readRoster(
   backend: Pick<RosterStore, 'listBots' | 'listRooms' | 'olderRoomFolders'>
 ): Promise<RosterSnapshot> {
@@ -73,7 +76,15 @@ export async function readRoster(
     : backend.olderRoomFolders(manager, rooms)
   const roomPins = roomPinsSchema.parse(manager.ui_meta?.[ROOM_PINS_KEY] ?? [])
   const itemOrder = itemOrderSchema.parse(manager.ui_meta?.[ITEM_ORDER_KEY] ?? {})
-  return { bots, rooms, folders, roomFolders, roomPins, itemOrder }
+  return { bots: bots.map(withManagerPin), rooms, folders, roomFolders, roomPins, itemOrder }
+}
+
+// Talyx, the manager, shows as the first pin until it is unpinned, which stores false. Nothing is
+// written, so every client reads the same default.
+function withManagerPin(bot: Bot): Bot {
+  return bot.name === 'default' && bot.meta.pinned === null
+    ? { ...bot, meta: { ...bot.meta, pinned: true, pinnedOrder: FIRST_PIN } }
+    : bot
 }
 
 export function hasSharedLayout(snapshot: RosterSnapshot): boolean {

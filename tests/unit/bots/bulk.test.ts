@@ -55,6 +55,8 @@ async function setUp(): Promise<void> {
   engine = engineDouble(
     {
       default: {
+        // Talyx unpinned, so the cases start with no pins; a fresh Talyx shows pinned.
+        [BOT_META_KEY]: { pinned: false },
         [GROUPS_META_KEY]: {
           rooms: {
             a: { roomId: 'team-room', sectionId: 'team' },

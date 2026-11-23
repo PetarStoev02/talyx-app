@@ -42,6 +42,8 @@ beforeEach(async () => {
   engine = engineDouble(
     {
       default: {
+        // Talyx unpinned, so the cases start with no pins; a fresh Talyx shows pinned.
+        [BOT_META_KEY]: { pinned: false },
         [GROUPS_META_KEY]: {
           rooms: {
             a: { roomId: 'team-room', sectionId: 'team' },
@@ -183,6 +185,15 @@ describe('roster actions', () => {
   it('should add a folder after the existing ones with its name trimmed', async () => {
     await act(() => rosterActions(backend).addFolder('  Research  ', null))
     expect(roster().folders.map((folder) => folder.name)).toEqual(['Team', 'Clients', 'Research'])
+  })
+  it('should show Talyx pinned until it is unpinned, and keep it unpinned after a reload', async () => {
+    engine.metadata.default = {}
+    await refreshRoster(backend)
+    expect(pinNames()).toEqual(['default', 'analyst', 'writer', 'planner'])
+    await act(() => rosterActions(backend).pin(bot('default')))
+    await refreshRoster(backend)
+    expect(pinNames()).toEqual(['analyst', 'writer', 'planner'])
+    expect(engine.metadata.default[BOT_META_KEY]).toMatchObject({ pinned: false })
   })
   it.each([
     ['adding', (name: string) => rosterActions(backend).addFolder(name, null)],

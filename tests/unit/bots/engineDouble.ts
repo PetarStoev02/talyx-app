@@ -172,7 +172,8 @@ const blank = (): ProfileState => ({ description: '', soul: '', model: null })
 // disband and cron.manage.
 export function engineDouble(
   metadata: Record<string, Record<string, unknown>> = {
-    default: {},
+    // Talyx unpinned, so the layout cases start with no pins; a fresh Talyx shows pinned.
+    default: { [BOT_META_KEY]: { pinned: false } },
     analyst: {
       [BOT_META_KEY]: { title: 'Analyst', sectionId: 'team', sectionName: 'Team', color: 4 }
     }
