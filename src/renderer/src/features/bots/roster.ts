@@ -59,7 +59,7 @@ export class RosterError extends AppError {
 }
 
 /** The longest bot or folder name, in UTF-16 units as an input's `maxLength` counts them. */
-export const NAME_MAX_LENGTH = 64
+export const NAME_MAX_LENGTH = 24
 
 /** The name trimmed; one longer than `NAME_MAX_LENGTH` is refused, as an agent can send any. */
 export function checkedName(name: string): string {
