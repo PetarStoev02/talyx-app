@@ -39,6 +39,6 @@ Preconditions:
 - The count is a `role="status"` span; the snapshot prints its text (`status: 1 of 2`). Assert it from the snapshot; do not wait on it by name.
 - Option rows are named by message text, which is not app copy (none of their names come from i18n). Reach them with ArrowDown and Enter, or read them from the snapshot.
 - While the bot's group chats load, the note `Reading the rooms…` shows and the list can grow. Snapshot again before asserting the hit count.
-- `Meta+F` does nothing while a dialog is open (`dialogOpen()`). The button is the clickable path to prove.
+- `Meta+F` does nothing while a dialog or menu is open (`layerOpen()`). The button is the clickable path to prove.
 - Real-engine rules apply: search only the approved scratch bot, and create nothing else.
 - Proven 2026-11-18 on the scratch bot: open, type `pong` (`status: 1 of 2`, `group "This chat"` with `option "pong"` first and `option "You: Reply with the single word pong."` second), `Next match` (`2 of 2`), `Close search`. Jumping and room search are written from the code.

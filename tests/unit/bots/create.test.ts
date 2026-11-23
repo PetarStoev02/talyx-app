@@ -8,7 +8,11 @@ import {
 } from '../../../src/renderer/src/features/bots/create'
 import type { NewBot } from '../../../src/renderer/src/features/bots/create'
 import { loadDetails } from '../../../src/renderer/src/features/bots/details'
-import { RosterError, folderBots } from '../../../src/renderer/src/features/bots/roster'
+import {
+  NAME_MAX_LENGTH,
+  RosterError,
+  folderBots
+} from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import { matchName } from '../../../src/renderer/src/features/bots/look'
 import {
@@ -74,6 +78,15 @@ describe('creating a bot', () => {
     it('should create the profile with its own SOUL', async () => {
       expect(await createBot(backend, newBot(), ['default', 'analyst'])).toBe('agro-ops-legal')
       expect(engine.created).toEqual([{ name: 'agro-ops-legal', soul: SOUL }])
+    })
+
+    it('should take a name of the longest length, and refuse a longer one before creating anything', async () => {
+      const longest = 'a'.repeat(NAME_MAX_LENGTH)
+      await createBot(backend, newBot({ name: ` ${longest} ` }), [])
+      expect(engine.created.map((profile) => profile.name)).toEqual([longest])
+      const longer = createBot(backend, newBot({ name: `${longest}b` }), [])
+      await expect(longer).rejects.toMatchObject({ key: 'roster.errorNameTooLong' })
+      expect(engine.created).toHaveLength(1)
     })
 
     it("should put a custom endpoint model on the new bot with Talyx's endpoint", async () => {

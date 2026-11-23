@@ -78,10 +78,15 @@ control-talyx stop
 ```
 
 - A seeded random walk: each step clicks a control the ARIA snapshot shows (a textbox or combobox
-  gets a random text) or presses a key (Escape, Tab, arrows, the app's shortcuts).
+  gets a random text), drags a roster row onto another row's top, middle or bottom, or presses a
+  key (Escape, Tab, arrows, the app's shortcuts, `Shift+F10` and `ContextMenu` for the row menus).
+  Some clicks are right-clicks (the row menus), `Shift`+clicks (a range of rows) or
+  `ControlOrMeta`+clicks (one more row), so pins, `Move to`, nested folders and the bulk menu are
+  in the walk.
 - After every step it checks: no crash notice (`Talyx stopped working.`), no renderer
-  `console.error` or page error, `settings.json` still parses. When the step was Escape and the
-  app is not on the Agents page, it presses Escape once more and then requires the Agents page.
+  `console.error` or page error, `settings.json` still parses, and `body` does not ignore clicks
+  (`pointer-events: none`) with no dialog or menu open. When the step was Escape and the app is not
+  on the Agents page, it presses Escape once more and then requires the Agents page.
 - It refuses a launch without `--no-engine`, and skips controls that leave the sandbox (native
   panels, the microphone, the browser, the clipboard, login items, installs, updates), enter the
   setup flow (no Escape exit by design) or approve a bot's tool call.
@@ -100,7 +105,8 @@ control-talyx stop
 - A failure prints the seed, the failed check and the step log, and saves `steps.log`,
   `after.aria.txt` and `after.png` under `evidence/fuzz-<seed>/`. Rerun the same seed on a fresh
   launch to replay it; a pass also saves `steps.log`.
-- To port it to another app's driver, change `FUZZ_SKIP`, `FUZZ_KEYS`, `FUZZ_CRASH`, `atHome` and the settings file it parses.
+- To port it to another app's driver, change `FUZZ_SKIP`, `FUZZ_KEYS`, `FUZZ_CRASH`, `FUZZ_ROW`
+  (the draggable rows), `atHome` and the settings file it parses.
 
 ## Evidence
 

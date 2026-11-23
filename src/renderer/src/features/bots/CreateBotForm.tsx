@@ -12,7 +12,7 @@ import { matchName } from './look'
 import type { Look } from './look'
 import { LookPicker } from './LookPicker'
 import { ProblemMessage } from './ProblemMessage'
-import { folderPath, problemOf } from './roster'
+import { NAME_MAX_LENGTH, folderPath, problemOf } from './roster'
 import { useRoster } from './store'
 
 /**
@@ -89,7 +89,7 @@ export function CreateBotForm({
         <Input
           autoFocus
           value={name}
-          maxLength={100}
+          maxLength={NAME_MAX_LENGTH}
           aria-describedby="create-profile-id"
           onChange={(event) => setName(event.target.value)}
         />

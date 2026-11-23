@@ -9,6 +9,7 @@ import {
 import type { RosterStore } from './data'
 import { deleteRows, hideRows, moveRows, pinRows } from './bulk'
 import {
+  checkedName,
   folderItems,
   itemFolder,
   itemKey,
@@ -216,7 +217,8 @@ export function rosterActions(backend: RosterWriter): RosterActions {
       saveLayout((value) => {
         if (!value.some((folder) => folder.id === id))
           throw new RosterError('roster.errorFolderGone')
-        return value.map((folder) => (folder.id === id ? { ...folder, name: name.trim() } : folder))
+        const renamed = checkedName(name)
+        return value.map((folder) => (folder.id === id ? { ...folder, name: renamed } : folder))
       }),
     deleteFolder: (id) => deleteRows(backend, snapshot(), [{ kind: 'folder', id }]),
     placeItem: (item, place) => placeItem(backend, snapshot(), { item, ...place }),
@@ -238,7 +240,7 @@ export function rosterActions(backend: RosterWriter): RosterActions {
           throw new RosterError('roster.errorFolderGone')
         return [
           ...value,
-          { id: crypto.randomUUID(), name: name.trim(), parentId: parentId || null }
+          { id: crypto.randomUUID(), name: checkedName(name), parentId: parentId || null }
         ]
       }),
     hide: (bot) => saveBotMeta(backend, bot.name, { hidden: !bot.meta.hidden }),

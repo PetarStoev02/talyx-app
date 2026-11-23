@@ -5,7 +5,7 @@ import { confirmBotModel } from './details'
 import type { DetailsBackend, ModelChoice } from './details'
 import { exportAvatar, lookMeta } from './look'
 import type { AvatarBackend, Look } from './look'
-import { RosterError, problemOf } from './roster'
+import { RosterError, checkedName, problemOf } from './roster'
 import { writeRules } from './rules'
 import type { RulesBackend } from './rules'
 import type { Folder } from './types'
@@ -82,8 +82,8 @@ export async function createBot(
   bot: NewBot,
   taken: string[]
 ): Promise<string> {
+  const title = checkedName(bot.name)
   const id = profileIdFor(bot.name, taken)
-  const title = bot.name.trim()
   const purpose = bot.purpose?.trim() || null
   await backend.createProfile({ id, soul: soulFor(title, id, purpose), description: purpose })
   try {

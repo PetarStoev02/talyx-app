@@ -10,6 +10,7 @@ import {
   folderItems,
   itemKey,
   itemRef,
+  NAME_MAX_LENGTH,
   pinnedBots
 } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
@@ -41,6 +42,8 @@ beforeEach(async () => {
   engine = engineDouble(
     {
       default: {
+        // Talyx unpinned, so the cases start with no pins; a fresh Talyx shows pinned.
+        [BOT_META_KEY]: { pinned: false },
         [GROUPS_META_KEY]: {
           rooms: {
             a: { roomId: 'team-room', sectionId: 'team' },
@@ -183,6 +186,38 @@ describe('roster actions', () => {
     await act(() => rosterActions(backend).addFolder('  Research  ', null))
     expect(roster().folders.map((folder) => folder.name)).toEqual(['Team', 'Clients', 'Research'])
   })
+  it('should show Talyx pinned until it is unpinned, and keep it unpinned after a reload', async () => {
+    engine.metadata.default = {}
+    await refreshRoster(backend)
+    expect(pinNames()).toEqual(['default', 'analyst', 'writer', 'planner'])
+    expect(engine.metadata.default).toEqual({})
+    await act(() => rosterActions(backend).pin(bot('default')))
+    await refreshRoster(backend)
+    expect(pinNames()).toEqual(['analyst', 'writer', 'planner'])
+    expect(engine.metadata.default[BOT_META_KEY]).toMatchObject({ pinned: false })
+  })
+  it('should keep Talyx where it was dragged among the pins after a reload', async () => {
+    engine.metadata.default = {}
+    await refreshRoster(backend)
+    await act(() => rosterActions(backend).orderPin('default', 'planner'))
+    await refreshRoster(backend)
+    expect(pinNames()).toEqual(['analyst', 'writer', 'planner', 'default'])
+  })
+  it.each([
+    ['adding', (name: string) => rosterActions(backend).addFolder(name, null)],
+    ['renaming', (name: string) => rosterActions(backend).renameFolder('team', name)]
+  ])(
+    'should take the longest folder name when %s one, and refuse a longer one',
+    async (_, save) => {
+      const longest = 'a'.repeat(NAME_MAX_LENGTH)
+      await act(() => save(` ${longest} `))
+      expect(roster().folders.some((folder) => folder.name === longest)).toBe(true)
+      const before = roster().folders
+      await act(() => save(`${longest}b`))
+      expect(useRoster.getState().actionError?.key).toBe('roster.errorNameTooLong')
+      expect(roster().folders).toEqual(before)
+    }
+  )
   it('should add a folder inside another one, and refuse a parent that is gone', async () => {
     await act(() => rosterActions(backend).addFolder('Finance', 'clients'))
     expect(roster().folders.find((folder) => folder.name === 'Finance')?.parentId).toBe('clients')

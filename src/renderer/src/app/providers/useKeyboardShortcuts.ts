@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigation } from '@features/modules/store'
 import { useCreating, useRoster } from '@features/bots/store'
-import { dialogOpen, platformOf, shortcutOf, type ShortcutId } from '@features/shortcuts/shortcuts'
+import { layerOpen, platformOf, shortcutOf, type ShortcutId } from '@features/shortcuts/shortcuts'
 import { useCheatSheet } from '@features/shortcuts/store'
 import { focusComposer } from '@widgets/chat'
 import { switchChat } from '@widgets/roster'
@@ -10,7 +10,7 @@ const platform = platformOf(navigator.platform)
 
 /**
  * Binds the app-wide shortcuts of `SHORTCUT_GROUPS`; the rest are bound where they apply. While a
- * dialog is open only ⌘/ works, and only to close the cheat sheet.
+ * dialog or menu is open only ⌘/ works, and only to close the cheat sheet.
  */
 export function useKeyboardShortcuts(): void {
   useEffect(() => {
@@ -19,7 +19,7 @@ export function useKeyboardShortcuts(): void {
       const id = shortcutOf(event, platform)
       const action = id && ACTIONS[id]
       if (!action) return
-      if (dialogOpen() && !(id === 'cheatSheet' && useCheatSheet.getState().open)) return
+      if (layerOpen() && !(id === 'cheatSheet' && useCheatSheet.getState().open)) return
       if (CARET_KEYS.has(id) && keepsCaret(event.target)) return
       event.preventDefault()
       void action()

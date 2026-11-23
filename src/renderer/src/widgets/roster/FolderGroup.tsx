@@ -221,7 +221,11 @@ function FolderHeader({
               aria-description={picked ? t('roster.pickedRow') : undefined}
               onClick={(event) => (row ? clickRow(event, row, toggle) : toggle())}
             >
-              {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+              {collapsed ? (
+                <ChevronRight size={16} className="shrink-0" />
+              ) : (
+                <ChevronDown size={16} className="shrink-0" />
+              )}
               <span className="truncate">{name}</span>
               <span className="ml-auto tabular-nums">
                 {folderCount(snapshot, folder?.id ?? null)}

@@ -9,6 +9,7 @@ import { BotAvatar } from '@features/bots/BotAvatar'
 import { botTitle, unknownBot } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { markdownImage } from '@features/chat/markdownImage'
+import { replyFailure } from '@features/chat/replyFailure'
 import { senderProfile } from '@features/chat/transcript'
 import type { ChatItem, MessageItem } from '@features/chat/types'
 import { SurfaceCard } from './SurfaceCard'
@@ -127,9 +128,7 @@ export function MessageBubble({
         {message.error !== null && (
           <div className={cn(message.text && 'mt-2')}>
             <p className="text-destructive-text">{t('chat.replyFailed')}</p>
-            {message.error && (
-              <p className="text-sm text-muted-foreground wrap-anywhere">{message.error}</p>
-            )}
+            {message.error && <FailureDetail error={message.error} />}
           </div>
         )}
       </div>
@@ -145,6 +144,20 @@ export function MessageBubble({
       <Sender sender={message.sender} />
       {reply}
     </div>
+  )
+}
+
+// Under "This reply did not finish": the engine's own words, as Talyx's.
+function FailureDetail({ error }: { error: string }): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const engineName = useEngine((s) =>
+    s.status?.state === 'attached' ? s.status.managerHandle : null
+  )
+  const failure = replyFailure(error, engineName)
+  return (
+    <p className="text-sm text-muted-foreground wrap-anywhere">
+      {failure.kind === 'noProvider' ? t('chat.replyNoProvider') : failure.text}
+    </p>
   )
 }
 

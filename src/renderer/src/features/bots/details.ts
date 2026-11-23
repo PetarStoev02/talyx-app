@@ -4,7 +4,7 @@ import { exportAvatar, lookMeta, sameLook } from './look'
 import type { AvatarBackend, Look } from './look'
 import { problemOf } from '@shared/lib/problem'
 import type { Problem } from '@shared/lib/problem'
-import { MANAGER_TITLE, RosterError } from './roster'
+import { MANAGER_TITLE, RosterError, checkedName } from './roster'
 import type { Bot, BotMeta } from './types'
 import { useDetailsRevision } from './store'
 
@@ -134,6 +134,8 @@ async function saveAll(
   bot: Bot,
   change: DetailsChange
 ): Promise<ModelConfirm | null> {
+  // Only a new title: one stored before the limit must not block saving the other fields.
+  if (change.draft.title.trim() !== change.opening.title.trim()) checkedName(change.draft.title)
   if (bot.name !== MANAGER && lookChanged(bot, change))
     await exportAvatar(backend, bot.name, change.draft.look)
   const meta = metaChange(bot, change)

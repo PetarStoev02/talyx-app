@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom'
 import { Search } from 'lucide-react'
 import {
-  dialogOpen,
+  layerOpen,
   keyLabels,
   platformOf,
   SHORTCUTS,
@@ -42,7 +42,7 @@ export function FindSlot({
 }): React.JSX.Element | null {
   const open = !!children
   useWindowEvent('keydown', (event) => {
-    if (open || shortcutOf(event, platform) !== 'searchChat' || dialogOpen()) return
+    if (open || shortcutOf(event, platform) !== 'searchChat' || layerOpen()) return
     event.preventDefault()
     onOpen()
   })

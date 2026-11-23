@@ -6,7 +6,7 @@ import { cutShort, MOST_PER_PLACE, samePlace } from '@features/chat/botSearch'
 import type { MessageHit, SearchPlace } from '@features/chat/botSearch'
 import { useFind } from '@features/chat/store'
 import { findMatches, pointIn } from '@features/chat/search'
-import { dialogOpen, platformOf, shortcutOf } from '@features/shortcuts/shortcuts'
+import { layerOpen, platformOf, shortcutOf } from '@features/shortcuts/shortcuts'
 import { SearchResults } from './SearchResults'
 import { useHighlight } from '@shared/hooks/useHighlight'
 import { useLoad } from '@shared/hooks/useLoad'
@@ -79,7 +79,7 @@ export function ChatSearch({
 
   // ⌘F again while it is open puts the cursor back in the field.
   useWindowEvent('keydown', (event) => {
-    if (shortcutOf(event, platform) !== 'searchChat' || dialogOpen()) return
+    if (shortcutOf(event, platform) !== 'searchChat' || layerOpen()) return
     event.preventDefault()
     input.current?.focus()
     input.current?.select()

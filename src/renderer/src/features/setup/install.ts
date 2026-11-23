@@ -1,4 +1,3 @@
-import { ENGINE_COMMAND } from '@contract/engine'
 import type { InstallExit, InstallSteps } from '@contract/setup'
 
 export interface SetupBackend {
@@ -35,10 +34,4 @@ export function displayOutput(raw: string): string {
 /** Whether the install output shows a failed download (network, not the engine). */
 export function downloadFailed(output: string): boolean {
   return DOWNLOAD_ERROR.test(output)
-}
-
-/** The output with the engine's own name (`name`, from the install steps) shown as Talyx's. */
-export function hideEngineName(output: string, name: string | null): string {
-  // The name is letters and digits only (see installSteps), so it needs no escaping.
-  return name ? output.replace(new RegExp(name, 'gi'), ENGINE_COMMAND) : output
 }

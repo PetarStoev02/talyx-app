@@ -187,6 +187,8 @@ const en = {
   'chat.replied': '{name} replied',
   'chat.replyFailedAnnounce': '{name}’s reply failed',
   'chat.replyFailed': 'This reply did not finish.',
+  'chat.replyNoProvider':
+    'This bot has no model provider. Add one in Settings, Providers, then send your message again.',
   'chat.noReply': '{name} ended without a reply.',
   'chat.regenerate': 'Regenerate',
   'chat.regenerateLabel': 'Regenerate: answer again, in place of this answer: {text}',
@@ -502,6 +504,7 @@ const en = {
     'The engine sent a list of rooms Talyx cannot read. Refresh the roster; if it keeps failing, update the engine.',
   'roster.errorNoDefault':
     'The engine did not return Talyx’s own bot. Restart it with talyx-engine gateway restart, then refresh.',
+  'roster.errorNameTooLong': 'That name is too long. Pick a shorter one.',
   'roster.errorFolderGone': 'That folder no longer exists. Refresh the roster.',
   'mcp.stillOnOldModel':
     'Talyx’s model changed, but these bots on Uses default stayed on the old model:',

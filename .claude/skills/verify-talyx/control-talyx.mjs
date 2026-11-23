@@ -166,10 +166,10 @@ async function browserCommand() {
   }
 }
 
-// fuzz: a seeded random walk over the controls the ARIA snapshot shows, with four invariants
+// fuzz: a seeded random walk over the controls the ARIA snapshot shows, with five invariants
 // checked after every step (F3 in #188). App-specific knowledge is FUZZ_SKIP, FUZZ_KEYS,
-// FUZZ_CRASH, `atHome` and the settings file; the rest copies as is into another app's driver.
-// Links are left out: in Talyx they open the system browser.
+// FUZZ_CRASH, FUZZ_ROW, `atHome` and the settings file; the rest copies as is into another app's
+// driver. Links are left out: in Talyx they open the system browser.
 const FUZZ_ROLES = new Set([
   'button',
   'menuitem',
@@ -187,8 +187,36 @@ const FUZZ_ROLES = new Set([
 const FUZZ_KEYS = [
   ...['Escape', 'Escape', 'Escape', 'Tab', 'Shift+Tab', 'Enter', 'Space', 'ArrowDown', 'ArrowUp'],
   ...['Alt+ArrowUp', 'Alt+ArrowDown', 'ControlOrMeta+Slash', 'ControlOrMeta+Comma'],
-  ...['ControlOrMeta+f', 'ControlOrMeta+n', 'ControlOrMeta+l', 'ControlOrMeta+1', 'ControlOrMeta+2']
+  ...['ControlOrMeta+f', 'ControlOrMeta+n', 'ControlOrMeta+l', 'ControlOrMeta+1'],
+  // The row menus (pin, Move to, a folder's New folder, the bulk menu) open only on the last two
+  // and on a right-click.
+  ...['ControlOrMeta+2', 'Shift+F10', 'ContextMenu']
 ]
+// How a click lands, by cumulative share: right-click opens the row menus, Shift picks a range of
+// rows and ControlOrMeta toggles one, which is how the bulk menu is reached.
+const FUZZ_CLICKS = [
+  { share: 0.15, button: 'right', modifiers: [] },
+  { share: 0.25, button: 'left', modifiers: ['Shift'] },
+  { share: 0.35, button: 'left', modifiers: ['ControlOrMeta'] },
+  { share: 1, button: 'left', modifiers: [] }
+]
+// Share of steps that drag a roster row onto another (folder into folder, pin order, a row into a
+// folder: some only drag reaches), then of steps that act on a control; the rest press a key.
+const FUZZ_DRAG_SHARE = 0.05
+const FUZZ_CONTROL_SHARE = 0.75
+// Draggable roster rows (bots, rooms, folders) and where on the target the drop lands, as a share
+// of its height: the before, inside and after edges of a drop slot.
+const FUZZ_ROW = '[data-roster-row]'
+const FUZZ_DROPS = [
+  { edge: 'top', share: 0.1 },
+  { edge: 'middle', share: 0.5 },
+  { edge: 'bottom', share: 0.9 }
+]
+// Radix sets `pointer-events: none` on body while a modal layer is open; with none open, the app
+// ignores every click until reload. A closing layer clears it within its animation. A listbox
+// counts too (a Select's list is modal), so the check also rests while chat search lists results.
+const OPEN_LAYER = '[role=dialog], [role=alertdialog], [role=menu], [role=listbox]'
+const LAYER_SETTLE_MS = 300
 // Controls that leave the sandbox (native panels, the microphone, the browser, the clipboard,
 // login items, installs, updates), enter the setup flow (no Escape exit by design), or approve a
 // bot's tool call, which runs on the real machine even when the engine lives in the run's home.
@@ -216,7 +244,6 @@ async function fuzz() {
   const seed = integerFlag('seed', null)
   const steps = integerFlag('steps', FUZZ_STEPS)
   const random = mulberry32(seed)
-  const pick = (list) => list[Math.floor(random() * list.length)]
   const engine = existsSync(SANDBOX_ENGINE)
   if (engine && gatewayGone()) throw new Error(`no gateway runs from ${HOME}`)
   const page = await mainPage()
@@ -238,8 +265,8 @@ async function fuzz() {
   try {
     for (let step = 1; step <= steps; step++) {
       const controls = parseControls(await page.locator('body').ariaSnapshot())
-      const action = random() < 0.7 && controls.length ? pick(controls) : { key: pick(FUZZ_KEYS) }
-      log.push(`${step} ${await fuzzAct(page, action, () => pick(FUZZ_TEXT))}`)
+      const action = chooseAction(random, controls, await rosterRows(page))
+      log.push(`${step} ${await fuzzAct(page, action)}`)
       await sleep(150)
       await check(step)
       if (action.key === 'Escape' && !(await atHome(page))) {
@@ -281,16 +308,58 @@ function integerFlag(name, fallback) {
   return Number(raw)
 }
 
-// The first broken invariant (crash notice, console error, settings.json), or null.
+// One step's action. Every step draws the same four numbers in the same order, used or not, so a
+// seed replays the same walk whichever branch a step takes.
+function chooseAction(random, controls, rows) {
+  const [kind, target, mouse, extra] = [random(), random(), random(), random()]
+  const from = (list, draw) => list[Math.floor(draw * list.length)]
+  if (kind < FUZZ_DRAG_SHARE && rows.length > 1) {
+    const source = from(rows, target)
+    const others = rows.filter((row) => row !== source)
+    return { drag: source, onto: from(others, extra), drop: from(FUZZ_DROPS, mouse) }
+  }
+  if (kind < FUZZ_CONTROL_SHARE && controls.length) {
+    const click = FUZZ_CLICKS.find((item) => mouse < item.share)
+    return { ...from(controls, target), click, text: from(FUZZ_TEXT, extra) }
+  }
+  return { key: from(FUZZ_KEYS, target) }
+}
+
+// The keys of the roster rows a drag can start from, in page order.
+async function rosterRows(page) {
+  return page
+    .locator(FUZZ_ROW)
+    .evaluateAll((rows) =>
+      rows
+        .filter((row) => row.getAttribute('draggable') === 'true' && row.offsetParent !== null)
+        .map((row) => row.dataset.rosterRow)
+    )
+}
+
+// The first broken invariant (crash notice, console error, settings.json, a page that ignores
+// clicks), or null.
 async function brokenInvariant(page, errors) {
   if (await page.getByText(FUZZ_CRASH).count()) return 'crash notice shown'
   if (errors.length) return `console.error: ${errors.join(' | ')}`
+  if (await clicksBlocked(page)) return 'body ignores clicks with no open layer'
   try {
     JSON.parse(readFileSync(join(USER_DATA, 'settings.json'), 'utf8'))
     return null
   } catch (error) {
     return `settings.json does not parse: ${error.message}`
   }
+}
+
+async function clicksBlocked(page) {
+  const blocked = () =>
+    page.evaluate(
+      (layer) =>
+        getComputedStyle(document.body).pointerEvents === 'none' && !document.querySelector(layer),
+      OPEN_LAYER
+    )
+  if (!(await blocked())) return false
+  await sleep(LAYER_SETTLE_MS)
+  return blocked()
 }
 
 // The interactive controls in an ARIA snapshot, as role and exact name, minus FUZZ_SKIP.
@@ -303,7 +372,8 @@ function parseControls(aria) {
   return controls
 }
 
-async function fuzzAct(page, action, text) {
+async function fuzzAct(page, action) {
+  if (action.drag) return fuzzDrag(page, action)
   if (action.key) {
     // Enter and Space press the focused control, so they honour FUZZ_SKIP like clicks do, and
     // never follow a link (it opens the system browser).
@@ -326,14 +396,34 @@ async function fuzzAct(page, action, text) {
     return `press ${action.key}`
   }
   const target = page.getByRole(action.role, { name: action.name, exact: true }).first()
-  const value = action.role === 'textbox' || action.role === 'combobox' ? text() : null
+  const value = action.role === 'textbox' || action.role === 'combobox' ? action.text : null
+  const { button, modifiers } = action.click
+  const how = [...modifiers, button === 'right' ? 'right-click' : 'click'].join('+').toLowerCase()
   try {
     if (value !== null) await target.fill(value, { timeout: 2000 })
-    else await target.click({ timeout: 2000 })
-    return `${value !== null ? 'fill' : 'click'} ${action.role} "${action.name}"${value !== null ? ` with ${JSON.stringify(value.slice(0, 20))}` : ''}`
+    else await target.click({ button, modifiers, timeout: 2000 })
+    return `${value !== null ? 'fill' : how} ${action.role} "${action.name}"${value !== null ? ` with ${JSON.stringify(value.slice(0, 20))}` : ''}`
   } catch (error) {
     // A disabled, covered or vanished control is part of the walk, not a failure.
     return `skip ${action.role} "${action.name}": ${error.message.split('\n')[0]}`
+  }
+}
+
+// Drags one roster row onto another, dropping at the target's top, middle or bottom.
+async function fuzzDrag(page, { drag, onto, drop }) {
+  const row = (key) => page.locator(`${FUZZ_ROW}[data-roster-row=${JSON.stringify(key)}]`).first()
+  const what = `drag "${drag}" to "${onto}" at ${drop.edge}`
+  try {
+    const target = row(onto)
+    const box = await target.boundingBox({ timeout: 2000 })
+    if (!box) return `skip ${what}: target not shown`
+    await row(drag).dragTo(target, {
+      targetPosition: { x: box.width / 2, y: box.height * drop.share },
+      timeout: 2000
+    })
+    return what
+  } catch (error) {
+    return `skip ${what}: ${error.message.split('\n')[0]}`
   }
 }
 
