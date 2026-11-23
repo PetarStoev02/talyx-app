@@ -83,7 +83,10 @@ export async function readRoster(
 // written, so every client reads the same default.
 function withManagerPin(bot: Bot): Bot {
   return bot.name === 'default' && bot.meta.pinned === null
-    ? { ...bot, meta: { ...bot.meta, pinned: true, pinnedOrder: FIRST_PIN } }
+    ? {
+        ...bot,
+        meta: { ...bot.meta, pinned: true, pinnedOrder: bot.meta.pinnedOrder ?? FIRST_PIN }
+      }
     : bot
 }
 

@@ -213,7 +213,8 @@ const FUZZ_DROPS = [
   { edge: 'bottom', share: 0.9 }
 ]
 // Radix sets `pointer-events: none` on body while a modal layer is open; with none open, the app
-// ignores every click until reload. A closing layer clears it within its animation.
+// ignores every click until reload. A closing layer clears it within its animation. A listbox
+// counts too (a Select's list is modal), so the check also rests while chat search lists results.
 const OPEN_LAYER = '[role=dialog], [role=alertdialog], [role=menu], [role=listbox]'
 const LAYER_SETTLE_MS = 300
 // Controls that leave the sandbox (native panels, the microphone, the browser, the clipboard,

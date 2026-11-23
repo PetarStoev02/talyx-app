@@ -195,6 +195,13 @@ describe('roster actions', () => {
     expect(pinNames()).toEqual(['analyst', 'writer', 'planner'])
     expect(engine.metadata.default[BOT_META_KEY]).toMatchObject({ pinned: false })
   })
+  it('should keep Talyx where it was dragged among the pins after a reload', async () => {
+    engine.metadata.default = {}
+    await refreshRoster(backend)
+    await act(() => rosterActions(backend).orderPin('default', 'planner'))
+    await refreshRoster(backend)
+    expect(pinNames()).toEqual(['analyst', 'writer', 'planner', 'default'])
+  })
   it.each([
     ['adding', (name: string) => rosterActions(backend).addFolder(name, null)],
     ['renaming', (name: string) => rosterActions(backend).renameFolder('team', name)]

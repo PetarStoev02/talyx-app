@@ -134,7 +134,8 @@ async function saveAll(
   bot: Bot,
   change: DetailsChange
 ): Promise<ModelConfirm | null> {
-  checkedName(change.draft.title)
+  // Only a new title: one stored before the limit must not block saving the other fields.
+  if (change.draft.title.trim() !== change.opening.title.trim()) checkedName(change.draft.title)
   if (bot.name !== MANAGER && lookChanged(bot, change))
     await exportAvatar(backend, bot.name, change.draft.look)
   const meta = metaChange(bot, change)

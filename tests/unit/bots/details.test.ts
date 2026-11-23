@@ -132,6 +132,15 @@ describe('bot details', () => {
       expect(engine.configured).toEqual([])
     })
 
+    it('should save other fields of a bot whose stored title is longer than a name may be', async () => {
+      const before = { ...(await opening('analyst')), title: 'a'.repeat(NAME_MAX_LENGTH + 6) }
+      await saveDetails(backend, bot('analyst'), {
+        opening: before,
+        draft: { ...before, soul: '# New' }
+      })
+      expect(engine.configured).toEqual([{ name: 'analyst', soul: '# New' }])
+    })
+
     it('should refuse a title longer than a name may be and save nothing', async () => {
       const before = await opening('analyst')
       const saving = saveDetails(backend, bot('analyst'), {
