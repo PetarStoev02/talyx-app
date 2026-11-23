@@ -75,7 +75,7 @@ export function ChatIntro({
   return (
     <div className="grid flex-1 place-content-center justify-items-center gap-3 px-8 text-center">
       <BotAvatar bot={bot} place="tile" size={64} />
-      <h1 className="text-2xl font-semibold">{botTitle(bot)}</h1>
+      <h1 className="max-w-md text-2xl font-semibold wrap-anywhere">{botTitle(bot)}</h1>
       {description ? (
         <p className="max-w-md text-base">{description}</p>
       ) : (

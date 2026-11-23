@@ -189,7 +189,7 @@ export function RoomPane({
         ) : (
           <div className="grid flex-1 place-content-center justify-items-center gap-3 px-8 text-center">
             <RoomAvatars room={room} bots={bots} cluster={64} />
-            <h1 className="text-2xl font-semibold">{room.name}</h1>
+            <h1 className="max-w-md text-2xl font-semibold wrap-anywhere">{room.name}</h1>
             <p className="max-w-md text-base">
               {listOf(room.members.map((member) => nameOf(member.member_id ?? member.profile)))}
             </p>
