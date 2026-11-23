@@ -18,7 +18,7 @@ import type { DetailsDraft } from '../../../src/renderer/src/features/bots/detai
 import { lookOf } from '../../../src/renderer/src/features/bots/look'
 import { BLOCK_HUES } from '../../../src/renderer/src/shared/ui/blockGeometry'
 import { BLOCK_SHAPES } from '../../../src/shared/moduleHost'
-import { RosterError } from '../../../src/renderer/src/features/bots/roster'
+import { NAME_MAX_LENGTH, RosterError } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
 import type { Bot } from '../../../src/renderer/src/features/bots/types'
 import {
@@ -129,6 +129,17 @@ describe('bot details', () => {
         sectionId: 'team',
         sectionName: 'Team'
       })
+      expect(engine.configured).toEqual([])
+    })
+
+    it('should refuse a title longer than a name may be and save nothing', async () => {
+      const before = await opening('analyst')
+      const saving = saveDetails(backend, bot('analyst'), {
+        opening: before,
+        draft: { ...before, title: 'a'.repeat(NAME_MAX_LENGTH + 1), soul: '# New' }
+      })
+      await expect(saving).rejects.toMatchObject({ key: 'roster.errorNameTooLong' })
+      expect(engine.configureCalls).toEqual([])
       expect(engine.configured).toEqual([])
     })
 

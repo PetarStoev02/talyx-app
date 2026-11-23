@@ -502,6 +502,7 @@ const en = {
     'The engine sent a list of rooms Talyx cannot read. Refresh the roster; if it keeps failing, update the engine.',
   'roster.errorNoDefault':
     'The engine did not return Talyx’s own bot. Restart it with talyx-engine gateway restart, then refresh.',
+  'roster.errorNameTooLong': 'That name is too long. Pick a shorter one.',
   'roster.errorFolderGone': 'That folder no longer exists. Refresh the roster.',
   'mcp.stillOnOldModel':
     'Talyx’s model changed, but these bots on Uses default stayed on the old model:',

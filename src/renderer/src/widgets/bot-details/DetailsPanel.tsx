@@ -22,7 +22,7 @@ import type {
 import { lookOf, sameLook } from '@features/bots/look'
 import { LookPicker } from '@features/bots/LookPicker'
 import { ProblemMessage, TryAgain } from '@features/bots/ProblemMessage'
-import { botTitle, problemOf } from '@features/bots/roster'
+import { NAME_MAX_LENGTH, botTitle, problemOf } from '@features/bots/roster'
 import { reportFollowing } from '@features/bots/spread'
 import type { RosterProblem } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
@@ -267,7 +267,7 @@ export function DetailsPanel({
                   {t('details.title')}
                   <Input
                     value={draft.title}
-                    maxLength={100}
+                    maxLength={NAME_MAX_LENGTH}
                     placeholder={botTitle({ ...bot, meta: { ...bot.meta, title: null } })}
                     onChange={(event) => setTitle(event.target.value)}
                   />

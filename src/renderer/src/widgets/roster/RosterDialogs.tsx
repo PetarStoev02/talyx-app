@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
-import { botTitle, folderPath, itemKey } from '@features/bots/roster'
+import { NAME_MAX_LENGTH, botTitle, folderPath, itemKey } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import type { Bot, Folder, Room, RosterRowRef, RosterSnapshot } from '@features/bots/types'
 import { ProblemMessage } from '@features/bots/ProblemMessage'
@@ -59,7 +59,7 @@ export function FolderNameDialog({
             <Input
               autoFocus
               value={name}
-              maxLength={100}
+              maxLength={NAME_MAX_LENGTH}
               onChange={(event) => setName(event.target.value)}
             />
           </label>

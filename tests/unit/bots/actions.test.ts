@@ -10,6 +10,7 @@ import {
   folderItems,
   itemKey,
   itemRef,
+  NAME_MAX_LENGTH,
   pinnedBots
 } from '../../../src/renderer/src/features/bots/roster'
 import { useRoster } from '../../../src/renderer/src/features/bots/store'
@@ -183,6 +184,21 @@ describe('roster actions', () => {
     await act(() => rosterActions(backend).addFolder('  Research  ', null))
     expect(roster().folders.map((folder) => folder.name)).toEqual(['Team', 'Clients', 'Research'])
   })
+  it.each([
+    ['adding', (name: string) => rosterActions(backend).addFolder(name, null)],
+    ['renaming', (name: string) => rosterActions(backend).renameFolder('team', name)]
+  ])(
+    'should take the longest folder name when %s one, and refuse a longer one',
+    async (_, save) => {
+      const longest = 'a'.repeat(NAME_MAX_LENGTH)
+      await act(() => save(` ${longest} `))
+      expect(roster().folders.some((folder) => folder.name === longest)).toBe(true)
+      const before = roster().folders
+      await act(() => save(`${longest}b`))
+      expect(useRoster.getState().actionError?.key).toBe('roster.errorNameTooLong')
+      expect(roster().folders).toEqual(before)
+    }
+  )
   it('should add a folder inside another one, and refuse a parent that is gone', async () => {
     await act(() => rosterActions(backend).addFolder('Finance', 'clients'))
     expect(roster().folders.find((folder) => folder.name === 'Finance')?.parentId).toBe('clients')
