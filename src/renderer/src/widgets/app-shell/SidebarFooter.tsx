@@ -4,7 +4,7 @@ import { useEngine } from '@features/setup/store'
 import { useLanguage } from '@shared/lib/i18n'
 import { type AppView, useNavigation } from '@features/modules/store'
 import { useRoster } from '@features/bots/store'
-import { dialogOpen, platformOf } from '@features/shortcuts/shortcuts'
+import { layerOpen, platformOf } from '@features/shortcuts/shortcuts'
 import { anyUnread, dockSections, dockShortcut, type DockSection } from '@features/modules/sections'
 import { moduleView, runningModules, useModuleAttention, useModules } from '@features/modules/store'
 import { updateItems } from '@features/updates/items'
@@ -115,7 +115,7 @@ function viewOf(section: DockSection): AppView {
 function useDockShortcuts(views: AppView[]): void {
   const navigate = useNavigation((s) => s.navigate)
   useWindowEvent('keydown', (event) => {
-    if (!(isMac ? event.metaKey : event.ctrlKey) || dialogOpen()) return
+    if (!(isMac ? event.metaKey : event.ctrlKey) || layerOpen()) return
     const view = dockShortcut(views, event.key)
     if (!view) return
     event.preventDefault()

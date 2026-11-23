@@ -135,7 +135,10 @@ export function platformOf(name: string): Platform {
   return /mac/i.test(name) ? 'mac' : 'linux'
 }
 
-/** Whether a dialog is open: the shortcuts behind it wait (only ⌘/ closes the cheat sheet). */
-export function dialogOpen(): boolean {
-  return !!document.querySelector('[role="dialog"], [role="alertdialog"]')
+/**
+ * Whether a dialog or menu is open: the shortcuts behind it wait (only ⌘/ closes the cheat sheet).
+ * A shortcut over a menu would open its page or dialog on top, and each Escape closes one layer.
+ */
+export function layerOpen(): boolean {
+  return !!document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')
 }
