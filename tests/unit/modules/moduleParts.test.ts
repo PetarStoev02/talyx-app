@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createItemsOf,
   createOf,
@@ -33,10 +33,6 @@ const chat = { bots: () => [] } as unknown as ModuleChat
 describe("a module's page parts", () => {
   beforeEach(() => {
     vi.stubGlobal('window', { electron: { bridged: true } })
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
   })
 
   describe('loading renderer.js', () => {

@@ -8,7 +8,6 @@ function event(params: Partial<GatewayEvent> & { type: string }): object {
 
 describe('engine host', () => {
   afterEach(() => {
-    vi.unstubAllGlobals()
     vi.resetModules()
     vi.doUnmock('@shared/engine/reconnect-backoff')
   })

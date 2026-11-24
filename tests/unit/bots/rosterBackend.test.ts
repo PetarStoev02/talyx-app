@@ -4,7 +4,6 @@ import { installFakeEngineApi } from '../engine/fakeEngineApi'
 
 describe('roster engine access', () => {
   afterEach(() => {
-    vi.unstubAllGlobals()
     vi.resetModules()
   })
 

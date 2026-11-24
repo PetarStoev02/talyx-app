@@ -121,10 +121,6 @@ describe('runInstall options', () => {
 })
 
 describe('loginShell', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs()
-  })
-
   it('should return an absolute shell path', () => {
     expect(loginShell()).toMatch(/^\//)
   })

@@ -46,7 +46,6 @@ const redial = stamped.chain((clean) =>
 
 describe('chat transcript across a redial, through the real gateway client', () => {
   afterEach(() => {
-    vi.unstubAllGlobals()
     vi.resetModules()
     vi.doUnmock('@shared/engine/reconnect-backoff')
   })

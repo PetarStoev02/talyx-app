@@ -60,7 +60,6 @@ describe('module host', () => {
 
   afterEach(async () => {
     vi.useRealTimers()
-    vi.unstubAllGlobals()
     await rm(root, { recursive: true, force: true })
   })
 
