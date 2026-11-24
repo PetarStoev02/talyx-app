@@ -22,8 +22,9 @@ const PATH = /`([\w@.-]+(?:\/[\w.-]+)+\.(?:tsx?|mjs|jsx?|json|md|ya?ml|sh|css|ht
 const CALL = /`(?:[A-Za-z_$][\w$]*\.)*([A-Za-z_$][\w$]*)\([^`]*\)`/g
 // A name written with `(` after it: a call or a declaration.
 const CALLED = /[A-Za-z_$][\w$]*(?=\()/g
-// A whole-line comment, or the comment after code (a space before `//` keeps URLs whole).
-const COMMENT = /^\s*(?:\/\/|\/\*|\*).*$|\s\/\/.*$/
+// A whole-line comment, the comment after code (a space before `//` keeps URLs whole) or an
+// inline block comment.
+const COMMENT = /^\s*(?:\/\/|\/\*|\*).*$|\s\/\/.*$|\/\*.*?\*\//g
 
 const ALIASES: Record<string, string> = {
   '@app/': 'src/renderer/src/app/',
@@ -46,7 +47,8 @@ describe('file and function references', () => {
   it('should name only files that exist, in docs, skills and comments', () => {
     const repoFiles = git(['ls-files']).split('\n')
     const exists = (path: string): boolean =>
-      repoFiles.some((file) => file === path || file.endsWith(`/${path}`)) || ignored(path)
+      !path.startsWith('../') &&
+      (repoFiles.some((file) => file === path || file.endsWith(`/${path}`)) || ignored(path))
 
     const stale = references(['*.md', '*.ts', '*.tsx', '*.mjs', '*.yml'], PATH)
       .map(({ where, file, name }) => ({
