@@ -5,7 +5,6 @@ const MISSING = { state: 'missing', enginePath: null, version: null, reason: nul
 
 describe('checking for the engine', () => {
   afterEach(() => {
-    vi.unstubAllGlobals()
     vi.resetModules()
   })
 

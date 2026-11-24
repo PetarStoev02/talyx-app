@@ -6,7 +6,7 @@ prompts and PR descriptions.
 
 ## Baseline preconditions
 
-- Launch with `control-talyx launch --no-engine --seed /tmp/talyx-verify/seed.json` where the
+- Launch with `control-talyx launch --seed /tmp/talyx-verify/seed.json` where the
   seed is `{"setupDone": true}`, unless the feature says otherwise.
 - `control-talyx doctor` reports `ok`, the window `Talyx`, and `/tmp/talyx-verify/run/userData`.
 - Never drive a Talyx this run did not start. The installed app may be open; leave it alone.
@@ -37,7 +37,7 @@ Each file: an H1, one paragraph of user-visible behavior, then exactly these fou
 
 ## Features
 
-Engine-free (provable with `--no-engine`):
+Engine-free (provable in an isolated run):
 
 - [Theme](./settings-theme.md): Settings, General, Appearance: Light, Dark, System. Proven 2026-11-17.
 - [Engine gate](./engine-gate.md): "Talyx needs its engine." with Install, Try again, Choose file.
@@ -53,7 +53,7 @@ Engine-backed, read-only (the real engine, nothing created):
 
 - [Settings, Providers](./settings-providers.md): the provider list, Add provider, Talyx's model.
 
-Engine-backed (need `launch` without `--no-engine`; see Real-engine rules in SKILL.md):
+Engine-backed (need `launch --real-engine`; see Real-engine rules in SKILL.md):
 
 - [Create a bot](./create-bot.md): the roster's add button, the New bot dialog, the new row. Proven 2026-11-18.
 - [Send a message](./chat-send.md): the composer, the queued turn, the reply in the transcript. Proven 2026-11-18.

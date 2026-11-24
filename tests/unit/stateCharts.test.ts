@@ -128,7 +128,6 @@ describe('state charts in docs/state', () => {
   describe('engine connection', () => {
     afterEach(() => {
       vi.useRealTimers()
-      vi.unstubAllGlobals()
       vi.resetModules()
       vi.doUnmock('@shared/engine/reconnect-backoff')
     })

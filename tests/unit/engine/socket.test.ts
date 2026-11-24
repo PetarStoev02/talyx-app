@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 describe('engine IPC socket', () => {
   afterEach(() => {
-    vi.unstubAllGlobals()
     vi.resetModules()
   })
 

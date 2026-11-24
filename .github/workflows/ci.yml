@@ -169,7 +169,7 @@ jobs:
           out="$EVIDENCE/engine-gate"
           mkdir -p "$out"
           echo '{"setupDone": true}' > /tmp/seed.json
-          $CONTROL launch --no-engine --seed /tmp/seed.json
+          $CONTROL launch --seed /tmp/seed.json
           $CONTROL browser wait --role heading --name 'Talyx needs its engine.'
           $CONTROL browser snapshot --path "$out/after.aria.txt"
           $CONTROL browser screenshot --path "$out/after.png"
@@ -178,12 +178,12 @@ jobs:
           ! grep -E 'button "(Settings|Usage)"' "$out/after.aria.txt"
           $CONTROL stop
 
-      # A failing seed replays locally: launch --no-engine with the same seed file, then fuzz.
+      # A failing seed replays locally: launch with the same seed file, then fuzz.
       - name: Fuzz (seed = run number)
         if: steps.scope.outputs.run
         run: |
           set -euo pipefail
-          $CONTROL launch --no-engine --seed /tmp/seed.json
+          $CONTROL launch --seed /tmp/seed.json
           $CONTROL fuzz --steps 100 --seed ${{ github.run_number }}
 
       - uses: actions/upload-artifact@v4

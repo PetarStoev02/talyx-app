@@ -24,8 +24,8 @@ The roster in the sidebar (`Roster`) lists the user's bots and rooms. Pinned one
 
 Preconditions:
 
-- Default: a `--no-engine` run whose engine was installed by first-run setup (see first-run-setup: Install, Provider, First bot named `Verify scratch`). That engine holds no user data, so every step below is safe there.
-- Fallback, only with the user's approval: `control-talyx launch` on the real engine, with the scratch bot from create-bot and one approved folder `Verify folder`. The roster renders only when an engine is attached.
+- Default: an isolated run whose engine was installed by first-run setup (see first-run-setup: Install, Provider, First bot named `Verify scratch`). That engine holds no user data, so every step below is safe there.
+- Fallback, only with the user's approval: `control-talyx launch --real-engine`, with the scratch bot from create-bot and one approved folder `Verify folder`. The roster renders only when an engine is attached.
 
 - **Roster shows.** Run `control-talyx browser wait --role navigation --name "Roster"`. The snapshot has a region `Unassigned` with button `Unassigned` and a button containing `Verify scratch`.
 - **Collapse.** Run `control-talyx browser click --role button --name "Unassigned" --exact`. The button shows `[expanded=false]` and its rows leave the snapshot. Click it again to reopen.
@@ -39,7 +39,7 @@ Preconditions:
 
 ## Gotchas
 
-- Engine-backed: with `--no-engine` and no engine installed by setup, the roster (`useRosterBackend` returns null) and the `+` button are not rendered. On the real engine only the scratch bot, plus an approved scratch folder, may be touched. Never pin, move, hide or mark the user's own bots or folders. Folders, order and room pins are the engine's shared layout and other clients see them.
+- Engine-backed: in an isolated run with no engine installed by setup, the roster (`useRosterBackend` returns null) and the `+` button are not rendered. On the real engine only the scratch bot, plus an approved scratch folder, may be touched. Never pin, move, hide or mark the user's own bots or folders. Folders, order and room pins are the engine's shared layout and other clients see them.
 - Bot rows have no menu button. Their actions are a context menu, and control-talyx has no right-click, so use focus plus `press --key Shift+F10`. If the click moved focus to the composer, Shift+F10 opens nothing, so snapshot and refocus the row.
 - Bulk picks (`roster-bulk`, `roster-hide`, `Mark as read`, `Delete...`) need Shift-click or Cmd-click. control-talyx `click` takes no modifiers, so report them as not drivable. `Hide` exists only in the bulk menu (2+ picked bots), so hiding is not drivable either.
 - Accessible names match substrings case-insensitively: `Pin` also matches `Unpin` and `Move pin earlier`, `Unassigned` matches the `Move to` submenu entry (a menuitem, different role), and `New folder` is both a menuitem and a dialog title. Use `--exact` and the role.
@@ -47,5 +47,5 @@ Preconditions:
 - The pick state is announced in a `status` line and `aria-description` (`Selected`, `Unread reply`, `Working`, `Needs you`). The ARIA snapshot may not print descriptions, so read the tile text or the screenshot instead.
 - The `Hidden bots ({count})` toggle is a native `details`/`summary`. Its role in the snapshot is uncertain, so check it before driving.
 - The `Delete bot` entry is disabled for the profile `default`. Talyx's own bot cannot be hidden or deleted.
-- Proven 2026-11-18 in a `--no-engine` run whose engine was installed by setup (no user data): pin (the tile reads `Ready`), unpin, New folder, Move to, Rename folder, Delete folder (the bot goes back to `Unassigned`). A folder named with the bot's name as a prefix (`Verify scratch folder`) made `--name "Verify scratch"` hit the folder header first, hence `Verify folder`.
+- Proven 2026-11-18 in an isolated run whose engine was installed by setup (no user data): pin (the tile reads `Ready`), unpin, New folder, Move to, Rename folder, Delete folder (the bot goes back to `Unassigned`). A folder named with the bot's name as a prefix (`Verify scratch folder`) made `--name "Verify scratch"` hit the folder header first, hence `Verify folder`.
 - Seen 2026-11-18: the roster is `navigation "Roster"`, folders are `region` with a header `button "<folder> <count>" [expanded]`, a pinned tile is `button "<name> Ready"`, and a bot row's Shift+F10 menu has `Pin`, `Move up`, `Move to`, `Edit bot`, `Delete bot`. Hide and bulk picks were not driven (modifier clicks); collapse and unread marks are written from the code.

@@ -18,8 +18,8 @@ While a bot answers in its own chat, it can draw a small interface in the transc
 
 Preconditions:
 
-- Engine-backed. Launch with `control-talyx launch` (real engine). The scratch bot `Verify scratch` exists (see create-bot) and is selected: `control-talyx browser click --role button --name "Verify scratch"`.
-- With `--no-engine` nothing here can be reached: no bot, no transcript.
+- Engine-backed. Launch with `control-talyx launch --real-engine`. The scratch bot `Verify scratch` exists (see create-bot) and is selected: `control-talyx browser click --role button --name "Verify scratch"`.
+- In an isolated run nothing here can be reached: no bot, no transcript.
 
 - **Ask for a two-button pick.** Run `control-talyx browser fill --role textbox --name "Message Verify scratch" --value "Use your show_ui tool to ask me to pick Red or Blue with two buttons."`, then `control-talyx browser click --role button --name "Send" --exact`. Within about 60 s a card with two buttons appears in the transcript.
 - **Pick an answer.** Read the snapshot and click a button named `Red` or `Blue` as the bot drew them. Your message shows that label and the card shows `Your answer: {choice}`.

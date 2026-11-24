@@ -21,7 +21,7 @@ Talyx shows it.
 
 Preconditions:
 
-- Launch with `control-talyx launch` (real engine; no `--no-engine`). The user approved a scratch
+- Launch with `control-talyx launch --real-engine`. The user approved a scratch
   bot. The roster is visible (`control-talyx browser wait --role navigation --name "Roster"` or the
   first bot row).
 - No bot named `Verify scratch` exists.

@@ -22,7 +22,7 @@ Modules stay hidden until a license is active. With no key, nothing in Talyx men
 
 Preconditions:
 
-- Baseline launch (`--no-engine`, seed `{"setupDone": true}`). The engine gate fills the window, with no sidebar; the dialog opens from the app menu all the same. The Settings steps below need the engine (see [First-run setup](./first-run-setup.md)).
+- Baseline launch (isolated, seed `{"setupDone": true}`). The engine gate fills the window, with no sidebar; the dialog opens from the app menu all the same. The Settings steps below need the engine (see [First-run setup](./first-run-setup.md)).
 - `control-talyx settings` has `"licenseKey": null` or no `licenseKey` key.
 
 - **Hidden without a key.** Run `control-talyx browser click --role button --name "Settings" --exact`. The navigation `Settings pages` lists General, Providers, Engine and About, with no Modules row. Run `control-talyx browser snapshot --path /tmp/talyx-verify/evidence/module-activation/before.aria.txt` and check that it does not contain `License and installed modules`.
@@ -43,4 +43,4 @@ Preconditions:
 - Name not from i18n: the field's placeholder is "TALYX-…". Its accessible name comes from the "License key" label.
 - Each Settings pages button's accessible name is its title plus its detail ("Modules License and installed modules"), so substring matching is needed.
 - Remove license clears the license but keeps installed files. Restoring a key afterwards needs the key again.
-- Run 2026-11-18 with `--no-engine`: `modules-hidden` proven (no Modules row). `press --key Meta+Shift+L` did not open the dialog (the accelerator belongs to the native menu), so `activation-open` and everything after it is not drivable with control-talyx; the dialog steps are written from the code.
+- Run 2026-11-18, isolated: `modules-hidden` proven (no Modules row). `press --key Meta+Shift+L` did not open the dialog (the accelerator belongs to the native menu), so `activation-open` and everything after it is not drivable with control-talyx; the dialog steps are written from the code.

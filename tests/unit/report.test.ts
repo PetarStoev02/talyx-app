@@ -3,7 +3,6 @@ import { reportError } from '../../src/renderer/src/shared/lib/report'
 
 describe('reportError', () => {
   afterEach(() => {
-    vi.unstubAllGlobals()
     vi.restoreAllMocks()
   })
 

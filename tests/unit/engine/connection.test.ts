@@ -3,7 +3,6 @@ import { installFakeEngineApi } from './fakeEngineApi'
 
 describe('engine connection state', () => {
   afterEach(() => {
-    vi.unstubAllGlobals()
     vi.resetModules()
   })
 

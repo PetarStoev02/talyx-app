@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 const electronApp = vi.hoisted(() => ({ isPackaged: true, getVersion: (): string => '1.2.3' }))
 vi.mock('electron', () => ({ app: electronApp }))
@@ -138,10 +138,6 @@ describe('sha256Hex', () => {
 })
 
 describe('installStepsSource', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
   function stubFetch(body: Uint8Array): ReturnType<typeof vi.fn> {
     const fetch = vi.fn(() => Promise.resolve(new Response(body)))
     vi.stubGlobal('fetch', fetch)

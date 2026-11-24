@@ -46,6 +46,9 @@ const commands = {
 }
 
 async function launch() {
+  if (flags['no-engine'])
+    throw new Error('--no-engine is the default now; drop it (--real-engine attaches the real one)')
+  const realEngine = Boolean(flags['real-engine'])
   const running = readPid()
   if (running && groupAlive(running))
     throw new Error(`A verification Talyx is already running (pid ${running}). Run stop first.`)
@@ -58,7 +61,8 @@ async function launch() {
     TALYX_BRIDGE_PORT: String(BRIDGE_PORT),
     TALYX_MCP_PORT: String(MCP_PORT)
   }
-  if (flags['no-engine']) {
+  // Isolated unless asked: with the real engine, every click lands on the user's own bots.
+  if (!realEngine) {
     env.HOME = HOME
     env.PATH = pathWithout(ENGINE_COMMAND, process.env.PATH ?? '')
   }
@@ -70,19 +74,19 @@ async function launch() {
   )
   child.unref()
   writeFileSync(PID_FILE, String(child.pid))
-  writeFileSync(MODE_FILE, flags['no-engine'] ? 'no-engine' : 'engine')
+  writeFileSync(MODE_FILE, realEngine ? 'engine' : 'no-engine')
   let page = await waitForWindow(READY_TIMEOUT_MS)
   await page.context().browser().close()
   // The first dev build can reload the renderer once more; wait it out so a drive does not race it.
   await sleep(3000)
   page = await waitForWindow(READY_TIMEOUT_MS)
   console.log(
-    `launched pid ${child.pid}, window "${await page.title()}", userData ${USER_DATA}${flags['no-engine'] ? ', engine hidden' : ', real engine'}`
+    `launched pid ${child.pid}, window "${await page.title()}", userData ${USER_DATA}${realEngine ? ', real engine' : ', engine hidden'}`
   )
   await page.context().browser().close()
 }
 
-// An engine installed by setup in a --no-engine run lives in the run's HOME, and its gateway
+// An engine installed by setup in an isolated run lives in the run's HOME, and its gateway
 // outlives Talyx (Talyx never owns the gateway). Stop what runs from inside the run directory, by
 // that path (also by its real path, for a TALYX_VERIFY_ROOT behind a symlink). Not `gateway stop`:
 // the engine looks for its launchd service under the account's real home, so it could stop the
@@ -225,7 +229,7 @@ const FUZZ_SKIP =
 const FUZZ_CRASH = /^(This part of )?Talyx stopped working\.$/
 const FUZZ_TEXT = ['', 'a', 'Fuzz 😀 ünï', '<b>x</b>', 'x'.repeat(300)]
 const FUZZ_STEPS = 200
-// Set up in a --no-engine run, the engine and its gateway live in the run's home.
+// Set up in an isolated run, the engine and its gateway live in the run's home.
 const SANDBOX_ENGINE = join(HOME, '.local/bin', ENGINE_COMMAND)
 
 // The Agents page: the footer's Settings button shows (not Close Settings, not the setup flow),
@@ -240,7 +244,9 @@ async function atHome(page) {
 
 async function fuzz() {
   if (!existsSync(MODE_FILE) || readFileSync(MODE_FILE, 'utf8') !== 'no-engine')
-    throw new Error('fuzz needs a run started with launch --no-engine; it would click real bots')
+    throw new Error(
+      'fuzz needs an isolated run (launch without --real-engine); it would click real bots'
+    )
   const seed = integerFlag('seed', null)
   const steps = integerFlag('steps', FUZZ_STEPS)
   const random = mulberry32(seed)

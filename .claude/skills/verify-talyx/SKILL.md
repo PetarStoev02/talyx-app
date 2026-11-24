@@ -17,16 +17,16 @@ Helper: `node .claude/skills/verify-talyx/control-talyx.mjs <command>` from the 
 ## Launch
 
 ```sh
-control-talyx launch --no-engine --seed <settings.json>   # isolated: no engine, no real bots
-control-talyx launch                                       # attaches to this machine's real engine
+control-talyx launch --seed <settings.json>   # isolated: no engine, no real bots
+control-talyx launch --real-engine            # attaches to this machine's real engine
 ```
 
 - Starts `electron-vite dev` with `--user-data-dir=/tmp/talyx-verify/run/userData` and
   `--remote-debugging-port=9333`, bridge port 5195, MCP port 47899. It never touches the installed
   Talyx or `~/Library/Application Support/talyx`, so the installed app can stay open.
-- `--no-engine` hides the engine: `HOME` becomes `/tmp/talyx-verify/run/home` and every `PATH`
+- By default the engine is hidden: `HOME` becomes `/tmp/talyx-verify/run/home` and every `PATH`
   entry holding `talyx-engine` is dropped. The app then shows setup or "Talyx needs its engine."
-  Without it the app attaches to the real engine and its real profiles.
+  `--real-engine` attaches the real engine and its real profiles (see Real-engine rules).
 - `--seed <file>` copies a `settings.json` into the fresh user data. `{"setupDone": true}` skips the
   first-run flow. Without a seed the first-run Welcome shows.
 - Ready means the main window answers over CDP and shows its first heading or the roster. The
@@ -72,7 +72,7 @@ control-talyx settings                                   # the run's settings.js
 ## Fuzz
 
 ```sh
-control-talyx launch --no-engine --seed /tmp/talyx-verify/seed.json
+control-talyx launch --seed /tmp/talyx-verify/seed.json
 control-talyx fuzz --steps 200 --seed <n>
 control-talyx stop
 ```
@@ -87,10 +87,10 @@ control-talyx stop
   `console.error` or page error, `settings.json` still parses, and `body` does not ignore clicks
   (`pointer-events: none`) with no dialog or menu open. When the step was Escape and the app is not
   on the Agents page, it presses Escape once more and then requires the Agents page.
-- It refuses a launch without `--no-engine`, and skips controls that leave the sandbox (native
+- It refuses a `--real-engine` run, and skips controls that leave the sandbox (native
   panels, the microphone, the browser, the clipboard, login items, installs, updates), enter the
   setup flow (no Escape exit by design) or approve a bot's tool call.
-- **The whole app.** A `--no-engine` run reaches only the first screens. To fuzz the roster, chat,
+- **The whole app.** An isolated run reaches only the first screens. To fuzz the roster, chat,
   details, rooms and Usage, first run setup in that run as in `features/first-run-setup.md`:
   install the engine into the run's home, add a provider (a local router as `Custom endpoint`),
   pick it as `Talyx’s model`, make a bot. Then run `fuzz`: it sees the engine in the run's home and
@@ -100,7 +100,7 @@ control-talyx stop
   sandbox for the bots: they run tools as you, and only the approval buttons are skipped.
 - CI's `UI` job (`.github/workflows/ci.yml`) runs 100 steps with the run number as the seed, on
   Linux under Xvfb with no engine, and uploads `evidence/` as the `ui-evidence` artifact. Replay a
-  CI failure with the same seed: `launch --no-engine --seed` with `{"setupDone": true}`, then
+  CI failure with the same seed: `launch --seed` with `{"setupDone": true}`, then
   `fuzz --steps 100 --seed <run number>`.
 - A failure prints the seed, the failed check and the step log, and saves `steps.log`,
   `after.aria.txt` and `after.png` under `evidence/fuzz-<seed>/`. Rerun the same seed on a fresh
@@ -120,7 +120,7 @@ Save under `/tmp/talyx-verify/evidence/<feature-id>/`:
 
 Proof standards: drive the user path (buttons, fields, shortcuts), never the dev bridge, IPC or a
 store. Capture the action and the resulting state, not only the final screen. A pressed button is
-not proof; the stored value or the second view is. Nothing here mocks the engine: `--no-engine`
+not proof; the stored value or the second view is. Nothing here mocks the engine: an isolated run
 hides it, and the real engine is real.
 
 ## Cleanup

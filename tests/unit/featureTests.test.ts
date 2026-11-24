@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { describe, expect, it } from 'vitest'
 
-// A feature built as use cases over a backend (`xActions(backend)`, the one feature shape) keeps
+// A feature built as use cases over a backend (`<feature>Actions(backend)`, the one feature shape) keeps
 // its tests in tests/unit/<feature>/, beside the others (issue #184, S9).
 const FEATURES = 'src/renderer/src/features'
 const TESTS = 'tests/unit'

@@ -79,7 +79,7 @@ Each line is the rule; the check's message names the fix.
   `npm run lint`.
 - Features name no engine method or REST path (that wiring is `app/engine/`):
   `tests/unit/featureBackends.test.ts`.
-- A feature that exports `xActions(backend)` has its tests in `tests/unit/<feature>/`:
+- A feature that exports `<feature>Actions(backend)` has its tests in `tests/unit/<feature>/`:
   `tests/unit/featureTests.test.ts`.
 - TypeScript strict with `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess`, no `any`,
   explicit return types: `npm run lint` and `npm run typecheck`.
@@ -105,6 +105,9 @@ Each line is the rule; the check's message names the fix.
 - Formatting (single quotes, no semicolons, 100 columns, no trailing commas): `npm run format:check`.
 - Semantic color tokens, never raw Tailwind palette classes: `tests/unit/designTokens.test.ts`.
 - Feature-map names match the app's copy: `tests/unit/featureMap.test.ts`.
+- A backticked file path in docs, skills or comments names a file that exists, and a backticked
+  call such as `layerOpen()` in markdown names a function the code still has:
+  `tests/unit/docReferences.test.ts`.
 - Every key in `shared/lib/i18n.ts` is used in `src/`; a key built at runtime belongs to a family
   declared in the test: `tests/unit/i18nKeys.test.ts`.
 - `docs/state/` holds the small state machines' charts, drawn from their code; a machine change
@@ -123,7 +126,7 @@ Each line is the rule; the check's message names the fix.
   PR text and issues are on you.
 - **Vendored engine files** (`eslint.vendored.mjs`) keep upstream's code as written, so re-syncs
   stay clean diffs (README → Engine → Re-syncing the vendored client).
-- **One feature shape.** A feature exports `xActions(backend)`: use cases over an injected
+- **One feature shape.** A feature exports `<feature>Actions(backend)`: use cases over an injected
   backend, with the store behind them. Example: `features/chat/chat.ts` (`chatActions`), its
   backend `app/engine/chat.ts`, wired in `app/providers/useChatBackend.ts`. New state goes under
   a feature's actions, not in a bare store.
@@ -135,6 +138,8 @@ Each line is the rule; the check's message names the fix.
   test in the same PR (or a line in #184 to #188), not a new line here.
 - **Screens carry evidence.** A PR that touches a screen carries `control-talyx` evidence (a
   screenshot and the stored side effect): the `talyx-ui-change` skill.
+- **Finish in the PR.** What a review finds in the PR's own change is fixed in that PR, not left
+  for a follow-up PR or issue; deferring anything needs the owner's yes first.
 - **Every PR gets one human read before it merges.** Unattended runs (overnight, autopilot, cloud
   agents) may open PRs; nothing auto-merges.
 

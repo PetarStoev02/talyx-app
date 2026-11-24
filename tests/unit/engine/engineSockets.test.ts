@@ -44,7 +44,6 @@ function socketsWithFakeEngine(): EngineSockets {
 
 describe('engine sockets', () => {
   afterEach(() => {
-    vi.unstubAllGlobals()
     FakeSocket.opened = []
   })
 
