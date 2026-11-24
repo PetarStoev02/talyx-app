@@ -137,6 +137,8 @@ Each line is the rule; the check's message names the fix.
   test in the same PR (or a line in #184 to #188), not a new line here.
 - **Screens carry evidence.** A PR that touches a screen carries `control-talyx` evidence (a
   screenshot and the stored side effect): the `talyx-ui-change` skill.
+- **Finish in the PR.** What a review finds in the PR's own change is fixed in that PR, not left
+  for a follow-up PR or issue; deferring anything needs the owner's yes first.
 - **Every PR gets one human read before it merges.** Unattended runs (overnight, autopilot, cloud
   agents) may open PRs; nothing auto-merges.
 
