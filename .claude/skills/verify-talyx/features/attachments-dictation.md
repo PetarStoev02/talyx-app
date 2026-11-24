@@ -23,8 +23,8 @@ The composer under a bot's chat has a `+` button, `Add images or files`, and a m
 
 Preconditions:
 
-- This feature needs the real engine. With `--no-engine` the Agents page shows the engine gate and there is no composer.
-- Launch with `control-talyx launch` (real engine). The scratch bot `Verify scratch` exists (see create-bot). Create nothing else.
+- This feature needs the real engine. In an isolated run the Agents page shows the engine gate and there is no composer.
+- Launch with `control-talyx launch --real-engine`. The scratch bot `Verify scratch` exists (see create-bot). Create nothing else.
 - Select it with `control-talyx browser click --role button --name "Verify scratch"`.
 
 - **Composer shows.** Run `control-talyx browser wait --role textbox --name "Message Verify scratch"`. The snapshot has `button "Add images or files"`, `button "Dictate"` and `button "Send"` (disabled).

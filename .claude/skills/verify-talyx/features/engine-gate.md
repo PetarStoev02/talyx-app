@@ -21,7 +21,7 @@ without it.
 
 Preconditions:
 
-- Baseline launch (`--no-engine`, seed `{"setupDone": true}`).
+- Baseline launch (isolated, seed `{"setupDone": true}`).
 
 - **Gate shows.** Run `control-talyx browser wait --role heading --name "Talyx needs its engine."`. The snapshot has `button "Install the engine"`, `button "Try again"`, `button "Choose file"`, and no `button "Settings"` or `button "Usage"`.
 - **Try again.** Choose `Try again`. Run `control-talyx browser click --role button --name "Try again" --exact`. The gate stays; `/tmp/talyx-verify/run/talyx.log` gains another `[Engine] Command not found` line.
@@ -32,8 +32,8 @@ Preconditions:
 
 - `Choose file` opens a macOS open panel that CDP cannot drive. Do not click it in a run; report
   it as not drivable.
-- With the engine on `PATH` (no `--no-engine`) the gate never shows; the app attaches to the real
+- With the engine on `PATH` (`--real-engine`) the gate never shows; the app attaches to the real
   engine instead.
 - The Engine step after `Install the engine` fetches the install steps from the release page. In
-  the runs of 2026-11-17 and 2026-11-18 (`--no-engine`, dev build 1.1.0, network up) it showed "Talyx could not get the install steps." Treat
+  the runs of 2026-11-17 and 2026-11-18 (isolated, dev build 1.1.0, network up) it showed "Talyx could not get the install steps." Treat
   that screen as the install step's offline state, not a failure of the gate.

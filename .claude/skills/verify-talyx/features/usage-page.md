@@ -22,7 +22,7 @@ The chart button in the sidebar footer (named `Usage`) opens the Usage page. It 
 
 Preconditions:
 
-- Baseline launch (`--no-engine`, seed `{"setupDone": true}`). This covers open, close, period and the gate. The report itself (totals, providers, models) needs the real engine (launch without `--no-engine`). It is read-only: drive no bot and create nothing.
+- Baseline launch (isolated, seed `{"setupDone": true}`). This covers open, close, period and the gate. The report itself (totals, providers, models) needs the real engine (`launch --real-engine`). It is read-only: drive no bot and create nothing.
 
 - **Open Usage.** Run `control-talyx browser click --role button --name "Usage" --exact`. The snapshot has the heading `Usage`, the sidebar `Back` above the navigation `Usage by provider` (with `All providers`), the group `Period` with `30 days` pressed, `button "Refresh usage"`, and in the footer `button "Close Usage"`. Without the engine the body has the heading `Talyx needs its engine.`.
 - **Pick a period.** Run `control-talyx browser click --role button --name "7 days" --exact`. The `7 days` button is pressed and `30 days` is not.

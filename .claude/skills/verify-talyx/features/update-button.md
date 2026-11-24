@@ -21,7 +21,7 @@ When a Talyx release or an engine update is waiting, the sidebar footer swaps th
 
 Preconditions:
 
-- Launch with the engine: without one the engine gate fills the window and there is no sidebar, so no Settings. Do first-run setup in a `--no-engine` run first ([First-run setup](./first-run-setup.md)), or attach the real engine and only look. A dev run never checks on a schedule, so the button shows only after the manual check finds a release newer than the package version.
+- Launch with the engine: without one the engine gate fills the window and there is no sidebar, so no Settings. Do first-run setup in an isolated run first ([First-run setup](./first-run-setup.md)), or attach the real engine and only look. A dev run never checks on a schedule, so the button shows only after the manual check finds a release newer than the package version.
 - Network access to github.com.
 
 - **Open About.** Run `control-talyx browser click --role button --name "Settings" --exact`, then `control-talyx browser click --role button --name "About"`. Then run `control-talyx browser wait --role heading --name "About" --exact`. The page shows `Talyx {version}`, "Engine not found" and `button "Check for updates"`.
@@ -36,7 +36,7 @@ Preconditions:
 - Do not click `Download` or `Restart to update` in a verification run. Download fetches a real signed release, and Restart replaces the running app. Report `update-download` and `update-restart` as not driven unless the user approves.
 - Whether a release shows depends on the network and on GitHub's latest release being newer than the dev build's package version (`package.json`). With no newer release, only the "Talyx is up to date." status line is provable, and the button never shows.
 - The status line is `role="status"`, which takes no name from its text. Read it from the snapshot; do not wait on it by name.
-- `update-engine` needs the real engine attached at a version other than the pinned one. With `--no-engine` the engine row never shows. Never click `Install the engine` against the user's engine without approval: it runs the real install.
+- `update-engine` needs the real engine attached at a version other than the pinned one. In an isolated run the engine row never shows. Never click `Install the engine` against the user's engine without approval: it runs the real install.
 - Hovering opens the popover only for a real mouse pointer. Drive it with clicks: a click pins the popover open.
 - The Settings row's name is "About Version, updates, diagnostics" (title plus detail), so match `About` as a substring, not with `--exact`. The page's sr-only h1 is "Settings: About", which is not one i18n value.
 - "Open the release page" and the "{count} changes" link open the system browser through the window-open guard. Nothing inside the app changes.

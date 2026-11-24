@@ -23,7 +23,7 @@ Settings, Providers is where a user tells Talyx where its bots get their models.
 
 Preconditions:
 
-- Engine-backed. Launch without `--no-engine` (seed `{"setupDone": true}`). The list then shows the user's real providers. This recipe only reads: it creates nothing and needs no `Verify scratch` bot.
+- Engine-backed. Launch with `--real-engine` (seed `{"setupDone": true}`). The list then shows the user's real providers. This recipe only reads: it creates nothing and needs no `Verify scratch` bot.
 - `control-talyx doctor` reports `ok`.
 
 - **Open Settings.** Run `control-talyx browser click --role button --name "Settings" --exact`. The Settings pages show.
@@ -37,7 +37,7 @@ Preconditions:
 
 ## Gotchas
 
-- With `--no-engine` the Providers page shows the engine gate (`Talyx needs its engine.`, `Install the engine`, `Try again`, `Choose file`), not the list. Only the gate can be proven there.
+- In an isolated run the Providers page shows the engine gate (`Talyx needs its engine.`, `Install the engine`, `Try again`, `Choose file`), not the list. Only the gate can be proven there.
 - Real engine: the providers belong to the user, and every write reaches every bot. Never press `Save`, `Remove`, `Sign out`, `Send test message` or `Reveal`, and never pick from the `Talyx’s model` menu without the user's approval.
 - `Check` and `Test chat` call the provider over the network. `Sign in` opens the system browser (`window.open`), which CDP cannot see. `Copy` writes to the clipboard.
 - The Settings pages rows are named title plus detail ("Providers" then "Keys, sign-ins and Talyx’s model"), so match `Providers` without `--exact`.

@@ -18,7 +18,7 @@ Pressing ⌘/ (Ctrl+/ on Linux) anywhere in the app outside first-run setup open
 
 Preconditions:
 
-- Baseline launch (`--no-engine`, seed `{"setupDone": true}`). The engine gate shows. The shortcut is bound there because setup is not on screen.
+- Baseline launch (isolated, seed `{"setupDone": true}`). The engine gate shows. The shortcut is bound there because setup is not on screen.
 - No other dialog is open.
 
 - **Open.** Run `control-talyx browser press --key Meta+Slash`, then `control-talyx browser wait --role dialog --name "Keyboard shortcuts"`. The dialog shows with heading `Keyboard shortcuts`.
@@ -40,4 +40,4 @@ Preconditions:
 - Rows are a `dl`: the snapshot prints each as `term: <label>` and `definition: <keys>` (for example `term: Show these shortcuts`, `definition: ⌘ /`).
 - Key caps depend on `navigator.platform`. On macOS they read `⌘`, `⌥`, `⇧`. On Linux they read `Ctrl`, `Alt`, `Shift`.
 - Right after `launch` the app shows a splash until it knows whether the engine is there. Wait for the gate heading before pressing.
-- Proven 2026-11-18 with `--no-engine`: open, 13 rows, Close, Escape and the Meta+Slash toggle.
+- Proven 2026-11-18 in an isolated run: open, 13 rows, Close, Escape and the Meta+Slash toggle.

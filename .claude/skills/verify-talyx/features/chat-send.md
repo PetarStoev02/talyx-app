@@ -22,7 +22,7 @@ unread or ready mark. The engine runs the turn; Talyx shows it.
 
 Preconditions:
 
-- Launch with `control-talyx launch` (real engine). A scratch bot `Verify scratch` on
+- Launch with `control-talyx launch --real-engine`. A scratch bot `Verify scratch` on
   `claude-haiku-4-5` exists (see create-bot) and a provider for it is configured.
 - The scratch bot is selected: run `control-talyx browser click --role button --name "Verify scratch"`.
 

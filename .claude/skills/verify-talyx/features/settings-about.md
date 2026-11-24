@@ -18,7 +18,7 @@ Settings, About shows which Talyx is running ("Talyx {version}" in a dev run, th
 
 Preconditions:
 
-- Launch with the engine: without one the engine gate fills the window and there is no sidebar, so no Settings. Do first-run setup in a `--no-engine` run first ([First-run setup](./first-run-setup.md)), or attach the real engine and only look.
+- Launch with the engine: without one the engine gate fills the window and there is no sidebar, so no Settings. Do first-run setup in an isolated run first ([First-run setup](./first-run-setup.md)), or attach the real engine and only look.
 - Network access to GitHub for the update check.
 
 - **Open Settings.** Run `control-talyx browser click --role button --name "Settings" --exact`. The Settings pages sidebar shows.
@@ -39,4 +39,4 @@ Preconditions:
 - The copy uses `navigator.clipboard.write`, so the window must be focused. If it is not, the copy fails with the "Talyx could not copy the diagnostics." toast. Bring the dev window to the front and retry before calling it a bug. The copy overwrites the real macOS clipboard.
 - "Copied." lasts only 1.5 s. Wait for it right after the click.
 - Right after `launch` the version line can be empty for a moment, until `app:version` answers. Wait for the heading first.
-- Proven 2026-11-18 with `--no-engine`: the version lines, `Check for updates` (status `Talyx is up to date.`), `Copy diagnostics` (`Copied.`, then a report starting `Talyx 1.1.0`, `Engine not found`, `OS darwin ...` with no home path).
+- Proven 2026-11-18 in an isolated run: the version lines, `Check for updates` (status `Talyx is up to date.`), `Copy diagnostics` (`Copied.`, then a report starting `Talyx 1.1.0`, `Engine not found`, `OS darwin ...` with no home path).

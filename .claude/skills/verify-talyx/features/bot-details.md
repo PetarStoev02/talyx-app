@@ -22,7 +22,7 @@ When a user chooses the name pill at the top of a bot's chat, the `Bot details` 
 
 Preconditions:
 
-- Run `control-talyx launch` with the real engine (no `--no-engine`). With `--no-engine` the engine gate shows, the roster has no bots, and this panel cannot be reached.
+- Run `control-talyx launch --real-engine`. In an isolated run the engine gate shows, the roster has no bots, and this panel cannot be reached.
 - The bot `Verify scratch` exists from create-bot, made with approval. Never open the panel on the user's own bots in order to edit them.
 
 - **Select the bot.** Run `control-talyx browser click --role button --name "Verify scratch"`. The pill `Details for Verify scratch` shows in the chat header.

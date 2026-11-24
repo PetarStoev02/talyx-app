@@ -22,13 +22,13 @@ Settings, Engine shows how Talyx finds its engine. The status line reads "Attach
 
 Preconditions:
 
-- Baseline launch (`--no-engine`, seed `{"setupDone": true}`) for everything except the console's live controls. Those need `control-talyx launch` with the real engine (see Real-engine rules).
+- Baseline launch (isolated, seed `{"setupDone": true}`) for everything except the console's live controls. Those need `control-talyx launch --real-engine` (see Real-engine rules).
 
 - **Open Settings.** Each Settings page button is named by its title plus its detail line (`Engine Where it runs, debug console`), so match the detail. Run `control-talyx browser click --role button --name "Settings" --exact`, then `control-talyx browser click --role button --name "Where it runs, debug console"`. Then run `control-talyx browser wait --role heading --name "Engine" --exact`. The page shows "Not found", the buttons `Check again` and `Choose file`, the button `Install the engine` and the collapsed button `Debug console`.
 - **Check again.** Run `control-talyx browser click --role button --name "Check again" --exact`. The page stays on "Not found" and the text "Checked just now" appears. `/tmp/talyx-verify/run/talyx.log` gains another `[Engine] Command not found` line.
 - **Open the console (no engine).** Run `control-talyx browser click --role button --name "Debug console" --exact`. The button is `[expanded]`, and inside the panel the heading `Talyx needs its engine.` shows with its own `Install the engine`, `Try again` and `Choose file`.
 - **Proof.** Run `control-talyx browser snapshot --path /tmp/talyx-verify/evidence/settings-engine/after.aria.txt` and `control-talyx browser screenshot --path /tmp/talyx-verify/evidence/settings-engine/after.png`.
-- **Real engine (optional, read-only).** On a `control-talyx launch` run, open the page the same way. It shows "Attached", "Version …" and "Runs …". Open `Debug console`. The connection state reads `open`, and the combobox `Profile` defaults to `default`. Run `control-talyx browser click --role button --name "Drop socket"`. The state leaves `open` and comes back. Run `control-talyx browser click --role button --name "Clear" --exact`. The log reads "Events appear here.". Save the same proof files with the suffix `-engine`.
+- **Real engine (optional, read-only).** On a `control-talyx launch --real-engine` run, open the page the same way. It shows "Attached", "Version …" and "Runs …". Open `Debug console`. The connection state reads `open`, and the combobox `Profile` defaults to `default`. Run `control-talyx browser click --role button --name "Drop socket"`. The state leaves `open` and comes back. Run `control-talyx browser click --role button --name "Clear" --exact`. The log reads "Events appear here.". Save the same proof files with the suffix `-engine`.
 - **Restore.** Run `control-talyx browser click --role button --name "Debug console" --exact` to close the panel. Nothing is stored in `settings.json` unless Choose file was used.
 
 ## Gotchas

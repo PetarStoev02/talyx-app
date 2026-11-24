@@ -20,7 +20,7 @@ In a bot's chat (or a room), the user presses `Meta+F` or chooses the search but
 
 Preconditions:
 
-- Engine-backed. Launch with `control-talyx launch` (real engine). It is not reachable with `--no-engine`, because the engine gate has no chat and no search slot.
+- Engine-backed. Launch with `control-talyx launch --real-engine`. It is not reachable in an isolated run, because the engine gate has no chat and no search slot.
 - The scratch bot `Verify scratch` exists (see create-bot), and its chat has the chat-send exchange containing `pong`. Never search the user's own bots' chats in a recipe.
 - Select it: run `control-talyx browser click --role button --name "Verify scratch"`.
 

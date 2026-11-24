@@ -23,7 +23,7 @@ A room is a group chat hosted by the engine. From the roster's add button the us
 
 Preconditions:
 
-- Engine-backed: run `control-talyx launch` (real engine, no `--no-engine`). With `--no-engine` only the engine gate shows.
+- Engine-backed: run `control-talyx launch --real-engine`. In an isolated run only the engine gate shows.
 - A room needs 2 bots, and the user's own bots must never be seated. The user must approve two scratch bots: `Verify scratch` and a second one, `Verify scratch 2`. Make both with the create-bot recipe on `claude-haiku-4-5`. The second one is filled with `control-talyx browser fill --role textbox --name "Name" --value "Verify scratch 2"`.
 - No room named `Verify room` exists.
 

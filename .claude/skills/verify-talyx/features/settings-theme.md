@@ -18,7 +18,7 @@ at once and is stored in `settings.json`, so it holds on the next start.
 
 Preconditions:
 
-- Launch with the engine: without one the engine gate fills the window and there is no sidebar, so no Settings. Do first-run setup in a `--no-engine` run first ([First-run setup](./first-run-setup.md)), or attach the real engine and only look.
+- Launch with the engine: without one the engine gate fills the window and there is no sidebar, so no Settings. Do first-run setup in an isolated run first ([First-run setup](./first-run-setup.md)), or attach the real engine and only look.
 - `control-talyx settings` has no `theme` key, or `"theme": "system"`.
 
 - **Open Settings.** Choose `Settings`. Run `control-talyx browser click --role button --name "Settings" --exact`. The heading `Settings: General` shows, and under `Appearance` a group `Theme` with buttons `Light`, `Dark`, `System [pressed]`.

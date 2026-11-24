@@ -21,8 +21,8 @@ While a bot works, it can stop and ask before it goes on. An approval card reads
 
 Preconditions:
 
-- Engine-backed. Launch with `control-talyx launch` (real engine). The scratch bot `Verify scratch` exists (see create-bot) and is selected: `control-talyx browser click --role button --name "Verify scratch"`.
-- With `--no-engine` nothing here can be reached: no bot, no transcript.
+- Engine-backed. Launch with `control-talyx launch --real-engine`. The scratch bot `Verify scratch` exists (see create-bot) and is selected: `control-talyx browser click --role button --name "Verify scratch"`.
+- In an isolated run nothing here can be reached: no bot, no transcript.
 
 - **Ask for a clarify.** Run `control-talyx browser fill --role textbox --name "Message Verify scratch" --value "Use your clarify tool to ask me one question with the two choices Red and Blue."`, then `control-talyx browser click --role button --name "Send" --exact`. Within about 60 s a region named after the question shows, with two choice buttons and a disabled `Send`.
 - **Pick and send.** Read the snapshot, then click the first choice pill by the name the snapshot prints (that text comes from the bot, so it has no i18n handle). It shows `[pressed]` and `Send` turns enabled. Run `control-talyx browser click --role button --name "Send" --exact`. The card is gone and the bot's reply names the choice.
