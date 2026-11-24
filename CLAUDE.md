@@ -105,6 +105,8 @@ Each line is the rule; the check's message names the fix.
 - Formatting (single quotes, no semicolons, 100 columns, no trailing commas): `npm run format:check`.
 - Semantic color tokens, never raw Tailwind palette classes: `tests/unit/designTokens.test.ts`.
 - Feature-map names match the app's copy: `tests/unit/featureMap.test.ts`.
+- A backticked file path in docs, skills or comments names a file that exists, and a backticked
+  `fn()` in markdown names a function the code still has: `tests/unit/docReferences.test.ts`.
 - Every key in `shared/lib/i18n.ts` is used in `src/`; a key built at runtime belongs to a family
   declared in the test: `tests/unit/i18nKeys.test.ts`.
 - `docs/state/` holds the small state machines' charts, drawn from their code; a machine change
