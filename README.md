@@ -23,6 +23,7 @@
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey" alt="macOS and Linux">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="AGPL-3.0 license"></a>
   <img src="https://img.shields.io/badge/telemetry-none-brightgreen" alt="No telemetry">
+  <a href="https://glama.ai/mcp/servers/PetarStoev02/talyx-app"><img src="https://glama.ai/mcp/servers/PetarStoev02/talyx-app/badges/score.svg" alt="PetarStoev02/talyx-app MCP server"></a>
 </p>
 
 <p align="center">
