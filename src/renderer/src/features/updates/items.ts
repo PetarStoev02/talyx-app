@@ -6,16 +6,33 @@ import { DAY_MS, HOUR_MS, MINUTE_MS } from '@shared/lib/time'
 export type UpdateItem =
   | { kind: 'engine'; installed: string; pinned: string }
   | { kind: 'talyx'; state: Exclude<UpdateState, { kind: 'none' }> }
+  | { kind: 'module'; id: string; name: string; installed: string; offered: string }
+
+/** A module as the Modules page lists it (its `ModuleRow`): what is installed, what is offered. */
+export interface ModuleVersions {
+  id: string
+  name: string
+  installed: string | null
+  offered: string | null
+}
 
 /**
  * What the footer button offers, engine first: an older engine can break the running app now, a
- * newer Talyx cannot. Empty when nothing is pending (the roster's refresh shows instead).
+ * newer Talyx or module cannot. Only installed modules: one not installed is not an update.
+ * Empty when nothing is pending (the roster's refresh shows instead).
  */
-export function updateItems(engine: EngineStatus | null, update: UpdateState): UpdateItem[] {
+export function updateItems(
+  engine: EngineStatus | null,
+  update: UpdateState,
+  modules: ModuleVersions[]
+): UpdateItem[] {
   const items: UpdateItem[] = []
   if (engine?.state === 'attached' && !isEngineCurrent(engine))
     items.push({ kind: 'engine', installed: engine.version, pinned: EXPECTED_ENGINE_VERSION })
   if (update.kind !== 'none') items.push({ kind: 'talyx', state: update })
+  for (const { id, name, installed, offered } of modules)
+    if (installed !== null && offered !== null)
+      items.push({ kind: 'module', id, name, installed, offered })
   return items
 }
 

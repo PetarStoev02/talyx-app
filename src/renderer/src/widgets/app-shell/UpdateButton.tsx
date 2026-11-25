@@ -6,7 +6,8 @@ import { useNavigation } from '@features/modules/store'
 import { useInstall } from '@features/setup/store'
 import { releaseAge, type UpdateItem } from '@features/updates/items'
 import { useUpdates } from '@features/updates/store'
-import { updaterApi } from '@shared/api/ipc'
+import { modulesApi, updaterApi } from '@shared/api/ipc'
+import { problemOf } from '@shared/lib/problem'
 import { reportError } from '@shared/lib/report'
 import { useLater } from '@shared/hooks/useLater'
 import { Button } from '@shared/ui/button'
@@ -41,7 +42,8 @@ const lookLabels: Record<Look, TranslationKey> = {
 /**
  * The footer's update button: a dot while something is pending, a ring while it downloads or
  * installs, a check once the installer is ready. Hover or click shows the popover with each item
- * (engine first) and its action; a click keeps it open until Escape or a click elsewhere.
+ * (engine first, modules last) and its action; a click keeps it open until Escape or a click
+ * elsewhere.
  */
 export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
@@ -114,8 +116,10 @@ export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Elem
               installing={engineInstalling}
               onInstall={() => show(false, true)}
             />
-          ) : (
+          ) : item.kind === 'talyx' ? (
             <TalyxRow key="talyx" state={item.state} onLater={() => show(false, true)} />
+          ) : (
+            <ModuleUpdateRow key={`module:${item.id}`} item={item} />
           )
         )}
       </PopoverContent>
@@ -129,7 +133,7 @@ function buttonLook(items: UpdateItem[], engineInstalling: boolean): Look {
   const talyx = items.find((item) => item.kind === 'talyx')?.state
   if (talyx?.kind === 'downloading') return 'downloading'
   if (first?.kind === 'engine') return 'engine'
-  return first?.state.kind === 'ready' ? 'ready' : 'pending'
+  return talyx?.kind === 'ready' ? 'ready' : 'pending'
 }
 
 function fraction(state: Extract<TalyxState, { kind: 'downloading' }>): number {
@@ -221,6 +225,42 @@ function EngineRow({
           {t('update.engineInstall')}
         </Button>
       )}
+    </section>
+  )
+}
+
+function ModuleUpdateRow({
+  item
+}: {
+  item: Extract<UpdateItem, { kind: 'module' }>
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const [updating, setUpdating] = useState(false)
+
+  // Once installed, main announces the new version and this row leaves the popover.
+  async function update(): Promise<void> {
+    setUpdating(true)
+    try {
+      await modulesApi.install(item.id)
+    } catch (error) {
+      reportError('modules', error)
+      toast.error(t('modules.errorChange'), { description: problemOf(error).detail ?? undefined })
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  return (
+    <section className="flex flex-col gap-2 p-4">
+      <h3 className="text-base font-semibold text-foreground">
+        {t('update.moduleTitle').replace('{name}', item.name).replace('{version}', item.offered)}
+      </h3>
+      <p className="text-muted-foreground">
+        {t('update.moduleBody').replace('{installed}', item.installed)}
+      </p>
+      <Button className="self-start" disabled={updating} onClick={() => void update()}>
+        {t(updating ? 'modules.working' : 'modules.update')}
+      </Button>
     </section>
   )
 }

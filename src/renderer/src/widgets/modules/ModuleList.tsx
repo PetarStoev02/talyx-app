@@ -8,31 +8,24 @@ import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { useModules } from '@features/modules/store'
 import { moduleRows, type ModuleRow } from '@features/modules/rows'
-import type { AvailableModule } from '@contract/modules'
-import { useLoad } from '@shared/hooks/useLoad'
-
-// Logged even when the list has closed meanwhile.
-const readCatalog = (): Promise<AvailableModule[]> =>
-  modulesApi.available().catch((error: unknown) => {
-    reportError('modules', error)
-    throw error
-  })
+import { useOnMount } from '@shared/hooks/useSubscription'
 
 /**
- * The modules the license unlocks, each with Install or Update; Settings adds Uninstall. Reading
- * the catalog is the only network call modules make, and it happens only here.
+ * The modules the license unlocks, each with Install or Update; Settings adds Uninstall. Opening
+ * it reads the catalog afresh; the footer's update button reads the same catalog.
  */
 export function ModuleList({ removable }: { removable: boolean }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const state = useModules((s) => s.state)
-  const [available, setAvailable] = useState<AvailableModule[] | null>(null)
-  const [catalogFailed, setCatalogFailed] = useState(false)
+  const available = useModules((s) => s.catalog)
+  const catalogFailed = useModules((s) => s.catalogFailed)
+  const readCatalog = useModules((s) => s.readCatalog)
   const [busy, setBusy] = useState<string | null>(null)
   // Uninstall asks first: after an install it sits where Install was, under the pointer.
   const [uninstalling, setUninstalling] = useState<ModuleRow | null>(null)
   const rows = moduleRows(state, available)
 
-  useLoad(readCatalog, { loaded: setAvailable, failed: () => setCatalogFailed(true) })
+  useOnMount(() => void readCatalog(0))
 
   async function run(id: string, change: (id: string) => Promise<unknown>): Promise<void> {
     setBusy(id)

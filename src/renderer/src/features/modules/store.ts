@@ -1,25 +1,48 @@
 import { create } from 'zustand'
 import { modulesApi } from '@shared/api/ipc'
-import type { ModuleSummary, ModulesState } from '@contract/modules'
+import { reportError } from '@shared/lib/report'
+import type { AvailableModule, ModuleSummary, ModulesState } from '@contract/modules'
 import { mayLeave } from './leaveGuard'
 
 interface ModulesStore {
   /** As main reports it; no license means no module UI anywhere. */
   state: ModulesState
+  /** What the catalog offers this license; null until a read succeeds. */
+  catalog: AvailableModule[] | null
+  /** The last read failed; the catalog before it, if any, stays. */
+  catalogFailed: boolean
   /** Reads the current state and follows main's announcements from then on. */
   load: () => Promise<void>
+  /**
+   * Reads the catalog, unless the last read started less than `maxAgeMs` ago. It is the only
+   * network call modules make (it sends the license key), so without a license there is none.
+   */
+  readCatalog: (maxAgeMs: number) => Promise<void>
 }
 
 let subscribed = false
+let catalogReadAt = Number.NEGATIVE_INFINITY
 
-export const useModules = create<ModulesStore>((set) => ({
+export const useModules = create<ModulesStore>((set, get) => ({
   state: { license: null, modules: [] },
+  catalog: null,
+  catalogFailed: false,
   load: async () => {
     if (!subscribed) {
       subscribed = true
       modulesApi.onState((state) => set({ state }))
     }
     set({ state: await modulesApi.state() })
+  },
+  readCatalog: async (maxAgeMs) => {
+    if (!get().state.license || Date.now() - catalogReadAt < maxAgeMs) return
+    catalogReadAt = Date.now()
+    try {
+      set({ catalog: await modulesApi.available(), catalogFailed: false })
+    } catch (error) {
+      reportError('modules', error)
+      set({ catalogFailed: true })
+    }
   }
 }))
 

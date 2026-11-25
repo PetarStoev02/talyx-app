@@ -887,7 +887,9 @@ const en = {
   'update.engineTitle': 'Engine {version} ready to install',
   'update.engineBody': 'You have {installed}. This Talyx is built and tested with {pinned}.',
   'update.engineInstall': 'Install the engine',
-  'update.engineInstalling': 'Installing engine {version}…'
+  'update.engineInstalling': 'Installing engine {version}…',
+  'update.moduleTitle': '{name} {version} is available',
+  'update.moduleBody': 'You have {installed}.'
 }
 
 export type TranslationKey = keyof typeof en
