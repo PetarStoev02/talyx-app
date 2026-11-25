@@ -2,12 +2,11 @@ import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Check, Download, ExternalLink, LoaderCircle } from 'lucide-react'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
-import { useNavigation } from '@features/modules/store'
+import { useModules, useNavigation } from '@features/modules/store'
 import { useInstall } from '@features/setup/store'
 import { releaseAge, type UpdateItem } from '@features/updates/items'
 import { useUpdates } from '@features/updates/store'
-import { modulesApi, updaterApi } from '@shared/api/ipc'
-import { problemOf } from '@shared/lib/problem'
+import { updaterApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
 import { useLater } from '@shared/hooks/useLater'
 import { Button } from '@shared/ui/button'
@@ -235,21 +234,10 @@ function ModuleUpdateRow({
   item: Extract<UpdateItem, { kind: 'module' }>
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const [updating, setUpdating] = useState(false)
+  const changing = useModules((s) => s.changing)
+  const install = useModules((s) => s.install)
 
   // Once installed, main announces the new version and this row leaves the popover.
-  async function update(): Promise<void> {
-    setUpdating(true)
-    try {
-      await modulesApi.install(item.id)
-    } catch (error) {
-      reportError('modules', error)
-      toast.error(t('modules.errorChange'), { description: problemOf(error).detail ?? undefined })
-    } finally {
-      setUpdating(false)
-    }
-  }
-
   return (
     <section className="flex flex-col gap-2 p-4">
       <h3 className="text-base font-semibold text-foreground">
@@ -258,8 +246,12 @@ function ModuleUpdateRow({
       <p className="text-muted-foreground">
         {t('update.moduleBody').replace('{installed}', item.installed)}
       </p>
-      <Button className="self-start" disabled={updating} onClick={() => void update()}>
-        {t(updating ? 'modules.working' : 'modules.update')}
+      <Button
+        className="self-start"
+        disabled={changing !== null}
+        onClick={() => void install(item.id)}
+      >
+        {t(changing === item.id ? 'modules.working' : 'modules.update')}
       </Button>
     </section>
   )
