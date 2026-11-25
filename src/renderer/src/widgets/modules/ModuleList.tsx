@@ -1,50 +1,29 @@
 import { useState } from 'react'
-import { toast } from 'sonner'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
-import { modulesApi } from '@shared/api/ipc'
-import { problemOf } from '@shared/lib/problem'
-import { reportError } from '@shared/lib/report'
 import { Button } from '@shared/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@shared/ui/dialog'
 import { useModules } from '@features/modules/store'
 import { moduleRows, type ModuleRow } from '@features/modules/rows'
-import type { AvailableModule } from '@contract/modules'
-import { useLoad } from '@shared/hooks/useLoad'
-
-// Logged even when the list has closed meanwhile.
-const readCatalog = (): Promise<AvailableModule[]> =>
-  modulesApi.available().catch((error: unknown) => {
-    reportError('modules', error)
-    throw error
-  })
+import { useOnMount } from '@shared/hooks/useSubscription'
 
 /**
- * The modules the license unlocks, each with Install or Update; Settings adds Uninstall. Reading
- * the catalog is the only network call modules make, and it happens only here.
+ * The modules the license unlocks, each with Install or Update; Settings adds Uninstall. Opening
+ * it reads the catalog afresh; the footer's update button reads the same catalog.
  */
 export function ModuleList({ removable }: { removable: boolean }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const state = useModules((s) => s.state)
-  const [available, setAvailable] = useState<AvailableModule[] | null>(null)
-  const [catalogFailed, setCatalogFailed] = useState(false)
-  const [busy, setBusy] = useState<string | null>(null)
+  const available = useModules((s) => s.catalog)
+  const catalogFailed = useModules((s) => s.catalogFailed)
+  const readCatalog = useModules((s) => s.readCatalog)
+  const busy = useModules((s) => s.changing)
+  const install = useModules((s) => s.install)
+  const uninstall = useModules((s) => s.uninstall)
   // Uninstall asks first: after an install it sits where Install was, under the pointer.
   const [uninstalling, setUninstalling] = useState<ModuleRow | null>(null)
   const rows = moduleRows(state, available)
 
-  useLoad(readCatalog, { loaded: setAvailable, failed: () => setCatalogFailed(true) })
-
-  async function run(id: string, change: (id: string) => Promise<unknown>): Promise<void> {
-    setBusy(id)
-    try {
-      await change(id)
-    } catch (error) {
-      reportError('modules', error)
-      toast.error(t('modules.errorChange'), { description: problemOf(error).detail ?? undefined })
-    } finally {
-      setBusy(null)
-    }
-  }
+  useOnMount(() => void readCatalog(0))
 
   return (
     <div className="space-y-2">
@@ -64,10 +43,7 @@ export function ModuleList({ removable }: { removable: boolean }): React.JSX.Ele
             </div>
             <div className="flex shrink-0 gap-2">
               {row.action && (
-                <Button
-                  disabled={busy !== null}
-                  onClick={() => void run(row.id, modulesApi.install)}
-                >
+                <Button disabled={busy !== null} onClick={() => void install(row.id)}>
                   {busy === row.id
                     ? t('modules.working')
                     : t(row.action === 'install' ? 'modules.install' : 'modules.update')}
@@ -97,7 +73,7 @@ export function ModuleList({ removable }: { removable: boolean }): React.JSX.Ele
             <Button
               variant="destructive"
               onClick={() => {
-                if (uninstalling) void run(uninstalling.id, modulesApi.uninstall)
+                if (uninstalling) void uninstall(uninstalling.id)
                 setUninstalling(null)
               }}
             >

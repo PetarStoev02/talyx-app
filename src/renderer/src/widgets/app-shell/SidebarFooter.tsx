@@ -6,10 +6,12 @@ import { type AppView, useNavigation } from '@features/modules/store'
 import { useRoster } from '@features/bots/store'
 import { layerOpen, platformOf } from '@features/shortcuts/shortcuts'
 import { anyUnread, dockSections, dockShortcut, type DockSection } from '@features/modules/sections'
+import { moduleRows } from '@features/modules/rows'
 import { moduleView, runningModules, useModuleAttention, useModules } from '@features/modules/store'
 import { updateItems } from '@features/updates/items'
 import { useUpdates } from '@features/updates/store'
 import { reportError } from '@shared/lib/report'
+import { MINUTE_MS } from '@shared/lib/time'
 import { IconButton } from '@shared/ui/IconButton'
 import { useOnMount, useWindowEvent } from '@shared/hooks/useSubscription'
 import { ModuleBackground } from './ModuleBackground'
@@ -18,24 +20,28 @@ import { UpdateButton } from './UpdateButton'
 
 const isMac = platformOf(navigator.platform) === 'mac'
 const mod = isMac ? '⌘' : 'Ctrl+'
+// Coming back to the window reads the module catalog again, at most this often.
+const CATALOG_FOCUS_MAX_AGE_MS = 15 * MINUTE_MS
 
 /**
  * Settings and Usage on the left, `end` (the roster's refresh) on the right, and between them the dock: Agents
  * and each running module, with ⌘1, ⌘2, … in that order. Without a running module there is no
- * dock. Settings and Usage toggle: open, each closes back to the page it was opened from. While a Talyx or
- * engine update is pending, the update button takes `end`'s place. Each running module's
+ * dock. Settings and Usage toggle: open, each closes back to the page it was opened from. While a Talyx,
+ * engine or module update is pending, the update button takes `end`'s place. Each running module's
  * Background lives here too, so it keeps watching whatever page is open.
  */
 export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const engine = useEngine((s) => s.status)
   const update = useUpdates((s) => s.state)
-  const items = updateItems(engine, update)
+  const modulesState = useModules((s) => s.state)
+  const catalog = useModules((s) => s.catalog)
+  const items = updateItems(engine, update, moduleRows(modulesState, catalog))
   const currentView = useNavigation((s) => s.currentView)
   const toggle = useNavigation((s) => s.toggle)
   const settingsOpen = currentView === 'settings'
   const usageOpen = currentView === 'usage'
-  const modules = runningModules(useModules((s) => s.state))
+  const modules = runningModules(modulesState)
   const unread = useRoster((s) => anyUnread(s.unread, s.roomUnread))
   const needsYou = useModuleAttention((s) => s.needsYou)
   // The dot is only drawn; the name carries it for screen readers.
@@ -59,11 +65,12 @@ export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Elem
   const showDock = sections.length > 0
   // Without a dock, ⌘1 still opens the agents.
   useDockShortcuts(showDock ? sections.map(viewOf) : ['agents'])
+  useWindowEvent('focus', () => void useModules.getState().readCatalog(CATALOG_FOCUS_MAX_AGE_MS))
 
   useOnMount(() => {
-    useModules
-      .getState()
-      .load()
+    const { load, readCatalog } = useModules.getState()
+    load()
+      .then(() => readCatalog(0))
       .catch((error: unknown) => reportError('modules', error))
     useUpdates
       .getState()
