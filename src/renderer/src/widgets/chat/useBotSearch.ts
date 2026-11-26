@@ -8,6 +8,7 @@ import type { RoomActions } from '@features/chat/room'
 import { useChat } from '@features/chat/store'
 import type { SearchFound } from './ChatSearch'
 import { useBotRoomLogs } from './useBotRoomLogs'
+import { useManagerName } from './useManagerName'
 import { usePlaceFind } from './usePlaceFind'
 
 /**
@@ -30,12 +31,13 @@ export function useBotSearch(
   // What the bot said in its group chats, read while the search is open.
   const roomLogs = useBotRoomLogs(profile, rooms, !!request)
   const chatItems = useChat((state) => state.chats[profile]?.transcript?.items)
+  const manager = useManagerName()
   const find = useCallback(
     (query: string): SearchFound => ({
-      hits: botHits({ profile, chat: chatItems ?? [], rooms: roomLogs.logs ?? [] }, query),
+      hits: botHits({ profile, chat: chatItems ?? [], rooms: roomLogs.logs ?? [], manager }, query),
       note: !roomLogs.logs ? t('search.searching') : roomLogs.failed ? t('search.roomsFailed') : ''
     }),
-    [profile, chatItems, roomLogs, t]
+    [profile, chatItems, roomLogs, manager, t]
   )
   const loadWhole = useCallback(
     () => actions?.loadWhole(profile) ?? Promise.resolve(),

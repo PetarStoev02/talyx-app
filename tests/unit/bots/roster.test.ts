@@ -138,6 +138,8 @@ describe('roster layout', () => {
 const english = (key: Parameters<typeof t>[0]): string => t(key, 'en')
 
 describe('roster previews', () => {
+  // Before the engine reports Talyx's handle: previews stay as written.
+  const manager = { handle: null, name: 'Talyx' }
   it('should call the default profile Talyx regardless of its stored title', () => {
     expect(botTitle(bot('default', { title: 'Old name' }))).toBe('Talyx')
   })
@@ -149,17 +151,32 @@ describe('roster previews', () => {
           canonical_session: { preview: 'Canonical' },
           last_session: { preview: 'Recent' }
         },
-        english
+        english,
+        manager
       )
     ).toBe('Canonical')
-    expect(botPreview({ ...bot('a'), last_session: { preview: 'Recent' } }, english)).toBe('Recent')
-    expect(botPreview(bot('a', { description: 'Analyst' }), english)).toBe('Analyst')
-    expect(botPreview(bot('a'), english)).toBe('')
+    expect(botPreview({ ...bot('a'), last_session: { preview: 'Recent' } }, english, manager)).toBe(
+      'Recent'
+    )
+    expect(botPreview(bot('a', { description: 'Analyst' }), english, manager)).toBe('Analyst')
+    expect(botPreview(bot('a'), english, manager)).toBe('')
   })
 
   it("should show a message another bot delivered as its words, without the engine's wrapper", () => {
     const delivered = { preview: 'Message from 🤖 manager (@manager): Check cash' }
-    expect(botPreview({ ...bot('a'), canonical_session: delivered }, english)).toBe('Check cash')
+    expect(botPreview({ ...bot('a'), canonical_session: delivered }, english, manager)).toBe(
+      'Check cash'
+    )
+  })
+
+  it("should show Talyx's name where a preview has the engine's handle for it", () => {
+    const named = { handle: 'acme', name: 'Talyx' }
+    const reply = { ...bot('a'), canonical_session: { preview: '@acme got the status.' } }
+    const delivered = { preview: 'Message from 🤖 CFO (@cfo): @acme check cash' }
+    expect(botPreview(reply, english, named)).toBe('@Talyx got the status.')
+    expect(botPreview({ ...bot('a'), canonical_session: delivered }, english, named)).toBe(
+      '@Talyx check cash'
+    )
   })
 
   // The engine cuts a preview at 60 characters and ends it with three dots.
@@ -168,7 +185,7 @@ describe('roster previews', () => {
     ['before the words begin', 'Message from 🤖 Agro Ops Finance Lead (@agro-ops-finance): ...']
   ])("should fall back to the bot's description when the cut is %s", (_, preview) => {
     const cut = { ...bot('a', { description: 'Analyst' }), last_session: { preview } }
-    expect(botPreview(cut, english)).toBe('Analyst')
+    expect(botPreview(cut, english, manager)).toBe('Analyst')
   })
 
   it.each([
@@ -186,7 +203,9 @@ describe('roster previews', () => {
     ],
     ['(empty)', 'Ended without a reply']
   ])("should never show the engine's words for a turn without an answer: %s", (preview, shown) => {
-    expect(botPreview({ ...bot('a'), canonical_session: { preview } }, english)).toBe(shown)
+    expect(botPreview({ ...bot('a'), canonical_session: { preview } }, english, manager)).toBe(
+      shown
+    )
   })
   it('should render engine timestamps in seconds as words without negative ages', () => {
     expect(timeInWords(100, english, 160000)).toBe('1 minute ago')

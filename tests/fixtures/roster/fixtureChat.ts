@@ -15,6 +15,8 @@ import type { EngineHttp } from '../../../src/renderer/src/shared/engine/http'
 const STEP_MS = 120
 const REPLY = 'On it. I will look into this and post a **short summary** here when it is ready.'
 const DENIED = 'Okay, I will not run it.'
+const ANALYST_ANSWER =
+  'Sent Talyx the numbers: Q3 gross margin is 41%, up 4 points on Q2, with costs flat and the September price change doing the rest.'
 const FIXTURE_IMAGE =
   'data:image/svg+xml;base64,' +
   btoa(
@@ -54,6 +56,47 @@ const history: Record<string, Array<Record<string, unknown>>> = {
       content:
         'Happy to. **Which regions should the report cover?** North and South are ready; West is still closing its books.'
     }
+  ],
+  // Bot-to-bot traffic in a worker's chat: Talyx's hand-over, the worker's answers to it and to
+  // the engine, and a Workflows stop show apart from your conversation.
+  researcher: [
+    {
+      id: 1,
+      role: 'user',
+      content:
+        'Message from 🤖 Talyx (@acme): Find the EU battery rules that apply from 2027 and send me the list.',
+      display_kind: 'internal_notification'
+    },
+    { id: 2, role: 'assistant', content: 'Sent Talyx the list: six rules, two of them new.' },
+    { id: 3, role: 'user', content: 'Which of those rules matters most for us?' },
+    {
+      id: 4,
+      role: 'assistant',
+      content: '',
+      tool_calls: [
+        { id: 'r1', function: { name: 'message_agent', arguments: '{"target":"acme"}' } }
+      ]
+    },
+    { id: 5, role: 'tool', content: 'sent', tool_call_id: 'r1' },
+    {
+      id: 6,
+      role: 'assistant',
+      content: 'The **battery passport**: every pack needs one from February 2027. Told Talyx too.'
+    },
+    {
+      id: 7,
+      role: 'user',
+      content: '[IMPORTANT: Background process proc_1 completed normally (exit code 0).]',
+      display_kind: 'process_complete'
+    },
+    { id: 8, role: 'assistant', content: '@acme got the list. Nothing else is waiting.' },
+    {
+      id: 9,
+      role: 'user',
+      content:
+        'Stop working on the Workflows task acme/site#12. If you started a thread or a check for it, stop that too.'
+    },
+    { id: 10, role: 'assistant', content: 'Stopped. Nothing was pushed.' }
   ],
   developer: [
     { id: 1, role: 'user', content: 'The CSV export drops the last row. Can you fix it?' },
@@ -145,10 +188,31 @@ export function fixtureChat(providers: EngineHttp): ChatActions {
     steps.forEach((step, index) => setTimeout(step, start - Date.now() + STEP_MS * (index + 1)))
   }
 
-  // Streams a short reply word by word, then stores it as the engine would.
+  // The engine runs another bot's message as a turn in that bot's chat. The turn's start names no
+  // sender; the stored rows the reload brings do.
+  function deliver(to: string, words: string, answer: string): void {
+    play(to, [
+      () => emit(to, 'message.start'),
+      ...answer.split(' ').map((word) => () => emit(to, 'message.delta', { text: `${word} ` })),
+      () => {
+        historyOf(to).push(
+          {
+            id: Date.now(),
+            role: 'user',
+            content: `Message from 🤖 Talyx (@acme): ${words}`,
+            display_kind: 'internal_notification'
+          },
+          { id: Date.now() + 1, role: 'assistant', content: answer }
+        )
+        emit(to, 'message.complete')
+      }
+    ])
+  }
+
+  // Streams a short reply word by word, then stores it as the engine would. The turn it ends started
+  // before (your message, or a card the bot asked in it): the engine starts a turn only once.
   function finish(profile: string, text = REPLY): Array<() => void> {
     return [
-      () => emit(profile, 'message.start'),
       ...text.split(' ').map((word) => () => emit(profile, 'message.delta', { text: `${word} ` })),
       () => {
         historyOf(profile).push({ id: Date.now(), role: 'assistant', content: text })
@@ -215,6 +279,7 @@ export function fixtureChat(providers: EngineHttp): ChatActions {
               content: 'sent'
             })
             emit(profile, 'tool.complete', { tool_id: tool, name: 'message_agent', duration_s: 2 })
+            deliver('analyst', 'How did Q3 margins do?', ANALYST_ANSWER)
           }
         ]
       : []

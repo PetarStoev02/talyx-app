@@ -453,7 +453,7 @@ describe('bot chat', () => {
       await actions.rebuild(MANAGER)
       expect(visible()).toEqual([
         ...before,
-        { kind: 'bot', text: 'numbers', error: null },
+        { kind: 'delivery' },
         { kind: 'bot', text: '', error: UNKNOWN_PROVIDER }
       ])
     })
@@ -476,9 +476,34 @@ describe('bot chat', () => {
       expect(visible()).toEqual([
         ...before,
         ...failedWith(UNKNOWN_PROVIDER),
-        { kind: 'bot', text: 'numbers', error: null },
+        { kind: 'delivery' },
         { kind: 'bot', text: '', error: NO_CREDENTIALS }
       ])
+    })
+
+    describe('a turn still running when the chat opens', () => {
+      it('should stream its reply on, once, after the tool lines the engine stored', async () => {
+        engine.chats[MANAGER].messages.push(
+          { id: 3, role: 'user', content: 'Check the repo' },
+          {
+            id: 4,
+            role: 'assistant',
+            content: 'Let me look.',
+            tool_calls: [{ id: 'c1', function: { name: 'terminal', arguments: '{}' } }]
+          },
+          { id: 5, role: 'tool', content: 'ok', tool_call_id: 'c1' }
+        )
+        engine.chats[MANAGER].running = true
+        engine.chats[MANAGER].inflight = { user: 'Check the repo', assistant: 'Found it' }
+        await actions.open(MANAGER, 'manager-chat')
+        const { items } = turnView(chat(MANAGER).transcript!.items, true)
+        expect(items.map((item) => [item.kind, 'text' in item ? item.text : ''])).toEqual([
+          ['user', 'Hello'],
+          ['bot', 'Hi there'],
+          ['user', 'Check the repo'],
+          ['bot', 'Found it']
+        ])
+      })
     })
 
     describe('that the engine still holds', () => {

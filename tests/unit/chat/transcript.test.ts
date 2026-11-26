@@ -8,7 +8,8 @@ import {
   needsRebuild,
   senderProfile,
   settlePrompt,
-  waitLeft
+  waitLeft,
+  withManagerName
 } from '../../../src/renderer/src/features/chat/transcript'
 import type { ChatPrompt, Transcript } from '../../../src/renderer/src/features/chat/types'
 import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/shared'
@@ -23,6 +24,9 @@ const event = (type: string, payload: Record<string, unknown> = {}, seq?: number
 const history = (...rows: SessionMessage[]): Transcript => fromHistory(SESSION, rows, false)
 
 const empty = (): Transcript => history()
+
+// A chat whose last item is your message: the turn that starts next is yours.
+const asked = (): Transcript => history({ id: 0, role: 'user', content: 'Hi' })
 
 const replay = (transcript: Transcript, ...events: GatewayEvent[]): Transcript =>
   events.reduce(applyEvent, transcript)
@@ -63,15 +67,7 @@ describe('chat transcript', () => {
           target: 'cfo',
           showUi: null
         },
-        {
-          kind: 'bot',
-          id: '4',
-          text: 'done',
-          streaming: false,
-          error: null,
-          stopped: false,
-          sender: { name: 'CFO', profile: 'cfo' }
-        },
+        { kind: 'delivery', id: '4', text: 'done', from: { name: 'CFO', profile: 'cfo' } },
         {
           kind: 'bot',
           id: '5',
@@ -183,21 +179,68 @@ describe('chat transcript', () => {
       expect(item).toMatchObject({ kind: 'tool', name: 'terminal', label: 'terminal' })
     })
 
-    it('should show a message another bot delivered as a reply from that bot', () => {
-      const [item] = history({
-        id: 1,
-        role: 'user',
-        content: 'Message from 🤖 Agro Ops CFO (@agro-ops-cfo): Margins are up.\n\n- Costs flat',
-        display_kind: 'internal_notification'
-      }).items
-      expect(item).toEqual({
-        kind: 'bot',
-        id: '1',
-        text: 'Margins are up.\n\n- Costs flat',
-        streaming: false,
-        error: null,
-        stopped: false,
-        sender: { name: 'Agro Ops CFO', profile: 'agro-ops-cfo' }
+    describe('bot-to-bot traffic', () => {
+      const delivered =
+        'Message from 🤖 Agro Ops CFO (@agro-ops-cfo): Margins are up.\n\n- Costs flat'
+
+      it('should show a message another bot delivered apart from the conversation', () => {
+        const [item] = history({
+          id: 1,
+          role: 'user',
+          content: delivered,
+          display_kind: 'internal_notification'
+        }).items
+        expect(item).toEqual({
+          kind: 'delivery',
+          id: '1',
+          text: 'Margins are up.\n\n- Costs flat',
+          from: { name: 'Agro Ops CFO', profile: 'agro-ops-cfo' }
+        })
+      })
+
+      it('should show a copied notice as the copy that kept its kind says', () => {
+        const copy = (id: number, kind: string | null): SessionMessage =>
+          ({
+            id,
+            role: 'user',
+            content: 'Switched model',
+            message_uid: 'uid-2',
+            ...(kind ? { display_kind: kind } : {})
+          }) as SessionMessage
+        expect(history(copy(1, null), copy(2, 'model_switch')).items).toEqual([
+          { kind: 'notice', id: '2', text: 'Switched model' }
+        ])
+      })
+
+      it('should show a message once when compaction archived two copies of it', () => {
+        const copy = (id: number): SessionMessage =>
+          ({ id, role: 'assistant', content: 'Noted.', message_uid: 'uid-1' }) as SessionMessage
+        const transcript = history(copy(1), { id: 2, role: 'user', content: 'Thanks' }, copy(3))
+        expect(transcript.items.map((item) => [item.kind, item.id])).toEqual([
+          ['bot', '1'],
+          ['user', '2']
+        ])
+      })
+
+      it("should name Talyx where a message has the engine's handle for it", () => {
+        const { items } = history(
+          {
+            id: 1,
+            role: 'user',
+            content: 'Message from 🤖 CFO (@acme-cfo): @acme the books are shut.'
+          },
+          { id: 2, role: 'assistant', content: '@acme got it; mail ops@acme.com, not @acme-cfo.' },
+          { id: 3, role: 'user', content: 'Thanks' }
+        )
+        const shown = withManagerName(items, { handle: 'acme', name: 'Talyx' })
+        expect(shown.map((item) => ('text' in item ? item.text : ''))).toEqual([
+          '@Talyx the books are shut.',
+          '@Talyx got it; mail ops@acme.com, not @acme-cfo.',
+          'Thanks'
+        ])
+        // A message without the handle is the same item; before the engine reports it, all are.
+        expect(shown[2]).toBe(items[2])
+        expect(withManagerName(items, { handle: null, name: 'Talyx' })).toBe(items)
       })
     })
 
@@ -230,7 +273,7 @@ describe('chat transcript', () => {
       ])
     })
 
-    it('should leave out the notice that a background command finished', () => {
+    it('should show nothing for the notice that a background command finished, but end the turn', () => {
       const transcript = history({
         id: 1,
         role: 'user',
@@ -238,7 +281,22 @@ describe('chat transcript', () => {
         display_kind: 'process_complete',
         display_metadata: { display_text: 'Background Process Finished: /usr/bin/python3' }
       } as SessionMessage)
-      expect(transcript.items).toEqual([])
+      expect(transcript.items).toEqual([{ kind: 'wake', id: '1' }])
+    })
+
+    it('should read a background command notice the engine stored without its kind the same way', () => {
+      const notice = '[IMPORTANT: Background process proc_1 exited (exit code 1).\nCommand: python3'
+      const transcript = history(
+        {
+          id: 1,
+          role: 'user',
+          content: notice,
+          display_kind: 'process_complete'
+        } as SessionMessage,
+        { id: 2, role: 'user', content: notice },
+        { id: 3, role: 'user', content: '[IMPORTANT: Background process proc_2 completed]' }
+      )
+      expect(transcript.items.map((item) => item.kind)).toEqual(['wake', 'wake', 'wake'])
     })
 
     it('should skip hidden history rows', () => {
@@ -251,7 +309,7 @@ describe('chat transcript', () => {
   describe('live events', () => {
     it('should stream a reply from start, delta and complete events', () => {
       const transcript = replay(
-        empty(),
+        asked(),
         event('message.start', {}, 1),
         event('message.delta', { text: 'Hel' }, 2),
         event('message.delta', { text: 'lo' }, 3)
@@ -260,20 +318,20 @@ describe('chat transcript', () => {
       expect(transcript.items.at(-1)).toMatchObject({ kind: 'bot', text: 'Hello', streaming: true })
       const done = applyEvent(transcript, event('message.complete', { text: 'Hello' }, 4))
       expect(done.running).toBe(false)
-      expect(done.items).toHaveLength(1)
-      expect(done.items[0]).toMatchObject({ kind: 'bot', text: 'Hello', streaming: false })
+      expect(done.items).toHaveLength(2)
+      expect(done.items[1]).toMatchObject({ kind: 'bot', text: 'Hello', streaming: false })
     })
 
     it('should ignore a replayed event it already applied', () => {
       const transcript = replay(
-        empty(),
+        asked(),
         event('message.start', {}, 1),
         event('message.delta', { text: 'Hi' }, 2),
         event('message.delta', { text: 'Hi' }, 2),
         event('message.start', {}, 1)
       )
-      expect(transcript.items).toHaveLength(1)
-      expect(transcript.items[0]).toMatchObject({ text: 'Hi' })
+      expect(transcript.items).toHaveLength(2)
+      expect(transcript.items[1]).toMatchObject({ text: 'Hi' })
     })
 
     describe('stamped turns (engine 0.22.7)', () => {
@@ -283,23 +341,23 @@ describe('chat transcript', () => {
       const delta = (text: string, offset: number, seq: number, turnId = TURN): GatewayEvent =>
         event('message.delta', { text, turn_id: turnId, segment: 0, offset }, seq)
       const streamed = (): Transcript =>
-        replay(empty(), start(1), delta('Hel', 0, 2), delta('lo', 3, 3))
+        replay(asked(), start(1), delta('Hel', 0, 2), delta('lo', 3, 3))
 
       it('should add no text when a reconnect replays the turn under new seqs', () => {
         const transcript = replay(streamed(), start(4), delta('Hel', 0, 5), delta('lo', 3, 6))
-        expect(transcript.items).toHaveLength(1)
-        expect(transcript.items[0]).toMatchObject({ kind: 'bot', text: 'Hello', streaming: true })
+        expect(transcript.items).toHaveLength(2)
+        expect(transcript.items[1]).toMatchObject({ kind: 'bot', text: 'Hello', streaming: true })
       })
 
       it('should replace the segment a superseded attempt streams again', () => {
         const transcript = applyEvent(streamed(), delta('Hello there', 0, 4))
-        expect(transcript.items).toHaveLength(1)
-        expect(transcript.items[0]).toMatchObject({ text: 'Hello there' })
+        expect(transcript.items).toHaveLength(2)
+        expect(transcript.items[1]).toMatchObject({ text: 'Hello there' })
       })
 
       it('should keep only the unseen tail of an overlapping chunk', () => {
         const transcript = applyEvent(streamed(), delta('lo!', 3, 4))
-        expect(transcript.items[0]).toMatchObject({ text: 'Hello!' })
+        expect(transcript.items[1]).toMatchObject({ text: 'Hello!' })
       })
 
       it('should stream the next turn as a new reply', () => {
@@ -309,7 +367,8 @@ describe('chat transcript', () => {
           start(5, 'turn-2'),
           delta('Again', 0, 6, 'turn-2')
         )
-        expect(transcript.items.map((item) => ('text' in item ? item.text : ''))).toEqual([
+        expect(transcript.items.map((item) => ('text' in item ? item.text : item.kind))).toEqual([
+          'Hi',
           'Hello',
           'Again'
         ])
@@ -317,25 +376,57 @@ describe('chat transcript', () => {
 
       it('should append every unstamped delta with a new seq, as older engines send them', () => {
         const transcript = replay(
-          empty(),
+          asked(),
           event('message.start', {}, 1),
           event('message.delta', { text: 'Hi' }, 2),
           event('message.delta', { text: 'Hi' }, 3)
         )
-        expect(transcript.items[0]).toMatchObject({ text: 'HiHi' })
+        expect(transcript.items[1]).toMatchObject({ text: 'HiHi' })
       })
     })
 
     it('should show a failed turn as an error on the reply', () => {
       const transcript = replay(
-        empty(),
+        asked(),
         event('message.start', {}, 1),
         event('message.complete', { status: 'error', error: 'Provider down' }, 2)
       )
-      expect(transcript.items[0]).toMatchObject({
+      expect(transcript.items[1]).toMatchObject({
         kind: 'bot',
         streaming: false,
         error: 'Provider down'
+      })
+    })
+
+    describe('a turn no message of yours started', () => {
+      const answered = (): Transcript =>
+        history(
+          { id: 1, role: 'user', content: 'Hi' },
+          { id: 2, role: 'assistant', content: 'Hello' }
+        )
+      const kinds = (transcript: Transcript): string[] => transcript.items.map((item) => item.kind)
+
+      it('should add nothing for a start that names nothing: the reload shows what started it', () => {
+        const transcript = replay(answered(), event('message.start', {}, 1))
+        expect(kinds(transcript)).toEqual(['user', 'bot', 'bot'])
+      })
+
+      it("should show the engine's own note as what started the turn", () => {
+        const notice = '[IMPORTANT: Background process proc_1 completed normally (exit code 0).]'
+        const start = { display_kind: 'process_complete', display_text: 'Finished', text: notice }
+        const transcript = replay(answered(), event('message.start', start, 1))
+        expect(kinds(transcript)).toEqual(['user', 'bot', 'wake', 'bot'])
+      })
+
+      it('should take a start re-sent while the turn runs as that turn, not a new one', () => {
+        const note = { display_kind: 'process_complete', display_text: 'Finished', text: 'done' }
+        const transcript = replay(
+          answered(),
+          event('message.start', note, 1),
+          event('tool.start', { tool_id: 't1', name: 'terminal' }, 2),
+          event('message.start', note, 3)
+        )
+        expect(kinds(transcript)).toEqual(['user', 'bot', 'wake', 'bot', 'tool', 'bot'])
       })
     })
 
@@ -361,7 +452,7 @@ describe('chat transcript', () => {
 
     it('should split a reply around the tool lines it ran', () => {
       const transcript = replay(
-        empty(),
+        asked(),
         event('message.start', {}, 1),
         event('message.delta', { text: 'Checking.' }, 2),
         event('tool.start', { tool_id: 't1', name: 'terminal' }, 3),
@@ -372,6 +463,7 @@ describe('chat transcript', () => {
       expect(
         transcript.items.map((item) => [item.kind, 'text' in item ? item.text : item.id])
       ).toEqual([
+        ['user', 'Hi'],
         ['bot', 'Checking.'],
         ['tool', 't1'],
         ['bot', 'Done.']

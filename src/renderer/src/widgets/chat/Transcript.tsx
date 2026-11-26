@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { ArrowDown } from 'lucide-react'
 import { useStickToEnd } from '@shared/hooks/useStickToEnd'
 import { useLanguage } from '@shared/lib/i18n'
+import type { Asker } from '@features/chat/turns'
 import type { ChatItem, MessageItem } from '@features/chat/types'
 import { surfaceListKey } from '@features/chat/surfaceKeys'
 import { briefsByRef, isQuietReply } from '@features/chat/workflowLines'
@@ -10,6 +11,7 @@ import { MessageBubble } from './MessageBubble'
 /** Newest at the bottom; it follows new text while you are at the end, and offers a way back. */
 export function Transcript({
   items,
+  asides,
   allItems,
   busy,
   children,
@@ -17,6 +19,8 @@ export function Transcript({
   onSurfaceSend
 }: {
   items: MessageItem[]
+  /** The replies to show apart from your conversation, by id, with whom each answers. */
+  asides: Map<string, Asker>
   allItems: ChatItem[]
   /** True while the bot answers or a message of yours waits to go: a card's buttons wait too. */
   busy: boolean
@@ -53,6 +57,7 @@ export function Transcript({
               >
                 <MessageBubble
                   message={item}
+                  aside={asides.get(item.id) ?? null}
                   allItems={allItems}
                   busy={busy}
                   loadImage={loadImage}

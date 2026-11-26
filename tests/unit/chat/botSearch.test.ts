@@ -10,6 +10,8 @@ import type { Room } from '../../../src/renderer/src/features/bots/types'
 import type { ChatItem, RoomEvent } from '../../../src/renderer/src/features/chat/types'
 
 const BOT = 'acme-cfo'
+// Before the engine reports Talyx's handle: text stays as written.
+const manager = { handle: null, name: 'Talyx' }
 
 const said = (id: string, text: string): ChatItem => ({ kind: 'user', id, text, images: [] })
 const replied = (id: string, text: string): ChatItem => ({
@@ -53,16 +55,16 @@ describe("searching a bot's messages", () => {
   )
 
   it('should find nothing for a blank query', () => {
-    expect(botHits({ profile: BOT, chat, rooms: [team] }, '  ')).toEqual([])
+    expect(botHits({ manager, profile: BOT, chat, rooms: [team] }, '  ')).toEqual([])
   })
 
   it('should find nothing when no message has the query', () => {
-    expect(botHits({ profile: BOT, chat, rooms: [team] }, 'payroll')).toEqual([])
+    expect(botHits({ manager, profile: BOT, chat, rooms: [team] }, 'payroll')).toEqual([])
   })
 
   it('should find every message in its own chat, newest first, then what it said in rooms', () => {
     expect(
-      botHits({ profile: BOT, chat, rooms: [team] }, 'budget').map((hit) => [
+      botHits({ manager, profile: BOT, chat, rooms: [team] }, 'budget').map((hit) => [
         hit.place,
         hit.messageId
       ])
@@ -74,7 +76,7 @@ describe("searching a bot's messages", () => {
   })
 
   it("should leave out other members' messages and the room's bookkeeping", () => {
-    const hits = botHits({ profile: BOT, chat: [], rooms: [team] }, 'budget')
+    const hits = botHits({ manager, profile: BOT, chat: [], rooms: [team] }, 'budget')
     expect(hits.map((hit) => hit.messageId)).toEqual(['e1'])
   })
 
@@ -84,17 +86,34 @@ describe("searching a bot's messages", () => {
       [member(1, 'cfo-seat', 'The budget holds.')],
       [{ profile: BOT, member_id: 'cfo-seat' }]
     )
-    expect(botHits({ profile: BOT, chat: [], rooms: [seated] }, 'budget')).toHaveLength(1)
+    expect(botHits({ manager, profile: BOT, chat: [], rooms: [seated] }, 'budget')).toHaveLength(1)
   })
 
   it('should say which messages in its own chat are yours', () => {
-    const hits = botHits({ profile: BOT, chat, rooms: [team] }, 'budget')
+    const hits = botHits({ manager, profile: BOT, chat, rooms: [team] }, 'budget')
     expect(hits.map((hit) => hit.fromYou)).toEqual([false, true, false])
+  })
+
+  it("should show Talyx's name where a message has the engine's handle for it, here and in rooms", () => {
+    const hits = botHits(
+      {
+        manager: { handle: 'acme', name: 'Talyx' },
+        profile: BOT,
+        chat: [replied('2', '@acme got the budget.')],
+        rooms: [roomLog('team', [member(1, BOT, '@acme the budget holds.')], [{ profile: BOT }])]
+      },
+      'budget'
+    )
+    expect(hits.map((hit) => hit.text)).toEqual([
+      '@Talyx got the budget.',
+      '@Talyx the budget holds.'
+    ])
   })
 
   it('should search the words a message shows, not its markdown', () => {
     const [hit] = botHits(
       {
+        manager,
         profile: BOT,
         chat: [replied('2', '**Upside:** a [bigger budget](https://x.test).')],
         rooms: []
@@ -123,7 +142,9 @@ describe("searching a bot's messages", () => {
       said('u2', '[Workflows brief]\nStart a Workflows task for t-1: budget review')
     ]
     expect(
-      botHits({ profile: BOT, chat: turn, rooms: [] }, 'budget').map((hit) => hit.messageId)
+      botHits({ manager, profile: BOT, chat: turn, rooms: [] }, 'budget').map(
+        (hit) => hit.messageId
+      )
     ).toEqual(['b2', 'u1'])
   })
 
@@ -131,12 +152,14 @@ describe("searching a bot's messages", () => {
     const closed = { ...roomLog('old', [member(1, BOT, 'budget')], [{ profile: BOT }]) }
     closed.room = { ...closed.room, disbanded_at: 5 }
     const elsewhere = roomLog('other', [member(1, BOT, 'budget')], [{ profile: 'default' }])
-    expect(botHits({ profile: BOT, chat: [], rooms: [closed, elsewhere] }, 'budget')).toEqual([])
+    expect(
+      botHits({ manager, profile: BOT, chat: [], rooms: [closed, elsewhere] }, 'budget')
+    ).toEqual([])
   })
 
   it('should give where the first match is in the message', () => {
     const [hit] = botHits(
-      { profile: BOT, chat: [replied('2', 'The budget is 40k.')], rooms: [] },
+      { manager, profile: BOT, chat: [replied('2', 'The budget is 40k.')], rooms: [] },
       'BUDGET'
     )
     expect(hit).toMatchObject({ text: 'The budget is 40k.', match: { start: 4, end: 10 } })
@@ -146,7 +169,7 @@ describe("searching a bot's messages", () => {
     const many = Array.from({ length: 150 }, (_, index) =>
       index % 2 ? replied(String(index), 'budget') : said(String(index), 'budget')
     )
-    const hits = botHits({ profile: BOT, chat: many, rooms: [team] }, 'budget')
+    const hits = botHits({ manager, profile: BOT, chat: many, rooms: [team] }, 'budget')
     expect(hits.filter((hit) => hit.place.kind === 'bot')).toHaveLength(50)
     expect(hits[0].messageId).toBe('149')
     expect(hits.filter((hit) => hit.place.kind === 'room')).toHaveLength(1)
@@ -156,8 +179,8 @@ describe("searching a bot's messages", () => {
     const many = Array.from({ length: 150 }, (_, index) =>
       index % 2 ? replied(String(index), 'budget') : said(String(index), 'budget')
     )
-    expect(cutShort(botHits({ profile: BOT, chat: many, rooms: [] }, 'budget'))).toBe(true)
-    expect(cutShort(botHits({ profile: BOT, chat, rooms: [team] }, 'budget'))).toBe(false)
+    expect(cutShort(botHits({ manager, profile: BOT, chat: many, rooms: [] }, 'budget'))).toBe(true)
+    expect(cutShort(botHits({ manager, profile: BOT, chat, rooms: [team] }, 'budget'))).toBe(false)
   })
 })
 
@@ -166,12 +189,14 @@ describe('searching the open chat or room', () => {
   const room = [
     said('e1', 'Should we change the budget?'),
     { ...replied('e2', 'The budget holds.'), sender: analyst },
-    { kind: 'notice' as const, id: 'e3', text: 'The budget turn failed' }
+    { kind: 'notice' as const, id: 'e3', text: 'The budget turn failed' },
+    { kind: 'delivery' as const, id: 'e4', text: 'Budget approved', from: analyst }
   ]
 
   it('should find its messages newest first, naming who said each', () => {
     const hits = placeHits({ kind: 'room', id: 'team' }, room, 'budget')
     expect(hits.map((hit) => [hit.messageId, hit.fromYou, hit.sender])).toEqual([
+      ['e4', false, 'Analyst'],
       ['e2', false, 'Analyst'],
       ['e1', true, null]
     ])

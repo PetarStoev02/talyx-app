@@ -7,6 +7,9 @@
 //   Workflow: Ship a feature. …
 //   Steps, in order:
 //   1. [build] Build it (T3 Code thread, bot: t3-tots)
+// A stop asks the bot to drop the task (older versions worded it the second way):
+//   Stop working on the Workflows task acme/api#7. If you started a thread …
+//   Stop the Workflows task acme/api#7 now. Stop its thread …
 // A status line is one line of fields after the task's ref:
 //   [run acme/api#7@mhq2x1c0] step=build round=2 pr=66
 //   [run task#mwat3hrn@mwat3hrn] step=done result="Provider B, for its price."
@@ -17,6 +20,7 @@ export const BRIEF_MARK = '[Workflows brief]'
 
 const TASK_LINE = /^Start a Workflows task for (\S+): (.*)$/
 const WORKFLOW_LINE = /^Workflow: (.+?)\.(?: |$)/
+const STOP_LINE = /^Stop (?:working on )?the Workflows task (\S+?)(?: now)?\.(?:\s|$)/
 const STEP_LINE = /^\d+\. \[([^\]\s]+)\] (.+?) \(/
 // The line is a status line only when nothing but fields follows the ref (quoted values may hold
 // spaces); a code span around the whole line, as some bots write it, is allowed.
@@ -60,6 +64,11 @@ export function parseBrief(text: string): WorkflowBrief | null {
     if (id !== undefined && stepTitle !== undefined) steps[id] = stepTitle
   }
   return { ref, title: briefTitle(title), workflow: workflow?.[1] ?? null, steps }
+}
+
+/** The ref of the task a Workflows stop message names, or null when the text is not one. */
+export function parseStop(text: string): string | null {
+  return STOP_LINE.exec(text.trim())?.[1] ?? null
 }
 
 /**
@@ -134,10 +143,12 @@ export function isProgressReport(text: string): boolean {
 }
 
 /**
- * Whether the chat leaves this item out: a finished bot reply that only reports progress. A reply
- * that failed or was stopped still shows, so its error or stop mark is never lost.
+ * Whether the chat leaves this item out: a finished bot reply, or another bot's delivery, that only
+ * reports progress. A reply that failed or was stopped still shows, so its error or stop mark is
+ * never lost.
  */
 export function isQuietReply(item: MessageItem): boolean {
+  if (item.kind === 'delivery') return isProgressReport(item.text)
   return (
     item.kind === 'bot' &&
     !item.streaming &&

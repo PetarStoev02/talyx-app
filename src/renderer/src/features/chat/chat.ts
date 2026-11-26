@@ -613,10 +613,12 @@ function rebuilt(
   let transcript = fromHistory(sessionId, messages, resume.running)
   const inflight = resume.running ? resume.inflight?.assistant : null
   if (inflight) {
-    transcript = [
-      { type: 'message.start' },
-      { type: 'message.delta', payload: { text: inflight } }
-    ].reduce((current, event) => applyEvent(current, event as GatewayEvent), transcript)
+    // The engine stores what started the turn when it is sent, so the history has it: only the
+    // reply streams on. A start here would read as a turn no message of yours started.
+    transcript = applyEvent(transcript, {
+      type: 'message.delta',
+      payload: { text: inflight }
+    } as GatewayEvent)
   }
   const same = previous?.sessionId === sessionId
   transcript = withFailedTurns(transcript, same ? previous.failed : [])

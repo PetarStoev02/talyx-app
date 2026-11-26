@@ -10,11 +10,13 @@ export type ChatItem =
       error: string | null
       // The user stopped the turn part way: the text is what the bot wrote until then.
       stopped: boolean
-      // Who spoke: a room member, or a bot that delivered a message into this chat; null for the
-      // chat's own bot. A delivery names its sender by @handle, which is the profile's name except
-      // for Talyx (the engine's manager handle).
+      // The room member who spoke; null for the chat's own bot.
       sender: { name: string; profile: string } | null
     }
+  // A message another bot delivered into this chat: bot-to-bot traffic, not the conversation, so
+  // it shows as a quiet line. The sender is named by @handle, which is the profile's name except
+  // for Talyx (the engine's manager handle).
+  | { kind: 'delivery'; id: string; text: string; from: { name: string; profile: string } }
   | {
       kind: 'tool'
       id: string
@@ -27,13 +29,16 @@ export type ChatItem =
       // The interface a `show_ui` call carries, as text to compare with; null for every other tool.
       showUi: string | null
     }
+  // The engine woke the bot with a note of its own (a background job finished, often a message the
+  // bot sent another bot): it shows nothing, but it starts a turn that may not answer you.
+  | { kind: 'wake'; id: string }
   // A line the engine wrote into the chat (a finished job, a model switch), not a message.
   | { kind: 'notice'; id: string; text: string }
   // A bot-drawn interface from show_ui, stored from its tool call or shown live from MCP.
   | { kind: 'surface'; id: string; surface: UiSurface }
 
-/** What the chat shows as a message: everything but a tool call. */
-export type MessageItem = Exclude<ChatItem, { kind: 'tool' }>
+/** What the chat shows as a message: everything but a tool call and a wake. */
+export type MessageItem = Exclude<ChatItem, { kind: 'tool' } | { kind: 'wake' }>
 
 export interface ClarifyQuestion {
   qid: string

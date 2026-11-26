@@ -1,4 +1,7 @@
 import { findMatches } from './search'
+import { namedText } from '@shared/lib/delivery'
+import type { ManagerName } from '@shared/lib/delivery'
+import { withManagerName } from './transcript'
 import { turnView } from './turns'
 import type { ChatItem, RoomEvent } from './types'
 import { isQuietReply, parseBrief } from './workflowLines'
@@ -72,12 +75,12 @@ export function placeHits(place: SearchPlace, items: ChatItem[], query: string):
  * then what it said in each room it is in. Newest first in each place.
  */
 export function botHits(
-  search: { profile: string; chat: ChatItem[]; rooms: RoomLog[] },
+  search: { profile: string; chat: ChatItem[]; rooms: RoomLog[]; manager: ManagerName },
   query: string
 ): MessageHit[] {
   // What the chat shows: a turn's last reply, not its text between tool calls; no progress
   // reports; a Workflows brief shows as a card, not its text.
-  const shown = turnView(search.chat, false).items.filter(
+  const shown = turnView(withManagerName(search.chat, search.manager), false).items.filter(
     (item) => !isQuietReply(item) && !(item.kind === 'user' && parseBrief(item.text))
   )
   const own = messagesOf({ kind: 'bot', id: search.profile }, shown)
@@ -93,7 +96,12 @@ export function botHits(
         messageId: event.event_id || String(event.seq),
         fromYou: false,
         sender: null,
-        text: shownText(typeof event.payload.text === 'string' ? event.payload.text : '')
+        text: shownText(
+          namedText(
+            typeof event.payload.text === 'string' ? event.payload.text : '',
+            search.manager
+          )
+        )
       }))
   })
   return matched([...own, ...said], query)
@@ -104,18 +112,23 @@ type Message = Omit<MessageHit, 'match'>
 // The place's messages, yours and the replies, newest first, as the chat shows their text.
 function messagesOf(place: SearchPlace, items: ChatItem[]): Message[] {
   return [...items].reverse().flatMap((item) =>
-    item.kind === 'user' || item.kind === 'bot'
+    item.kind === 'user' || item.kind === 'bot' || item.kind === 'delivery'
       ? [
           {
             place,
             messageId: item.id,
             fromYou: item.kind === 'user',
-            sender: item.kind === 'bot' ? (item.sender?.name ?? null) : null,
+            sender: senderName(item),
             text: shownText(item.text)
           }
         ]
       : []
   )
+}
+
+function senderName(item: ChatItem): string | null {
+  if (item.kind === 'delivery') return item.from.name
+  return item.kind === 'bot' ? (item.sender?.name ?? null) : null
 }
 
 // The messages that have the query, each with its first match, the newest few in each place.

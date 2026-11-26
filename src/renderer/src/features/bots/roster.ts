@@ -13,7 +13,8 @@ import type {
   RosterSnapshot,
   Selection
 } from './types'
-import { deliveryPreview } from '@shared/lib/delivery'
+import { deliveryPreview, namedText } from '@shared/lib/delivery'
+import type { ManagerName } from '@shared/lib/delivery'
 
 export const FOLDERS_KEY = 'talyx-folders'
 export const ROOM_FOLDERS_KEY = 'talyx-room-folders'
@@ -89,7 +90,11 @@ const FAILED_TURN_PREVIEWS = [
 ]
 const EMPTY_REPLY_PREVIEW = '(empty)'
 
-export function botPreview(bot: Bot, t: (key: TranslationKey) => string): string {
+export function botPreview(
+  bot: Bot,
+  t: (key: TranslationKey) => string,
+  manager: ManagerName
+): string {
   const preview = bot.canonical_session?.preview?.trim() || bot.last_session?.preview?.trim()
   if (preview === EMPTY_REPLY_PREVIEW) return t('roster.previewNoReply')
   if (preview && FAILED_TURN_PREVIEWS.some((opening) => preview.startsWith(opening)))
@@ -97,7 +102,10 @@ export function botPreview(bot: Bot, t: (key: TranslationKey) => string): string
   // A message another bot delivered shows as its words, as the chat shows it, without the
   // engine's wrapper around them.
   const delivered = preview ? deliveryPreview(preview) : null
-  return (delivered ?? preview) || bot.meta.description || bot.description || ''
+  // Bots address Talyx by the engine's handle for it, which is the engine's own name.
+  const words = delivered ?? preview
+  const shown = words ? namedText(words, manager) : words
+  return shown || bot.meta.description || bot.description || ''
 }
 
 /** The bot's chat: the profile's canonical session, at the tip of its compression lineage. */

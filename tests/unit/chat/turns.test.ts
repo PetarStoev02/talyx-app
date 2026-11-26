@@ -35,7 +35,7 @@ const ids = (items: ChatItem[]): string[] => items.map((item) => item.id)
 describe('turn view', () => {
   describe('a finished turn', () => {
     it('should show nothing for an empty chat', () => {
-      expect(turnView([], false)).toEqual({ items: [], activity: null })
+      expect(turnView([], false)).toEqual({ items: [], activity: null, answers: new Map() })
     })
 
     it('should keep your message and the answer of a turn with no tools', () => {
@@ -67,8 +67,10 @@ describe('turn view', () => {
 
     it('should keep notices, deliveries, errors and each turn of an old chat', () => {
       const delivery: ChatItem = {
-        ...reply('d1', 'Costs flat'),
-        sender: { name: 'CFO', profile: 'cfo' }
+        kind: 'delivery',
+        id: 'd1',
+        text: 'Costs flat',
+        from: { name: 'CFO', profile: 'cfo' }
       }
       const { items } = turnView(
         [
@@ -94,7 +96,8 @@ describe('turn view', () => {
     it('should show the activity with no tool before the first one', () => {
       expect(turnView([user('u1')], true)).toEqual({
         items: [user('u1')],
-        activity: { tool: null, tools: 0 }
+        activity: { tool: null, tools: 0 },
+        answers: new Map()
       })
     })
 
@@ -144,6 +147,80 @@ describe('turn view', () => {
       expect(activity?.tools).toBe(1)
     })
   })
+
+  describe('turns no message of yours started', () => {
+    const talyx = { name: 'Talyx', profile: 'acme' }
+    const handover: ChatItem = { kind: 'delivery', id: 'd1', text: 'Take #80', from: talyx }
+    const wake: ChatItem = { kind: 'wake', id: 'w1' }
+
+    it('should keep the reply before the engine woke the bot, and show the wake as nothing', () => {
+      const { items } = turnView(
+        [user('u1'), reply('b1', 'Building.'), wake, reply('b2', '@Talyx got it.')],
+        false
+      )
+      expect(ids(items)).toEqual(['u1', 'b1', 'b2'])
+    })
+
+    it('should name the bot whose message started a turn, through a job that turn started', () => {
+      const { answers } = turnView(
+        [
+          handover,
+          tool('t1'),
+          reply('b1', 'On it.'),
+          wake,
+          reply('b2', 'The job is done.'),
+          user('u1'),
+          reply('b3', 'Here it is.')
+        ],
+        false
+      )
+      expect([...answers]).toEqual([
+        ['b1', talyx],
+        ['b2', talyx]
+      ])
+    })
+
+    it('should read the note after a message the bot sent another bot as answering the engine', () => {
+      const { answers } = turnView(
+        [
+          user('u1'),
+          tool('t1', 'message_agent', 'acme'),
+          reply('b1', 'Sent Talyx the status.'),
+          wake,
+          reply('b2', '@Talyx got the status.')
+        ],
+        false
+      )
+      expect([...answers]).toEqual([['b2', 'engine']])
+    })
+
+    it('should keep the answer to a background job you asked for as yours', () => {
+      const { answers } = turnView(
+        [
+          user('u1'),
+          tool('t1', 'terminal'),
+          reply('b1', 'Running the tests.'),
+          wake,
+          reply('b2', 'They pass.')
+        ],
+        false
+      )
+      expect(answers.size).toBe(0)
+    })
+
+    it('should leave a failed reply or a Workflows status line to show as it is', () => {
+      const { answers } = turnView(
+        [
+          handover,
+          reply('b1', '', 'The provider timed out'),
+          wake,
+          reply('b2', '[run acme/api#7@m1] step=needs-you reason="Approve the merge"')
+        ],
+        false
+      )
+      expect(answers.size).toBe(0)
+    })
+  })
 })
 
 describe('turn outcome', () => {
@@ -151,8 +228,10 @@ describe('turn outcome', () => {
     turnOutcome(items, running)?.kind ?? null
   const stopped: ChatItem = { ...reply('b1', ''), stopped: true }
   const delivery: ChatItem = {
-    ...reply('d1', 'Costs flat'),
-    sender: { name: 'CFO', profile: 'cfo' }
+    kind: 'delivery',
+    id: 'd1',
+    text: 'Costs flat',
+    from: { name: 'CFO', profile: 'cfo' }
   }
 
   it('should have none for an empty chat or one still running', () => {
