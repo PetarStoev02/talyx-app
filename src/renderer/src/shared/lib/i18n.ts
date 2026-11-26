@@ -217,6 +217,8 @@ const en = {
   'chat.workflowStep.merged': 'Merged',
   'chat.workflowStep.done': 'Done',
   'chat.workflowStep.stopped': 'Stopped',
+  'chat.workflowStopSent': 'Workflows asked to stop {task}',
+  'chat.deliveryFrom': '{name} sent a message',
   'chat.clarifyBack': 'Back',
   'chat.clarifyNext': 'Next',
   'chat.clarifySend': 'Send',

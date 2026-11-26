@@ -166,12 +166,14 @@ describe('searching the open chat or room', () => {
   const room = [
     said('e1', 'Should we change the budget?'),
     { ...replied('e2', 'The budget holds.'), sender: analyst },
-    { kind: 'notice' as const, id: 'e3', text: 'The budget turn failed' }
+    { kind: 'notice' as const, id: 'e3', text: 'The budget turn failed' },
+    { kind: 'delivery' as const, id: 'e4', text: 'Budget approved', from: analyst }
   ]
 
   it('should find its messages newest first, naming who said each', () => {
     const hits = placeHits({ kind: 'room', id: 'team' }, room, 'budget')
     expect(hits.map((hit) => [hit.messageId, hit.fromYou, hit.sender])).toEqual([
+      ['e4', false, 'Analyst'],
       ['e2', false, 'Analyst'],
       ['e1', true, null]
     ])

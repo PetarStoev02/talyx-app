@@ -104,18 +104,23 @@ type Message = Omit<MessageHit, 'match'>
 // The place's messages, yours and the replies, newest first, as the chat shows their text.
 function messagesOf(place: SearchPlace, items: ChatItem[]): Message[] {
   return [...items].reverse().flatMap((item) =>
-    item.kind === 'user' || item.kind === 'bot'
+    item.kind === 'user' || item.kind === 'bot' || item.kind === 'delivery'
       ? [
           {
             place,
             messageId: item.id,
             fromYou: item.kind === 'user',
-            sender: item.kind === 'bot' ? (item.sender?.name ?? null) : null,
+            sender: senderName(item),
             text: shownText(item.text)
           }
         ]
       : []
   )
+}
+
+function senderName(item: ChatItem): string | null {
+  if (item.kind === 'delivery') return item.from.name
+  return item.kind === 'bot' ? (item.sender?.name ?? null) : null
 }
 
 // The messages that have the query, each with its first match, the newest few in each place.

@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { ChevronRight } from 'lucide-react'
 import { useLoad } from '@shared/hooks/useLoad'
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import type { Components, UrlTransform } from 'react-markdown'
@@ -6,14 +7,14 @@ import remarkGfm from 'remark-gfm'
 import { useEngine } from '@features/setup/store'
 import { useLanguage } from '@shared/lib/i18n'
 import { BotAvatar } from '@features/bots/BotAvatar'
-import { botTitle, unknownBot } from '@features/bots/roster'
+import { MANAGER_TITLE, botTitle, unknownBot } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { markdownImage } from '@features/chat/markdownImage'
 import { replyFailure } from '@features/chat/replyFailure'
-import { senderProfile } from '@features/chat/transcript'
+import { senderProfile, withManagerName } from '@features/chat/transcript'
 import type { ChatItem, MessageItem } from '@features/chat/types'
 import { SurfaceCard } from './SurfaceCard'
-import { parseBrief, splitReply } from '@features/chat/workflowLines'
+import { parseBrief, parseStop, splitReply } from '@features/chat/workflowLines'
 import type { WorkflowBrief } from '@features/chat/workflowLines'
 import { cn } from '@shared/lib/utils'
 import { CodeBlock } from './CodeBlock'
@@ -66,6 +67,7 @@ export function MessageBubble({
   onSurfaceSend: (text: string) => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
+  const managerHandle = useManagerHandle()
   if (message.kind === 'surface')
     return (
       <SurfaceCard
@@ -82,8 +84,27 @@ export function MessageBubble({
         {message.text}
       </p>
     )
+  if (message.kind === 'delivery')
+    return (
+      <QuietLine summary={<DeliverySummary from={message.from} />}>
+        <ReplyText
+          text={withManagerName(message.text, managerHandle, MANAGER_TITLE)}
+          streaming={false}
+          briefs={briefs}
+        />
+      </QuietLine>
+    )
   const brief = message.kind === 'user' && message.images.length === 0 && parseBrief(message.text)
   if (brief) return <WorkflowBriefCard brief={brief} text={message.text} />
+  const stopped = message.kind === 'user' && parseStop(message.text)
+  if (stopped)
+    return (
+      <QuietLine
+        summary={t('chat.workflowStopSent').replace('{task}', briefs[stopped]?.title ?? stopped)}
+      >
+        <ReplyText text={message.text} streaming={false} briefs={briefs} />
+      </QuietLine>
+    )
   if (message.kind === 'user')
     return (
       <div className="ml-auto flex max-w-[80%] flex-col items-end gap-2">
@@ -110,21 +131,13 @@ export function MessageBubble({
           message.streaming && 'chat-streaming'
         )}
       >
-        {(message.text || message.error === null) &&
-          splitReply(message.text).map((part, index) =>
-            part.kind === 'status' ? (
-              <WorkflowStatusRow key={index} status={part.status} brief={briefs[part.status.ref]} />
-            ) : (
-              <ReactMarkdown
-                key={index}
-                remarkPlugins={[remarkGfm]}
-                components={message.streaming ? MARKDOWN_COMPONENTS : FINISHED_COMPONENTS}
-                urlTransform={urlTransform}
-              >
-                {part.text}
-              </ReactMarkdown>
-            )
-          )}
+        {(message.text || message.error === null) && (
+          <ReplyText
+            text={withManagerName(message.text, managerHandle, MANAGER_TITLE)}
+            streaming={message.streaming}
+            briefs={briefs}
+          />
+        )}
         {message.error !== null && (
           <div className={cn(message.text && 'mt-2')}>
             <p className="text-destructive-text">{t('chat.replyFailed')}</p>
@@ -138,7 +151,7 @@ export function MessageBubble({
     </div>
   )
   if (!message.sender) return reply
-  // In a room several bots answer, and other bots deliver into a chat; each says who wrote it.
+  // In a room several bots answer; each says who wrote it.
   return (
     <div className="flex flex-col gap-2">
       <Sender sender={message.sender} />
@@ -147,12 +160,72 @@ export function MessageBubble({
   )
 }
 
+function useManagerHandle(): string | null {
+  return useEngine((s) => (s.status?.state === 'attached' ? s.status.managerHandle : null))
+}
+
+/**
+ * Something that came into the chat besides the conversation (another bot's message, a Workflows
+ * stop): one quiet line, its full text a press away.
+ */
+// A reply's markdown, with each Workflows status line shown as its row.
+function ReplyText({
+  text,
+  streaming,
+  briefs
+}: {
+  text: string
+  streaming: boolean
+  briefs: Record<string, WorkflowBrief>
+}): React.JSX.Element {
+  return (
+    <>
+      {splitReply(text).map((part, index) =>
+        part.kind === 'status' ? (
+          <WorkflowStatusRow key={index} status={part.status} brief={briefs[part.status.ref]} />
+        ) : (
+          <ReactMarkdown
+            key={index}
+            remarkPlugins={[remarkGfm]}
+            components={streaming ? MARKDOWN_COMPONENTS : FINISHED_COMPONENTS}
+            urlTransform={urlTransform}
+          >
+            {part.text}
+          </ReactMarkdown>
+        )
+      )}
+    </>
+  )
+}
+
+function QuietLine({
+  summary,
+  children
+}: {
+  summary: React.ReactNode
+  children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <details className="group/quiet text-sm text-muted-foreground">
+      <summary className="flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          size={16}
+          aria-hidden="true"
+          className="shrink-0 transition-transform group-open/quiet:rotate-90 motion-reduce:transition-none"
+        />
+        {summary}
+      </summary>
+      <div dir="auto" className="chat-markdown mt-2 ms-5 break-words text-foreground">
+        {children}
+      </div>
+    </details>
+  )
+}
+
 // Under "This reply did not finish": the engine's own words, as Talyx's.
 function FailureDetail({ error }: { error: string }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const engineName = useEngine((s) =>
-    s.status?.state === 'attached' ? s.status.managerHandle : null
-  )
+  const engineName = useManagerHandle()
   const failure = replyFailure(error, engineName)
   return (
     <p className="text-sm text-muted-foreground wrap-anywhere">
@@ -161,19 +234,39 @@ function FailureDetail({ error }: { error: string }): React.JSX.Element {
   )
 }
 
-// The roster's name and avatar for the sender; Talyx's handle in deliveries is the engine's own.
 function Sender({ sender }: { sender: { name: string; profile: string } }): React.JSX.Element {
-  const managerHandle = useEngine((s) =>
-    s.status?.state === 'attached' ? s.status.managerHandle : null
-  )
-  const profile = senderProfile(sender.profile, managerHandle)
-  const bot = useRoster((state) => state.snapshot.bots.find((item) => item.name === profile))
+  const { avatar, name } = useSenderBot(sender)
   return (
     <p className="flex items-center gap-2 text-sm font-medium">
-      <BotAvatar bot={bot ?? unknownBot(profile)} place="row" />
-      {bot ? botTitle(bot) : sender.name}
+      {avatar}
+      {name}
     </p>
   )
+}
+
+function DeliverySummary({ from }: { from: { name: string; profile: string } }): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const { avatar, name } = useSenderBot(from)
+  return (
+    <span className="flex items-center gap-2">
+      {avatar}
+      {t('chat.deliveryFrom').replace('{name}', name)}
+    </span>
+  )
+}
+
+// The roster's name and avatar for the sender; Talyx's handle in deliveries is the engine's own.
+function useSenderBot(sender: { name: string; profile: string }): {
+  avatar: React.JSX.Element
+  name: string
+} {
+  const managerHandle = useManagerHandle()
+  const profile = senderProfile(sender.profile, managerHandle)
+  const bot = useRoster((state) => state.snapshot.bots.find((item) => item.name === profile))
+  return {
+    avatar: <BotAvatar bot={bot ?? unknownBot(profile)} place="row" />,
+    name: bot ? botTitle(bot) : sender.name
+  }
 }
 
 // Images live on the engine's disk; the gateway serves them as data URLs.

@@ -6,6 +6,7 @@ import {
   isQuietReply,
   parseBrief,
   parseStatusLine,
+  parseStop,
   splitReply,
   summarizeStatus
 } from '../../../src/renderer/src/features/chat/workflowLines'
@@ -58,6 +59,24 @@ describe('workflow lines in a chat', () => {
 
     it('should index every brief in a chat by its task', () => {
       expect(Object.keys(briefsByRef(['hi', brief()]))).toEqual(['acme/api#7'])
+    })
+  })
+
+  describe('a stop', () => {
+    it.each([
+      [
+        'Stop working on the Workflows task acme/api#7. If you started a thread, stop that too.',
+        'acme/api#7'
+      ],
+      ['Stop the Workflows task task#mwq4v9ew now. Stop its thread.', 'task#mwq4v9ew'],
+      ['Stop working on the Workflows task acme/api#7.', 'acme/api#7']
+    ])('should read the task of %s', (text, ref) => {
+      expect(parseStop(text)).toBe(ref)
+    })
+
+    it('should not take a message that only mentions stopping a task', () => {
+      expect(parseStop('Please stop the Workflows task acme/api#7.')).toBeNull()
+      expect(parseStop('Stop the build')).toBeNull()
     })
   })
 
@@ -209,6 +228,12 @@ describe('which chat items stay out of the chat', () => {
     ['one you stopped', reply({ stopped: true }), false]
   ])('given %s, should leave it out: %s', (_why, item, quiet) => {
     expect(isQuietReply(item)).toBe(quiet)
+  })
+
+  it("should leave out another bot's delivery that only reports progress", () => {
+    const from = { name: 'T3 Tots', profile: 't3-agent' }
+    expect(isQuietReply({ kind: 'delivery', id: '3', text: PROGRESS, from })).toBe(true)
+    expect(isQuietReply({ kind: 'delivery', id: '4', text: 'Done, PR #81', from })).toBe(false)
   })
 
   it('should keep what you wrote, even a status line', () => {

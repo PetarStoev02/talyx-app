@@ -8,7 +8,8 @@ import {
   needsRebuild,
   senderProfile,
   settlePrompt,
-  waitLeft
+  waitLeft,
+  withManagerName
 } from '../../../src/renderer/src/features/chat/transcript'
 import type { ChatPrompt, Transcript } from '../../../src/renderer/src/features/chat/types'
 import type { GatewayEvent } from '../../../src/renderer/src/shared/engine/shared'
@@ -63,15 +64,7 @@ describe('chat transcript', () => {
           target: 'cfo',
           showUi: null
         },
-        {
-          kind: 'bot',
-          id: '4',
-          text: 'done',
-          streaming: false,
-          error: null,
-          stopped: false,
-          sender: { name: 'CFO', profile: 'cfo' }
-        },
+        { kind: 'delivery', id: '4', text: 'done', from: { name: 'CFO', profile: 'cfo' } },
         {
           kind: 'bot',
           id: '5',
@@ -183,21 +176,43 @@ describe('chat transcript', () => {
       expect(item).toMatchObject({ kind: 'tool', name: 'terminal', label: 'terminal' })
     })
 
-    it('should show a message another bot delivered as a reply from that bot', () => {
-      const [item] = history({
-        id: 1,
-        role: 'user',
-        content: 'Message from 🤖 Agro Ops CFO (@agro-ops-cfo): Margins are up.\n\n- Costs flat',
-        display_kind: 'internal_notification'
-      }).items
-      expect(item).toEqual({
-        kind: 'bot',
-        id: '1',
-        text: 'Margins are up.\n\n- Costs flat',
-        streaming: false,
-        error: null,
-        stopped: false,
-        sender: { name: 'Agro Ops CFO', profile: 'agro-ops-cfo' }
+    describe('bot-to-bot traffic', () => {
+      const delivered =
+        'Message from 🤖 Agro Ops CFO (@agro-ops-cfo): Margins are up.\n\n- Costs flat'
+
+      it('should show a message another bot delivered apart from the conversation', () => {
+        const [item] = history({
+          id: 1,
+          role: 'user',
+          content: delivered,
+          display_kind: 'internal_notification'
+        }).items
+        expect(item).toEqual({
+          kind: 'delivery',
+          id: '1',
+          text: 'Margins are up.\n\n- Costs flat',
+          from: { name: 'Agro Ops CFO', profile: 'agro-ops-cfo' }
+        })
+      })
+
+      it('should show a delivery once when compaction stored it again without its kind', () => {
+        const transcript = history(
+          { id: 1, role: 'user', content: delivered, display_kind: 'internal_notification' },
+          { id: 2, role: 'assistant', content: 'Noted.' },
+          { id: 3, role: 'user', content: delivered }
+        )
+        expect(transcript.items.map((item) => [item.kind, item.id])).toEqual([
+          ['delivery', '1'],
+          ['bot', '2']
+        ])
+      })
+
+      it("should name Talyx where a bot wrote the engine's handle for it", () => {
+        expect(withManagerName('@acme got the status from @acme-cfo.', 'acme', 'Talyx')).toBe(
+          '@Talyx got the status from @acme-cfo.'
+        )
+        // Before the engine reports its handle, the text stays as written.
+        expect(withManagerName('@acme hi', null, 'Talyx')).toBe('@acme hi')
       })
     })
 
@@ -238,6 +253,21 @@ describe('chat transcript', () => {
         display_kind: 'process_complete',
         display_metadata: { display_text: 'Background Process Finished: /usr/bin/python3' }
       } as SessionMessage)
+      expect(transcript.items).toEqual([])
+    })
+
+    it('should leave out a background command notice the engine stored without its kind', () => {
+      const notice = '[IMPORTANT: Background process proc_1 exited (exit code 1).\nCommand: python3'
+      const transcript = history(
+        {
+          id: 1,
+          role: 'user',
+          content: notice,
+          display_kind: 'process_complete'
+        } as SessionMessage,
+        { id: 2, role: 'user', content: notice },
+        { id: 3, role: 'user', content: '[IMPORTANT: Background process proc_2 completed]' }
+      )
       expect(transcript.items).toEqual([])
     })
 

@@ -453,7 +453,7 @@ describe('bot chat', () => {
       await actions.rebuild(MANAGER)
       expect(visible()).toEqual([
         ...before,
-        { kind: 'bot', text: 'numbers', error: null },
+        { kind: 'delivery' },
         { kind: 'bot', text: '', error: UNKNOWN_PROVIDER }
       ])
     })
@@ -476,7 +476,7 @@ describe('bot chat', () => {
       expect(visible()).toEqual([
         ...before,
         ...failedWith(UNKNOWN_PROVIDER),
-        { kind: 'bot', text: 'numbers', error: null },
+        { kind: 'delivery' },
         { kind: 'bot', text: '', error: NO_CREDENTIALS }
       ])
     })

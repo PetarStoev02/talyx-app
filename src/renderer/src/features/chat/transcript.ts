@@ -19,6 +19,9 @@ const NOTICE_KINDS = new Set([
 // A background command the bot ran has finished: the engine's bookkeeping, not news. The bot's
 // reply after it says what came of it.
 const QUIET_KINDS = new Set(['process_complete'])
+// The same notice in a row with no display kind (older engines, or a copy compaction made), matched
+// by the engine's fixed opening.
+const BACKGROUND_NOTICE = '[IMPORTANT: Background process '
 const MESSAGE_AGENT = 'message_agent'
 // The id prefix of a reply streamed live, before the history reload gives it its stored row id.
 export const LIVE_ID = 'live-'
@@ -54,6 +57,8 @@ const RESTATED = new RegExp(
   `^\\[STILL IN PROGRESS ${EM_DASH} this is the active request, restated after the compaction boundary because it was not finished yet\\. Continue it; do not start over\\.\\]\\n`
 )
 
+const REGEX_CHARS = /[.*+?^${}()|[\]\\]/g
+
 type Payload = Record<string, unknown>
 type ToolItem = Extract<ChatItem, { kind: 'tool' }>
 type BotItem = Extract<ChatItem, { kind: 'bot' }>
@@ -66,8 +71,10 @@ export function fromHistory(
   running: boolean
 ): Transcript {
   const calls = toolCalls(messages)
+  const typed = typedTexts(messages)
   const items: ChatItem[] = []
   for (const message of messages) {
+    if (isUntypedTwin(message, typed)) continue
     for (const item of historyItem(message, calls))
       if (!isRestatedCopy(item, message, items)) items.push(item)
   }
@@ -90,6 +97,17 @@ export function fromHistory(
  */
 export function senderProfile(handle: string, managerHandle: string | null): string {
   return handle === managerHandle ? 'default' : handle
+}
+
+/**
+ * Text as the chat shows it: bots address Talyx by the engine's handle for it, which is the
+ * engine's own name, so it reads as Talyx's name instead.
+ */
+export function withManagerName(text: string, managerHandle: string | null, name: string): string {
+  if (!managerHandle) return text
+  // A longer handle that starts with this one (`@talyx-cfo`) is another bot's.
+  const handle = new RegExp(`@${managerHandle.replace(REGEX_CHARS, '\\$&')}(?![\\w-])`, 'g')
+  return text.replace(handle, `@${name}`)
 }
 
 export function applyEvent(transcript: Transcript, event: GatewayEvent): Transcript {
@@ -220,22 +238,19 @@ function historyItem(
 ): ChatItem[] {
   if (message.display_kind === 'hidden' || QUIET_KINDS.has(message.display_kind ?? '')) return []
   const id = String(message.row_id ?? message.id ?? '')
-  const text = messageText(message.display_content ?? message.content)
+  const text = shownText(message)
   if (message.role === 'user') {
+    if (!message.display_kind && text.startsWith(BACKGROUND_NOTICE)) return []
     const delivery = readDelivery(text)
-    if (delivery) {
+    if (delivery)
       return [
         {
-          kind: 'bot',
+          kind: 'delivery',
           id,
           text: delivery.body,
-          streaming: false,
-          error: null,
-          stopped: false,
-          sender: { name: delivery.name, profile: delivery.profile }
+          from: { name: delivery.name, profile: delivery.profile }
         }
       ]
-    }
     if (message.display_kind && NOTICE_KINDS.has(message.display_kind))
       return [{ kind: 'notice', id, text: noticeText(message, text) }]
     return [userItem(id, text)]
@@ -269,6 +284,24 @@ function historyItem(
     return [{ ...toolItem(id, name, args, message.labels), done: true }]
   }
   return []
+}
+
+function shownText(message: SessionMessage): string {
+  return messageText(message.display_content ?? message.content)
+}
+
+// The texts of the engine's typed rows (notices, deliveries), to know their untyped copies by.
+function typedTexts(messages: SessionMessage[]): Set<string> {
+  return new Set(
+    messages.flatMap((message) =>
+      message.role === 'user' && message.display_kind ? [shownText(message)] : []
+    )
+  )
+}
+
+// Compaction stores a typed row again without its display kind: only the typed row shows.
+function isUntypedTwin(message: SessionMessage, typed: Set<string>): boolean {
+  return message.role === 'user' && !message.display_kind && typed.has(shownText(message))
 }
 
 function noticeText(message: SessionMessage, text: string): string {

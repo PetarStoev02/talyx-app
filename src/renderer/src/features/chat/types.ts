@@ -10,11 +10,13 @@ export type ChatItem =
       error: string | null
       // The user stopped the turn part way: the text is what the bot wrote until then.
       stopped: boolean
-      // Who spoke: a room member, or a bot that delivered a message into this chat; null for the
-      // chat's own bot. A delivery names its sender by @handle, which is the profile's name except
-      // for Talyx (the engine's manager handle).
+      // The room member who spoke; null for the chat's own bot.
       sender: { name: string; profile: string } | null
     }
+  // A message another bot delivered into this chat: bot-to-bot traffic, not the conversation, so
+  // it shows as a quiet line. The sender is named by @handle, which is the profile's name except
+  // for Talyx (the engine's manager handle).
+  | { kind: 'delivery'; id: string; text: string; from: { name: string; profile: string } }
   | {
       kind: 'tool'
       id: string

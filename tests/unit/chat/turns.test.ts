@@ -67,8 +67,10 @@ describe('turn view', () => {
 
     it('should keep notices, deliveries, errors and each turn of an old chat', () => {
       const delivery: ChatItem = {
-        ...reply('d1', 'Costs flat'),
-        sender: { name: 'CFO', profile: 'cfo' }
+        kind: 'delivery',
+        id: 'd1',
+        text: 'Costs flat',
+        from: { name: 'CFO', profile: 'cfo' }
       }
       const { items } = turnView(
         [
@@ -151,8 +153,10 @@ describe('turn outcome', () => {
     turnOutcome(items, running)?.kind ?? null
   const stopped: ChatItem = { ...reply('b1', ''), stopped: true }
   const delivery: ChatItem = {
-    ...reply('d1', 'Costs flat'),
-    sender: { name: 'CFO', profile: 'cfo' }
+    kind: 'delivery',
+    id: 'd1',
+    text: 'Costs flat',
+    from: { name: 'CFO', profile: 'cfo' }
   }
 
   it('should have none for an empty chat or one still running', () => {
