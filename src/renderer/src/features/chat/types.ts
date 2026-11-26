@@ -29,9 +29,10 @@ export type ChatItem =
       // The interface a `show_ui` call carries, as text to compare with; null for every other tool.
       showUi: string | null
     }
-  // The engine woke the bot with a note of its own (a background job finished, often a message the
-  // bot sent another bot): it shows nothing, but the turn after it answers the engine, not you.
-  | { kind: 'wake'; id: string }
+  // A turn no message of yours started, with nothing to show for it: the engine's own note (a
+  // background job finished, often a message the bot sent another bot), or, while a turn streams,
+  // another bot's message the reload has not brought yet (`by: 'bot'`).
+  | { kind: 'wake'; id: string; by: 'engine' | 'bot' }
   // A line the engine wrote into the chat (a finished job, a model switch), not a message.
   | { kind: 'notice'; id: string; text: string }
   // A bot-drawn interface from show_ui, stored from its tool call or shown live from MCP.

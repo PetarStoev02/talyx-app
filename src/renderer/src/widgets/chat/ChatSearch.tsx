@@ -285,7 +285,11 @@ function unfold(transcript: HTMLElement, messageId: string | null): void {
   if (!messageId) return
   const message = transcript.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`)
   const folded = message?.querySelector('details')
-  if (folded) folded.open = true
+  if (!folded || folded.open) return
+  folded.open = true
+  // Counted now, not when the watcher hears it: the next render finds the opened words, so the
+  // search goes straight to them instead of to the first match and back.
+  editCount.set(transcript, (editCount.get(transcript) ?? 0) + 1)
 }
 
 // How many times each searched element's text has changed, as useSyncExternalStore reads it.

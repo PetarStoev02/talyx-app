@@ -1,5 +1,5 @@
 import { LIVE_SURFACE_PREFIX } from './surfaceLive'
-import { LIVE_ID } from './transcript'
+import { LIVE_ID, MESSAGE_AGENT } from './transcript'
 import type { ChatItem, MessageItem } from './types'
 import { splitReply } from './workflowLines'
 
@@ -22,9 +22,9 @@ export interface TurnOutcome {
 
 /**
  * Whom a reply in a turn no message of yours started answers: the bot whose delivery started it,
- * or null when the engine woke the bot.
+ * the engine that woke the bot, or another bot not named yet (a turn still streaming).
  */
-export type Asker = { name: string; profile: string } | null
+export type Asker = { name: string; profile: string } | 'engine' | 'bot'
 
 /** What the running turn is doing: its newest tool (null before the first) and how many it ran. */
 export interface TurnActivity {
@@ -76,7 +76,12 @@ export function turnView(
 function nextAsker(item: ChatItem, work: ChatItem[], asker: Asker | 'you'): Asker | 'you' {
   if (item.kind === 'delivery') return item.from
   if (item.kind !== 'wake') return 'you'
-  return work.some((done) => done.kind === 'tool' && done.target !== null) ? null : asker
+  if (item.by === 'bot') return 'bot'
+  return work.some(isMessageToBot) ? 'engine' : asker
+}
+
+function isMessageToBot(item: ChatItem): boolean {
+  return item.kind === 'tool' && item.name === MESSAGE_AGENT
 }
 
 // A reply to a bot or the engine that only talks back: a failure, or a Workflows status line,

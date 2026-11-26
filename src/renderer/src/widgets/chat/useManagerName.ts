@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { MANAGER_TITLE } from '@features/bots/roster'
-import type { ManagerName } from '@features/chat/transcript'
+import type { ManagerName } from '@shared/lib/delivery'
 import { useEngine } from '@features/setup/store'
 
 /** Talyx's handle in the engine, once attached, and the name the chat shows in its place. */

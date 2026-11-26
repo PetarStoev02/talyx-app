@@ -4,7 +4,6 @@ import { useLoad } from '@shared/hooks/useLoad'
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import type { Components, UrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { useEngine } from '@features/setup/store'
 import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import { botTitle, unknownBot } from '@features/bots/roster'
@@ -19,6 +18,7 @@ import { parseBrief, parseStop, splitReply } from '@features/chat/workflowLines'
 import type { WorkflowBrief } from '@features/chat/workflowLines'
 import { cn } from '@shared/lib/utils'
 import { CodeBlock } from './CodeBlock'
+import { useManagerName } from './useManagerName'
 import { WorkflowBriefCard, WorkflowStatusRow } from './WorkflowParts'
 
 // Links open in the browser through the window-open guard, never inside the app.
@@ -62,7 +62,7 @@ export function MessageBubble({
 }: {
   message: MessageItem
   // A reply to another bot or the engine, not to you: whom it answers.
-  aside: { to: Asker } | null
+  aside: Asker | null
   allItems: ChatItem[]
   busy: boolean
   loadImage: (path: string) => Promise<string>
@@ -95,7 +95,7 @@ export function MessageBubble({
     )
   if (aside && message.kind === 'bot')
     return (
-      <QuietLine summary={<AsideSummary to={aside.to} />}>
+      <QuietLine summary={<AsideSummary to={aside} />}>
         <ReplyText text={message.text} streaming={message.streaming} briefs={briefs} />
       </QuietLine>
     )
@@ -162,7 +162,7 @@ export function MessageBubble({
 }
 
 function useManagerHandle(): string | null {
-  return useEngine((s) => (s.status?.state === 'attached' ? s.status.managerHandle : null))
+  return useManagerName().handle
 }
 
 // A reply's markdown, with each Workflows status line shown as its row.
@@ -247,7 +247,9 @@ function Sender({ sender }: { sender: { name: string; profile: string } }): Reac
 
 function AsideSummary({ to }: { to: Asker }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  return to ? <BotLine bot={to} label="chat.replyTo" /> : <span>{t('chat.backgroundNote')}</span>
+  if (to === 'engine') return <span>{t('chat.backgroundNote')}</span>
+  if (to === 'bot') return <span>{t('chat.replyToBot')}</span>
+  return <BotLine bot={to} label="chat.replyTo" />
 }
 
 // A quiet line's words about another bot, with its avatar: `{name}` in the label is its name.

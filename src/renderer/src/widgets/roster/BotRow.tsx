@@ -3,7 +3,15 @@ import { ContextMenuArea } from '@shared/ui/menu'
 import { OverflowTooltip } from '@shared/ui/tooltip'
 import { useLanguage } from '@shared/lib/i18n'
 import { useNow } from '@shared/hooks/useNow'
-import { botActivityTime, botPreview, botTitle, itemKey, timeInWords } from '@features/bots/roster'
+import {
+  MANAGER_TITLE,
+  botActivityTime,
+  botPreview,
+  botTitle,
+  itemKey,
+  timeInWords
+} from '@features/bots/roster'
+import { useEngine } from '@features/setup/store'
 import { useRoster } from '@features/bots/store'
 import { BotAvatar } from '@features/bots/BotAvatar'
 import type { Bot } from '@features/bots/types'
@@ -37,7 +45,8 @@ export function BotRow({
   const unread = useRoster((state) => state.unread[bot.name])
   const activity = useRoster((state) => state.activity[bot.name] ?? 'idle')
   const saving = useRoster((state) => state.saving)
-  const preview = botPreview(bot, t) || t('roster.noMessages')
+  const handle = useEngine((s) => (s.status?.state === 'attached' ? s.status.managerHandle : null))
+  const preview = botPreview(bot, t, { handle, name: MANAGER_TITLE }) || t('roster.noMessages')
   const dot = Boolean(unread) || activity === 'waiting'
   const status =
     activity === 'waiting'

@@ -1,7 +1,8 @@
 import { parseA2uiMessages, showUiMessagesFromTool } from '@contract/a2uiSurface'
 import type { GatewayEvent } from '@shared/engine/shared'
 import type { SessionMessage } from '@shared/engine/types'
-import { readDelivery } from '@shared/lib/delivery'
+import { namedText, readDelivery } from '@shared/lib/delivery'
+import type { ManagerName } from '@shared/lib/delivery'
 import { messageText } from '@shared/lib/messageText'
 import { showUiContent } from './surfaceLive'
 import type { ChatItem, ChatPrompt, FailedTurn, StreamCursor, Transcript } from './types'
@@ -22,9 +23,11 @@ const WAKE_KINDS = new Set(['process_complete'])
 // The same notice in a row with no display kind (older engines, or a copy compaction made), matched
 // by the engine's fixed opening.
 const BACKGROUND_NOTICE = '[IMPORTANT: Background process '
-const MESSAGE_AGENT = 'message_agent'
+/** The tool a bot sends another bot a message with. */
+export const MESSAGE_AGENT = 'message_agent'
 // The id prefix of a reply streamed live, before the history reload gives it its stored row id.
 export const LIVE_ID = 'live-'
+const STARTER_ID = `${LIVE_ID}start-`
 // The row the engine stores for a turn that failed after it reached the model.
 const FAILED_TURN = 'failed_turn'
 // What the engine stores, and the failure it names, for a turn the model gave no answer to.
@@ -56,8 +59,6 @@ const ENGINE_IMAGE_NOTES = [
 const RESTATED = new RegExp(
   `^\\[STILL IN PROGRESS ${EM_DASH} this is the active request, restated after the compaction boundary because it was not finished yet\\. Continue it; do not start over\\.\\]\\n`
 )
-
-const REGEX_CHARS = /[.*+?^${}()|[\]\\]/g
 
 type Payload = Record<string, unknown>
 type ToolItem = Extract<ChatItem, { kind: 'tool' }>
@@ -97,12 +98,6 @@ export function senderProfile(handle: string, managerHandle: string | null): str
   return handle === managerHandle ? 'default' : handle
 }
 
-/** Talyx's handle in the engine, and the name the chat shows for it. */
-export interface ManagerName {
-  handle: string | null
-  name: string
-}
-
 /**
  * The chat's items as shown: bots address Talyx by the engine's handle for it, which is the
  * engine's own name, so it reads as Talyx's name. An item with no handle stays the same object.
@@ -117,17 +112,6 @@ export function withManagerName<Item extends ChatItem>(
     const text = namedText(item.text, manager)
     return text === item.text ? item : { ...item, text }
   })
-}
-
-/** One text as shown, with the engine's handle for Talyx read as Talyx's name. */
-export function namedText(text: string, manager: ManagerName): string {
-  if (!manager.handle) return text
-  // Not inside an address (ops@acme.com), nor the start of a longer handle (`@acme-cfo`).
-  const handle = new RegExp(
-    `(?<![\\w.-])@${manager.handle.replace(REGEX_CHARS, '\\$&')}(?![\\w-])`,
-    'g'
-  )
-  return text.replace(handle, `@${manager.name}`)
 }
 
 export function applyEvent(transcript: Transcript, event: GatewayEvent): Transcript {
@@ -264,7 +248,7 @@ function historyItem(
       WAKE_KINDS.has(message.display_kind ?? '') ||
       (!message.display_kind && text.startsWith(BACKGROUND_NOTICE))
     )
-      return [{ kind: 'wake', id }]
+      return [{ kind: 'wake', id, by: 'engine' }]
     const delivery = readDelivery(text)
     if (delivery)
       return [
@@ -473,10 +457,37 @@ function startReply(transcript: Transcript, payload: Payload, id: string): Trans
   // re-sent text as a second copy.
   if (turnId && transcript.stream?.turnId === turnId) return transcript
   return {
-    ...withStreamingReply(transcript, id),
+    ...withStreamingReply(withStarter(transcript, payload, id), id),
     running: true,
     stream: turnId ? { turnId, segment: 0, end: 0 } : null
   }
+}
+
+/**
+ * What started a turn goes before its reply, as the reload after the turn will show it, so a turn
+ * no message of yours started shows apart while it streams. The engine names its own notes when
+ * the turn starts; a reopened chat knows the turn's prompt; another bot's message arrives unnamed.
+ */
+function withStarter(transcript: Transcript, payload: Payload, id: string): Transcript {
+  if (lastStreamingReply(transcript) >= 0) return transcript
+  const kind = typeof payload.display_kind === 'string' ? payload.display_kind : ''
+  const text = typeof payload.text === 'string' ? payload.text : ''
+  const last = transcript.items.at(-1)
+  // Your message, or what started the turn, is already in the chat.
+  if (!kind && (last?.kind === 'user' || last?.kind === 'delivery' || last?.kind === 'wake'))
+    return transcript
+  const starterId = `${STARTER_ID}${id}`
+  const prompt: SessionMessage = {
+    role: 'user',
+    content: text,
+    ...(kind ? { display_kind: kind } : {}),
+    display_metadata: JSON.stringify({ display_text: payload.display_text })
+  }
+  const starter: ChatItem[] =
+    kind || text
+      ? historyItem(prompt, new Map()).map((item) => ({ ...item, id: starterId }))
+      : [{ kind: 'wake', id: starterId, by: 'bot' }]
+  return { ...transcript, items: [...transcript.items, ...starter] }
 }
 
 // A stamped delta adds only the text past what its segment already applied; an unstamped one
@@ -550,15 +561,16 @@ function completeReply(transcript: Transcript, payload: Payload, id: string): Tr
 }
 
 // The failed reply is the last item. Before it, past this turn's tool lines and streamed text, is
-// the message it answered, unless a delivery or another client started the turn.
+// the message it answered, unless a delivery or another client started the turn. What started a
+// live turn goes with the reload, so the turn's place is the item before it.
 function failedTurn(items: ChatItem[]): FailedTurn {
   const reply = items.at(-1)
   // withStreamingReply adds the reply before a turn can fail, so it is always there.
   if (!reply) throw new Error('A failed turn has no reply in the transcript')
   const start = items.slice(0, -1).map(isTurnWork).lastIndexOf(false) + 1
   const before = items[start - 1]
-  const asked = before?.kind === 'user' ? before : null
-  const first = asked ? start - 1 : start
+  const asked = before?.kind === 'user' && !isStarter(before) ? before : null
+  const first = asked || isStarter(before) ? start - 1 : start
   return {
     after: items[first - 1]?.id ?? null,
     items: asked ? [asked, reply] : [reply]
@@ -601,6 +613,11 @@ function waitFor(transcript: Transcript, text: string): Transcript {
   if (text.startsWith(WAIT_MARK))
     return { ...transcript, wait: text.slice(WAIT_MARK.length).replace(WAIT_DASH, ', ').trim() }
   return text ? transcript : { ...transcript, wait: null }
+}
+
+// What started a live turn, shown until the reload brings the stored rows: its id does not last.
+function isStarter(item: ChatItem | undefined): boolean {
+  return item?.id.startsWith(STARTER_ID) === true
 }
 
 // A tool line ends the reply segment before it; text after the tool starts a new one.

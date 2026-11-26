@@ -57,7 +57,7 @@ export function Transcript({
               >
                 <MessageBubble
                   message={item}
-                  aside={asides.has(item.id) ? { to: asides.get(item.id) ?? null } : null}
+                  aside={asides.get(item.id) ?? null}
                   allItems={allItems}
                   busy={busy}
                   loadImage={loadImage}

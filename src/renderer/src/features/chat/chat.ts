@@ -614,7 +614,8 @@ function rebuilt(
   const inflight = resume.running ? resume.inflight?.assistant : null
   if (inflight) {
     transcript = [
-      { type: 'message.start' },
+      // The turn's prompt says who started it, when the history does not have it yet.
+      { type: 'message.start', payload: { text: resume.inflight?.user ?? '' } },
       { type: 'message.delta', payload: { text: inflight } }
     ].reduce((current, event) => applyEvent(current, event as GatewayEvent), transcript)
   }

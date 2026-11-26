@@ -15,6 +15,8 @@ import type { EngineHttp } from '../../../src/renderer/src/shared/engine/http'
 const STEP_MS = 120
 const REPLY = 'On it. I will look into this and post a **short summary** here when it is ready.'
 const DENIED = 'Okay, I will not run it.'
+const ANALYST_ANSWER =
+  'Sent Talyx the numbers: Q3 gross margin is 41%, up 4 points on Q2, with costs flat and the September price change doing the rest.'
 const FIXTURE_IMAGE =
   'data:image/svg+xml;base64,' +
   btoa(
@@ -186,10 +188,31 @@ export function fixtureChat(providers: EngineHttp): ChatActions {
     steps.forEach((step, index) => setTimeout(step, start - Date.now() + STEP_MS * (index + 1)))
   }
 
-  // Streams a short reply word by word, then stores it as the engine would.
+  // The engine runs another bot's message as a turn in that bot's chat. The turn's start names no
+  // sender; the stored rows the reload brings do.
+  function deliver(to: string, words: string, answer: string): void {
+    play(to, [
+      () => emit(to, 'message.start'),
+      ...answer.split(' ').map((word) => () => emit(to, 'message.delta', { text: `${word} ` })),
+      () => {
+        historyOf(to).push(
+          {
+            id: Date.now(),
+            role: 'user',
+            content: `Message from 🤖 Talyx (@acme): ${words}`,
+            display_kind: 'internal_notification'
+          },
+          { id: Date.now() + 1, role: 'assistant', content: answer }
+        )
+        emit(to, 'message.complete')
+      }
+    ])
+  }
+
+  // Streams a short reply word by word, then stores it as the engine would. The turn it ends started
+  // before (your message, or a card the bot asked in it): the engine starts a turn only once.
   function finish(profile: string, text = REPLY): Array<() => void> {
     return [
-      () => emit(profile, 'message.start'),
       ...text.split(' ').map((word) => () => emit(profile, 'message.delta', { text: `${word} ` })),
       () => {
         historyOf(profile).push({ id: Date.now(), role: 'assistant', content: text })
@@ -256,6 +279,7 @@ export function fixtureChat(providers: EngineHttp): ChatActions {
               content: 'sent'
             })
             emit(profile, 'tool.complete', { tool_id: tool, name: 'message_agent', duration_s: 2 })
+            deliver('analyst', 'How did Q3 margins do?', ANALYST_ANSWER)
           }
         ]
       : []
