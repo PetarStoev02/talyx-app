@@ -151,7 +151,7 @@ describe('turn view', () => {
   describe('turns no message of yours started', () => {
     const talyx = { name: 'Talyx', profile: 'acme' }
     const handover: ChatItem = { kind: 'delivery', id: 'd1', text: 'Take #80', from: talyx }
-    const wake: ChatItem = { kind: 'wake', id: 'w1', by: 'engine' }
+    const wake: ChatItem = { kind: 'wake', id: 'w1' }
 
     it('should keep the reply before the engine woke the bot, and show the wake as nothing', () => {
       const { items } = turnView(
@@ -192,15 +192,6 @@ describe('turn view', () => {
         false
       )
       expect([...answers]).toEqual([['b2', 'engine']])
-    })
-
-    it('should read a reply to a message not shown yet as not answering you', () => {
-      const unnamed: ChatItem = { kind: 'wake', id: 'w2', by: 'unseen' }
-      const { answers } = turnView(
-        [user('u1'), reply('b1', 'Done.'), unnamed, reply('b2', 'On it')],
-        true
-      )
-      expect([...answers]).toEqual([['b2', 'unseen']])
     })
 
     it('should keep the answer to a background job you asked for as yours', () => {

@@ -248,7 +248,7 @@ function historyItem(
       WAKE_KINDS.has(message.display_kind ?? '') ||
       (!message.display_kind && text.startsWith(BACKGROUND_NOTICE))
     )
-      return [{ kind: 'wake', id, by: 'engine' }]
+      return [{ kind: 'wake', id }]
     const delivery = readDelivery(text)
     if (delivery)
       return [
@@ -464,28 +464,24 @@ function startReply(transcript: Transcript, payload: Payload, id: string): Trans
 }
 
 /**
- * What started a turn goes before its reply, as the reload after the turn will show it, so a turn
- * no message of yours started shows apart while it streams. The engine names its own notes when
- * the turn starts; anything else arrives unnamed (another bot's message, most often).
+ * The engine names its own note when the turn it starts begins: it goes before the reply, as the
+ * reload after the turn will show it, so a reply to it shows apart while it streams. Any other
+ * start names nothing; what started it shows with the reload.
  */
 function withStarter(transcript: Transcript, payload: Payload, id: string): Transcript {
-  // A start while a turn runs is that turn's again (an older engine re-sends it unstamped).
-  if (transcript.running) return transcript
   const kind = typeof payload.display_kind === 'string' ? payload.display_kind : ''
-  const last = transcript.items.at(-1)
-  // Your message, or what started the turn, is already in the chat.
-  if (!kind && (last?.kind === 'user' || last?.kind === 'delivery' || last?.kind === 'wake'))
-    return transcript
-  const starterId = `${STARTER_ID}${id}`
+  // A start while a turn runs is that turn's again (an older engine re-sends it unstamped).
+  if (!kind || transcript.running) return transcript
   const note: SessionMessage = {
     role: 'user',
     content: typeof payload.text === 'string' ? payload.text : '',
     display_kind: kind,
     display_metadata: JSON.stringify({ display_text: payload.display_text })
   }
-  const starter: ChatItem[] = kind
-    ? historyItem(note, new Map()).map((item) => ({ ...item, id: starterId }))
-    : [{ kind: 'wake', id: starterId, by: 'unseen' }]
+  const starter = historyItem(note, new Map()).map((item) => ({
+    ...item,
+    id: `${STARTER_ID}${id}`
+  }))
   return { ...transcript, items: [...transcript.items, ...starter] }
 }
 

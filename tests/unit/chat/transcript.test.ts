@@ -281,7 +281,7 @@ describe('chat transcript', () => {
         display_kind: 'process_complete',
         display_metadata: { display_text: 'Background Process Finished: /usr/bin/python3' }
       } as SessionMessage)
-      expect(transcript.items).toEqual([{ kind: 'wake', id: '1', by: 'engine' }])
+      expect(transcript.items).toEqual([{ kind: 'wake', id: '1' }])
     })
 
     it('should read a background command notice the engine stored without its kind the same way', () => {
@@ -360,18 +360,16 @@ describe('chat transcript', () => {
         expect(transcript.items[1]).toMatchObject({ text: 'Hello!' })
       })
 
-      it('should stream the next turn as a new reply, after what started it', () => {
+      it('should stream the next turn as a new reply', () => {
         const transcript = replay(
           streamed(),
           event('message.complete', { text: 'Hello' }, 4),
           start(5, 'turn-2'),
           delta('Again', 0, 6, 'turn-2')
         )
-        // No message of yours started the second turn: what did is not named until the reload.
         expect(transcript.items.map((item) => ('text' in item ? item.text : item.kind))).toEqual([
           'Hi',
           'Hello',
-          'wake',
           'Again'
         ])
       })
@@ -406,35 +404,29 @@ describe('chat transcript', () => {
           { id: 1, role: 'user', content: 'Hi' },
           { id: 2, role: 'assistant', content: 'Hello' }
         )
-      const kinds = (transcript: Transcript): string[] =>
-        transcript.items.map((item) => (item.kind === 'wake' ? `wake:${item.by}` : item.kind))
+      const kinds = (transcript: Transcript): string[] => transcript.items.map((item) => item.kind)
 
-      it('should put what started the turn, unnamed until the reload, before the reply', () => {
+      it('should add nothing for a start that names nothing: the reload shows what started it', () => {
         const transcript = replay(answered(), event('message.start', {}, 1))
-        expect(kinds(transcript)).toEqual(['user', 'bot', 'wake:unseen', 'bot'])
+        expect(kinds(transcript)).toEqual(['user', 'bot', 'bot'])
       })
 
       it("should show the engine's own note as what started the turn", () => {
         const notice = '[IMPORTANT: Background process proc_1 completed normally (exit code 0).]'
         const start = { display_kind: 'process_complete', display_text: 'Finished', text: notice }
         const transcript = replay(answered(), event('message.start', start, 1))
-        expect(kinds(transcript)).toEqual(['user', 'bot', 'wake:engine', 'bot'])
-      })
-
-      it('should add nothing when your message, or what started the turn, is already there', () => {
-        expect(kinds(replay(asked(), event('message.start', {}, 1)))).toEqual(['user', 'bot'])
-        const stored = history({ id: 1, role: 'user', content: 'Message from 🤖 CFO (@cfo): Go' })
-        expect(kinds(replay(stored, event('message.start', {}, 1)))).toEqual(['delivery', 'bot'])
+        expect(kinds(transcript)).toEqual(['user', 'bot', 'wake', 'bot'])
       })
 
       it('should take a start re-sent while the turn runs as that turn, not a new one', () => {
+        const note = { display_kind: 'process_complete', display_text: 'Finished', text: 'done' }
         const transcript = replay(
-          asked(),
-          event('message.start', {}, 1),
+          answered(),
+          event('message.start', note, 1),
           event('tool.start', { tool_id: 't1', name: 'terminal' }, 2),
-          event('message.start', {}, 3)
+          event('message.start', note, 3)
         )
-        expect(kinds(transcript)).toEqual(['user', 'bot', 'tool', 'bot'])
+        expect(kinds(transcript)).toEqual(['user', 'bot', 'wake', 'bot', 'tool', 'bot'])
       })
     })
 
