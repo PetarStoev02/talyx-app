@@ -44,7 +44,14 @@ const lookLabels: Record<Look, TranslationKey> = {
  * (engine first, modules last) and its action; a click keeps it open until Escape or a click
  * elsewhere.
  */
-export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Element {
+export function UpdateButton({
+  items,
+  side = 'top'
+}: {
+  items: UpdateItem[]
+  // Where the popover opens: above the footer, or beside the Layered rail's foot.
+  side?: 'top' | 'right'
+}): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const engineInstalling = useInstall((s) => s.running)
   const [opened, setOpened] = useState(false)
@@ -96,7 +103,7 @@ export function UpdateButton({ items }: { items: UpdateItem[] }): React.JSX.Elem
         </button>
       </PopoverTrigger>
       <PopoverContent
-        side="top"
+        side={side}
         align="end"
         aria-label={t('update.label')}
         onPointerEnter={(event) => hover(event, true)}

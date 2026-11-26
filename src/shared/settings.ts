@@ -1,6 +1,8 @@
 /** settings.json, as main keeps it (storage/SettingsStore.ts). */
 export interface UserSettings {
   theme: 'light' | 'dark' | 'system'
+  /** Where the pages sit: a dock under the sidebar, or a rail beside it with the page as a card. */
+  sidebarLayout: 'dock' | 'layered'
   sidebarWidth: number
   /** Absolute path to the engine's command, picked by the user; null means look it up. */
   enginePath: string | null

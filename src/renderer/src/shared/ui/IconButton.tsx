@@ -5,12 +5,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@shared/ui/tooltip'
 export function IconButton({
   label,
   shortcut,
+  side = 'top',
   className,
   children,
   ...props
 }: React.ComponentProps<'button'> & {
   label: string
   shortcut?: string | undefined
+  // Where the tooltip opens: beside a vertical column of buttons, not over its neighbour.
+  side?: 'top' | 'right'
 }): React.JSX.Element {
   return (
     <Tooltip delayDuration={300}>
@@ -26,7 +29,7 @@ export function IconButton({
           {children}
         </button>
       </TooltipTrigger>
-      <TooltipContent side="top" className="flex items-center gap-2">
+      <TooltipContent side={side} className="flex items-center gap-2">
         {label}
         {shortcut && <kbd className="text-xs opacity-60">{shortcut}</kbd>}
       </TooltipContent>

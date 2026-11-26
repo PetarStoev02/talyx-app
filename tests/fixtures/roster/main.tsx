@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { Toaster } from 'sonner'
 import { EngineWindowGate } from '../../../src/renderer/src/widgets/engine-gate'
 import { SidebarFooter } from '../../../src/renderer/src/widgets/app-shell/SidebarFooter'
+import { useSidebarNav } from '../../../src/renderer/src/widgets/app-shell/useSidebarNav'
 import { Roster } from '../../../src/renderer/src/widgets/roster/Roster'
 import { RosterAdd } from '../../../src/renderer/src/widgets/roster/RosterAdd'
 import { RosterRefresh } from '../../../src/renderer/src/widgets/roster/RosterRefresh'
@@ -169,7 +170,7 @@ export function Fixture(): React.JSX.Element {
           </button>
           <ExportedAvatar />
           {/* The app's footer row: its update button takes the refresh button's place. */}
-          <SidebarFooter end={<RosterRefresh backend={rosterBackend} />} />
+          <FixtureFooter end={<RosterRefresh backend={rosterBackend} />} />
         </aside>
         <main className="min-w-0 flex-1">
           {page === 'settings' ? (
@@ -192,3 +193,8 @@ export function Fixture(): React.JSX.Element {
 }
 
 createRoot(document.getElementById('root')!).render(<Root />)
+
+// The app shell reads the sidebar's pages and updates once and hands them to the footer.
+function FixtureFooter({ end }: { end: React.ReactNode }): React.JSX.Element {
+  return <SidebarFooter end={end} nav={useSidebarNav()} />
+}

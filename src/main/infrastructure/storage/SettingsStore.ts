@@ -3,13 +3,14 @@ import { isAbsolute, join } from 'path'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
 import log from 'electron-log'
 import { SIDEBAR_WIDTH, clampSidebarWidth } from '@contract/sidebar'
-import { LastSelectionSchema } from '@contract/channels'
+import { LastSelectionSchema, SidebarLayoutSchema } from '@contract/channels'
 import type { UserSettings } from '@contract/settings'
 
 const JSON_INDENT = 2
 
 const defaults: UserSettings = {
   theme: 'system',
+  sidebarLayout: 'dock',
   sidebarWidth: SIDEBAR_WIDTH.initial,
   enginePath: null,
   lastSelection: null,
@@ -41,6 +42,8 @@ export function migrateSettings(raw: Record<string, unknown>): UserSettings {
   settings.sidebarWidth = clampSidebarWidth(settings.sidebarWidth)
   if (!LastSelectionSchema.nullable().safeParse(settings.lastSelection).success)
     settings.lastSelection = null
+  if (!SidebarLayoutSchema.safeParse(settings.sidebarLayout).success)
+    settings.sidebarLayout = 'dock'
   if (typeof settings.setupDone !== 'boolean') settings.setupDone = false
   if (typeof settings.launchAtLogin !== 'boolean') settings.launchAtLogin = false
   if (typeof settings.completionSound !== 'boolean') settings.completionSound = false

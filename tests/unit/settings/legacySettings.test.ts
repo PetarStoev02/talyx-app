@@ -9,6 +9,7 @@ describe('migrateSettings', () => {
   it('should start a fresh install on the system theme with the sidebar at its first width', () => {
     expect(migrateSettings({})).toEqual({
       theme: 'system',
+      sidebarLayout: 'dock',
       sidebarWidth: 320,
       enginePath: null,
       lastSelection: null,
@@ -30,6 +31,7 @@ describe('migrateSettings', () => {
     })
     expect(migrated).toEqual({
       theme: 'dark',
+      sidebarLayout: 'dock',
       sidebarWidth: 320,
       enginePath: null,
       lastSelection: null,
@@ -72,6 +74,15 @@ describe('migrateSettings', () => {
     ['a hand-edited string', 'yes', false]
   ])('should read completionSound %s', (_case, completionSound, expected) => {
     expect(migrateSettings({ completionSound }).completionSound).toBe(expected)
+  })
+
+  it.each([
+    ['saved as layered', 'layered', 'layered'],
+    ['saved as dock', 'dock', 'dock'],
+    ['missing', undefined, 'dock'],
+    ['a layout this version does not know', 'tabs', 'dock']
+  ])('should read sidebarLayout %s', (_case, sidebarLayout, expected) => {
+    expect(migrateSettings({ sidebarLayout }).sidebarLayout).toBe(expected)
   })
 
   it.each([

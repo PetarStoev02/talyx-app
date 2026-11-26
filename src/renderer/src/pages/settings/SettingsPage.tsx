@@ -4,12 +4,13 @@ import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
 import { cn } from '@shared/lib/utils'
 import { reportError } from '@shared/lib/report'
-import { themeApi } from '@shared/api/ipc'
+import { settingsApi, themeApi } from '@shared/api/ipc'
 import { useEscape } from '@shared/hooks/useEscape'
 import { useLanguage } from '@shared/lib/i18n'
 import { useNavigation } from '@features/modules/store'
 import { pickTheme } from '@features/settings/theme'
-import { useThemePick } from '@features/settings/store'
+import { useLayoutPick, useThemePick } from '@features/settings/store'
+import { pickLayout } from '@features/settings/layout'
 import type { ProvidersBackend } from '@features/providers/providers'
 import type { ModelLists } from '@features/chat/chat'
 import type { RosterBackend } from '@features/bots/data'
@@ -96,6 +97,7 @@ export function SettingsPage({
               ))}
             </div>
           </div>
+          <LayoutPicker />
         </section>
         <SoundSection />
         <StartupSection />
@@ -153,5 +155,83 @@ export function SettingsPage({
         </div>
       </div>
     </div>
+  )
+}
+
+/** Dock or Layered, each shown as a small picture of the window. */
+export function LayoutPicker(): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const layout = useLayoutPick((s) => s.layout)
+  const layouts = [
+    { value: 'dock' as const, label: t('settings.layoutDock'), Picture: DockPicture },
+    { value: 'layered' as const, label: t('settings.layoutLayered'), Picture: LayeredPicture }
+  ]
+  return (
+    <div role="group" aria-labelledby="settings-layout" className="space-y-2">
+      <h3 id="settings-layout" className="text-base font-medium text-foreground">
+        {t('settings.layout')}
+      </h3>
+      <p className="text-base">{t('settings.layoutDesc')}</p>
+      <div className="mt-2 flex flex-wrap gap-3">
+        {layouts.map(({ value, label, Picture }) => (
+          <button
+            key={value}
+            onClick={() => pickLayout(settingsApi, value)}
+            aria-pressed={layout === value}
+            className="group flex flex-col items-start gap-2 rounded-xl text-sm font-medium text-muted-foreground aria-pressed:text-foreground"
+          >
+            <span
+              aria-hidden="true"
+              className="block h-24 w-40 overflow-hidden rounded-xl border border-border transition-[border-color,box-shadow] group-hover:border-foreground/40 group-aria-pressed:border-foreground group-aria-pressed:ring-1 group-aria-pressed:ring-foreground"
+            >
+              <Picture />
+            </span>
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// A few bars standing for the roster's rows.
+function Rows(): React.JSX.Element {
+  return (
+    <span className="flex flex-col gap-1.5 px-2 pt-3">
+      <span className="h-1.5 w-4/5 rounded-full bg-foreground/15" />
+      <span className="h-1.5 w-3/5 rounded-full bg-foreground/15" />
+      <span className="h-1.5 w-2/3 rounded-full bg-foreground/15" />
+    </span>
+  )
+}
+
+function DockPicture(): React.JSX.Element {
+  return (
+    <span className="flex h-full bg-background">
+      <span className="tone-step flex w-2/5 flex-col justify-between pb-2">
+        <Rows />
+        <span className="flex justify-center gap-1">
+          <span className="size-2 rounded-full bg-foreground/40" />
+          <span className="size-2 rounded-full bg-foreground/15" />
+          <span className="size-2 rounded-full bg-foreground/15" />
+        </span>
+      </span>
+    </span>
+  )
+}
+
+function LayeredPicture(): React.JSX.Element {
+  return (
+    <span className="flex h-full bg-muted">
+      <span className="flex w-5 flex-col items-center gap-1 bg-background pt-3">
+        <span className="size-2 rounded-full bg-foreground/40" />
+        <span className="size-2 rounded-full bg-foreground/15" />
+        <span className="size-2 rounded-full bg-foreground/15" />
+      </span>
+      <span className="w-1/3">
+        <Rows />
+      </span>
+      <span className="my-1 mr-1 flex-1 rounded-md bg-background shadow-xs" />
+    </span>
   )
 }

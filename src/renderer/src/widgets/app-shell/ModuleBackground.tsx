@@ -21,7 +21,7 @@ export function ModuleBackground({ module }: { module: ModuleSummary }): React.J
     }),
     [module.id, setNeedsYou]
   )
-  // A module that stops (or updates: the footer keys this by version) leaves no dot behind.
+  // A module that stops (or updates: ModuleBackgrounds keys this by version) leaves no dot behind.
   useOnUnmount(() => setNeedsYou(module.id, 0))
   const Background = parts?.background
   if (!Background) return null
@@ -29,5 +29,17 @@ export function ModuleBackground({ module }: { module: ModuleSummary }): React.J
     <ErrorBoundary scope={`module:${module.id}:background`}>
       <Background {...props} />
     </ErrorBoundary>
+  )
+}
+
+/** Every running module's Background, hidden: a failed one's notice must not take layout space. */
+export function ModuleBackgrounds({ modules }: { modules: ModuleSummary[] }): React.JSX.Element {
+  return (
+    <div hidden>
+      {modules.map((module) => (
+        // Keyed by version too: an update starts its Background afresh, with no dot left over.
+        <ModuleBackground key={`${module.id}@${module.version}`} module={module} />
+      ))}
+    </div>
   )
 }

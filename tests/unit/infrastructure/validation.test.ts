@@ -43,6 +43,14 @@ describe('UserSettingsPartialSchema', () => {
     expect(validateInput(UserSettingsPartialSchema, { launchAtLogin })).toEqual({ launchAtLogin })
   })
 
+  it.each(['dock', 'layered'])('should accept the sidebar layout %s', (sidebarLayout) => {
+    expect(validateInput(UserSettingsPartialSchema, { sidebarLayout })).toEqual({ sidebarLayout })
+  })
+
+  it('should refuse a sidebar layout this version does not know', () => {
+    expect(() => validateInput(UserSettingsPartialSchema, { sidebarLayout: 'tabs' })).toThrow()
+  })
+
   it.each([true, false])('should accept the completion sound %s', (completionSound) => {
     expect(validateInput(UserSettingsPartialSchema, { completionSound })).toEqual({
       completionSound

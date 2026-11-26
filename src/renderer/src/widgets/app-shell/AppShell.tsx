@@ -1,18 +1,30 @@
 import { useState } from 'react'
+import { PanelLeftClose } from 'lucide-react'
 import { useOnMount } from '@shared/hooks/useSubscription'
-import { TalyxLogo } from '@shared/ui/TalyxLogo'
 import { useLanguage } from '@shared/lib/i18n'
+import { cn } from '@shared/lib/utils'
 import { settingsApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
+import { IconButton } from '@shared/ui/IconButton'
+import { useLayoutPick } from '@features/settings/store'
 import { SIDEBAR_WIDTH, clampSidebarWidth } from '@contract/sidebar'
+import { LayeredRail } from './LayeredSidebar'
+import { ModuleBackgrounds } from './ModuleBackground'
 import { SidebarFooter } from './SidebarFooter'
+import { TitleRow } from './TitleRow'
+import { usePanelFold } from './usePanelFold'
+import { useSidebarNav } from './useSidebarNav'
+import { LAYERED_RAIL_PX, noDragRegion } from './windowChrome'
 
-const isMac = (window.electron?.platform ?? 'darwin') === 'darwin'
-const dragRegion = { WebkitAppRegion: 'drag' } as React.CSSProperties
-const noDragRegion = { WebkitAppRegion: 'no-drag' } as React.CSSProperties
 // One arrow-key press on the resize handle; Shift moves four times as far.
 const KEY_STEP_PX = 16
 
+/**
+ * The sidebar and the page, in either layout. Dock: one column, its pages in the footer's dock.
+ * Layered: a rail of pages, the panel beside it (it folds away) and the page as a card. Both draw
+ * the same boxes in the same order, so switching layouts never remounts the roster (its first read
+ * writes Talyx's rules to every bot) or the page.
+ */
 export function AppShell({
   children,
   roster,
@@ -30,7 +42,11 @@ export function AppShell({
   footerEnd: React.ReactNode
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
+  const layered = useLayoutPick((s) => s.layout) === 'layered'
+  const nav = useSidebarNav()
+  const { open: panelOpen, sliding, fold, settle, foldRef, unfoldRef } = usePanelFold()
   const [width, setWidth] = useState<number>(SIDEBAR_WIDTH.initial)
+  const open = !layered || panelOpen
 
   useOnMount(() => {
     settingsApi
@@ -42,35 +58,83 @@ export function AppShell({
 
   return (
     <div className="flex h-screen">
-      <aside className="tone-step relative flex h-full shrink-0 flex-col" style={{ width }}>
-        {/* One 56px title row: the macOS window buttons (x16–68), then the logo. The left padding
-            clears the window buttons; the blank space drags the window. */}
+      <aside className="relative flex h-full shrink-0">
+        {layered && (
+          <LayeredRail
+            nav={nav}
+            folded={!open}
+            onUnfold={() => fold(true)}
+            unfoldRef={unfoldRef}
+            footerEnd={footerEnd}
+          />
+        )}
+        {/* The panel slides shut like the details panel; folded, it stays mounted (the roster polls
+            the bots) but takes no room and no focus. */}
         <div
-          className={`mb-2 flex h-14 shrink-0 items-center gap-2.5 pr-3 ${isMac ? 'pl-[92px]' : 'pl-4'}`}
-          style={dragRegion}
+          inert={!open}
+          onTransitionEnd={(event) => event.target === event.currentTarget && settle()}
+          // A theme switch cuts transitions short; the slide is over then too.
+          // eslint-disable-next-line react/no-unknown-property -- a React 19 event the rule predates
+          onTransitionCancel={(event) => event.target === event.currentTarget && settle()}
+          className={cn(
+            'flex h-full shrink-0 overflow-hidden',
+            sliding && 'transition-[width] duration-(--duration-move) ease-(--ease-in-out)'
+          )}
+          style={{ width: open ? width : 0 }}
         >
-          <TalyxLogo size={18} className="text-foreground" />
-          <span className="text-xs font-semibold text-foreground">Talyx</span>
-          {/* Buttons in the title row must opt out of the window drag to take clicks. */}
-          <span className="ml-auto" style={noDragRegion}>
-            {titleEnd}
-          </span>
+          <div className="tone-step flex h-full shrink-0 flex-col" style={{ width }}>
+            <TitleRow
+              besideWindowButtons={!layered}
+              end={
+                <>
+                  {titleEnd}
+                  {layered && (
+                    <IconButton
+                      ref={foldRef}
+                      label={t('sidebar.collapse')}
+                      onClick={() => fold(false)}
+                    >
+                      <PanelLeftClose />
+                    </IconButton>
+                  )}
+                </>
+              }
+            />
+            {sidebar}
+            {/* Always here, so switching sections never remounts it (it polls the bots); hidden
+                while a module's sidebar stands before it. */}
+            <div data-roster className="contents [[data-module-sidebar]~&]:hidden">
+              {roster ?? <div className="flex-1" />}
+            </div>
+            {!layered && <SidebarFooter end={footerEnd} nav={nav} />}
+          </div>
         </div>
-        {sidebar}
-        {/* Always here, so switching sections never remounts it (it polls the bots); hidden
-            while a module's sidebar stands before it. */}
-        <div data-roster className="contents [[data-module-sidebar]~&]:hidden">
-          {roster ?? <div className="flex-1" />}
-        </div>
-        <SidebarFooter end={footerEnd} />
-        <SidebarResizer
-          width={width}
-          label={t('sidebar.resize')}
-          onResize={setWidth}
-          onCommit={(sidebarWidth) => settingsApi.save({ sidebarWidth })}
-        />
+        {open && (
+          <SidebarResizer
+            width={width}
+            offset={layered ? LAYERED_RAIL_PX : 0}
+            label={t('sidebar.resize')}
+            onResize={setWidth}
+            onCommit={(sidebarWidth) => settingsApi.save({ sidebarWidth })}
+          />
+        )}
+        {/* Here, in either layout, so each module's Background keeps watching whatever page is
+            open and never restarts on a layout switch. */}
+        <ModuleBackgrounds modules={nav.modules} />
       </aside>
-      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+      {/* Layered, the page floats as a card on the tone step, apart from both navigation columns. */}
+      <div className={cn('flex min-w-0 flex-1', layered && 'bg-muted py-2 pr-2')}>
+        <div
+          data-layered={layered ? '' : undefined}
+          className={cn(
+            'flex min-w-0 flex-1 flex-col',
+            layered &&
+              'overflow-hidden rounded-2xl border border-transparent bg-background shadow-xs'
+          )}
+        >
+          {children}
+        </div>
+      </div>
     </div>
   )
 }
@@ -81,11 +145,14 @@ export function AppShell({
  */
 function SidebarResizer({
   width,
+  offset,
   label,
   onResize,
   onCommit
 }: {
   width: number
+  // Where the resized column starts: past the rail, if there is one.
+  offset: number
   label: string
   onResize: (width: number) => void
   onCommit: (width: number) => void
@@ -119,11 +186,11 @@ function SidebarResizer({
       aria-valuenow={width}
       tabIndex={0}
       onKeyDown={onKeyDown}
-      // The sidebar starts at the window's left edge, so the pointer's x is the new width.
+      // The resized column starts `offset` px from the window's left edge.
       onPointerDown={(event) => event.currentTarget.setPointerCapture(event.pointerId)}
       onPointerMove={(event) => {
         if (event.currentTarget.hasPointerCapture(event.pointerId))
-          onResize(clampSidebarWidth(event.clientX))
+          onResize(clampSidebarWidth(event.clientX - offset))
       }}
       onPointerUp={(event) => {
         event.currentTarget.releasePointerCapture(event.pointerId)

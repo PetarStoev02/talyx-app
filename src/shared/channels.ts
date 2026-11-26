@@ -27,10 +27,14 @@ export const LastSelectionSchema = z.object({
 export const ThemeSchema = z.enum(['light', 'dark', 'system'])
 export type Theme = z.infer<typeof ThemeSchema>
 
+export const SidebarLayoutSchema = z.enum(['dock', 'layered'])
+export type SidebarLayout = z.infer<typeof SidebarLayoutSchema>
+
 // exactOptional: a key sent as undefined is refused, not saved over the stored value.
 export const UserSettingsPartialSchema = z.object({
   lastSelection: LastSelectionSchema.nullable().exactOptional(),
   theme: ThemeSchema.exactOptional(),
+  sidebarLayout: SidebarLayoutSchema.exactOptional(),
   setupDone: z.boolean().exactOptional(),
   launchAtLogin: z.boolean().exactOptional(),
   completionSound: z.boolean().exactOptional(),

@@ -1,6 +1,7 @@
 import { type AppView, useNavigation } from '@features/modules/store'
 import { PageGlyph, type PageGlyphName } from './PageGlyph'
 import { IconButton } from '@shared/ui/IconButton'
+import { DOCK_MARK } from './pageMarks'
 
 interface NavButtonProps {
   view: AppView
@@ -12,7 +13,7 @@ interface NavButtonProps {
 
 /**
  * A footer dock button that opens a page, named by its tooltip. Its glyph is always in colour;
- * the dock's sliding disc (DockIndicator) marks the open page, so the button stays transparent.
+ * the dock's sliding disc (PageIndicator) marks the open page, so the button stays transparent.
  */
 export function NavButton({ view, label, glyph, shortcut }: NavButtonProps): React.JSX.Element {
   const active = useNavigation((s) => s.currentView === view)
@@ -23,7 +24,7 @@ export function NavButton({ view, label, glyph, shortcut }: NavButtonProps): Rea
       shortcut={shortcut}
       aria-current={active ? 'page' : undefined}
       onClick={() => navigate(view)}
-      className="relative z-10 size-8 transition-[opacity,scale] duration-150 ease-out enabled:active:scale-[0.96] enabled:hover:bg-transparent hover:opacity-75 aria-[current=page]:hover:opacity-100"
+      className={`${DOCK_MARK} z-10 size-8 transition-[opacity,scale] duration-150 ease-out motion-safe:enabled:active:scale-[0.96] enabled:hover:bg-transparent hover:opacity-75 aria-[current=page]:hover:opacity-100`}
     >
       <PageGlyph name={glyph} size={20} />
     </IconButton>
