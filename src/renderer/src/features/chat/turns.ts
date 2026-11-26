@@ -1,6 +1,7 @@
 import { LIVE_SURFACE_PREFIX } from './surfaceLive'
 import { LIVE_ID } from './transcript'
 import type { ChatItem, MessageItem } from './types'
+import { splitReply } from './workflowLines'
 
 type ToolItem = Extract<ChatItem, { kind: 'tool' }>
 type UserItem = Extract<ChatItem, { kind: 'user' }>
@@ -19,6 +20,12 @@ export interface TurnOutcome {
   asked: UserItem
 }
 
+/**
+ * Whom a reply in a turn no message of yours started answers: the bot whose delivery started it,
+ * or null when the engine woke the bot.
+ */
+export type Asker = { name: string; profile: string } | null
+
 /** What the running turn is doing: its newest tool (null before the first) and how many it ran. */
 export interface TurnActivity {
   tool: ToolItem | null
@@ -33,22 +40,44 @@ export interface TurnActivity {
 export function turnView(
   items: ChatItem[],
   running: boolean
-): { items: MessageItem[]; activity: TurnActivity | null } {
+): {
+  items: MessageItem[]
+  activity: TurnActivity | null
+  answers: Map<string, Asker>
+} {
   const shown: MessageItem[] = []
+  const answers = new Map<string, Asker>()
   let work: ChatItem[] = []
+  let asker: Asker | 'you' = 'you'
+  const end = (result: MessageItem[]): void => {
+    if (asker !== 'you') for (const reply of result.filter(answersBot)) answers.set(reply.id, asker)
+    shown.push(...result)
+  }
   for (const item of items) {
     // Anything but the chat's own bot at work starts a new turn.
     if (isOwnWork(item)) {
       work.push(item)
       continue
     }
-    shown.push(...turnResult(work, false), item)
+    end(turnResult(work, false))
+    if (item.kind !== 'wake') shown.push(item)
+    asker = item.kind === 'delivery' ? item.from : item.kind === 'wake' ? null : 'you'
     work = []
   }
-  shown.push(...turnResult(work, running))
-  if (!running) return { items: shown, activity: null }
+  end(turnResult(work, running))
+  if (!running) return { items: shown, activity: null, answers }
   const tools = work.filter((item): item is ToolItem => item.kind === 'tool')
-  return { items: shown, activity: { tool: tools.at(-1) ?? null, tools: tools.length } }
+  return { items: shown, activity: { tool: tools.at(-1) ?? null, tools: tools.length }, answers }
+}
+
+// A reply to a bot or the engine that only talks back: a failure, or a Workflows status line,
+// still concerns you.
+function answersBot(item: MessageItem): boolean {
+  return (
+    item.kind === 'bot' &&
+    item.error === null &&
+    !splitReply(item.text).some((part) => part.kind === 'status')
+  )
 }
 
 /** The outcome of your last message's turn once it ended; null while it runs or the chat moved on. */

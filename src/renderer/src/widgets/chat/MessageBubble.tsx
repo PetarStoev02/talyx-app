@@ -12,6 +12,7 @@ import { useRoster } from '@features/bots/store'
 import { markdownImage } from '@features/chat/markdownImage'
 import { replyFailure } from '@features/chat/replyFailure'
 import { senderProfile, withManagerName } from '@features/chat/transcript'
+import type { Asker } from '@features/chat/turns'
 import type { ChatItem, MessageItem } from '@features/chat/types'
 import { SurfaceCard } from './SurfaceCard'
 import { parseBrief, parseStop, splitReply } from '@features/chat/workflowLines'
@@ -52,6 +53,7 @@ const urlTransform: UrlTransform = (url, _key, node) =>
 
 export function MessageBubble({
   message,
+  aside,
   allItems,
   busy,
   loadImage,
@@ -59,6 +61,8 @@ export function MessageBubble({
   onSurfaceSend
 }: {
   message: MessageItem
+  // A reply to another bot or the engine, not to you: whom it answers.
+  aside: { to: Asker } | null
   allItems: ChatItem[]
   busy: boolean
   loadImage: (path: string) => Promise<string>
@@ -90,6 +94,16 @@ export function MessageBubble({
         <ReplyText
           text={withManagerName(message.text, managerHandle, MANAGER_TITLE)}
           streaming={false}
+          briefs={briefs}
+        />
+      </QuietLine>
+    )
+  if (aside && message.kind === 'bot')
+    return (
+      <QuietLine summary={<AsideSummary to={aside.to} />}>
+        <ReplyText
+          text={withManagerName(message.text, managerHandle, MANAGER_TITLE)}
+          streaming={message.streaming}
           briefs={briefs}
         />
       </QuietLine>
@@ -241,6 +255,23 @@ function Sender({ sender }: { sender: { name: string; profile: string } }): Reac
       {avatar}
       {name}
     </p>
+  )
+}
+
+function AsideSummary({ to }: { to: Asker }): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  if (!to) return <span>{t('chat.backgroundNote')}</span>
+  return <ReplyToSummary to={to} />
+}
+
+function ReplyToSummary({ to }: { to: { name: string; profile: string } }): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const { avatar, name } = useSenderBot(to)
+  return (
+    <span className="flex items-center gap-2">
+      {avatar}
+      {t('chat.replyTo').replace('{name}', name)}
+    </span>
   )
 }
 

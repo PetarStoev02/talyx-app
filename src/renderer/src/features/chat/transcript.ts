@@ -16,9 +16,9 @@ const NOTICE_KINDS = new Set([
   'personality_switch',
   'failed_turn'
 ])
-// A background command the bot ran has finished: the engine's bookkeeping, not news. The bot's
-// reply after it says what came of it.
-const QUIET_KINDS = new Set(['process_complete'])
+// A background command the bot ran has finished: the engine's bookkeeping, not news, but it starts
+// a turn of the bot's.
+const WAKE_KINDS = new Set(['process_complete'])
 // The same notice in a row with no display kind (older engines, or a copy compaction made), matched
 // by the engine's fixed opening.
 const BACKGROUND_NOTICE = '[IMPORTANT: Background process '
@@ -71,10 +71,8 @@ export function fromHistory(
   running: boolean
 ): Transcript {
   const calls = toolCalls(messages)
-  const typed = typedTexts(messages)
   const items: ChatItem[] = []
-  for (const message of messages) {
-    if (isUntypedTwin(message, typed)) continue
+  for (const message of unique(messages)) {
     for (const item of historyItem(message, calls))
       if (!isRestatedCopy(item, message, items)) items.push(item)
   }
@@ -236,11 +234,15 @@ function historyItem(
   message: SessionMessage,
   calls: Map<string, { name: string; args: Payload }>
 ): ChatItem[] {
-  if (message.display_kind === 'hidden' || QUIET_KINDS.has(message.display_kind ?? '')) return []
+  if (message.display_kind === 'hidden') return []
   const id = String(message.row_id ?? message.id ?? '')
   const text = shownText(message)
   if (message.role === 'user') {
-    if (!message.display_kind && text.startsWith(BACKGROUND_NOTICE)) return []
+    if (
+      WAKE_KINDS.has(message.display_kind ?? '') ||
+      (!message.display_kind && text.startsWith(BACKGROUND_NOTICE))
+    )
+      return [{ kind: 'wake', id }]
     const delivery = readDelivery(text)
     if (delivery)
       return [
@@ -290,18 +292,16 @@ function shownText(message: SessionMessage): string {
   return messageText(message.display_content ?? message.content)
 }
 
-// The texts of the engine's typed rows (notices, deliveries), to know their untyped copies by.
-function typedTexts(messages: SessionMessage[]): Set<string> {
-  return new Set(
-    messages.flatMap((message) =>
-      message.role === 'user' && message.display_kind ? [shownText(message)] : []
-    )
-  )
-}
-
-// Compaction stores a typed row again without its display kind: only the typed row shows.
-function isUntypedTwin(message: SessionMessage, typed: Set<string>): boolean {
-  return message.role === 'user' && !message.display_kind && typed.has(shownText(message))
+// Compaction can keep two archived copies of one stored message: each message shows once.
+function unique(messages: SessionMessage[]): SessionMessage[] {
+  const seen = new Set<string>()
+  return messages.filter((message) => {
+    const uid = (message as SessionMessage & { message_uid: unknown }).message_uid
+    if (typeof uid !== 'string' || !uid) return true
+    if (seen.has(uid)) return false
+    seen.add(uid)
+    return true
+  })
 }
 
 function noticeText(message: SessionMessage, text: string): string {

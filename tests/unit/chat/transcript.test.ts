@@ -195,15 +195,13 @@ describe('chat transcript', () => {
         })
       })
 
-      it('should show a delivery once when compaction stored it again without its kind', () => {
-        const transcript = history(
-          { id: 1, role: 'user', content: delivered, display_kind: 'internal_notification' },
-          { id: 2, role: 'assistant', content: 'Noted.' },
-          { id: 3, role: 'user', content: delivered }
-        )
+      it('should show a message once when compaction archived two copies of it', () => {
+        const copy = (id: number): SessionMessage =>
+          ({ id, role: 'assistant', content: 'Noted.', message_uid: 'uid-1' }) as SessionMessage
+        const transcript = history(copy(1), { id: 2, role: 'user', content: 'Thanks' }, copy(3))
         expect(transcript.items.map((item) => [item.kind, item.id])).toEqual([
-          ['delivery', '1'],
-          ['bot', '2']
+          ['bot', '1'],
+          ['user', '2']
         ])
       })
 
@@ -245,7 +243,7 @@ describe('chat transcript', () => {
       ])
     })
 
-    it('should leave out the notice that a background command finished', () => {
+    it('should show nothing for the notice that a background command finished, but end the turn', () => {
       const transcript = history({
         id: 1,
         role: 'user',
@@ -253,10 +251,10 @@ describe('chat transcript', () => {
         display_kind: 'process_complete',
         display_metadata: { display_text: 'Background Process Finished: /usr/bin/python3' }
       } as SessionMessage)
-      expect(transcript.items).toEqual([])
+      expect(transcript.items).toEqual([{ kind: 'wake', id: '1' }])
     })
 
-    it('should leave out a background command notice the engine stored without its kind', () => {
+    it('should read a background command notice the engine stored without its kind the same way', () => {
       const notice = '[IMPORTANT: Background process proc_1 exited (exit code 1).\nCommand: python3'
       const transcript = history(
         {
@@ -268,7 +266,7 @@ describe('chat transcript', () => {
         { id: 2, role: 'user', content: notice },
         { id: 3, role: 'user', content: '[IMPORTANT: Background process proc_2 completed]' }
       )
-      expect(transcript.items).toEqual([])
+      expect(transcript.items.map((item) => item.kind)).toEqual(['wake', 'wake', 'wake'])
     })
 
     it('should skip hidden history rows', () => {

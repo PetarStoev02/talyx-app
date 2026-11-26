@@ -170,6 +170,8 @@ export function RoomPane({
         {items.length || view.tasks.length ? (
           <Transcript
             items={items}
+            // In a room every bot speaks to the room: no reply is an aside.
+            asides={new Map()}
             allItems={items}
             busy={false}
             loadImage={loadImage}

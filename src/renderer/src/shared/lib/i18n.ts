@@ -219,6 +219,8 @@ const en = {
   'chat.workflowStep.stopped': 'Stopped',
   'chat.workflowStopSent': 'Workflows asked to stop {task}',
   'chat.deliveryFrom': '{name} sent a message',
+  'chat.replyTo': 'Reply to {name}',
+  'chat.backgroundNote': 'Note after a background task',
   'chat.clarifyBack': 'Back',
   'chat.clarifyNext': 'Next',
   'chat.clarifySend': 'Send',

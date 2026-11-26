@@ -29,13 +29,16 @@ export type ChatItem =
       // The interface a `show_ui` call carries, as text to compare with; null for every other tool.
       showUi: string | null
     }
+  // The engine woke the bot with a note of its own (a background job finished, often a message the
+  // bot sent another bot): it shows nothing, but the turn after it answers the engine, not you.
+  | { kind: 'wake'; id: string }
   // A line the engine wrote into the chat (a finished job, a model switch), not a message.
   | { kind: 'notice'; id: string; text: string }
   // A bot-drawn interface from show_ui, stored from its tool call or shown live from MCP.
   | { kind: 'surface'; id: string; surface: UiSurface }
 
-/** What the chat shows as a message: everything but a tool call. */
-export type MessageItem = Exclude<ChatItem, { kind: 'tool' }>
+/** What the chat shows as a message: everything but a tool call and a wake. */
+export type MessageItem = Exclude<ChatItem, { kind: 'tool' } | { kind: 'wake' }>
 
 export interface ClarifyQuestion {
   qid: string

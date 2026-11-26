@@ -12,7 +12,7 @@ import { useChat } from '@features/chat/store'
 import type { WaitingMessage } from '@features/chat/store'
 import { useSetup } from '@features/setup/store'
 import { turnOutcome, turnView } from '@features/chat/turns'
-import type { TurnOutcome } from '@features/chat/turns'
+import type { Asker, TurnOutcome } from '@features/chat/turns'
 import type { MessageItem } from '@features/chat/types'
 import { openSettings } from '@features/settings/sections'
 import { useFocusLater } from '@shared/hooks/useFocusLater'
@@ -109,7 +109,10 @@ export function ChatPane({
   if (loading) return <ChatSkeleton label={t('chat.loading')} />
 
   const running = chat.transcript?.running === true
-  const { items, activity } = turnView(chat.transcript?.items ?? [], running)
+  const { items, activity, answers } = turnView(chat.transcript?.items ?? [], running)
+  // Talyx answers another bot's report by briefing you; any other bot answers the bot or the
+  // engine that asked, so its reply shows apart from your conversation.
+  const asides = bot.name === MANAGER ? new Map<string, Asker>() : answers
   // A retry waits for nothing else: not while a message is already lined up to go.
   const outcome = chat.waiting.length ? null : turnOutcome(chat.transcript?.items ?? [], running)
   // The engine keeps a sent image's upload only briefly, so a message with images goes back to
@@ -164,6 +167,7 @@ export function ChatPane({
         {items.length || prompts.length || chat.waiting.length ? (
           <Transcript
             items={items}
+            asides={asides}
             allItems={chat.transcript?.items ?? []}
             busy={running || chat.waiting.length > 0}
             loadImage={loadImage}
