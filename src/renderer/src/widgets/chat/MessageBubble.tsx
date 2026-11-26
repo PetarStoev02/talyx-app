@@ -248,7 +248,7 @@ function Sender({ sender }: { sender: { name: string; profile: string } }): Reac
 function AsideSummary({ to }: { to: Asker }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   if (to === 'engine') return <span>{t('chat.backgroundNote')}</span>
-  if (to === 'bot') return <span>{t('chat.replyToBot')}</span>
+  if (to === 'unseen') return <span>{t('chat.replyUnseen')}</span>
   return <BotLine bot={to} label="chat.replyTo" />
 }
 

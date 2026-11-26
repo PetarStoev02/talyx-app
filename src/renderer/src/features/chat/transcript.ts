@@ -466,27 +466,26 @@ function startReply(transcript: Transcript, payload: Payload, id: string): Trans
 /**
  * What started a turn goes before its reply, as the reload after the turn will show it, so a turn
  * no message of yours started shows apart while it streams. The engine names its own notes when
- * the turn starts; a reopened chat knows the turn's prompt; another bot's message arrives unnamed.
+ * the turn starts; anything else arrives unnamed (another bot's message, most often).
  */
 function withStarter(transcript: Transcript, payload: Payload, id: string): Transcript {
-  if (lastStreamingReply(transcript) >= 0) return transcript
+  // A start while a turn runs is that turn's again (an older engine re-sends it unstamped).
+  if (transcript.running) return transcript
   const kind = typeof payload.display_kind === 'string' ? payload.display_kind : ''
-  const text = typeof payload.text === 'string' ? payload.text : ''
   const last = transcript.items.at(-1)
   // Your message, or what started the turn, is already in the chat.
   if (!kind && (last?.kind === 'user' || last?.kind === 'delivery' || last?.kind === 'wake'))
     return transcript
   const starterId = `${STARTER_ID}${id}`
-  const prompt: SessionMessage = {
+  const note: SessionMessage = {
     role: 'user',
-    content: text,
-    ...(kind ? { display_kind: kind } : {}),
+    content: typeof payload.text === 'string' ? payload.text : '',
+    display_kind: kind,
     display_metadata: JSON.stringify({ display_text: payload.display_text })
   }
-  const starter: ChatItem[] =
-    kind || text
-      ? historyItem(prompt, new Map()).map((item) => ({ ...item, id: starterId }))
-      : [{ kind: 'wake', id: starterId, by: 'bot' }]
+  const starter: ChatItem[] = kind
+    ? historyItem(note, new Map()).map((item) => ({ ...item, id: starterId }))
+    : [{ kind: 'wake', id: starterId, by: 'unseen' }]
   return { ...transcript, items: [...transcript.items, ...starter] }
 }
 

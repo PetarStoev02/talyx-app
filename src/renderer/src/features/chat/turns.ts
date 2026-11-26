@@ -22,9 +22,9 @@ export interface TurnOutcome {
 
 /**
  * Whom a reply in a turn no message of yours started answers: the bot whose delivery started it,
- * the engine that woke the bot, or another bot not named yet (a turn still streaming).
+ * the engine that woke the bot, or a message not shown yet (a turn still streaming).
  */
-export type Asker = { name: string; profile: string } | 'engine' | 'bot'
+export type Asker = { name: string; profile: string } | 'engine' | 'unseen'
 
 /** What the running turn is doing: its newest tool (null before the first) and how many it ran. */
 export interface TurnActivity {
@@ -76,7 +76,7 @@ export function turnView(
 function nextAsker(item: ChatItem, work: ChatItem[], asker: Asker | 'you'): Asker | 'you' {
   if (item.kind === 'delivery') return item.from
   if (item.kind !== 'wake') return 'you'
-  if (item.by === 'bot') return 'bot'
+  if (item.by === 'unseen') return 'unseen'
   return work.some(isMessageToBot) ? 'engine' : asker
 }
 

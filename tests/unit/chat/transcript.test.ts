@@ -367,7 +367,7 @@ describe('chat transcript', () => {
           start(5, 'turn-2'),
           delta('Again', 0, 6, 'turn-2')
         )
-        // No message of yours started the second turn: another bot did, not named until the reload.
+        // No message of yours started the second turn: what did is not named until the reload.
         expect(transcript.items.map((item) => ('text' in item ? item.text : item.kind))).toEqual([
           'Hi',
           'Hello',
@@ -409,9 +409,9 @@ describe('chat transcript', () => {
       const kinds = (transcript: Transcript): string[] =>
         transcript.items.map((item) => (item.kind === 'wake' ? `wake:${item.by}` : item.kind))
 
-      it("should put another bot's message, unnamed until the reload, before the reply", () => {
+      it('should put what started the turn, unnamed until the reload, before the reply', () => {
         const transcript = replay(answered(), event('message.start', {}, 1))
-        expect(kinds(transcript)).toEqual(['user', 'bot', 'wake:bot', 'bot'])
+        expect(kinds(transcript)).toEqual(['user', 'bot', 'wake:unseen', 'bot'])
       })
 
       it("should show the engine's own note as what started the turn", () => {
@@ -421,21 +421,20 @@ describe('chat transcript', () => {
         expect(kinds(transcript)).toEqual(['user', 'bot', 'wake:engine', 'bot'])
       })
 
-      it("should take a reopened chat's in-flight prompt as what started the turn", () => {
-        const delivered = 'Message from 🤖 Talyx (@acme): Take #80'
-        const fromBot = replay(answered(), event('message.start', { text: delivered }))
-        expect(fromBot.items.at(-2)).toMatchObject({ kind: 'delivery', text: 'Take #80' })
-        const fromYou = replay(answered(), event('message.start', { text: 'And Q4?' }))
-        expect(fromYou.items.at(-2)).toMatchObject({ kind: 'user', text: 'And Q4?' })
-      })
-
       it('should add nothing when your message, or what started the turn, is already there', () => {
         expect(kinds(replay(asked(), event('message.start', {}, 1)))).toEqual(['user', 'bot'])
         const stored = history({ id: 1, role: 'user', content: 'Message from 🤖 CFO (@cfo): Go' })
-        expect(kinds(replay(stored, event('message.start', { text: 'x' }, 1)))).toEqual([
-          'delivery',
-          'bot'
-        ])
+        expect(kinds(replay(stored, event('message.start', {}, 1)))).toEqual(['delivery', 'bot'])
+      })
+
+      it('should take a start re-sent while the turn runs as that turn, not a new one', () => {
+        const transcript = replay(
+          asked(),
+          event('message.start', {}, 1),
+          event('tool.start', { tool_id: 't1', name: 'terminal' }, 2),
+          event('message.start', {}, 3)
+        )
+        expect(kinds(transcript)).toEqual(['user', 'bot', 'tool', 'bot'])
       })
     })
 

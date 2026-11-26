@@ -220,7 +220,7 @@ const en = {
   'chat.workflowStopSent': 'Workflows asked to stop {task}',
   'chat.deliveryFrom': '{name} sent a message',
   'chat.replyTo': 'Reply to {name}',
-  'chat.replyToBot': 'Reply to another bot',
+  'chat.replyUnseen': 'Reply to a message not shown yet',
   'chat.backgroundNote': 'Note after a background task',
   'chat.clarifyBack': 'Back',
   'chat.clarifyNext': 'Next',

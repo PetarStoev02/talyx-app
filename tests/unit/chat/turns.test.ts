@@ -194,13 +194,13 @@ describe('turn view', () => {
       expect([...answers]).toEqual([['b2', 'engine']])
     })
 
-    it('should read a reply while another bot is not named yet as answering another bot', () => {
-      const unnamed: ChatItem = { kind: 'wake', id: 'w2', by: 'bot' }
+    it('should read a reply to a message not shown yet as not answering you', () => {
+      const unnamed: ChatItem = { kind: 'wake', id: 'w2', by: 'unseen' }
       const { answers } = turnView(
         [user('u1'), reply('b1', 'Done.'), unnamed, reply('b2', 'On it')],
         true
       )
-      expect([...answers]).toEqual([['b2', 'bot']])
+      expect([...answers]).toEqual([['b2', 'unseen']])
     })
 
     it('should keep the answer to a background job you asked for as yours', () => {
