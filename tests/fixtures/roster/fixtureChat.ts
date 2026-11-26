@@ -70,22 +70,31 @@ const history: Record<string, Array<Record<string, unknown>>> = {
     {
       id: 4,
       role: 'assistant',
-      content: 'The **battery passport**: every pack needs one from February 2027.'
+      content: '',
+      tool_calls: [
+        { id: 'r1', function: { name: 'message_agent', arguments: '{"target":"acme"}' } }
+      ]
+    },
+    { id: 5, role: 'tool', content: 'sent', tool_call_id: 'r1' },
+    {
+      id: 6,
+      role: 'assistant',
+      content: 'The **battery passport**: every pack needs one from February 2027. Told Talyx too.'
     },
     {
-      id: 5,
+      id: 7,
       role: 'user',
       content: '[IMPORTANT: Background process proc_1 completed normally (exit code 0).]',
       display_kind: 'process_complete'
     },
-    { id: 6, role: 'assistant', content: '@acme got the list. Nothing else is waiting.' },
+    { id: 8, role: 'assistant', content: '@acme got the list. Nothing else is waiting.' },
     {
-      id: 7,
+      id: 9,
       role: 'user',
       content:
         'Stop working on the Workflows task acme/site#12. If you started a thread or a check for it, stop that too.'
     },
-    { id: 8, role: 'assistant', content: 'Stopped. Nothing was pushed.' }
+    { id: 10, role: 'assistant', content: 'Stopped. Nothing was pushed.' }
   ],
   developer: [
     { id: 1, role: 'user', content: 'The CSV export drops the last row. Can you fix it?' },

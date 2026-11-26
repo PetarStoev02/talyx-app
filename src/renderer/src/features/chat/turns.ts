@@ -61,13 +61,22 @@ export function turnView(
     }
     end(turnResult(work, false))
     if (item.kind !== 'wake') shown.push(item)
-    asker = item.kind === 'delivery' ? item.from : item.kind === 'wake' ? null : 'you'
+    asker = nextAsker(item, work, asker)
     work = []
   }
   end(turnResult(work, running))
   if (!running) return { items: shown, activity: null, answers }
   const tools = work.filter((item): item is ToolItem => item.kind === 'tool')
   return { items: shown, activity: { tool: tools.at(-1) ?? null, tools: tools.length }, answers }
+}
+
+// Who the turn an item starts answers. The engine wakes the bot when a message it sent another bot
+// (`message_agent`) went out, and the bot's note on that is not for you; a background job you
+// asked for wakes it too, and that answer is still yours.
+function nextAsker(item: ChatItem, work: ChatItem[], asker: Asker | 'you'): Asker | 'you' {
+  if (item.kind === 'delivery') return item.from
+  if (item.kind !== 'wake') return 'you'
+  return work.some((done) => done.kind === 'tool' && done.target !== null) ? null : asker
 }
 
 // A reply to a bot or the engine that only talks back: a failure, or a Workflows status line,

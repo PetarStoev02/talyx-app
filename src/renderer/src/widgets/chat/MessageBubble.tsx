@@ -5,13 +5,13 @@ import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import type { Components, UrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useEngine } from '@features/setup/store'
-import { useLanguage } from '@shared/lib/i18n'
+import { useLanguage, type TranslationKey } from '@shared/lib/i18n'
 import { BotAvatar } from '@features/bots/BotAvatar'
-import { MANAGER_TITLE, botTitle, unknownBot } from '@features/bots/roster'
+import { botTitle, unknownBot } from '@features/bots/roster'
 import { useRoster } from '@features/bots/store'
 import { markdownImage } from '@features/chat/markdownImage'
 import { replyFailure } from '@features/chat/replyFailure'
-import { senderProfile, withManagerName } from '@features/chat/transcript'
+import { senderProfile } from '@features/chat/transcript'
 import type { Asker } from '@features/chat/turns'
 import type { ChatItem, MessageItem } from '@features/chat/types'
 import { SurfaceCard } from './SurfaceCard'
@@ -71,7 +71,6 @@ export function MessageBubble({
   onSurfaceSend: (text: string) => void
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const managerHandle = useManagerHandle()
   if (message.kind === 'surface')
     return (
       <SurfaceCard
@@ -90,31 +89,23 @@ export function MessageBubble({
     )
   if (message.kind === 'delivery')
     return (
-      <QuietLine summary={<DeliverySummary from={message.from} />}>
-        <ReplyText
-          text={withManagerName(message.text, managerHandle, MANAGER_TITLE)}
-          streaming={false}
-          briefs={briefs}
-        />
+      <QuietLine summary={<BotLine bot={message.from} label="chat.deliveryFrom" />}>
+        <ReplyText text={message.text} streaming={false} briefs={briefs} />
       </QuietLine>
     )
   if (aside && message.kind === 'bot')
     return (
       <QuietLine summary={<AsideSummary to={aside.to} />}>
-        <ReplyText
-          text={withManagerName(message.text, managerHandle, MANAGER_TITLE)}
-          streaming={message.streaming}
-          briefs={briefs}
-        />
+        <ReplyText text={message.text} streaming={message.streaming} briefs={briefs} />
       </QuietLine>
     )
   const brief = message.kind === 'user' && message.images.length === 0 && parseBrief(message.text)
   if (brief) return <WorkflowBriefCard brief={brief} text={message.text} />
-  const stopped = message.kind === 'user' && parseStop(message.text)
-  if (stopped)
+  const stopRef = message.kind === 'user' && parseStop(message.text)
+  if (stopRef)
     return (
       <QuietLine
-        summary={t('chat.workflowStopSent').replace('{task}', briefs[stopped]?.title ?? stopped)}
+        summary={t('chat.workflowStopSent').replace('{task}', briefs[stopRef]?.title ?? stopRef)}
       >
         <ReplyText text={message.text} streaming={false} briefs={briefs} />
       </QuietLine>
@@ -146,11 +137,7 @@ export function MessageBubble({
         )}
       >
         {(message.text || message.error === null) && (
-          <ReplyText
-            text={withManagerName(message.text, managerHandle, MANAGER_TITLE)}
-            streaming={message.streaming}
-            briefs={briefs}
-          />
+          <ReplyText text={message.text} streaming={message.streaming} briefs={briefs} />
         )}
         {message.error !== null && (
           <div className={cn(message.text && 'mt-2')}>
@@ -178,10 +165,6 @@ function useManagerHandle(): string | null {
   return useEngine((s) => (s.status?.state === 'attached' ? s.status.managerHandle : null))
 }
 
-/**
- * Something that came into the chat besides the conversation (another bot's message, a Workflows
- * stop): one quiet line, its full text a press away.
- */
 // A reply's markdown, with each Workflows status line shown as its row.
 function ReplyText({
   text,
@@ -212,6 +195,10 @@ function ReplyText({
   )
 }
 
+/**
+ * Something that came into the chat besides the conversation (another bot's message, a Workflows
+ * stop): one quiet line, its full text a press away.
+ */
 function QuietLine({
   summary,
   children
@@ -260,28 +247,23 @@ function Sender({ sender }: { sender: { name: string; profile: string } }): Reac
 
 function AsideSummary({ to }: { to: Asker }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  if (!to) return <span>{t('chat.backgroundNote')}</span>
-  return <ReplyToSummary to={to} />
+  return to ? <BotLine bot={to} label="chat.replyTo" /> : <span>{t('chat.backgroundNote')}</span>
 }
 
-function ReplyToSummary({ to }: { to: { name: string; profile: string } }): React.JSX.Element {
+// A quiet line's words about another bot, with its avatar: `{name}` in the label is its name.
+function BotLine({
+  bot,
+  label
+}: {
+  bot: { name: string; profile: string }
+  label: TranslationKey
+}): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const { avatar, name } = useSenderBot(to)
+  const { avatar, name } = useSenderBot(bot)
   return (
     <span className="flex items-center gap-2">
       {avatar}
-      {t('chat.replyTo').replace('{name}', name)}
-    </span>
-  )
-}
-
-function DeliverySummary({ from }: { from: { name: string; profile: string } }): React.JSX.Element {
-  const t = useLanguage((s) => s.t)
-  const { avatar, name } = useSenderBot(from)
-  return (
-    <span className="flex items-center gap-2">
-      {avatar}
-      {t('chat.deliveryFrom').replace('{name}', name)}
+      {t(label).replace('{name}', name)}
     </span>
   )
 }

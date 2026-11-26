@@ -11,6 +11,7 @@ import { answering } from '@features/chat/room'
 import type { RoomActions } from '@features/chat/room'
 import { roomText } from '@features/chat/attachments'
 import { parseAttachmentKey, roomItems } from '@features/chat/roomLog'
+import { withManagerName } from '@features/chat/transcript'
 import { useRooms } from '@features/chat/store'
 import type { RoomTask, RoomView } from '@features/chat/types'
 import { useRoomPolling } from '@features/chat/useRoomPolling'
@@ -22,6 +23,7 @@ import { reportError } from '@shared/lib/report'
 import { Button } from '@shared/ui/button'
 import { ModelPicker } from '@shared/ui/ModelPicker'
 import { ApprovalCard } from './ApprovalCard'
+import { useManagerName } from './useManagerName'
 import { Composer, type ComposerTarget } from './Composer'
 import { Chip } from './ComposerChips'
 import { ChatSkeleton } from './ChatSkeleton'
@@ -93,9 +95,10 @@ export function RoomPane({
   const nameOf = (member: string): string => memberOf(member).name
   const mentions = useMemo(() => roomMentions(room, memberOf), [room, memberOf])
   const events = view?.events
+  const manager = useManagerName()
   const items = useMemo(
-    () => roomItems(events ?? [], { memberOf, mentions, t }),
-    [events, memberOf, mentions, t]
+    () => withManagerName(roomItems(events ?? [], { memberOf, mentions, t }), manager),
+    [events, memberOf, mentions, t, manager]
   )
   const loadImage = useCallback(
     (key: string): Promise<string> => {

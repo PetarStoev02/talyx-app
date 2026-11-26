@@ -161,14 +161,14 @@ describe('turn view', () => {
       expect(ids(items)).toEqual(['u1', 'b1', 'b2'])
     })
 
-    it('should name whom each reply answers: the bot that delivered, or the engine', () => {
+    it('should name the bot whose message started a turn, through a job that turn started', () => {
       const { answers } = turnView(
         [
           handover,
           tool('t1'),
           reply('b1', 'On it.'),
           wake,
-          reply('b2', '@Talyx got the status.'),
+          reply('b2', 'The job is done.'),
           user('u1'),
           reply('b3', 'Here it is.')
         ],
@@ -176,8 +176,36 @@ describe('turn view', () => {
       )
       expect([...answers]).toEqual([
         ['b1', talyx],
-        ['b2', null]
+        ['b2', talyx]
       ])
+    })
+
+    it('should read the note after a message the bot sent another bot as answering the engine', () => {
+      const { answers } = turnView(
+        [
+          user('u1'),
+          tool('t1', 'message_agent', 'acme'),
+          reply('b1', 'Sent Talyx the status.'),
+          wake,
+          reply('b2', '@Talyx got the status.')
+        ],
+        false
+      )
+      expect([...answers]).toEqual([['b2', null]])
+    })
+
+    it('should keep the answer to a background job you asked for as yours', () => {
+      const { answers } = turnView(
+        [
+          user('u1'),
+          tool('t1', 'terminal'),
+          reply('b1', 'Running the tests.'),
+          wake,
+          reply('b2', 'They pass.')
+        ],
+        false
+      )
+      expect(answers.size).toBe(0)
     })
 
     it('should leave a failed reply or a Workflows status line to show as it is', () => {

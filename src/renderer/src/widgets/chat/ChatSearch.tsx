@@ -61,6 +61,8 @@ export function ChatSearch({
   const [loading, setLoading] = useState(true)
   // Null until you step: the search stays on the start message's first match as the chat loads.
   const [current, setCurrent] = useState<number | null>(null)
+  // The message whose first match the search shows until you step: the start one, then a pick.
+  const [target, setTarget] = useState(start.messageId)
   // The list of messages under the field, and its active row (none: -1, Enter steps instead).
   const [listOpen, setListOpen] = useState(!!start.query && !start.messageId)
   // The active row, by its message: a new reply reorders the list but keeps the row. `byKeys`: Up
@@ -70,7 +72,10 @@ export function ChatSearch({
   const found = useMemo(() => find(query), [find, query])
 
   useLoad(loadWhole, {
-    loaded: () => setLoading(false),
+    loaded: () => {
+      unfold(transcript, start.messageId)
+      setLoading(false)
+    },
     failed: (error) => {
       setLoading(false)
       reportError('chat', error)
@@ -96,8 +101,8 @@ export function ChatSearch({
   }, [transcript, query, edits])
 
   const startAt = useMemo(
-    () => (start.messageId ? matchIn(transcript, matches, start.messageId) : 0),
-    [transcript, matches, start.messageId]
+    () => (target ? matchIn(transcript, matches, target) : 0),
+    [transcript, matches, target]
   )
   const shown = matches.length ? Math.min(current ?? startAt, matches.length - 1) : -1
 
@@ -132,7 +137,10 @@ export function ChatSearch({
     if (samePlace(hit.place, place)) {
       // Picked again after scrolling away: scroll to it again.
       scrollAgain()
-      return setCurrent(matchIn(transcript, matches, hit.messageId))
+      // Its words may be in a folded line: it opens, and the matches are found again.
+      unfold(transcript, hit.messageId)
+      setTarget(hit.messageId)
+      return setCurrent(null)
     }
     useFind.getState().ask({ place: hit.place, query, messageId: hit.messageId })
     useRoster.getState().select(hit.place)
@@ -272,6 +280,14 @@ function matchIn(transcript: HTMLElement, matches: Range[], messageId: string): 
   return Math.max(index, 0)
 }
 
+// A message folded into a quiet line opens, so its words can be found and shown.
+function unfold(transcript: HTMLElement, messageId: string | null): void {
+  if (!messageId) return
+  const message = transcript.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`)
+  const folded = message?.querySelector('details')
+  if (folded) folded.open = true
+}
+
 // How many times each searched element's text has changed, as useSyncExternalStore reads it.
 const editCount = new WeakMap<HTMLElement, number>()
 
@@ -280,7 +296,14 @@ function watchText(root: HTMLElement, changed: () => void): () => void {
     editCount.set(root, (editCount.get(root) ?? 0) + 1)
     changed()
   })
-  observer.observe(root, { subtree: true, childList: true, characterData: true })
+  // A folded line opening shows its words: they are found too.
+  observer.observe(root, {
+    subtree: true,
+    childList: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: ['open']
+  })
   return () => observer.disconnect()
 }
 

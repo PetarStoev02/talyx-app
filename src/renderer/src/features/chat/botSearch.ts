@@ -1,4 +1,6 @@
 import { findMatches } from './search'
+import { namedText, withManagerName } from './transcript'
+import type { ManagerName } from './transcript'
 import { turnView } from './turns'
 import type { ChatItem, RoomEvent } from './types'
 import { isQuietReply, parseBrief } from './workflowLines'
@@ -72,12 +74,12 @@ export function placeHits(place: SearchPlace, items: ChatItem[], query: string):
  * then what it said in each room it is in. Newest first in each place.
  */
 export function botHits(
-  search: { profile: string; chat: ChatItem[]; rooms: RoomLog[] },
+  search: { profile: string; chat: ChatItem[]; rooms: RoomLog[]; manager: ManagerName },
   query: string
 ): MessageHit[] {
   // What the chat shows: a turn's last reply, not its text between tool calls; no progress
   // reports; a Workflows brief shows as a card, not its text.
-  const shown = turnView(search.chat, false).items.filter(
+  const shown = turnView(withManagerName(search.chat, search.manager), false).items.filter(
     (item) => !isQuietReply(item) && !(item.kind === 'user' && parseBrief(item.text))
   )
   const own = messagesOf({ kind: 'bot', id: search.profile }, shown)
@@ -93,7 +95,12 @@ export function botHits(
         messageId: event.event_id || String(event.seq),
         fromYou: false,
         sender: null,
-        text: shownText(typeof event.payload.text === 'string' ? event.payload.text : '')
+        text: shownText(
+          namedText(
+            typeof event.payload.text === 'string' ? event.payload.text : '',
+            search.manager
+          )
+        )
       }))
   })
   return matched([...own, ...said], query)

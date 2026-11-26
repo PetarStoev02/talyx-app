@@ -195,6 +195,20 @@ describe('chat transcript', () => {
         })
       })
 
+      it('should show a copied notice as the copy that kept its kind says', () => {
+        const copy = (id: number, kind: string | null): SessionMessage =>
+          ({
+            id,
+            role: 'user',
+            content: 'Switched model',
+            message_uid: 'uid-2',
+            ...(kind ? { display_kind: kind } : {})
+          }) as SessionMessage
+        expect(history(copy(1, null), copy(2, 'model_switch')).items).toEqual([
+          { kind: 'notice', id: '2', text: 'Switched model' }
+        ])
+      })
+
       it('should show a message once when compaction archived two copies of it', () => {
         const copy = (id: number): SessionMessage =>
           ({ id, role: 'assistant', content: 'Noted.', message_uid: 'uid-1' }) as SessionMessage
@@ -205,12 +219,25 @@ describe('chat transcript', () => {
         ])
       })
 
-      it("should name Talyx where a bot wrote the engine's handle for it", () => {
-        expect(withManagerName('@acme got the status from @acme-cfo.', 'acme', 'Talyx')).toBe(
-          '@Talyx got the status from @acme-cfo.'
+      it("should name Talyx where a message has the engine's handle for it", () => {
+        const { items } = history(
+          {
+            id: 1,
+            role: 'user',
+            content: 'Message from 🤖 CFO (@acme-cfo): @acme the books are shut.'
+          },
+          { id: 2, role: 'assistant', content: '@acme got it; mail ops@acme.com, not @acme-cfo.' },
+          { id: 3, role: 'user', content: 'Thanks' }
         )
-        // Before the engine reports its handle, the text stays as written.
-        expect(withManagerName('@acme hi', null, 'Talyx')).toBe('@acme hi')
+        const shown = withManagerName(items, { handle: 'acme', name: 'Talyx' })
+        expect(shown.map((item) => ('text' in item ? item.text : ''))).toEqual([
+          '@Talyx the books are shut.',
+          '@Talyx got it; mail ops@acme.com, not @acme-cfo.',
+          'Thanks'
+        ])
+        // A message without the handle is the same item; before the engine reports it, all are.
+        expect(shown[2]).toBe(items[2])
+        expect(withManagerName(items, { handle: null, name: 'Talyx' })).toBe(items)
       })
     })
 

@@ -12,6 +12,8 @@ import { useChat } from '@features/chat/store'
 import type { WaitingMessage } from '@features/chat/store'
 import { useSetup } from '@features/setup/store'
 import { turnOutcome, turnView } from '@features/chat/turns'
+import { withManagerName } from '@features/chat/transcript'
+import { useManagerName } from './useManagerName'
 import type { Asker, TurnOutcome } from '@features/chat/turns'
 import type { MessageItem } from '@features/chat/types'
 import { openSettings } from '@features/settings/sections'
@@ -56,6 +58,9 @@ export function ChatPane({
 }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const chat = useChat((state) => state.chats[bot.name])
+  const manager = useManagerName()
+  const stored = chat?.transcript?.items
+  const chatItems = useMemo(() => withManagerName(stored ?? [], manager), [stored, manager])
   // Unknown (null) stays quiet: only a provider list read as empty asks for one.
   const noProvider = useSetup((s) => s.hasProvider === false) && bot.name === MANAGER
   const navigate = useNavigation((s) => s.navigate)
@@ -109,7 +114,7 @@ export function ChatPane({
   if (loading) return <ChatSkeleton label={t('chat.loading')} />
 
   const running = chat.transcript?.running === true
-  const { items, activity, answers } = turnView(chat.transcript?.items ?? [], running)
+  const { items, activity, answers } = turnView(chatItems, running)
   // Talyx answers another bot's report by briefing you; any other bot answers the bot or the
   // engine that asked, so its reply shows apart from your conversation.
   const asides = bot.name === MANAGER ? new Map<string, Asker>() : answers
@@ -168,7 +173,7 @@ export function ChatPane({
           <Transcript
             items={items}
             asides={asides}
-            allItems={chat.transcript?.items ?? []}
+            allItems={chatItems}
             busy={running || chat.waiting.length > 0}
             loadImage={loadImage}
             onSurfaceSend={(text) =>

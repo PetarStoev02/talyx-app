@@ -97,15 +97,37 @@ export function senderProfile(handle: string, managerHandle: string | null): str
   return handle === managerHandle ? 'default' : handle
 }
 
+/** Talyx's handle in the engine, and the name the chat shows for it. */
+export interface ManagerName {
+  handle: string | null
+  name: string
+}
+
 /**
- * Text as the chat shows it: bots address Talyx by the engine's handle for it, which is the
- * engine's own name, so it reads as Talyx's name instead.
+ * The chat's items as shown: bots address Talyx by the engine's handle for it, which is the
+ * engine's own name, so it reads as Talyx's name. An item with no handle stays the same object.
  */
-export function withManagerName(text: string, managerHandle: string | null, name: string): string {
-  if (!managerHandle) return text
-  // A longer handle that starts with this one (`@talyx-cfo`) is another bot's.
-  const handle = new RegExp(`@${managerHandle.replace(REGEX_CHARS, '\\$&')}(?![\\w-])`, 'g')
-  return text.replace(handle, `@${name}`)
+export function withManagerName<Item extends ChatItem>(
+  items: Item[],
+  manager: ManagerName
+): Item[] {
+  if (!manager.handle) return items
+  return items.map((item) => {
+    if (!('text' in item)) return item
+    const text = namedText(item.text, manager)
+    return text === item.text ? item : { ...item, text }
+  })
+}
+
+/** One text as shown, with the engine's handle for Talyx read as Talyx's name. */
+export function namedText(text: string, manager: ManagerName): string {
+  if (!manager.handle) return text
+  // Not inside an address (ops@acme.com), nor the start of a longer handle (`@acme-cfo`).
+  const handle = new RegExp(
+    `(?<![\\w.-])@${manager.handle.replace(REGEX_CHARS, '\\$&')}(?![\\w-])`,
+    'g'
+  )
+  return text.replace(handle, `@${manager.name}`)
 }
 
 export function applyEvent(transcript: Transcript, event: GatewayEvent): Transcript {
@@ -292,16 +314,20 @@ function shownText(message: SessionMessage): string {
   return messageText(message.display_content ?? message.content)
 }
 
-// Compaction can keep two archived copies of one stored message: each message shows once.
+// Compaction can keep two archived copies of one stored message: each message shows once, in its
+// first place. A copy can lose its display kind; the one that kept it says how the message shows.
 function unique(messages: SessionMessage[]): SessionMessage[] {
-  const seen = new Set<string>()
-  return messages.filter((message) => {
+  const placeOf = new Map<string, number>()
+  const kept: SessionMessage[] = []
+  for (const message of messages) {
     const uid = (message as SessionMessage & { message_uid: unknown }).message_uid
-    if (typeof uid !== 'string' || !uid) return true
-    if (seen.has(uid)) return false
-    seen.add(uid)
-    return true
-  })
+    const at = typeof uid === 'string' && uid ? placeOf.get(uid) : undefined
+    if (at === undefined) {
+      if (typeof uid === 'string' && uid) placeOf.set(uid, kept.length)
+      kept.push(message)
+    } else if (!kept[at]?.display_kind && message.display_kind) kept[at] = message
+  }
+  return kept
 }
 
 function noticeText(message: SessionMessage, text: string): string {
