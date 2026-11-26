@@ -13,7 +13,7 @@ interface NavButtonProps {
 
 /**
  * A footer dock button that opens a page, named by its tooltip. Its glyph is always in colour;
- * the dock's sliding disc (DockIndicator) marks the open page, so the button stays transparent.
+ * the dock's sliding disc (PageIndicator) marks the open page, so the button stays transparent.
  */
 export function NavButton({ view, label, glyph, shortcut }: NavButtonProps): React.JSX.Element {
   const active = useNavigation((s) => s.currentView === view)

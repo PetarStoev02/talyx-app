@@ -73,6 +73,9 @@ export function AppShell({
         <div
           inert={!open}
           onTransitionEnd={(event) => event.target === event.currentTarget && settle()}
+          // A theme switch cuts transitions short; the slide is over then too.
+          // eslint-disable-next-line react/no-unknown-property -- a React 19 event the rule predates
+          onTransitionCancel={(event) => event.target === event.currentTarget && settle()}
           className={cn(
             'flex h-full shrink-0 overflow-hidden',
             sliding && 'transition-[width] duration-(--duration-move) ease-(--ease-in-out)'

@@ -8,6 +8,8 @@ describe('foldAfter', () => {
   it.each([
     ['a page opens in a wide window', wide('agents'), wide('settings'), false, true],
     ['a page opens in a narrow window', narrow('agents'), narrow('settings'), true, null],
+    ['a page opens as the window narrows', wide('agents'), narrow('settings'), true, null],
+    ['a page opens as the window widens', narrow('agents'), wide('settings'), null, true],
     ['the window narrows', wide('agents'), narrow('agents'), true, null],
     ['the window widens', narrow('agents'), wide('agents'), false, null],
     ['nothing changed after a fold', wide('agents'), wide('agents'), false, false],

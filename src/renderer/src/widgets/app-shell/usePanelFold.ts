@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom'
 import { type AppView, useNavigation } from '@features/modules/store'
 
 // Below this window width the panel starts folded: rail, panel and a usable chat need about 900px.
-export const FOLD_BELOW_PX = 900
+const FOLD_BELOW_PX = 900
 
 export interface FoldSeen {
   view: AppView
@@ -26,7 +26,7 @@ function subscribeResize(onResize: () => void): () => void {
   return () => window.removeEventListener('resize', onResize)
 }
 
-export interface PanelFold {
+interface PanelFold {
   open: boolean
   /** True from a fold or unfold until its slide ends, so a resize drag never lags the pointer. */
   sliding: boolean

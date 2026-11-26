@@ -21,7 +21,7 @@ export function ModuleBackground({ module }: { module: ModuleSummary }): React.J
     }),
     [module.id, setNeedsYou]
   )
-  // A module that stops (or updates: the footer keys this by version) leaves no dot behind.
+  // A module that stops (or updates: ModuleBackgrounds keys this by version) leaves no dot behind.
   useOnUnmount(() => setNeedsYou(module.id, 0))
   const Background = parts?.background
   if (!Background) return null
