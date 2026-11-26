@@ -55,6 +55,38 @@ const history: Record<string, Array<Record<string, unknown>>> = {
         'Happy to. **Which regions should the report cover?** North and South are ready; West is still closing its books.'
     }
   ],
+  // Bot-to-bot traffic in a worker's chat: Talyx's hand-over, the worker's answers to it and to
+  // the engine, and a Workflows stop show apart from your conversation.
+  researcher: [
+    {
+      id: 1,
+      role: 'user',
+      content:
+        'Message from 🤖 Talyx (@acme): Find the EU battery rules that apply from 2027 and send me the list.',
+      display_kind: 'internal_notification'
+    },
+    { id: 2, role: 'assistant', content: 'Sent Talyx the list: six rules, two of them new.' },
+    { id: 3, role: 'user', content: 'Which of those rules matters most for us?' },
+    {
+      id: 4,
+      role: 'assistant',
+      content: 'The **battery passport**: every pack needs one from February 2027.'
+    },
+    {
+      id: 5,
+      role: 'user',
+      content: '[IMPORTANT: Background process proc_1 completed normally (exit code 0).]',
+      display_kind: 'process_complete'
+    },
+    { id: 6, role: 'assistant', content: '@acme got the list. Nothing else is waiting.' },
+    {
+      id: 7,
+      role: 'user',
+      content:
+        'Stop working on the Workflows task acme/site#12. If you started a thread or a check for it, stop that too.'
+    },
+    { id: 8, role: 'assistant', content: 'Stopped. Nothing was pushed.' }
+  ],
   developer: [
     { id: 1, role: 'user', content: 'The CSV export drops the last row. Can you fix it?' },
     {

@@ -11,6 +11,11 @@ unread or ready mark. The engine runs the turn; Talyx shows it.
 - `send-reply` streams the reply; `Stop` is available while it runs.
 - `send-queue` queues a message typed while the bot is still answering.
 - `send-no-provider` shows `chat.noProvider` guidance with `Open Settings` when no provider is set.
+- `send-bot-traffic` keeps bot-to-bot traffic out of the conversation: another bot's message shows
+  as `{name} sent a message`, a worker's answer to it as `Reply to {name}` or `Note after a
+background task`, and a Workflows stop as `Workflows asked to stop {task}`, each a line that
+  opens on click. In Talyx's own chat its answers stay bubbles. The roster fixture's Researcher
+  chat shows all four (`npx vite --config tests/fixtures/roster/vite.config.ts`).
 
 ## How to get to it (user POV)
 
