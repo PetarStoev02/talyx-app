@@ -470,7 +470,8 @@ function startReply(transcript: Transcript, payload: Payload, id: string): Trans
  */
 function withStarter(transcript: Transcript, payload: Payload, id: string): Transcript {
   const kind = typeof payload.display_kind === 'string' ? payload.display_kind : ''
-  // A start while a turn runs is that turn's again (an older engine re-sends it unstamped).
+  // An unnamed start adds nothing; a start while a turn runs is that turn's again (an older engine
+  // re-sends it unstamped).
   if (!kind || transcript.running) return transcript
   const note: SessionMessage = {
     role: 'user',
