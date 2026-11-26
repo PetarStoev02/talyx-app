@@ -8,7 +8,7 @@ import {
 } from '../../../src/renderer/src/features/settings/layout'
 
 // The saved settings, as main keeps them; `read` holds the read open until the test lets it go.
-function settingsWith(layout: SidebarLayout | null): {
+function settingsWith(layout: SidebarLayout): {
   backend: LayoutBackend
   saved: SidebarLayout[]
   release: () => void
@@ -42,14 +42,6 @@ describe('sidebar layout', () => {
       expect(useLayoutPick.getState().layout).toBe(layout)
     })
 
-    it('should show the dock when nothing is saved', async () => {
-      useLayoutPick.setState({ layout: 'layered' })
-      const settings = settingsWith(null)
-      settings.release()
-      await loadLayout(settings.backend)
-      expect(useLayoutPick.getState().layout).toBe('dock')
-    })
-
     it('should keep a pick made while the saved one was being read', async () => {
       const settings = settingsWith('dock')
       const loading = loadLayout(settings.backend)
@@ -62,7 +54,7 @@ describe('sidebar layout', () => {
 
   describe('pickLayout', () => {
     it('should show and save the pick', () => {
-      const settings = settingsWith(null)
+      const settings = settingsWith('dock')
       pickLayout(settings.backend, 'layered')
       expect(useLayoutPick.getState().layout).toBe('layered')
       expect(settings.saved).toEqual(['layered'])

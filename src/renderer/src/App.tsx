@@ -9,6 +9,7 @@ import { useProvidersBackend } from '@app/providers/useProvidersBackend'
 import { useSetupBackend } from '@app/providers/useSetupBackend'
 import { useFirstSetupStep } from '@app/providers/useFirstSetupStep'
 import { useAppTheme } from '@app/providers/useAppTheme'
+import { useAppLayout } from '@app/providers/useAppLayout'
 import { useOnChange } from '@shared/hooks/useOnChange'
 import { useLayoutPick } from '@features/settings/store'
 import { useOnMount } from '@shared/hooks/useSubscription'
@@ -40,6 +41,7 @@ import { useMcpBridge } from '@app/providers/useMcpBridge'
 export function App(): React.JSX.Element {
   useSelectionMemory()
   const effectiveTheme = useAppTheme()
+  useAppLayout()
   const currentView = useNavigation((s) => s.currentView)
   const navigate = useNavigation((s) => s.navigate)
   const rosterBackend = useRosterBackend()

@@ -12,7 +12,7 @@ export interface LayoutBackend {
 export async function loadLayout(backend: LayoutBackend): Promise<void> {
   const { sidebarLayout } = await backend.get()
   if (useLayoutPick.getState().picked) return
-  useLayoutPick.setState({ layout: sidebarLayout ?? 'dock' })
+  useLayoutPick.setState({ layout: sidebarLayout })
 }
 
 /** Shows the pick at once and saves it. */
