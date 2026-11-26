@@ -12,7 +12,14 @@ import { cn } from '@shared/lib/utils'
  * afterwards, so a reload is an empty mutation. The icon spins (dimmed under reduced motion) while
  * it runs.
  */
-export function RosterRefresh({ backend }: { backend: RosterBackend }): React.JSX.Element {
+export function RosterRefresh({
+  backend,
+  side = 'top'
+}: {
+  backend: RosterBackend
+  // Where the tooltip opens: above the footer, or beside the Layered rail's foot.
+  side?: 'top' | 'right'
+}): React.JSX.Element {
   const t = useLanguage((s) => s.t)
   const saving = useRoster((state) => state.saving)
   const { spinning: refreshing, spin } = useMinSpin()
@@ -24,6 +31,7 @@ export function RosterRefresh({ backend }: { backend: RosterBackend }): React.JS
   return (
     <IconButton
       label={t('roster.refresh')}
+      side={side}
       disabled={saving || refreshing}
       aria-busy={refreshing}
       onClick={() => void refresh()}

@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { useOnMount } from '@shared/hooks/useSubscription'
-import { TalyxLogo } from '@shared/ui/TalyxLogo'
 import { useLanguage } from '@shared/lib/i18n'
+import { cn } from '@shared/lib/utils'
 import { settingsApi } from '@shared/api/ipc'
 import { reportError } from '@shared/lib/report'
+import { loadLayout } from '@features/settings/layout'
+import { useLayoutPick } from '@features/settings/store'
 import { SIDEBAR_WIDTH, clampSidebarWidth } from '@contract/sidebar'
 import { SidebarFooter } from './SidebarFooter'
+import { TitleRow } from './TitleRow'
+import { LayeredSidebar } from './LayeredSidebar'
+import { LAYERED_RAIL_PX, noDragRegion } from './windowChrome'
 
-const isMac = (window.electron?.platform ?? 'darwin') === 'darwin'
-const dragRegion = { WebkitAppRegion: 'drag' } as React.CSSProperties
-const noDragRegion = { WebkitAppRegion: 'no-drag' } as React.CSSProperties
 // One arrow-key press on the resize handle; Shift moves four times as far.
 const KEY_STEP_PX = 16
 
@@ -38,39 +40,57 @@ export function AppShell({
       .then((s) => setWidth(clampSidebarWidth(s.sidebarWidth)))
       // Unreadable settings leave the first width on screen; the log says why.
       .catch((error: unknown) => reportError('settings', error))
+    loadLayout(settingsApi).catch((error: unknown) => reportError('settings', error))
   })
+
+  const layered = useLayoutPick((s) => s.layout) === 'layered'
+  const content = (
+    <>
+      {sidebar}
+      {/* Always here, so switching sections never remounts it (it polls the bots); hidden
+          while a module's sidebar stands before it. */}
+      <div data-roster className="contents [[data-module-sidebar]~&]:hidden">
+        {roster ?? <div className="flex-1" />}
+      </div>
+    </>
+  )
+  const resizer = (
+    <SidebarResizer
+      width={width}
+      offset={layered ? LAYERED_RAIL_PX : 0}
+      label={t('sidebar.resize')}
+      onResize={setWidth}
+      onCommit={(sidebarWidth) => settingsApi.save({ sidebarWidth })}
+    />
+  )
+  const parts = { width, content, titleEnd, footerEnd, resizer }
 
   return (
     <div className="flex h-screen">
-      <aside className="tone-step relative flex h-full shrink-0 flex-col" style={{ width }}>
-        {/* One 56px title row: the macOS window buttons (x16–68), then the logo. The left padding
-            clears the window buttons; the blank space drags the window. */}
+      {layered ? (
+        <LayeredSidebar {...parts} />
+      ) : (
+        <aside className="tone-step relative flex h-full shrink-0 flex-col" style={{ width }}>
+          <TitleRow end={titleEnd} />
+          {content}
+          <SidebarFooter end={footerEnd} />
+          {resizer}
+        </aside>
+      )}
+      {/* Layered, the page floats as a card on the tone step, apart from both navigation columns.
+          The same two boxes either way, so switching layouts never remounts the page. */}
+      <div className={cn('flex min-w-0 flex-1', layered && 'bg-muted py-2 pr-2')}>
         <div
-          className={`mb-2 flex h-14 shrink-0 items-center gap-2.5 pr-3 ${isMac ? 'pl-[92px]' : 'pl-4'}`}
-          style={dragRegion}
+          data-layered={layered ? '' : undefined}
+          className={cn(
+            'flex min-w-0 flex-1 flex-col',
+            layered &&
+              'overflow-hidden rounded-2xl border border-transparent bg-background shadow-xs'
+          )}
         >
-          <TalyxLogo size={18} className="text-foreground" />
-          <span className="text-xs font-semibold text-foreground">Talyx</span>
-          {/* Buttons in the title row must opt out of the window drag to take clicks. */}
-          <span className="ml-auto" style={noDragRegion}>
-            {titleEnd}
-          </span>
+          {children}
         </div>
-        {sidebar}
-        {/* Always here, so switching sections never remounts it (it polls the bots); hidden
-            while a module's sidebar stands before it. */}
-        <div data-roster className="contents [[data-module-sidebar]~&]:hidden">
-          {roster ?? <div className="flex-1" />}
-        </div>
-        <SidebarFooter end={footerEnd} />
-        <SidebarResizer
-          width={width}
-          label={t('sidebar.resize')}
-          onResize={setWidth}
-          onCommit={(sidebarWidth) => settingsApi.save({ sidebarWidth })}
-        />
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+      </div>
     </div>
   )
 }
@@ -81,11 +101,14 @@ export function AppShell({
  */
 function SidebarResizer({
   width,
+  offset,
   label,
   onResize,
   onCommit
 }: {
   width: number
+  // Where the resized column starts: past the rail, if there is one.
+  offset: number
   label: string
   onResize: (width: number) => void
   onCommit: (width: number) => void
@@ -119,11 +142,11 @@ function SidebarResizer({
       aria-valuenow={width}
       tabIndex={0}
       onKeyDown={onKeyDown}
-      // The sidebar starts at the window's left edge, so the pointer's x is the new width.
+      // The resized column starts `offset` px from the window's left edge.
       onPointerDown={(event) => event.currentTarget.setPointerCapture(event.pointerId)}
       onPointerMove={(event) => {
         if (event.currentTarget.hasPointerCapture(event.pointerId))
-          onResize(clampSidebarWidth(event.clientX))
+          onResize(clampSidebarWidth(event.clientX - offset))
       }}
       onPointerUp={(event) => {
         event.currentTarget.releasePointerCapture(event.pointerId)

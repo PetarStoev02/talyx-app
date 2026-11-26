@@ -40,6 +40,7 @@ Each file: an H1, one paragraph of user-visible behavior, then exactly these fou
 Engine-free (provable in an isolated run):
 
 - [Theme](./settings-theme.md): Settings, General, Appearance: Light, Dark, System. Proven 2026-11-17.
+- [Layout](./settings-layout.md): Settings, General, Appearance: Dock, Layered. Proven 2026-11-26.
 - [Engine gate](./engine-gate.md): "Talyx needs its engine." with Install, Try again, Choose file.
 - [First-run setup](./first-run-setup.md): Welcome, then Engine, Provider, First bot. Proven end to end 2026-11-18 (engine installed into the run's home).
 - [Shortcuts sheet](./shortcuts-sheet.md): Meta+Slash opens "Keyboard shortcuts"; Escape or Close. Proven 2026-11-18.

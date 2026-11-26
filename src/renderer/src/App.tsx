@@ -10,6 +10,7 @@ import { useSetupBackend } from '@app/providers/useSetupBackend'
 import { useFirstSetupStep } from '@app/providers/useFirstSetupStep'
 import { useAppTheme } from '@app/providers/useAppTheme'
 import { useOnChange } from '@shared/hooks/useOnChange'
+import { useLayoutPick } from '@features/settings/store'
 import { useOnMount } from '@shared/hooks/useSubscription'
 import { useKeyboardShortcuts } from '@app/providers/useKeyboardShortcuts'
 import { CheatSheet } from '@widgets/shortcuts'
@@ -59,6 +60,7 @@ export function App(): React.JSX.Element {
   const [inSetup, setInSetup] = useState(false)
   if ((visibility === 'show' || forced) && !inSetup) setInSetup(true)
   const modules = runningModules(useModules((s) => s.state))
+  const layered = useLayoutPick((s) => s.layout) === 'layered'
   const openModule = modules.find((module) => module.id === moduleIdOf(currentView))
   const page =
     currentView === 'settings' ? (
@@ -173,7 +175,11 @@ export function App(): React.JSX.Element {
                 ? null
                 : rosterBackend && <RosterAdd module={openModule ?? null} />
             }
-            footerEnd={rosterBackend && <RosterRefresh backend={rosterBackend} />}
+            footerEnd={
+              rosterBackend && (
+                <RosterRefresh backend={rosterBackend} side={layered ? 'right' : 'top'} />
+              )
+            }
             roster={roster}
             sidebar={
               openModule ? (

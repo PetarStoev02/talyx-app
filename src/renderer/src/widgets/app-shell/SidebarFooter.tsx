@@ -1,27 +1,15 @@
 import { useState } from 'react'
 import { ChartNoAxesColumn, Settings } from 'lucide-react'
-import { useEngine } from '@features/setup/store'
 import { useLanguage } from '@shared/lib/i18n'
 import { type AppView, useNavigation } from '@features/modules/store'
-import { useRoster } from '@features/bots/store'
-import { layerOpen, platformOf } from '@features/shortcuts/shortcuts'
-import { anyUnread, dockSections, dockShortcut, type DockSection } from '@features/modules/sections'
-import { moduleRows } from '@features/modules/rows'
-import { moduleView, runningModules, useModuleAttention, useModules } from '@features/modules/store'
-import { updateItems } from '@features/updates/items'
-import { useUpdates } from '@features/updates/store'
-import { reportError } from '@shared/lib/report'
-import { MINUTE_MS } from '@shared/lib/time'
+import type { DockSection } from '@features/modules/sections'
 import { IconButton } from '@shared/ui/IconButton'
-import { useOnMount, useWindowEvent } from '@shared/hooks/useSubscription'
-import { ModuleBackground } from './ModuleBackground'
+import { cn } from '@shared/lib/utils'
+import { DOCK_MARK } from './pageMarks'
+import { ModuleBackgrounds } from './ModuleBackground'
 import { NavButton } from './NavButton'
 import { UpdateButton } from './UpdateButton'
-
-const isMac = platformOf(navigator.platform) === 'mac'
-const mod = isMac ? '⌘' : 'Ctrl+'
-// Coming back to the window reads the module catalog again, at most this often.
-const CATALOG_FOCUS_MAX_AGE_MS = 15 * MINUTE_MS
+import { glyphOf, mod, useSidebarNav, viewOf } from './useSidebarNav'
 
 /**
  * Settings and Usage on the left, `end` (the roster's refresh) on the right, and between them the dock: Agents
@@ -32,102 +20,60 @@ const CATALOG_FOCUS_MAX_AGE_MS = 15 * MINUTE_MS
  */
 export function SidebarFooter({ end }: { end: React.ReactNode }): React.JSX.Element {
   const t = useLanguage((s) => s.t)
-  const engine = useEngine((s) => s.status)
-  const update = useUpdates((s) => s.state)
-  const modulesState = useModules((s) => s.state)
-  const catalog = useModules((s) => s.catalog)
-  const items = updateItems(engine, update, moduleRows(modulesState, catalog))
-  const currentView = useNavigation((s) => s.currentView)
-  const toggle = useNavigation((s) => s.toggle)
-  const settingsOpen = currentView === 'settings'
-  const usageOpen = currentView === 'usage'
-  const modules = runningModules(modulesState)
-  const unread = useRoster((s) => anyUnread(s.unread, s.roomUnread))
-  const needsYou = useModuleAttention((s) => s.needsYou)
-  // The dot is only drawn; the name carries it for screen readers.
-  const sections = dockSections(
-    modules,
-    {
-      label: unread ? t('nav.unread').replace('{section}', t('nav.agents')) : t('nav.agents'),
-      unread
-    },
-    (module) => {
-      const count = needsYou[module.id] ?? 0
-      return {
-        label:
-          count > 0
-            ? t('nav.needsYou').replace('{section}', module.name).replace('{count}', String(count))
-            : module.name,
-        unread: count > 0
-      }
-    }
-  )
-  const showDock = sections.length > 0
-  // Without a dock, ⌘1 still opens the agents.
-  useDockShortcuts(showDock ? sections.map(viewOf) : ['agents'])
-  useWindowEvent('focus', () => void useModules.getState().readCatalog(CATALOG_FOCUS_MAX_AGE_MS))
-
-  useOnMount(() => {
-    const { load, readCatalog } = useModules.getState()
-    load()
-      .then(() => readCatalog(0))
-      .catch((error: unknown) => reportError('modules', error))
-    useUpdates
-      .getState()
-      .load()
-      .catch((error: unknown) => reportError('updater', error))
-  })
+  const { dock, modules, updates } = useSidebarNav()
+  const showDock = dock.length > 0
 
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 pt-2 pb-3">
-      <span className="flex justify-self-start">
-        <IconButton
-          label={settingsOpen ? t('nav.closeSettings') : t('nav.settings')}
-          shortcut={`${mod},`}
-          aria-current={settingsOpen ? 'page' : undefined}
-          onClick={() => void toggle('settings')}
-          className={settingsOpen ? 'bg-foreground/10 text-foreground' : undefined}
-        >
-          <Settings />
-        </IconButton>
-        <IconButton
-          label={usageOpen ? t('nav.closeUsage') : t('nav.usage')}
-          aria-current={usageOpen ? 'page' : undefined}
-          onClick={() => void toggle('usage')}
-          className={usageOpen ? 'bg-foreground/10 text-foreground' : undefined}
-        >
-          <ChartNoAxesColumn />
-        </IconButton>
-      </span>
-      {showDock ? <Dock sections={sections} label={t('nav.sections')} /> : <span />}
-      {/* Hidden: a Background draws nothing, and a failed one's notice must not take a cell. */}
-      <div hidden>
-        {modules.map((module) => (
-          // Keyed by version too: an update starts its Background afresh, with no dot left over.
-          <ModuleBackground key={`${module.id}@${module.version}`} module={module} />
-        ))}
-      </div>
+      <ViewToggles className="flex justify-self-start" mark={DOCK_MARK} />
+      {showDock ? <Dock sections={dock} label={t('nav.sections')} /> : <span />}
+      <ModuleBackgrounds modules={modules} />
       <span className="justify-self-end">
-        {items.length > 0 ? <UpdateButton items={items} /> : end}
+        {updates.length > 0 ? <UpdateButton items={updates} /> : end}
       </span>
     </div>
   )
 }
 
-function viewOf(section: DockSection): AppView {
-  return section.moduleId ? moduleView(section.moduleId) : 'agents'
-}
-
-/** ⌘1, ⌘2, … (Ctrl on Linux) open `views` in order. */
-function useDockShortcuts(views: AppView[]): void {
-  const navigate = useNavigation((s) => s.navigate)
-  useWindowEvent('keydown', (event) => {
-    if (!(isMac ? event.metaKey : event.ctrlKey) || layerOpen()) return
-    const view = dockShortcut(views, event.key)
-    if (!view) return
-    event.preventDefault()
-    void navigate(view)
-  })
+/** Settings and Usage; each toggles back to the page it was opened from. */
+export function ViewToggles({
+  className,
+  mark,
+  side = 'top'
+}: {
+  className: string
+  // Marks the open page: DOCK_MARK or RAIL_MARK.
+  mark: string
+  side?: 'top' | 'right'
+}): React.JSX.Element {
+  const t = useLanguage((s) => s.t)
+  const currentView = useNavigation((s) => s.currentView)
+  const toggle = useNavigation((s) => s.toggle)
+  const settingsOpen = currentView === 'settings'
+  const usageOpen = currentView === 'usage'
+  return (
+    <span className={className}>
+      <IconButton
+        label={settingsOpen ? t('nav.closeSettings') : t('nav.settings')}
+        shortcut={`${mod},`}
+        side={side}
+        aria-current={settingsOpen ? 'page' : undefined}
+        onClick={() => void toggle('settings')}
+        className={cn(mark, settingsOpen && 'bg-foreground/10 text-foreground')}
+      >
+        <Settings />
+      </IconButton>
+      <IconButton
+        label={usageOpen ? t('nav.closeUsage') : t('nav.usage')}
+        side={side}
+        aria-current={usageOpen ? 'page' : undefined}
+        onClick={() => void toggle('usage')}
+        className={cn(mark, usageOpen && 'bg-foreground/10 text-foreground')}
+      >
+        <ChartNoAxesColumn />
+      </IconButton>
+    </span>
+  )
 }
 
 /** The dock: one glyph per page, the open one on a sliding disc. */
@@ -143,7 +89,7 @@ function Dock({ sections, label }: { sections: DockSection[]; label: string }): 
           <NavButton
             view={viewOf(section)}
             label={section.label}
-            glyph={section.moduleId ? 'module' : 'agents'}
+            glyph={glyphOf(section)}
             shortcut={`${mod}${i + 1}`}
           />
           {section.unread && (

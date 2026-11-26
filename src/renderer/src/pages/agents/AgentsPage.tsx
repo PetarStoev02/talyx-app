@@ -24,14 +24,19 @@ import type { RoomBackend } from '@features/chat/room'
 
 // Where the details and room panels sit: see their SlidePanel. Beside the chat from a 52rem page,
 // which leaves the chat at least about 490px; narrower, a docked panel would squeeze it unusable.
+// Inside the Layered layout's page card the panel is a rounded card of its own and docks from a
+// 46rem page, since the card is narrower than a full page.
 const PANEL_PLACE =
-  'absolute inset-y-0 right-0 z-10 max-w-full shadow-xl @min-[52rem]:static @min-[52rem]:max-w-[50%] @min-[52rem]:shadow-none'
+  'absolute inset-y-0 right-0 z-10 max-w-full shadow-xl @min-[52rem]:static @min-[52rem]:max-w-[50%] @min-[52rem]:shadow-none in-data-layered:rounded-l-2xl in-data-layered:@min-[46rem]:static in-data-layered:@min-[46rem]:max-w-[50%] in-data-layered:@min-[46rem]:shadow-none'
 // The page width PANEL_PLACE sits beside the chat from, for the one place that cannot ask CSS.
 const PANEL_BESIDE_REM = 52
+const LAYERED_PANEL_BESIDE_REM = 46
 
 function panelOverlaysChat(page: HTMLElement | null): boolean {
+  if (!page) return false
   const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
-  return !!page && page.clientWidth < PANEL_BESIDE_REM * rem
+  const beside = page.closest('[data-layered]') ? LAYERED_PANEL_BESIDE_REM : PANEL_BESIDE_REM
+  return page.clientWidth < beside * rem
 }
 
 const pillClass =

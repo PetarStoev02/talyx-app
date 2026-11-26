@@ -33,6 +33,7 @@ const settings: fc.Arbitrary<Partial<UserSettings>> = fc.record(
     setupDone: fc.boolean(),
     launchAtLogin: fc.boolean(),
     completionSound: fc.boolean(),
+    sidebarLayout: fc.constantFrom('dock', 'layered'),
     licenseKey: fc.option(fc.string({ maxLength: 40 }))
   },
   { requiredKeys: [] }
