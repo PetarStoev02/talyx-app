@@ -135,7 +135,7 @@ cd website && npm ci && npm run build
 
 ## Status
 
-Talyx 1.1 is for daily use on macOS and Linux. It attaches to the engine on the same computer, which its first-run setup installs. You get a roster of bots with pins, folders and unread marks; a chat with each bot, with approval and question cards, images, files and dictation; bot details with routines, memories, skills and a look of its own; group rooms the engine hosts; search across a bot's chat and rooms; Usage, with what each bot and provider spent; keyboard shortcuts; and Settings for model providers, the engine, launch at login and the theme. Not yet: Windows, remote engines, the model's reasoning in the transcript, voice mode and other languages. The [release notes](docs/release-notes/1.1.1.md) have the details.
+Talyx 1.2 is for daily use on macOS and Linux. It attaches to the engine on the same computer, which its first-run setup installs. You get a roster of bots with pins, folders and unread marks; a chat with each bot, with approval and question cards, images, files and dictation; bot details with routines, memories, skills and a look of its own; group rooms the engine hosts; search across a bot's chat and rooms; Usage, with what each bot and provider spent; keyboard shortcuts; and Settings for model providers, the engine, launch at login and the theme. Not yet: Windows, remote engines, the model's reasoning in the transcript, voice mode and other languages. The [release notes](docs/release-notes/1.2.0.md) have the details.
 
 ## Before the pivot
 
